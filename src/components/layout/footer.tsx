@@ -7,7 +7,7 @@ import { Github, Twitter, Instagram } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 export default function Footer() {
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
@@ -21,7 +21,9 @@ export default function Footer() {
             <Logo className="h-7 w-auto text-primary" />
           </div>
           <p className="text-sm text-muted-foreground">
-            &copy; {currentYear} Quiova. All rights reserved.
+            {currentYear && <>
+              &copy; {currentYear} Quiova. All rights reserved.
+            </>}
           </p>
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
             <Link href="#" aria-label="Twitter">
