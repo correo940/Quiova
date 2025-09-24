@@ -1,5 +1,5 @@
-import { Footer } from '@/components/layout/footer';
-import { Header } from '@/components/layout/header';
+import Footer from '@/components/layout/footer';
+import Header from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import type { Metadata } from 'next';
 import './globals.css';
