@@ -9,7 +9,7 @@ export function Logo({ className, ...props }: LogoProps) {
   return (
     <div className={className} {...props}>
       <Image
-        src="/images/logo.jpg"  // Cambia la extensión según tu archivo
+        src="/images/logo.png"  // Cambia la extensión según tu archivo
         alt="Quiova Logo"
         width={32}
         height={32}
