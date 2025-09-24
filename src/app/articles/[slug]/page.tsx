@@ -20,7 +20,7 @@ export async function generateMetadata(
 
   if (!article) {
     return {
-      title: 'Article Not Found',
+      title: 'Artículo No Encontrado',
     };
   }
 
@@ -61,7 +61,7 @@ const YoutubeEmbed = ({ url }: { url: string }) => {
         width="100%"
         height="100%"
         src={embedUrl}
-        title="YouTube video player"
+        title="Reproductor de video de YouTube"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
@@ -89,7 +89,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
           <header className="mb-8">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
               <CategoryIcon category={article.category} className="h-5 w-5" />
-              <Badge variant="outline" className="capitalize">{article.category}</Badge>
+              <Badge variant="outline" className="capitalize">{article.category.replace('physical health', 'salud física').replace('mental health', 'salud mental').replace('family finance', 'finanzas familiares')}</Badge>
             </div>
             <h1 className="font-headline text-3xl md:text-5xl font-bold leading-tight mb-4">
               {article.title}
@@ -121,7 +121,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
       {relatedArticles.length > 0 && (
         <aside className="bg-background py-12 md:py-16">
           <div className="container mx-auto px-4">
-            <h2 className="font-headline text-3xl font-bold mb-8 text-center">Related Articles</h2>
+            <h2 className="font-headline text-3xl font-bold mb-8 text-center">Artículos Relacionados</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
               {relatedArticles.map((related) => (
                 <ArticleCard key={related.id} article={related} />

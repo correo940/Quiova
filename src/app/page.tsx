@@ -43,13 +43,13 @@ export default function Home() {
         )}
         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4">
           <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
-            Find Your Balance
+            Encuentra Tu Equilibrio
           </h1>
           <p className="mt-4 max-w-2xl text-lg md:text-xl text-primary-foreground/90 drop-shadow-md">
-            Articles on physical health, mental wellness, and family finances to help you thrive.
+            Artículos sobre salud física, bienestar mental y finanzas familiares para ayudarte a prosperar.
           </p>
           <Button asChild size="lg" className="mt-8 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href="#latest-articles">Explore Articles</Link>
+            <Link href="#latest-articles">Explorar Artículos</Link>
           </Button>
         </div>
       </section>
@@ -57,7 +57,7 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Featured Articles */}
         <section className="mb-12 md:mb-16">
-          <h2 className="font-headline text-3xl font-bold mb-6 text-center">Featured Articles</h2>
+          <h2 className="font-headline text-3xl font-bold mb-6 text-center">Artículos Destacados</h2>
           <Carousel
             opts={{
               align: 'start',
@@ -81,7 +81,7 @@ export default function Home() {
 
         {/* Latest Articles */}
         <section id="latest-articles">
-          <h2 className="font-headline text-3xl font-bold mb-6 text-center">Latest Articles</h2>
+          <h2 className="font-headline text-3xl font-bold mb-6 text-center">Últimos Artículos</h2>
 
           {/* Category Filters */}
           <div className="flex justify-center flex-wrap gap-2 mb-8">
@@ -90,7 +90,7 @@ export default function Home() {
               onClick={() => setSelectedCategory('all')}
               className="rounded-full"
             >
-              All
+              Todos
             </Button>
             {categories.map((category) => (
               <Button
@@ -100,7 +100,7 @@ export default function Home() {
                 className="capitalize rounded-full"
               >
                 <CategoryIcon category={category} className="mr-2 h-4 w-4" />
-                {category}
+                {category.replace('physical health', 'salud física').replace('mental health', 'salud mental').replace('family finance', 'finanzas familiares')}
               </Button>
             ))}
           </div>
@@ -114,7 +114,7 @@ export default function Home() {
             </div>
           ) : (
             <Card className="text-center py-12">
-              <p className="text-muted-foreground">No articles found in this category yet.</p>
+              <p className="text-muted-foreground">Aún no se han encontrado artículos en esta categoría.</p>
             </Card>
           )}
         </section>

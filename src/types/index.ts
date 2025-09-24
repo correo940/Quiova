@@ -1,4 +1,4 @@
-export type ArticleCategory = 'physical health' | 'mental health' | 'family finance';
+export type ArticleCategory = 'salud física' | 'salud mental' | 'finanzas familiares';
 
 export type Article = {
   id: string;
@@ -6,7 +6,7 @@ export type Article = {
   title: string;
   excerpt: string;
   content: string;
-  category: ArticleCategory;
+  category: 'physical health' | 'mental health' | 'family finance';
   youtubeUrl?: string;
   imageUrl: string;
   imageHint: string;

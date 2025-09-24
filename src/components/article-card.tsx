@@ -29,7 +29,7 @@ export default function ArticleCard({ article, className }: ArticleCardProps) {
               />
                <Badge className="absolute top-3 right-3 capitalize backdrop-blur-sm bg-background/70 hover:bg-background/90 text-foreground">
                 <CategoryIcon category={article.category} className="h-4 w-4 mr-1.5" />
-                {article.category}
+                {article.category.replace('physical health', 'salud física').replace('mental health', 'salud mental').replace('family finance', 'finanzas familiares')}
               </Badge>
             </div>
           </CardHeader>

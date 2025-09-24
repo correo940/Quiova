@@ -6,7 +6,7 @@ import Footer from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'Quiova',
-  description: 'Your space for health and financial well-being.',
+  description: 'Tu espacio para la salud y el bienestar financiero.',
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
