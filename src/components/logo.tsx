@@ -3,27 +3,20 @@ import type { SVGProps } from 'react';
 export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      width="101"
+      width="28"
       height="28"
-      viewBox="0 0 101 28"
+      viewBox="0 0 28 28"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
       aria-label="Quiova Logo"
     >
-      <text
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M14 28C21.732 28 28 21.732 28 14C28 6.26801 21.732 0 14 0C6.26801 0 0 6.26801 0 14C0 21.732 6.26801 28 14 28ZM15.9381 22.1315C16.5383 22.9995 17.5852 23.3637 18.4485 22.951C19.3118 22.5383 19.82 21.6111 19.6433 20.7013C18.963 17.1437 16.7144 14.5341 13.9998 12.8624C11.2852 14.5341 9.03666 17.1437 8.35639 20.7013C8.17968 21.6111 8.68791 22.5383 9.55118 22.951C10.4145 23.3637 11.4614 22.9995 12.0616 22.1315C12.5153 21.4882 12.9261 20.1912 13.1932 19.043C13.5042 19.0142 13.754 19 13.9998 19C14.2456 19 14.4954 19.0142 14.8064 19.043C15.0735 20.1912 15.4843 21.4882 15.9381 22.1315ZM19.5 12C19.5 15.0376 17.0376 17.5 14 17.5C10.9624 17.5 8.5 15.0376 8.5 12C8.5 8.96243 10.9624 6.5 14 6.5C17.0376 6.5 19.5 8.96243 19.5 12Z"
         fill="currentColor"
-        xmlSpace="preserve"
-        style={{ whiteSpace: 'pre' }}
-        fontFamily="PT Sans"
-        fontSize="24"
-        fontWeight="bold"
-        letterSpacing="0.025em"
-      >
-        <tspan x="0" y="21.5">
-          Quiova
-        </tspan>
-      </text>
+      />
     </svg>
   );
 }
