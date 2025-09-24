@@ -3,29 +3,60 @@ import type { SVGProps } from 'react';
 export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      width="28"
-      height="28"
-      viewBox="0 0 48 48"
+      width="32"
+      height="32"
+      viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
       aria-label="Quiova Logo"
     >
-      <path 
-        d="M24 4C12.95 4 4 12.95 4 24C4 35.05 12.95 44 24 44C35.05 44 44 35.05 44 24C44 12.95 35.05 4 24 4ZM24 38C16.27 38 10 31.73 10 24C10 16.27 16.27 10 24 10C31.73 10 38 16.27 38 24C38 31.73 31.73 38 24 38Z" 
-        fill="currentColor"
+      {/* Círculo principal verde */}
+      <circle 
+        cx="50" 
+        cy="35" 
+        r="25" 
+        fill="#50FA7B"
       />
-      <path 
-        d="M33 30C33 28.9 32.1 28 31 28H17C15.9 28 15 28.9 15 30C15 31.1 15.9 32 17 32H31C32.1 32 33 31.1 33 30Z" 
-        fill="currentColor"
-      />
-      <path 
-        d="M24,34c-4.41,0-8-3.59-8-8h2c0,3.31,2.69,6,6,6s6-2.69,6-6h2C32,30.41,28.41,34,24,34z"
+      
+      {/* Óvalo interior blanco */}
+      <ellipse 
+        cx="50" 
+        cy="35" 
+        rx="12" 
+        ry="18" 
         fill="white"
       />
-      <path
-        d="M34 36C34 34.9 33.1 34 32 34H16C14.9 34 14 34.9 14 36C14 37.1 14.9 38 16 38H32C33.1 38 34 37.1 34 36Z"
-        fill="currentColor"
+      
+      {/* Curva inferior del logo - parte principal de la Q */}
+      <path 
+        d="M25 50 Q75 45 75 65 Q70 75 60 75 L45 70 Q35 65 25 50" 
+        fill="#50FA7B"
+      />
+      
+      {/* Líneas decorativas curvas */}
+      <path 
+        d="M20 55 Q30 50 40 55" 
+        stroke="#50FA7B" 
+        strokeWidth="2" 
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path 
+        d="M65 45 Q75 40 85 45" 
+        stroke="#50FA7B" 
+        strokeWidth="2" 
+        fill="none"
+        strokeLinecap="round"
+      />
+      
+      {/* Detalle adicional en la parte inferior */}
+      <path 
+        d="M55 72 Q65 70 70 72" 
+        stroke="#50FA7B" 
+        strokeWidth="1.5" 
+        fill="none"
+        strokeLinecap="round"
       />
     </svg>
   );
