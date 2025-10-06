@@ -48,9 +48,14 @@ export default function Home() {
           <p className="mt-4 max-w-2xl text-lg md:text-xl text-primary-foreground/90 drop-shadow-md">
             Artículos sobre salud física, bienestar mental y finanzas familiares para ayudarte a prosperar.
           </p>
-          <Button asChild size="lg" className="mt-8 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href="#latest-articles">Explorar Artículos</Link>
-          </Button>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Link href="#latest-articles">Explorar Artículos</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
+              <Link href="/apps">Portal de Apps</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
