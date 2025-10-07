@@ -1,7 +1,9 @@
 'use client';
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useRef } from 'react';
 import { Level, getLevelForPoints, getNextLevel } from '@/lib/levels';
+import { streakBonuses } from '@/lib/streaks';
+
 
 // --- Types Definition ---
 export interface Subtask {
@@ -63,6 +65,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [magicPoints, setMagicPoints] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     try {
@@ -95,6 +98,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       console.error("Failed to save gamification data to localStorage", error);
     }
   }, [magicPoints, currentStreak]);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+    }
+
+    const bonus = streakBonuses.find(b => b.streak === currentStreak);
+    if (bonus) {
+        setMagicPoints(prev => prev + bonus.points);
+        alert(`¡Racha de ${bonus.streak} días! +${bonus.points} puntos extra`);
+    }
+  }, [currentStreak]);
 
   const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
     const newTask: Task = {
