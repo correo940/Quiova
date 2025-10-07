@@ -23,7 +23,8 @@ import {
   CornerDownRight,
   X,
   Save,
-  ArrowDownUp, // <-- Import Sort Icon
+  ArrowDownUp,
+  Filter, // <-- Import Filter Icon
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -177,6 +178,8 @@ export default function TasksClient() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('createdAt-desc');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
@@ -248,11 +251,10 @@ export default function TasksClient() {
   const filteredAndSortedTasks = useMemo(() => {
     const filtered = tasks.filter(task => {
       const matchesSearch = task.text.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'active' && !task.completed) ||
-        (filter === 'completed' && task.completed);
-      return matchesSearch && matchesFilter;
+      const matchesStatus = filter === 'all' || (filter === 'active' && !task.completed) || (filter === 'completed' && task.completed);
+      const matchesCategory = filterCategory === 'all' || task.category === filterCategory;
+      const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
+      return matchesSearch && matchesStatus && matchesCategory && matchesPriority;
     });
 
     return filtered.sort((a, b) => {
@@ -272,7 +274,7 @@ export default function TasksClient() {
         }
     });
 
-  }, [tasks, searchTerm, filter, sortOrder, categories]);
+  }, [tasks, searchTerm, filter, sortOrder, filterCategory, filterPriority, categories]);
 
   const completedTasksCount = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
   const progressPercentage = tasks.length > 0 ? (completedTasksCount / tasks.length) * 100 : 0;
@@ -280,7 +282,6 @@ export default function TasksClient() {
   return (
     <div className="bg-gray-50/50 min-h-screen">
       <header className="bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md">
-         {/* ... Header content remains the same ... */}
          <div className="container mx-auto px-4 py-6">
             <div className="text-center mb-6">
               <h1 className="text-4xl font-bold tracking-tight">Gestor de Tareas</h1>
@@ -313,24 +314,48 @@ export default function TasksClient() {
 
       <main className="container mx-auto p-4 md:p-6">
         <Card className="mb-6">
-           <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center">
-                <div className="relative w-full md:flex-grow">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        placeholder="Buscar tareas..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex gap-2">
-                        <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>Todas</Button>
-                        <Button variant={filter === 'active' ? 'default' : 'outline'} onClick={() => setFilter('active')}>Activas</Button>
-                        <Button variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter('completed')}>Completas</Button>
+           <CardContent className="p-4">
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+                    <div className="relative sm:col-span-2 md:col-span-4 lg:col-span-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input 
+                            placeholder="Buscar tareas..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
                     </div>
+                    <div className="lg:hidden md:col-span-2 flex gap-2">
+                         <Button className="w-full" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>Todas</Button>
+                         <Button className="w-full" variant={filter === 'active' ? 'default' : 'outline'} onClick={() => setFilter('active')}>Activas</Button>
+                         <Button className="w-full" variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter('completed')}>Completas</Button>
+                    </div>
+                     <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <SelectTrigger className="w-full">
+                           <Filter className="h-4 w-4 mr-2"/>
+                           <SelectValue placeholder="Filtrar por categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="all">Todas las categorías</SelectItem>
+                           {Object.keys(categories).map(key => (
+                               <SelectItem key={key} value={key}>{categories[key as keyof typeof categories].name}</SelectItem>
+                           ))}
+                        </SelectContent>
+                    </Select>
+                     <Select value={filterPriority} onValueChange={setFilterPriority}>
+                        <SelectTrigger className="w-full">
+                           <Filter className="h-4 w-4 mr-2"/>
+                           <SelectValue placeholder="Filtrar por prioridad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las prioridades</SelectItem>
+                           {Object.keys(priorities).map(key => (
+                               <SelectItem key={key} value={key}>{priorities[key as keyof typeof priorities].name}</SelectItem>
+                           ))}
+                        </SelectContent>
+                    </Select>
                     <Select value={sortOrder} onValueChange={setSortOrder}>
-                        <SelectTrigger className="w-auto min-w-[180px]">
+                        <SelectTrigger className="w-full">
                           <ArrowDownUp className="h-4 w-4 mr-2"/>
                           <SelectValue placeholder="Ordenar por..." />
                         </SelectTrigger>
@@ -342,6 +367,11 @@ export default function TasksClient() {
                           <SelectItem value="category-asc">Categoría (A-Z)</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="hidden lg:flex justify-center gap-2 pt-4 border-t mt-4">
+                    <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>Todas</Button>
+                    <Button variant={filter === 'active' ? 'default' : 'outline'} onClick={() => setFilter('active')}>Activas</Button>
+                    <Button variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter('completed')}>Completas</Button>
                 </div>
             </CardContent>
         </Card>
