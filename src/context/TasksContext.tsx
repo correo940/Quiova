@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { Level, getLevelForPoints, getNextLevel } from '@/lib/levels';
 
 // --- Types Definition ---
 export interface Subtask {
@@ -39,6 +40,9 @@ interface TasksContextType {
   tasks: Task[];
   magicPoints: number;
   currentStreak: number;
+  currentLevel: Level;
+  nextLevel: Level | null;
+  progressToNextLevel: number;
   addTask: (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => void;
   updateTask: (taskId: number, taskData: Partial<Omit<Task, 'id'>>) => void;
   toggleTaskCompletion: (taskId: number) => void;
@@ -112,11 +116,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const toggleTaskCompletion = (taskId: number) => {
+ const toggleTaskCompletion = (taskId: number) => {
     setTasks(prevTasks => prevTasks.map(task => {
         if (task.id === taskId) {
             const isCompleting = !task.completed;
-            // If trying to complete a task that has incomplete subtasks, do nothing.
             if (isCompleting && task.subtasks && task.subtasks.some(st => !st.completed)) {
                 return task; 
             }
@@ -130,7 +133,6 @@ export function TasksProvider({ children }: { children: ReactNode }) {
                 ...task,
                 completed: isCompleting,
                 completedAt: isCompleting ? new Date().toISOString() : null,
-                // Also toggle all subtasks to match the parent's new state
                 subtasks: task.subtasks?.map(st => ({ ...st, completed: isCompleting }))
             };
         }
@@ -156,7 +158,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         return {
           ...task,
           subtasks: [...(task.subtasks || []), newSubtask],
-          completed: false, // Parent task cannot be completed if a new subtask is added
+          completed: false,
         };
       }
       return task;
@@ -170,18 +172,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
                 st.id === subtaskId ? { ...st, completed: !st.completed } : st
             );
 
-            // Check if all subtasks are now complete
             const allSubtasksCompleted = newSubtasks?.every(st => st.completed);
             
             if (allSubtasksCompleted && !task.completed) {
-              setMagicPoints(prev => prev + 10); // Give points for completing the whole task
+              setMagicPoints(prev => prev + 10);
               setCurrentStreak(prev => prev + 1);
             }
 
             return {
                 ...task,
                 subtasks: newSubtasks,
-                // If all subtasks are complete, mark the parent as complete
                 completed: allSubtasksCompleted || false,
                 completedAt: allSubtasksCompleted ? new Date().toISOString() : null,
             };
@@ -212,10 +212,26 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       }));
   };
 
+  // --- Level Calculation ---
+  const currentLevel = getLevelForPoints(magicPoints);
+  const nextLevel = getNextLevel(magicPoints);
+
+  let progressToNextLevel = 0;
+  if (nextLevel) {
+      const pointsForNextLevel = nextLevel.minPoints - currentLevel.minPoints;
+      const userProgress = magicPoints - currentLevel.minPoints;
+      progressToNextLevel = (userProgress / pointsForNextLevel) * 100;
+  } else {
+      progressToNextLevel = 100;
+  }
+
   const value = {
     tasks,
     magicPoints,
     currentStreak,
+    currentLevel,
+    nextLevel,
+    progressToNextLevel,
     addTask,
     updateTask,
     toggleTaskCompletion,

@@ -24,7 +24,7 @@ import {
   X,
   Save,
   ArrowDownUp,
-  Filter, // <-- Import Filter Icon
+  Filter,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,13 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 
 // --- Constants --- //
 const categoryIcons = {
@@ -167,6 +174,9 @@ export default function TasksClient() {
     tasks,
     magicPoints,
     currentStreak,
+    currentLevel,
+    nextLevel,
+    progressToNextLevel,
     addTask,
     updateTask,
     toggleTaskCompletion,
@@ -288,25 +298,40 @@ export default function TasksClient() {
               <p className="text-lg opacity-90">Organiza tu día y alcanza tus objetivos</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
-                    <Star className="mx-auto h-6 w-6 mb-1"/>
-                    <div className="text-2xl font-bold">{magicPoints}</div>
-                    <div className="text-sm opacity-90">Puntos</div>
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20 col-span-2 md:col-span-2">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="w-full flex items-center gap-4">
+                                    {currentLevel.icon}
+                                    <div className="w-full text-left">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="font-bold text-lg">{currentLevel.name}</p>
+                                            {nextLevel && <p className="text-xs opacity-80">Sgte: {nextLevel.name}</p>}
+                                        </div>
+                                        <Progress value={progressToNextLevel} className="h-2 bg-white/20" />
+                                    </div>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {nextLevel ? (
+                                    <p>{magicPoints} / {nextLevel.minPoints} puntos para el siguiente nivel</p>
+                                ) : (
+                                    <p>{magicPoints} Puntos Mágicos</p>
+                                )}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
                     <Flame className="mx-auto h-6 w-6 mb-1"/>
                     <div className="text-2xl font-bold">{currentStreak}</div>
                     <div className="text-sm opacity-90">Racha</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
+                 <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
                     <ClipboardList className="mx-auto h-6 w-6 mb-1"/>
                     <div className="text-2xl font-bold">{tasks.length}</div>
                     <div className="text-sm opacity-90">Total</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
-                    <CheckCircle2 className="mx-auto h-6 w-6 mb-1"/>
-                    <div className="text-2xl font-bold">{completedTasksCount}</div>
-                    <div className="text-sm opacity-90">Hechas</div>
                 </div>
             </div>
           </div>
