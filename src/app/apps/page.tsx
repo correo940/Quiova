@@ -13,8 +13,9 @@ export default function AppsPage() {
         Accede a nuestras herramientas y aplicaciones exclusivas.
       </p>
       <div className="mt-8 flex justify-center">
-        {/* Aquí irán los botones para acceder a las aplicaciones */}
-        <p className="text-muted-foreground">Próximamente...</p>
+        <Button asChild size="lg">
+          <Link href="/apps/tasks">Gestor de Tareas</Link>
+        </Button>
       </div>
     </div>
   );
