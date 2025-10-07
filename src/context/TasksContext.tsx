@@ -3,6 +3,12 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 
 // --- Types Definition ---
+export interface Subtask {
+  id: number;
+  text: string;
+  completed: boolean;
+}
+
 export interface Task {
   id: number;
   text: string;
@@ -11,6 +17,7 @@ export interface Task {
   completedAt?: string | null;
   category: keyof typeof categories;
   priority: keyof typeof priorities;
+  subtasks?: Subtask[];
 }
 
 export const categories = {
@@ -33,8 +40,13 @@ interface TasksContextType {
   magicPoints: number;
   currentStreak: number;
   addTask: (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => void;
+  updateTask: (taskId: number, taskData: Partial<Omit<Task, 'id'>>) => void;
   toggleTaskCompletion: (taskId: number) => void;
   deleteTask: (taskId: number) => void;
+  addSubtask: (taskId: number, subtaskText: string) => void;
+  toggleSubtaskCompletion: (taskId: number, subtaskId: number) => void;
+  deleteSubtask: (taskId: number, subtaskId: number) => void;
+  updateSubtask: (taskId: number, subtaskId: number, newText: string) => void;
   categories: typeof categories;
   priorities: typeof priorities;
 }
@@ -86,20 +98,44 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       id: Date.now(),
       completed: false,
       createdAt: new Date().toISOString(),
+      subtasks: [],
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     setMagicPoints(prev => prev + 5);
   };
 
+  const updateTask = (taskId: number, taskData: Partial<Omit<Task, 'id'>>) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId ? { ...task, ...taskData } : task
+      )
+    );
+  };
+
   const toggleTaskCompletion = (taskId: number) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task && !task.completed) {
-      setMagicPoints(prev => prev + 10);
-      setCurrentStreak(prev => prev + 1);
-    }
-    setTasks(tasks.map(t => 
-      t.id === taskId ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : null } : t
-    ));
+    setTasks(prevTasks => prevTasks.map(task => {
+        if (task.id === taskId) {
+            const isCompleting = !task.completed;
+            // If trying to complete a task that has incomplete subtasks, do nothing.
+            if (isCompleting && task.subtasks && task.subtasks.some(st => !st.completed)) {
+                return task; 
+            }
+
+            if (isCompleting && !task.completed) {
+              setMagicPoints(prev => prev + 10);
+              setCurrentStreak(prev => prev + 1);
+            }
+
+            return {
+                ...task,
+                completed: isCompleting,
+                completedAt: isCompleting ? new Date().toISOString() : null,
+                // Also toggle all subtasks to match the parent's new state
+                subtasks: task.subtasks?.map(st => ({ ...st, completed: isCompleting }))
+            };
+        }
+        return task;
+    }));
   };
 
   const deleteTask = (taskId: number) => {
@@ -109,13 +145,85 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     setTasks(tasks.filter(t => t.id !== taskId));
   };
 
+  const addSubtask = (taskId: number, subtaskText: string) => {
+    const newSubtask: Subtask = {
+      id: Date.now(),
+      text: subtaskText,
+      completed: false,
+    };
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          subtasks: [...(task.subtasks || []), newSubtask],
+          completed: false, // Parent task cannot be completed if a new subtask is added
+        };
+      }
+      return task;
+    }));
+  };
+
+  const toggleSubtaskCompletion = (taskId: number, subtaskId: number) => {
+    setTasks(prevTasks => prevTasks.map(task => {
+        if (task.id === taskId) {
+            const newSubtasks = task.subtasks?.map(st => 
+                st.id === subtaskId ? { ...st, completed: !st.completed } : st
+            );
+
+            // Check if all subtasks are now complete
+            const allSubtasksCompleted = newSubtasks?.every(st => st.completed);
+            
+            if (allSubtasksCompleted && !task.completed) {
+              setMagicPoints(prev => prev + 10); // Give points for completing the whole task
+              setCurrentStreak(prev => prev + 1);
+            }
+
+            return {
+                ...task,
+                subtasks: newSubtasks,
+                // If all subtasks are complete, mark the parent as complete
+                completed: allSubtasksCompleted || false,
+                completedAt: allSubtasksCompleted ? new Date().toISOString() : null,
+            };
+        }
+        return task;
+    }));
+  };
+
+  const deleteSubtask = (taskId: number, subtaskId: number) => {
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id === taskId) {
+        const newSubtasks = task.subtasks?.filter(st => st.id !== subtaskId);
+        return { ...task, subtasks: newSubtasks };
+      }
+      return task;
+    }));
+  };
+
+  const updateSubtask = (taskId: number, subtaskId: number, newText: string) => {
+      setTasks(prevTasks => prevTasks.map(task => {
+          if (task.id === taskId) {
+              const newSubtasks = task.subtasks?.map(st => 
+                  st.id === subtaskId ? { ...st, text: newText } : st
+              );
+              return { ...task, subtasks: newSubtasks };
+          }
+          return task;
+      }));
+  };
+
   const value = {
     tasks,
     magicPoints,
     currentStreak,
     addTask,
+    updateTask,
     toggleTaskCompletion,
     deleteTask,
+    addSubtask,
+    toggleSubtaskCompletion,
+    deleteSubtask,
+    updateSubtask,
     categories,
     priorities,
   };
