@@ -197,6 +197,7 @@ export default function TasksClient() {
   const [inputValue, setInputValue] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof categories>('personal');
   const [selectedPriority, setSelectedPriority] = useState<keyof typeof priorities>('medium');
+  const [dueDateLocal, setDueDateLocal] = useState('');
 
   const handleFormSubmit = () => {
     if (inputValue.trim() === '') return;
@@ -206,12 +207,14 @@ export default function TasksClient() {
         text: inputValue.trim(),
         category: selectedCategory,
         priority: selectedPriority,
+        dueDate: dueDateLocal ? new Date(dueDateLocal).toISOString() : undefined,
       });
     } else {
       addTask({
         text: inputValue.trim(),
         category: selectedCategory,
         priority: selectedPriority,
+        dueDate: dueDateLocal ? new Date(dueDateLocal).toISOString() : undefined,
       });
     }
     resetForm();
@@ -227,6 +230,7 @@ export default function TasksClient() {
     setInputValue(task.text);
     setSelectedCategory(task.category);
     setSelectedPriority(task.priority);
+    setDueDateLocal(task.dueDate ? new Date(task.dueDate).toISOString().slice(0,16) : '');
     setIsFormOpen(true);
   };
 
@@ -235,6 +239,7 @@ export default function TasksClient() {
     setSelectedCategory('personal');
     setSelectedPriority('medium');
     setEditingTask(null);
+    setDueDateLocal('');
     setIsFormOpen(false);
   };
 
@@ -447,8 +452,13 @@ export default function TasksClient() {
                   </Button>
                 </div>
               </CardContent>
-              {expandedTasks.has(task.id) && <SubtaskList task={task} />}
-            </Card>
+              {task.dueDate && (
+              <div className="px-4 pb-3 text-sm text-muted-foreground">
+                <strong>Vence:</strong> {new Date(task.dueDate).toLocaleString('es-ES')}
+              </div>
+            )}
+             {expandedTasks.has(task.id) && <SubtaskList task={task} />}
+           </Card>
           )) : (
             <Card className="col-span-full">
                  <CardContent className="p-12 text-center text-muted-foreground">
@@ -496,6 +506,15 @@ export default function TasksClient() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm text-muted-foreground">Fecha y hora de vencimiento</label>
+              <input
+                type="datetime-local"
+                value={dueDateLocal}
+                onChange={(e) => setDueDateLocal(e.target.value)}
+                className="w-full rounded border p-2 bg-transparent"
+              />
             </div>
           </div>
           <DialogFooter>

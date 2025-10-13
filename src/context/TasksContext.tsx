@@ -21,6 +21,7 @@ export interface Task {
   category: keyof typeof categories;
   priority: keyof typeof priorities;
   subtasks?: Subtask[];
+  dueDate?: string;
 }
 
 export const categories = {

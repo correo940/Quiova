@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { allArticles, ArticleCategory, categories } from '@/lib/data';
@@ -13,8 +13,40 @@ import CategoryIcon from '@/components/category-icon';
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  const heroImage = PlaceHolderImages.find((img) => img.id === 'hero-1');
+  // Carrusel con gradientes temáticos
+  const slides = [
+    {
+      title: "Encuentra Tu Equilibrio",
+      description: "Artículos sobre salud física, bienestar mental y finanzas familiares para ayudarte a prosperar.",
+      gradient: "bg-gradient-to-br from-blue-600 to-purple-700"
+    },
+    {
+      title: "Salud Física",
+      description: "Ejercicios, nutrición y hábitos saludables para una vida activa y energética.",
+      gradient: "bg-gradient-to-br from-green-600 to-blue-600"
+    },
+    {
+      title: "Bienestar Mental",
+      description: "Meditación, mindfulness y técnicas para reducir el estrés y mejorar tu bienestar emocional.",
+      gradient: "bg-gradient-to-br from-purple-600 to-pink-600"
+    },
+    {
+      title: "Finanzas Familiares",
+      description: "Presupuestos, ahorro e inversiones para la estabilidad financiera de tu familia.",
+      gradient: "bg-gradient-to-br from-orange-600 to-red-600"
+    }
+  ];
+
+  // Autoplay del carrusel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   const featuredArticles = useMemo(() => allArticles.filter((article) => article.featured), []);
 
@@ -29,33 +61,55 @@ export default function Home() {
 
   return (
     <div className="w-full">
-      {/* Hero Section */}
-      <section className="relative w-full h-[50vh] md:h-[60vh] text-white">
-        {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            fill
-            className="object-cover"
-            data-ai-hint={heroImage.imageHint}
-            priority
-          />
-        )}
-        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4">
-          <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
-            Encuentra Tu Equilibrio
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg md:text-xl text-primary-foreground/90 drop-shadow-md">
-            Artículos sobre salud física, bienestar mental y finanzas familiares para ayudarte a prosperar.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="#latest-articles">Explorar Artículos</Link>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
-              <Link href="/apps">Portal de Apps</Link>
-            </Button>
+      {/* Hero Section with Auto Carousel */}
+      <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
+        <div className="relative w-full h-full">
+          {/* Slide actual */}
+          <div 
+            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
+          >
+            <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+              {slides[currentSlide].title}
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">
+              {slides[currentSlide].description}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link href="#latest-articles">Explorar Artículos</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
+                <Link href="/apps">Portal de Apps</Link>
+              </Button>
+            </div>
           </div>
+
+          {/* Indicadores de navegación */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  index === currentSlide ? 'bg-white' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Botones de navegación */}
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+          >
+            ←
+          </button>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+          >
+            →
+          </button>
         </div>
       </section>
 

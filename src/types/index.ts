@@ -6,7 +6,7 @@ export type Article = {
   title: string;
   excerpt: string;
   content: string;
-  category: 'physical health' | 'mental health' | 'family finance';
+  category: ArticleCategory;
   youtubeUrl?: string;
   imageUrl: string;
   imageHint: string;

@@ -1,4 +1,4 @@
-import { allArticles, Article } from '@/lib/data';
+import { allArticles } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
