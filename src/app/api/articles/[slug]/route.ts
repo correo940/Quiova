@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { createOrUpdateArticle, listArticles, deleteArticle } from "@/lib/github";
+import matter from "gray-matter";
 
 export async function PUT(
   request: Request,
@@ -15,8 +17,18 @@ export async function PUT(
   try {
     const { metadata, content } = await request.json();
 
-    // TODO: Implementar la actualización del artículo usando la API de GitHub
-    // Por ahora solo simulamos una respuesta exitosa
+    const articles = await listArticles();
+    const article = articles.find((a) => a.name === `${params.slug}.md`);
+
+    if (!article) {
+      return new NextResponse("Article not found", { status: 404 });
+    }
+
+    const newContent = matter.stringify(content, metadata);
+    const message = `Update ${metadata.title}`;
+    
+    await createOrUpdateArticle(`${params.slug}.md`, newContent, message, article.sha);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error al actualizar el artículo:", error);
@@ -33,8 +45,16 @@ export async function DELETE(
     return new NextResponse("Unauthorized", { status: 401 });
   }
   try {
-    // TODO: Implementar la eliminación real usando la API de GitHub
-    // Por ahora solo simulamos una respuesta exitosa
+    const articles = await listArticles();
+    const article = articles.find((a) => a.name === `${params.slug}.md`);
+
+    if (!article) {
+      return new NextResponse("Article not found", { status: 404 });
+    }
+
+    const message = `Delete ${article.name}`;
+    await deleteArticle(`${params.slug}.md`, message, article.sha);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error al eliminar el artículo:", error);

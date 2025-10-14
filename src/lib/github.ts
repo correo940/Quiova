@@ -50,6 +50,22 @@ export async function createOrUpdateArticle(
   }
 }
 
+export async function deleteArticle(path: string, message: string, sha: string) {
+  try {
+    const response = await octokit.rest.repos.deleteFile({
+      owner: REPO_OWNER,
+      repo: REPO_NAME,
+      path: `${CONTENT_PATH}/${path}`,
+      message,
+      sha,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting article:', error);
+    throw error;
+  }
+}
+
 export async function listArticles() {
   try {
     const response = await octokit.rest.repos.getContent({

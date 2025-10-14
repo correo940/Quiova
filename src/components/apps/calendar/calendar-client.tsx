@@ -31,6 +31,8 @@ export default function CalendarClient() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isDayViewOpen, setIsDayViewOpen] = useState(false);
+  const [selectedDayTasks, setSelectedDayTasks] = useState<Task[]>([]);
   const [newTaskText, setNewTaskText] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<keyof typeof categories>('personal');
   const [newTaskPriority, setNewTaskPriority] = useState<keyof typeof priorities>('medium');
@@ -48,20 +50,17 @@ export default function CalendarClient() {
     
     const days = [];
     
-    // Días del mes anterior
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const day = new Date(year, month, -i);
       days.push({ date: day, isCurrentMonth: false, isToday: false });
     }
     
-    // Días del mes actual
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const isToday = date.toDateString() === new Date().toDateString();
       days.push({ date, isCurrentMonth: true, isToday });
     }
     
-    // Días del mes siguiente para completar la cuadrícula
     const remainingDays = 42 - days.length;
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(year, month + 1, day);
@@ -71,11 +70,9 @@ export default function CalendarClient() {
     return days;
   }, [currentDate]);
 
-  // Obtener tareas para una fecha específica
   const getTasksForDate = (date: Date) => {
     const dateString = date.toDateString();
     return tasks.filter(task => {
-      // Prioriza dueDate si existe, si no usa createdAt como fallback
       const source = task.dueDate || task.createdAt;
       if (!source) return false;
       const taskDate = new Date(source).toDateString();
@@ -83,7 +80,6 @@ export default function CalendarClient() {
     });
   };
 
-  // Navegación del calendario
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
   };
@@ -96,7 +92,6 @@ export default function CalendarClient() {
     setCurrentDate(new Date());
   };
 
-  // Agregar nueva tarea
   const handleAddTask = () => {
     if (newTaskText.trim() && selectedDate) {
       addTask({
@@ -113,10 +108,16 @@ export default function CalendarClient() {
 
   const openAddTaskDialog = (date: Date) => {
     setSelectedDate(date);
-    // prefill date+time (set to start of day)
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0);
     setNewTaskDueDate(dayStart.toISOString().slice(0,16));
     setIsAddTaskOpen(true);
+  };
+  
+  const handleDayClick = (date: Date) => {
+    const tasks = getTasksForDate(date);
+    setSelectedDate(date);
+    setSelectedDayTasks(tasks);
+    setIsDayViewOpen(true);
   };
 
   const monthNames = [
@@ -153,7 +154,6 @@ export default function CalendarClient() {
         </CardHeader>
         
         <CardContent>
-          {/* Encabezados de días */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {dayNames.map(day => (
               <div key={day} className="p-2 text-center font-semibold text-sm text-muted-foreground">
@@ -162,7 +162,6 @@ export default function CalendarClient() {
             ))}
           </div>
 
-          {/* Días del calendario */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, index) => {
               const dayTasks = getTasksForDate(day.date);
@@ -177,7 +176,7 @@ export default function CalendarClient() {
                     ${day.isCurrentMonth ? 'bg-background hover:bg-muted/50' : 'bg-muted/30 text-muted-foreground'}
                     ${day.isToday ? 'ring-2 ring-primary bg-primary/5' : ''}
                   `}
-                  onClick={() => openAddTaskDialog(day.date)}
+                  onClick={() => handleDayClick(day.date)}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-sm font-medium ${day.isToday ? 'text-primary font-bold' : ''}`}>
@@ -193,7 +192,6 @@ export default function CalendarClient() {
                     )}
                   </div>
 
-                  {/* Tareas del día */}
                   <div className="space-y-1">
                     {dayTasks.slice(0, 3).map(task => (
                       <div
@@ -235,7 +233,6 @@ export default function CalendarClient() {
         </CardContent>
       </Card>
 
-      {/* Dialog para agregar tarea */}
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent>
           <DialogHeader>
@@ -309,7 +306,70 @@ export default function CalendarClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isDayViewOpen} onOpenChange={setIsDayViewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Tareas para {selectedDate?.toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                day: 'numeric',
+                month: 'long', 
+              })}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            {selectedDayTasks.length > 0 ? (
+              selectedDayTasks.map(task => (
+                <div 
+                  key={task.id} 
+                  className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted/50"
+                >
+                  <button onClick={() => toggleTaskCompletion(task.id)}>
+                    {task.completed ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
+                    ) : (
+                      <Circle className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </button>
+                  <div className="flex-grow">
+                    <p className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                      {task.text}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                       <span>{categoryIcons[task.category]} {taskCategories[task.category].name}</span>
+                       <Badge variant="outline" className={`${priorityColors[task.priority]} text-xs px-1.5 py-0.5`}>
+                         {priorities[task.priority].name}
+                       </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No hay tareas para este día.</p>
+            )}
+          </div>
+          
+          <DialogFooter className="sm:justify-between">
+             <Button 
+              variant="outline"
+              onClick={() => {
+                setIsDayViewOpen(false);
+                if (selectedDate) {
+                    openAddTaskDialog(selectedDate);
+                }
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Tarea
+            </Button>
+            <Button variant="ghost" onClick={() => setIsDayViewOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
