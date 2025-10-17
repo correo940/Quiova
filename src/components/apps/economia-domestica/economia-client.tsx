@@ -1,307 +1,747 @@
-import React, { useState, useMemo } from 'react';
-import { Upload, TrendingUp, TrendingDown, Wallet, Circle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+'use client';
 
-const CATEGORIES = {
-    'Supermercado': ['mercadona', 'carrefour', 'lidl', 'alcampo', 'dia', 'supermercado', 'aldi'],
-    'Transporte': ['metro', 'bus', 'taxi', 'uber', 'cabify', 'gasolina', 'renfe', 'gasolinera', 'parking'],
-    'Restaurantes': ['restaurante', 'bar', 'cafe', 'mcdonald', 'burger', 'pizza', 'glovo', 'just eat', 'uber eats'],
-    'Suscripciones': ['netflix', 'spotify', 'hbo', 'disney', 'amazon prime', 'icloud', 'youtube'],
-    'Compras': ['amazon', 'corte ingles', 'zara', 'h&m', 'fnac', 'media markt', 'decathlon'],
-    'Vivienda': ['alquiler', 'hipoteca', 'ikea', 'leroy'],
-    'Servicios': ['luz', 'agua', 'gas', 'internet', 'movil', 'telefono', 'seguro'],
-    'Salud': ['farmacia', 'medico', 'hospital', 'dentista'],
-    'Ocio': ['cine', 'teatro', 'concierto', 'gimnasio', 'deporte']
-};
+import React, { useState, useEffect, useRef } from 'react';
 
-const getCategory = (description) => {
-    const desc = String(description || '').toLowerCase();
-    for (const [category, keywords] of Object.entries(CATEGORIES)) {
-        if (keywords.some(keyword => desc.includes(keyword))) return category;
-    }
-    return 'Otros';
-};
+// ============================================
+// INTERFACES Y TIPOS
+// ============================================
 
-const parseDate = (dateStr) => {
-    if (!dateStr) return null;
-    if (dateStr instanceof Date) return dateStr;
-    const stringDate = String(dateStr);
-    if (/^\d{5}$/.test(stringDate)) return new Date(1900, 0, parseInt(stringDate) - 1);
-    const parts = stringDate.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if (parts) {
-        const day = parseInt(parts[1]), month = parseInt(parts[2]) - 1;
-        let year = parseInt(parts[3]);
-        if (year < 100) year += 2000;
-        return new Date(year, month, day);
-    }
-    const date = new Date(stringDate);
-    return isNaN(date.getTime()) ? null : date;
-};
+interface Transaction {
+    id: string;
+    date: string;
+    description: string;
+    amount: number;
+    type: 'income' | 'expense';
+    category: string;
+}
 
-const parseAmount = (amountStr) => {
-    if (amountStr === null || amountStr === undefined || amountStr === '') return null;
-    if (typeof amountStr === 'number') return amountStr;
-    const cleaned = String(amountStr).replace(/\s*EUR/i, '').replace(/[.](?=.*\.)/g, '').replace(',', '.').trim();
-    const value = parseFloat(cleaned);
-    return isNaN(value) ? null : value;
-};
+interface MonthlyData {
+    month: string;
+    income: number;
+    expenses: number;
+    balance: number;
+}
 
-const detectColumnsIntelligently = (headers, data) => {
-    const sample = data.slice(0, 10);
-    let scores = headers.map(h => ({ name: h, date: 0, amount: 0, description: 0, isDebit: false, isCredit: false }));
-
-    const looksLikeDate = s => parseDate(s) instanceof Date;
-    const looksLikeAmount = s => parseAmount(s) !== null;
-
-    for (const h of scores) {
-        const headerName = h.name.toLowerCase();
-        if (['fecha', 'date'].some(p => headerName.includes(p))) h.date += 30;
-        if (['descripción', 'concepto', 'detalle'].some(p => headerName.includes(p))) h.description += 30;
-        if (['importe', 'monto', 'cantidad', 'saldo', 'eur'].some(p => headerName.includes(p))) h.amount += 15;
-        if (['debe', 'cargo', 'gasto'].some(p => headerName.includes(p))) h.isDebit = true;
-        if (['haber', 'abono', 'ingreso'].some(p => headerName.includes(p))) h.isCredit = true;
-
-        for (const row of sample) {
-            const value = row[h.name];
-            if (value) {
-                if (looksLikeDate(value)) h.date += 10;
-                if (looksLikeAmount(value)) h.amount += 10;
-                if (typeof value === 'string' && value.length > 20) h.description += 5;
-            }
-        }
-    }
-
-    const sortedBy = (prop) => [...scores].sort((a, b) => b[prop] - a[prop]);
-    const dateCol = sortedBy('date')[0].name;
-    const descCol = sortedBy('description')[0].name;
-
-    const amountCols = sortedBy('amount').filter(c => c.amount > 10 && c.name !== dateCol && c.name !== descCol);
-
-    if (amountCols.length >= 2) {
-        let debitCol = amountCols.find(c => c.isDebit);
-        let creditCol = amountCols.find(c => c.isCredit);
-        if (debitCol && creditCol) return { dateCol, descCol, debitCol: debitCol.name, creditCol: creditCol.name };
-
-        const [col1, col2] = amountCols;
-        const sum1 = data.reduce((acc, row) => acc + (parseAmount(row[col1.name]) || 0), 0);
-        const sum2 = data.reduce((acc, row) => acc + (parseAmount(row[col2.name]) || 0), 0);
-        return sum1 < sum2 ? { dateCol, descCol, debitCol: col1.name, creditCol: col2.name } : { dateCol, descCol, debitCol: col2.name, creditCol: col1.name };
-    }
-
-    const amountCol = amountCols.length > 0 ? amountCols[0].name : null;
-    return { dateCol, descCol, amountCol };
-};
-
-export default function EconomiaDomestica() {
-    const [transactions, setTransactions] = useState([]);
-    const [error, setError] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState('all');
-
-    const processData = (headers, data) => {
-        const { dateCol, descCol, amountCol, debitCol, creditCol } = detectColumnsIntelligently(headers, data);
-        
-        if (!dateCol || !descCol || (!amountCol && (!debitCol || !creditCol))) {
-            setError('No se pudieron detectar las columnas de Fecha, Descripción e Importe. Revisa tu archivo.');
-            setTransactions([]);
-            return;
-        }
-
-        const processed = data.map(row => {
-            const date = parseDate(row[dateCol]);
-            const description = row[descCol] || 'Sin descripción';
-            let amount;
-
-            if (amountCol) {
-                amount = parseAmount(row[amountCol]);
-            } else {
-                const credit = parseAmount(row[creditCol]);
-                const debit = parseAmount(row[debitCol]);
-                if (credit !== null && credit !== 0) amount = credit;
-                else if (debit !== null && debit !== 0) amount = -Math.abs(debit);
-                else amount = 0;
-            }
-            
-            if (date === null || amount === null || amount === 0) return null;
-
-            return {
-                date,
-                description,
-                amount,
-                category: amount < 0 ? getCategory(description) : 'Ingreso',
-                month: date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : null
-            };
-        }).filter(Boolean);
-
-        if(processed.length === 0) {
-            setError('No se encontraron transacciones válidas en el archivo. Revisa el contenido.');
-        } else {
-            setError(null);
-        }
-        setTransactions(processed);
+interface FinancialAnalysis {
+    summary: {
+        totalIncome: number;
+        totalExpenses: number;
+        balance: number;
+        savingsRate: number;
     };
+    transactions: Transaction[];
+    categoryBreakdown: { category: string; amount: number; percentage: number }[];
+    monthlyTrend: MonthlyData[];
+    insights: string[];
+    warnings: string[];
+}
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setError(null);
-        setTransactions([]);
+interface SmartRecommendation {
+    title: string;
+    description: string;
+    potentialSavings: number;
+    priority: 'high' | 'medium' | 'low';
+    actionSteps: string[];
+}
 
-        const reader = new FileReader();
-        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+interface BudgetOptimization {
+    currentSpending: { [key: string]: number };
+    optimizedBudget: { [key: string]: number };
+    recommendations: SmartRecommendation[];
+    projectedSavings: number;
+    timeToGoal: number; // in months
+}
 
-        const processContent = (content) => {
+// ============================================
+// CONFIGURACIÓN DE COLORES
+// ============================================
+
+const CHART_COLORS = {
+    primary: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1'],
+    income: '#10b981',
+    expense: '#ef4444',
+    balance: '#3b82f6'
+};
+
+// ============================================
+// COMPONENTES DE UI EN LÍNEA
+// ============================================
+// Para mantener todo en un solo archivo, definimos componentes de UI simplificados aquí.
+
+const Card = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <div className={`bg-white border border-gray-200 rounded-xl shadow-sm ${className}`}>
+        {children}
+    </div>
+);
+
+const CardHeader = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <div className={`p-6 border-b border-gray-200 ${className}`}>
+        {children}
+    </div>
+);
+
+const CardTitle = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <h3 className={`text-lg font-semibold text-gray-800 ${className}`}>
+        {children}
+    </h3>
+);
+
+const CardDescription = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <p className={`text-sm text-gray-500 mt-1 ${className}`}>
+        {children}
+    </p>
+);
+
+const CardContent = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <div className={`p-6 ${className}`}>
+        {children}
+    </div>
+);
+
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className = '', ...props }, ref) => (
+    <input
+        ref={ref}
+        className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+        {...props}
+    />
+));
+
+const Button = ({ children, className = '', variant = 'primary', ...props }: { children: React.ReactNode, className?: string, variant?: 'primary' | 'secondary' | 'ghost', [key: string]: any }) => {
+    const baseClasses = 'inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const variantClasses = {
+        primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300',
+        secondary: 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-400',
+        ghost: 'bg-transparent text-blue-600 hover:bg-blue-50'
+    };
+    return (
+        <button className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
+            {children}
+        </button>
+    );
+};
+
+const Alert = ({ children, className = '', variant = 'default' }: { children: React.ReactNode, className?: string, variant?: 'default' | 'destructive' }) => {
+    const variantClasses = {
+        default: 'bg-blue-50 border-blue-200 text-blue-800',
+        destructive: 'bg-red-50 border-red-200 text-red-800'
+    };
+    return (
+        <div className={`p-4 border rounded-md ${variantClasses[variant]} ${className}`}>
+            {children}
+        </div>
+    );
+};
+
+const AlertDescription = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-sm">{children}</div>
+);
+
+const TabsContext = React.createContext<{ activeTab: string; setActiveTab: (value: string) => void; }>({ activeTab: '', setActiveTab: () => {} });
+
+const Tabs = ({ children, defaultValue, value, onValueChange }: { children: React.ReactNode, defaultValue: string, value: string, onValueChange: (value: string) => void }) => {
+    return (
+        <TabsContext.Provider value={{ activeTab: value, setActiveTab: onValueChange }}>
+            <div>{children}</div>
+        </TabsContext.Provider>
+    );
+};
+
+const TabsList = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex border-b border-gray-200">{children}</div>
+);
+
+const TabsTrigger = ({ children, value }: { children: React.ReactNode, value: string }) => {
+    const { activeTab, setActiveTab } = React.useContext(TabsContext);
+    const isActive = activeTab === value;
+    return (
+        <button
+            onClick={() => setActiveTab(value)}
+            className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+        >
+            {children}
+        </button>
+    );
+};
+
+const TabsContent = ({ children, value }: { children: React.ReactNode, value: string }) => {
+    const { activeTab } = React.useContext(TabsContext);
+    return activeTab === value ? <div className="mt-6">{children}</div> : null;
+};
+
+// ============================================
+// ICONOS SVG EN LÍNEA
+// ============================================
+// Reemplazamos lucide-react para un solo archivo
+
+const Icon = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
+    <div className={`inline-block w-5 h-5 ${className}`}>{children}</div>
+);
+
+const UploadIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg></Icon>;
+const TrendingUpIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></Icon>;
+const TrendingDownIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg></Icon>;
+const WalletIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></Icon>;
+const PieIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></Icon>;
+const SparklesIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9 1.9 5.8 1.9-5.8 5.8-1.9-5.8-1.9z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></Icon>;
+const FileTextIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></Icon>;
+const DownloadIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></Icon>;
+const AlertCircleIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></Icon>;
+const CheckCircleIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></Icon>;
+const TargetIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></Icon>;
+const CalendarIcon = () => <Icon><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg></Icon>;
+
+
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
+
+export default function SmartFinanceManager() {
+    const [file, setFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
+    const [analysis, setAnalysis] = useState<FinancialAnalysis | null>(null);
+    const [optimization, setOptimization] = useState<BudgetOptimization | null>(null);
+    const [savingsGoal, setSavingsGoal] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('upload');
+    const [librariesReady, setLibrariesReady] = useState(false);
+    
+    // Importamos Recharts dinámicamente
+    const [Recharts, setRecharts] = useState<any>(null);
+
+    // Referencia al input de archivo
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ============================================
+    // CARGA DE LIBRERÍAS EXTERNAS
+    // ============================================
+
+    useEffect(() => {
+        const loadExternalLibraries = async () => {
             try {
-                let headers, data;
-                if (['csv', 'txt'].includes(fileExtension)) {
-                    const lines = content.trim().split(/\r\n|\n/);
-                    const separator = lines[0].includes(';') ? ';' : ',';
-                    headers = lines[0].split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
-                    data = lines.slice(1).map(line => {
-                        const values = line.split(separator);
-                        return headers.reduce((obj, h, i) => (obj[h] = values[i]?.trim().replace(/^"|"$/g, '') || '', obj), {});
-                    });
-                } else if (['xls', 'xlsx'].includes(fileExtension)) {
-                    const workbook = XLSX.read(content, { type: 'array', cellDates: true, dateNF: 'dd/mm/yyyy' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    data = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' });
-                    headers = data.length > 0 ? Object.keys(data[0]) : [];
+                // Cargar XLSX
+                await loadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js', 'XLSX');
+                
+                // Cargar PDF.js
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'pdfjsLib');
+                
+                // Cargar Recharts
+                const rechartsModule = await import('recharts');
+                setRecharts(rechartsModule);
+
+                // Configurar worker de PDF.js
+                if ((window as any).pdfjsLib) {
+                    (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                 }
 
-                if (headers && data.length > 0) processData(headers, data);
-                else setError('El archivo está vacío o no tiene un formato válido.');
-
+                setLibrariesReady(true);
             } catch (err) {
-                console.error(err);
-                setError('Error fatal al procesar el archivo.');
+                setError('Error al cargar las librerías necesarias. Recarga la página.');
             }
         };
 
-        if (['csv', 'txt'].includes(fileExtension)) {
-            reader.onload = (event) => processContent(event.target.result);
-            reader.readAsText(file, 'ISO-8859-1');
-        } else if (['xls', 'xlsx'].includes(fileExtension)) {
-            reader.onload = (event) => processContent(event.target.result);
-            reader.readAsArrayBuffer(file);
+        loadExternalLibraries();
+    }, []);
+
+    const loadScript = (src: string, globalVar: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if ((window as any)[globalVar]) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error(`Error cargando ${src}`));
+            document.head.appendChild(script);
+        });
+    };
+    
+    // ============================================
+    // MANEJO DE ARCHIVOS Y EXTRACCIÓN DE TEXTO
+    // ============================================
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+            setError(null);
+        }
+    };
+    
+    const extractTextFromFile = async (file: File): Promise<string> => {
+        const fileName = file.name.toLowerCase();
+        const fileType = file.type;
+
+        if (fileName.endsWith('.pdf') || fileType.includes('pdf')) {
+            return extractFromPDF(file);
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileType.includes('spreadsheet') || fileType.includes('excel')) {
+            return extractFromExcel(file);
+        } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileType.includes('text')) {
+            return extractFromText(file);
         } else {
-            setError('Formato no soportado. Sube un CSV, TXT, XLS o XLSX.');
+            throw new Error('Formato de archivo no soportado. Usa PDF, Excel (XLSX, XLS), CSV o TXT.');
         }
     };
 
-    const filteredTransactions = useMemo(() => {
-        if (selectedMonth === 'all') return transactions;
-        return transactions.filter(t => t.month === selectedMonth);
-    }, [transactions, selectedMonth]);
+    const extractFromPDF = async (file: File): Promise<string> => {
+        const pdfjsLib = (window as any).pdfjsLib;
+        if (!pdfjsLib) throw new Error('PDF.js no está listo.');
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+        }
+        return fullText;
+    };
 
-    const summary = useMemo(() => {
-        const income = filteredTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
-        const expenses = Math.abs(filteredTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0));
-        const balance = income - expenses;
-        return { income, expenses, balance };
-    }, [filteredTransactions]);
-
-    const categoryData = useMemo(() => {
-        const byCategory = {};
-        filteredTransactions.filter(t => t.amount < 0).forEach(t => {
-            byCategory[t.category] = (byCategory[t.category] || 0) + Math.abs(t.amount);
+    const extractFromExcel = async (file: File): Promise<string> => {
+        const XLSX = (window as any).XLSX;
+        if (!XLSX) throw new Error('XLSX (SheetJS) no está listo.');
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        let fullText = '';
+        workbook.SheetNames.forEach((sheetName: string) => {
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            jsonData.forEach((row: any) => {
+                fullText += (row as any[]).join(', ') + '\n';
+            });
         });
-        return Object.entries(byCategory)
-            .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
-            .sort((a, b) => b.value - a.value);
-    }, [filteredTransactions]);
+        return fullText;
+    };
 
-    const months = useMemo(() => {
-        const uniqueMonths = [...new Set(transactions.map(t => t.month).filter(Boolean))];
-        return uniqueMonths.sort().reverse();
-    }, [transactions]);
+    const extractFromText = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target?.result as string);
+            reader.onerror = (error) => reject(error);
+            reader.readAsText(file);
+        });
+    };
 
-    const formatCurrency = (amount) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+    // ============================================
+    // LLAMADA A LA API DE GEMINI
+    // ============================================
 
-    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+    const callGeminiAPI = async (prompt: string, schema: any): Promise<any> => {
+        // En un entorno real, la API key no se expone en el cliente.
+        // Canvas se encarga de proporcionar la clave de forma segura.
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    responseSchema: schema,
+                    temperature: 0.2,
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Detalles del error de la API:", errorText);
+            throw new Error(`Error en la API de IA: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!responseText) {
+            throw new Error('La respuesta de la IA está vacía o tiene un formato incorrecto.');
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch (e) {
+            throw new Error('Error al procesar la respuesta JSON de la IA.');
+        }
+    };
+
+    // ============================================
+    // LÓGICA DE LA APLICACIÓN
+    // ============================================
+
+    const analyzeFinancialData = async () => {
+        if (!file || !librariesReady) {
+            setError('Por favor, selecciona un archivo y espera a que las librerías estén listas.');
+            return;
+        }
+
+        setLoading(true);
+        setLoadingMessage('Extrayendo datos del archivo...');
+        setError(null);
+        setAnalysis(null);
+        setOptimization(null);
+        
+        try {
+            const extractedText = await extractTextFromFile(file);
+            if (!extractedText.trim()) {
+                throw new Error('El archivo parece estar vacío o no contiene texto legible.');
+            }
+            
+            setLoadingMessage('La IA está analizando tus finanzas...');
+            
+            const analysisSchema = { /* ... schema ... */ }; // Schema is complex, keeping it inline for brevity
+            
+            const analysisPrompt = `Eres un analista financiero experto. Analiza estos datos financieros extraídos de un documento. Los datos pueden estar desordenados. Tu tarea es limpiarlos, estructurarlos y proporcionar un análisis completo.
+
+Datos extraídos:
+\`\`\`
+${extractedText.substring(0, 15000)}
+\`\`\`
+
+Basado en los datos, genera un objeto JSON con la siguiente estructura:
+1.  **summary**: Un resumen con 'totalIncome', 'totalExpenses', 'balance' (income - expenses), y 'savingsRate' (en porcentaje, ej: 15.5).
+2.  **transactions**: Una lista de TODAS las transacciones. Cada una debe tener: 'id' (único), 'date' (formato YYYY-MM-DD), 'description' (limpia y concisa), 'amount' (número positivo), 'type' ('income' o 'expense'), y 'category'.
+3.  **categoryBreakdown**: Un desglose de gastos por categoría. Cada objeto debe tener 'category', 'amount' (suma total de gastos en esa categoría) y 'percentage' del total de gastos.
+4.  **monthlyTrend**: Un análisis mes a mes. Cada objeto debe tener 'month' (formato YYYY-MM), 'income', 'expenses' y 'balance' para ese mes.
+5.  **insights**: Un array de 3-5 observaciones clave y accionables sobre los patrones de gasto o ingresos (en español).
+6.  **warnings**: Un array de 1-3 advertencias sobre posibles problemas, como gastos elevados en ciertas áreas o deudas (en español).
+
+Usa estas categorías: 'Salario', 'Ingresos Pasivos', 'Vivienda', 'Transporte', 'Alimentación', 'Servicios Básicos', 'Salud', 'Entretenimiento', 'Compras', 'Educación', 'Deudas', 'Inversiones', 'Otros Gastos', 'Otros Ingresos'. Si no puedes determinar una fecha, usa una aproximada. Responde en español.`;
+
+            const analysisResult = await callGeminiAPI(analysisPrompt, {
+                type: "OBJECT",
+                properties: {
+                    summary: { type: "OBJECT", properties: { totalIncome: { type: "NUMBER" }, totalExpenses: { type: "NUMBER" }, balance: { type: "NUMBER" }, savingsRate: { type: "NUMBER" } } },
+                    transactions: { type: "ARRAY", items: { type: "OBJECT", properties: { id: { type: "STRING" }, date: { type: "STRING" }, description: { type: "STRING" }, amount: { type: "NUMBER" }, type: { type: "STRING" }, category: { type: "STRING" } } } },
+                    categoryBreakdown: { type: "ARRAY", items: { type: "OBJECT", properties: { category: { type: "STRING" }, amount: { type: "NUMBER" }, percentage: { type: "NUMBER" } } } },
+                    monthlyTrend: { type: "ARRAY", items: { type: "OBJECT", properties: { month: { type: "STRING" }, income: { type: "NUMBER" }, expenses: { type: "NUMBER" }, balance: { type: "NUMBER" } } } },
+                    insights: { type: "ARRAY", items: { type: "STRING" } },
+                    warnings: { type: "ARRAY", items: { type: "STRING" } }
+                }
+            });
+            
+            setAnalysis(analysisResult);
+            setActiveTab('analysis');
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const optimizeBudget = async () => {
+        if (!analysis || !savingsGoal || Number(savingsGoal) <= 0) {
+            setError('Realiza primero el análisis y establece un objetivo de ahorro mensual válido.');
+            return;
+        }
+
+        setLoading(true);
+        setLoadingMessage('La IA está creando tu plan de optimización...');
+        setError(null);
+        
+        try {
+            const optimizationPrompt = `Eres un asesor financiero experto en optimización de presupuestos. Basado en el siguiente análisis financiero de un cliente, crea un plan para ayudarle a alcanzar su objetivo de ahorro.
+
+**Análisis Actual:**
+- Ingreso Total: ${analysis.summary.totalIncome}
+- Gasto Total: ${analysis.summary.totalExpenses}
+- Desglose de Gastos: ${JSON.stringify(analysis.categoryBreakdown)}
+
+**Objetivo del Cliente:**
+- Ahorrar ${savingsGoal} al mes.
+
+**Tu Tarea:**
+Crea un objeto JSON con la siguiente estructura:
+1.  **currentSpending**: Un objeto que muestra el gasto actual por categoría (solo las de gastos).
+2.  **optimizedBudget**: Un objeto con el presupuesto optimizado por categoría, diseñado para alcanzar el objetivo de ahorro. Reduce gastos en categorías no esenciales.
+3.  **recommendations**: Un array de 3 a 5 recomendaciones inteligentes y prácticas. Cada recomendación debe tener 'title', 'description', 'potentialSavings' (estimado mensual), 'priority' ('high', 'medium', 'low'), y 'actionSteps' (array de pasos concretos).
+4.  **projectedSavings**: El ahorro mensual total proyectado con el nuevo presupuesto.
+5.  **timeToGoal**: El tiempo estimado en meses para alcanzar un objetivo hipotético de 10,000 con el nuevo ahorro proyectado (calcula 10000 / projectedSavings).
+
+Sé realista y práctico. No reduzcas categorías esenciales como 'Vivienda' o 'Servicios Básicos' a cero. Enfócate en 'Entretenimiento', 'Compras', 'Alimentación' (suscripciones, comer fuera). Responde en español.`;
+
+            const optimizationResult = await callGeminiAPI(optimizationPrompt, {
+                type: "OBJECT",
+                properties: {
+                    currentSpending: { type: "OBJECT", additionalProperties: { type: "NUMBER" } },
+                    optimizedBudget: { type: "OBJECT", additionalProperties: { type: "NUMBER" } },
+                    recommendations: { type: "ARRAY", items: { type: "OBJECT", properties: { title: { type: "STRING" }, description: { type: "STRING" }, potentialSavings: { type: "NUMBER" }, priority: { type: "STRING" }, actionSteps: { type: "ARRAY", items: { type: "STRING" } } } } },
+                    projectedSavings: { type: "NUMBER" },
+                    timeToGoal: { type: "NUMBER" }
+                }
+            });
+
+            setOptimization(optimizationResult);
+            setActiveTab('optimization');
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const exportData = () => {
+        if (!analysis) {
+            setError("No hay datos para exportar.");
+            return;
+        }
+        const dataToExport = {
+            analysis,
+            optimization: optimization || "No generado",
+        };
+        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `analisis_financiero_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // ============================================
+    // RENDERIZADO DE COMPONENTES
+    // ============================================
+
+    const renderSummaryCard = (title: string, value: number, icon: React.ReactNode, format: 'EUR' | '%' = 'EUR') => {
+        let formattedValue;
+
+        try {
+            if (format === '%') {
+                // La IA devuelve un número como 15.5 para 15.5%, así que lo dividimos por 100 para formatearlo.
+                formattedValue = (value / 100).toLocaleString('es-ES', { style: 'percent', minimumFractionDigits: 1 });
+            } else {
+                formattedValue = value.toLocaleString('es-ES', { style: 'currency', currency: format });
+            }
+        } catch (e) {
+            // Fallback en caso de un error inesperado de formato
+            formattedValue = `${value}${format === 'EUR' ? '€' : '%'}`;
+            console.error("Error de formato en renderSummaryCard:", e);
+        }
+
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                    {icon}
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formattedValue}</div>
+                </CardContent>
+            </Card>
+        );
+    };
+
+    if (!Recharts) {
+        return <div className="flex items-center justify-center h-screen bg-gray-50"><div className="text-lg">Cargando componentes...</div></div>;
+    }
+
+    const { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+        <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-2">💰 Economía Doméstica</h1>
-                    <p className="text-gray-600">Analiza tus finanzas de forma visual e interactiva</p>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-                    <div className="text-center">
-                        <h2 className="text-2xl font-semibold mb-4">Sube tu extracto bancario</h2>
-                        <p className="text-gray-600 mb-6">Detección automática de columnas</p>
-                        <label className="block cursor-pointer">
-                            <div className="border-3 border-dashed border-blue-300 rounded-xl p-12 hover:border-blue-500 hover:bg-blue-50 transition-all">
-                                <Upload className="mx-auto h-16 w-16 text-blue-500 mb-4" />
-                                <p className="text-lg font-medium text-gray-700">Arrastra tu archivo o haz clic aquí</p>
-                                <p className="text-sm text-gray-500 mt-2">Sube un archivo CSV, XLS o XLSX</p>
-                            </div>
-                            <input type="file" className="hidden" accept=".csv,.txt,.xls,.xlsx" onChange={handleFileUpload} />
-                        </label>
-                        {error && <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
-                    </div>
-                </div>
-
-                {transactions.length > 0 && (
-                    <>
-                        {months.length > 1 && (
-                            <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Filtrar por mes:</label>
-                                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="all">Todos los meses</option>
-                                    {months.map(month => <option key={month} value={month}>{new Date(month + '-01T12:00:00Z').toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</option>)}
-                                </select>
+                <header className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                        <SparklesIcon />
+                        <span className="ml-2">Gestor Financiero Personal con IA</span>
+                    </h1>
+                    <p className="text-gray-600 mt-2">
+                        Sube tus extractos bancarios (PDF, Excel, CSV) y obtén un análisis financiero inteligente y un plan de ahorro personalizado.
+                    </p>
+                </header>
+                
+                <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="upload">
+                    <TabsList>
+                        <TabsTrigger value="upload">1. Cargar Documento</TabsTrigger>
+                        <TabsTrigger value="analysis">2. Análisis Financiero</TabsTrigger>
+                        <TabsTrigger value="optimization">3. Optimización y Ahorro</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="upload">
+                        <Card className="max-w-2xl mx-auto">
+                            <CardHeader>
+                                <CardTitle>Sube tu extracto bancario</CardTitle>
+                                <CardDescription>Aceptamos archivos PDF, Excel (XLSX, XLS), CSV y TXT.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div 
+                                    className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer hover:border-blue-500 transition-colors"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <UploadIcon />
+                                    <p className="mt-2 text-sm text-gray-600">
+                                        {file ? `Archivo seleccionado: ${file.name}` : 'Haz clic o arrastra un archivo aquí'}
+                                    </p>
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleFileChange}
+                                        accept=".pdf,.xlsx,.xls,.csv,.txt"
+                                    />
+                                </div>
+                                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                                <Button 
+                                    onClick={analyzeFinancialData} 
+                                    disabled={!file || loading || !librariesReady}
+                                    className="w-full"
+                                >
+                                    {loading ? loadingMessage : 'Analizar con IA'}
+                                </Button>
+                                {!librariesReady && <p className="text-xs text-center text-gray-500">Inicializando librerías...</p>}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    
+                    <TabsContent value="analysis">
+                        {!analysis && !loading && (
+                            <div className="text-center py-12 text-gray-500">
+                                <FileTextIcon />
+                                <p className="mt-2">Completa el paso 1 para ver tu análisis financiero.</p>
                             </div>
                         )}
+                        {loading && activeTab === 'analysis' && (
+                             <div className="text-center py-12 text-gray-500">{loadingMessage}</div>
+                        )}
+                        {analysis && (
+                            <div className="space-y-6">
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                    {renderSummaryCard('Ingresos Totales', analysis.summary.totalIncome, <TrendingUpIcon />, 'EUR')}
+                                    {renderSummaryCard('Gastos Totales', analysis.summary.totalExpenses, <TrendingDownIcon />, 'EUR')}
+                                    {renderSummaryCard('Balance Neto', analysis.summary.balance, <WalletIcon />, 'EUR')}
+                                    {renderSummaryCard('Tasa de Ahorro', analysis.summary.savingsRate, <PieIcon />, '%')}
+                                </div>
+                                
+                                <div className="grid gap-6 lg:grid-cols-5">
+                                    <Card className="lg:col-span-2">
+                                        <CardHeader><CardTitle>Desglose de Gastos</CardTitle></CardHeader>
+                                        <CardContent>
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <PieChart>
+                                                    <Pie data={analysis.categoryBreakdown} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={100} label>
+                                                        {analysis.categoryBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS.primary[index % CHART_COLORS.primary.length]} />)}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value: number) => `${value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}`} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="lg:col-span-3">
+                                        <CardHeader><CardTitle>Tendencia Mensual</CardTitle></CardHeader>
+                                        <CardContent>
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart data={analysis.monthlyTrend}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="month" />
+                                                    <YAxis />
+                                                    <Tooltip formatter={(value: number) => `${value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}`} />
+                                                    <Legend />
+                                                    <Bar dataKey="income" fill={CHART_COLORS.income} name="Ingresos" />
+                                                    <Bar dataKey="expenses" fill={CHART_COLORS.expense} name="Gastos" />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                                
+                                <div className="grid gap-6 lg:grid-cols-2">
+                                    <Card>
+                                        <CardHeader><CardTitle>Insights Clave de la IA</CardTitle></CardHeader>
+                                        <CardContent>
+                                            <ul className="space-y-3">
+                                                {analysis.insights.map((insight, i) => (
+                                                    <li key={i} className="flex items-start">
+                                                        <CheckCircleIcon />
+                                                        <span className="ml-2 text-sm">{insight}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader><CardTitle>Advertencias y Áreas de Mejora</CardTitle></CardHeader>
+                                        <CardContent>
+                                             <ul className="space-y-3">
+                                                {analysis.warnings.map((warning, i) => (
+                                                    <li key={i} className="flex items-start">
+                                                        <AlertCircleIcon />
+                                                        <span className="ml-2 text-sm">{warning}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white"><div className="flex items-center justify-between mb-2"><h3 className="text-lg font-medium opacity-90">Ingresos</h3><TrendingUp className="h-8 w-8 opacity-80" /></div><p className="text-3xl font-bold">{formatCurrency(summary.income)}</p></div>
-                            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-xl p-6 text-white"><div className="flex items-center justify-between mb-2"><h3 className="text-lg font-medium opacity-90">Gastos</h3><TrendingDown className="h-8 w-8 opacity-80" /></div><p className="text-3xl font-bold">{formatCurrency(summary.expenses)}</p></div>
-                            <div className={`bg-gradient-to-br ${summary.balance >= 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600'} rounded-2xl shadow-xl p-6 text-white`}><div className="flex items-center justify-between mb-2"><h3 className="text-lg font-medium opacity-90">Balance</h3><Wallet className="h-8 w-8 opacity-80" /></div><p className="text-3xl font-bold">{formatCurrency(summary.balance)}</p></div>
-                        </div>
-
-                        {categoryData.length > 0 && (
-                            <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-                                <div className="flex items-center mb-6"><Circle className="h-6 w-6 text-blue-600 mr-2" /><h2 className="text-2xl font-semibold">Gastos por Categoría</h2></div>
-                                <div className="space-y-4">
-                                    {categoryData.map((cat, idx) => {
-                                        const percentage = summary.expenses > 0 ? (cat.value / summary.expenses * 100).toFixed(1) : 0;
-                                        return (
-                                            <div key={cat.name} className="group hover:scale-[1.02] transition-transform">
-                                                <div className="flex justify-between items-center mb-2"><span className="font-medium text-gray-700">{cat.name}</span><span className="text-gray-600">{formatCurrency(cat.value)} ({percentage}%)</span></div>
-                                                <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className="h-full transition-all duration-500 rounded-full" style={{ width: `${percentage}%`, backgroundColor: COLORS[idx % COLORS.length] }} />
+                                <Button onClick={exportData} variant="secondary"><DownloadIcon /><span className="ml-2">Exportar Análisis</span></Button>
+                            </div>
+                        )}
+                    </TabsContent>
+                    
+                    <TabsContent value="optimization">
+                        {!analysis && !loading && (
+                            <div className="text-center py-12 text-gray-500">
+                                <TargetIcon />
+                                <p className="mt-2">Analiza tus finanzas para poder crear un plan de optimización.</p>
+                            </div>
+                        )}
+                        {loading && activeTab === 'optimization' && (
+                            <div className="text-center py-12 text-gray-500">{loadingMessage}</div>
+                        )}
+                        {analysis && !optimization && (
+                            <Card className="max-w-2xl mx-auto">
+                                <CardHeader>
+                                    <CardTitle>Define tu Objetivo de Ahorro</CardTitle>
+                                    <CardDescription>Indica cuánto te gustaría ahorrar cada mes para que la IA cree un plan para ti.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <Input 
+                                        type="number" 
+                                        value={savingsGoal} 
+                                        onChange={(e) => setSavingsGoal(e.target.value)}
+                                        placeholder="Ej: 300" 
+                                    />
+                                    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                                    <Button onClick={optimizeBudget} disabled={loading} className="w-full">
+                                        {loading ? 'Optimizando...' : 'Crear Plan de Ahorro'}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {optimization && (
+                           <div className="space-y-6">
+                                <div className="grid gap-4 md:grid-cols-3">
+                                    {renderSummaryCard('Ahorro Actual', analysis.summary.balance, <WalletIcon />, 'EUR')}
+                                    {renderSummaryCard('Objetivo de Ahorro', Number(savingsGoal), <TargetIcon />, 'EUR')}
+                                    {renderSummaryCard('Nuevo Ahorro Proyectado', optimization.projectedSavings, <TrendingUpIcon />, 'EUR')}
+                                </div>
+                                <Card>
+                                    <CardHeader><CardTitle>Recomendaciones de la IA para Ahorrar</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {optimization.recommendations.map((rec, i) => (
+                                            <div key={i} className="p-4 border rounded-md bg-gray-50">
+                                                <h4 className="font-semibold text-gray-800">{rec.title}</h4>
+                                                <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
+                                                <p className="text-sm font-medium text-green-600 mt-2">Ahorro Potencial: {rec.potentialSavings.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}/mes</p>
+                                                <div className="mt-3">
+                                                    <h5 className="text-xs font-semibold text-gray-500 uppercase">Pasos a seguir</h5>
+                                                    <ul className="list-disc list-inside text-sm text-gray-600 mt-1 space-y-1">
+                                                        {rec.actionSteps.map((step, j) => <li key={j}>{step}</li>)}
+                                                    </ul>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="bg-white rounded-2xl shadow-xl p-8">
-                            <h2 className="text-2xl font-semibold mb-6">Movimientos ({filteredTransactions.length})</h2>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b-2 border-gray-200"><th className="text-left p-3 font-semibold text-gray-700">Fecha</th><th className="text-left p-3 font-semibold text-gray-700">Descripción</th><th className="text-left p-3 font-semibold text-gray-700">Categoría</th><th className="text-right p-3 font-semibold text-gray-700">Importe</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredTransactions.sort((a, b) => b.date - a.date).map((t, idx) => (
-                                            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                                <td className="p-3 text-gray-600">{t.date.toLocaleDateString('es-ES', {timeZone: 'UTC'})}</td>
-                                                <td className="p-3 text-gray-800">{t.description}</td>
-                                                <td className="p-3"><span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">{t.category}</span></td>
-                                                <td className={`p-3 text-right font-semibold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
-                                            </tr>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
+                                    </CardContent>
+                                </Card>
+                                <Button onClick={exportData} variant="secondary"><DownloadIcon /><span className="ml-2">Exportar Plan</span></Button>
+                           </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );
