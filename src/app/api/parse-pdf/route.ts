@@ -79,4 +79,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No se pudo procesar el archivo PDF.' }, { status: 500 });
   }
 }
-'''
+
