@@ -28,6 +28,18 @@ const apps = [
     icon: BarChart, // Un icono apropiado para finanzas
     description: 'Analiza tus gastos e ingresos desde extractos bancarios.',
   },
+  {
+    name: 'Rentabilidad Inmobiliario',
+    href: '/apps/rentabilidad-inmobiliario',
+    icon: BarChart, // Puedes cambiar el icono si quieres
+    description: 'Calcula la rentabilidad de tus inversiones inmobiliarias.',
+  },
+  {
+    name: 'Nucleo',
+    href: '/apps/nucleo',
+    icon: Users, // Puedes cambiar el icono si quieres
+    description: 'Descripción de la aplicación Nucleo.',
+  },
 ];
 
 export default function AppsPage() {
