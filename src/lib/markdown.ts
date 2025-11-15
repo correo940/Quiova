@@ -18,20 +18,31 @@ export interface Article extends ArticleMetadata {
 
 export async function parseMarkdown(markdown: string): Promise<Article> {
   try {
+    if (!markdown || typeof markdown !== 'string') {
+      throw new Error('Markdown inválido o vacío');
+    }
+
     const { data, content } = matter(markdown);
     
     // Procesar el markdown a HTML
-    const processedContent = await remark()
-      .use(html, { sanitize: false }) // No sanitizar para permitir HTML embebido
-      .process(content);
-    
-    const contentHtml = processedContent.toString();
+    let contentHtml = '';
+    try {
+      const processedContent = await remark()
+        .use(html, { sanitize: false }) // No sanitizar para permitir HTML embebido
+        .process(content || '');
+      
+      contentHtml = processedContent.toString();
+    } catch (remarkError) {
+      console.warn('Error procesando markdown con remark, usando contenido sin procesar:', remarkError);
+      // Si remark falla, usar el contenido sin procesar como HTML
+      contentHtml = content || '';
+    }
 
     // Log para debugging (solo en desarrollo)
     if (process.env.NODE_ENV === 'development') {
       console.log('Markdown parseado:', {
         title: data.title,
-        contentLength: content.length,
+        contentLength: content?.length || 0,
         htmlLength: contentHtml.length,
         hasLinks: contentHtml.includes('<a href')
       });
@@ -45,12 +56,24 @@ export async function parseMarkdown(markdown: string): Promise<Article> {
       image: data.image,
       slug: data.slug || '',
       content: content || '',
-      contentHtml,
+      contentHtml: contentHtml || '',
     };
   } catch (error) {
     console.error('Error parsing markdown:', error);
-    console.error('Markdown que causó el error:', markdown.substring(0, 500));
-    throw new Error('Error al parsear el markdown del artículo');
+    const preview = typeof markdown === 'string' ? markdown.substring(0, 500) : 'No markdown disponible';
+    console.error('Markdown que causó el error:', preview);
+    
+    // Retornar un artículo vacío en lugar de lanzar error para evitar romper la página
+    return {
+      title: '',
+      date: new Date().toLocaleDateString('es-ES'),
+      category: 'salud física',
+      description: '',
+      image: undefined,
+      slug: '',
+      content: '',
+      contentHtml: '',
+    };
   }
 }
 

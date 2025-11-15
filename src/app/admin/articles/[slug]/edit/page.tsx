@@ -7,92 +7,109 @@ import ArticleEditor from "@/components/article-editor";
 import { allArticles } from "@/lib/data";
 
 export default async function EditArticlePage({ params }: { params: { slug: string } }) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect("/admin/login");
-  }
-
-  // Resolver params si es una Promise (Next.js 15)
-  const resolvedParams = await Promise.resolve(params);
-  const slug = resolvedParams.slug;
-
-  // Intentar cargar el artículo desde GitHub primero, con fallback a datos locales
-  let article;
-  
   try {
-    const markdownContent = await getArticleContent(`${slug}.md`);
-    article = await parseMarkdown(markdownContent);
-  } catch (githubError: any) {
-    // Si no existe en GitHub o hay un error, usar datos locales como fallback
-    const errorMessage = githubError?.message || '';
+    const session = await getServerSession(authOptions);
     
-    // Solo loguear si no es un error esperado (404 o token no configurado)
-    if (!errorMessage.includes('not found') && !errorMessage.includes('GITHUB_TOKEN')) {
-      console.warn('Error cargando desde GitHub, usando datos locales:', errorMessage);
+    if (!session) {
+      redirect("/admin/login");
     }
-    
-    const localArticle = allArticles.find((a) => a.slug === slug);
-    
-    if (!localArticle) {
+
+    // Resolver params si es una Promise (Next.js 15)
+    const resolvedParams = await Promise.resolve(params);
+    const slug = resolvedParams.slug;
+
+    if (!slug) {
       notFound();
     }
 
-    // Convertir HTML a markdown básico (remover tags y mantener estructura)
-    let markdownContent = localArticle.content
-      .replace(/<h3>/g, '### ')
-      .replace(/<\/h3>/g, '\n\n')
-      .replace(/<h2>/g, '## ')
-      .replace(/<\/h2>/g, '\n\n')
-      .replace(/<h1>/g, '# ')
-      .replace(/<\/h1>/g, '\n\n')
-      .replace(/<p>/g, '')
-      .replace(/<\/p>/g, '\n\n')
-      .replace(/<ul>/g, '')
-      .replace(/<\/ul>/g, '\n')
-      .replace(/<ol>/g, '')
-      .replace(/<\/ol>/g, '\n')
-      .replace(/<li>/g, '- ')
-      .replace(/<\/li>/g, '\n')
-      .replace(/<strong>/g, '**')
-      .replace(/<\/strong>/g, '**')
-      .replace(/<[^>]*>/g, '') // Remover cualquier otro tag HTML
-      .replace(/\n{3,}/g, '\n\n') // Limpiar múltiples saltos de línea
-      .trim();
+    // Intentar cargar el artículo desde GitHub primero, con fallback a datos locales
+    let article;
+    
+    try {
+      const markdownContent = await getArticleContent(`${slug}.md`);
+      article = await parseMarkdown(markdownContent);
+      
+      // Si el artículo parseado está vacío o no tiene título, usar fallback
+      if (!article || !article.title) {
+        throw new Error('Artículo parseado está vacío');
+      }
+    } catch (githubError: any) {
+      // Si no existe en GitHub o hay un error, usar datos locales como fallback
+      const errorMessage = githubError?.message || '';
+      
+      // Solo loguear si no es un error esperado (404 o token no configurado)
+      if (!errorMessage.includes('not found') && !errorMessage.includes('GITHUB_TOKEN')) {
+        console.warn('Error cargando desde GitHub, usando datos locales:', errorMessage);
+      }
+      
+      const localArticle = allArticles.find((a) => a.slug === slug);
+      
+      if (!localArticle) {
+        notFound();
+      }
 
-    // Convertir el artículo local al formato esperado
-    article = {
-      title: localArticle.title,
-      description: localArticle.excerpt,
-      category: localArticle.category,
-      date: localArticle.date,
-      slug: localArticle.slug,
-      image: localArticle.imageUrl,
-      content: markdownContent,
-      contentHtml: localArticle.content
+      // Convertir HTML a markdown básico (remover tags y mantener estructura)
+      let markdownContent = localArticle.content
+        .replace(/<h3>/g, '### ')
+        .replace(/<\/h3>/g, '\n\n')
+        .replace(/<h2>/g, '## ')
+        .replace(/<\/h2>/g, '\n\n')
+        .replace(/<h1>/g, '# ')
+        .replace(/<\/h1>/g, '\n\n')
+        .replace(/<p>/g, '')
+        .replace(/<\/p>/g, '\n\n')
+        .replace(/<ul>/g, '')
+        .replace(/<\/ul>/g, '\n')
+        .replace(/<ol>/g, '')
+        .replace(/<\/ol>/g, '\n')
+        .replace(/<li>/g, '- ')
+        .replace(/<\/li>/g, '\n')
+        .replace(/<strong>/g, '**')
+        .replace(/<\/strong>/g, '**')
+        .replace(/<[^>]*>/g, '') // Remover cualquier otro tag HTML
+        .replace(/\n{3,}/g, '\n\n') // Limpiar múltiples saltos de línea
+        .trim();
+
+      // Convertir el artículo local al formato esperado
+      article = {
+        title: localArticle.title || 'Sin título',
+        description: localArticle.excerpt || '',
+        category: localArticle.category || 'salud física',
+        date: localArticle.date || new Date().toLocaleDateString('es-ES'),
+        slug: localArticle.slug || slug,
+        image: localArticle.imageUrl,
+        content: markdownContent || '',
+        contentHtml: localArticle.content || ''
+      };
+    }
+
+    // Asegurarse de que article está definido y tiene valores válidos
+    if (!article || !article.title) {
+      notFound();
+    }
+
+    // Validar que todos los campos requeridos estén presentes
+    const initialData = {
+      title: article.title || 'Sin título',
+      description: article.description || '',
+      category: article.category || 'salud física',
+      date: article.date || new Date().toLocaleDateString('es-ES'),
+      slug: article.slug || slug,
+      image: article.image || ''
     };
-  }
 
-  // Asegurarse de que article está definido
-  if (!article) {
+    return (
+      <div className="container mx-auto py-6">
+        <h1 className="text-3xl font-bold mb-6">Editar Artículo</h1>
+        <ArticleEditor 
+          initialData={initialData}
+          content={article.content || ''}
+          isEditing={true}
+        />
+      </div>
+    );
+  } catch (error) {
+    console.error('Error crítico en página de edición:', error);
     notFound();
   }
-
-  return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Editar Artículo</h1>
-      <ArticleEditor 
-        initialData={{
-          title: article.title,
-          description: article.description,
-          category: article.category,
-          date: article.date,
-          slug: article.slug,
-          image: article.image
-        }}
-        content={article.content}
-        isEditing={true}
-      />
-    </div>
-  );
 }
