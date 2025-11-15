@@ -1,5 +1,5 @@
 ---
-title: PRUEBA 12344555555
+title: 'SIGO PROBANDO '
 description: >-
   Comienza tu día con esta rutina de ejercicios rápida y efectiva que puedes
   hacer desde cualquier lugar.
