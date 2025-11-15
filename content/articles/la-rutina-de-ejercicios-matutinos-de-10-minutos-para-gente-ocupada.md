@@ -1,8 +1,6 @@
 ---
-title: 'SIGO PROBANDO '
-description: >-
-  Comienza tu día con esta rutina de ejercicios rápida y efectiva que puedes
-  hacer desde cualquier lugar.
+title: 'SIGO SIGO '
+description: 'PROBANDO SIGO '
 category: salud física
 date: 15 de junio de 2024
 slug: la-rutina-de-ejercicios-matutinos-de-10-minutos-para-gente-ocupada
