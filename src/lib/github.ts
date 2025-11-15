@@ -11,8 +11,8 @@ export const octokit = new Octokit({
 
 export async function getArticleContent(path: string) {
   if (!GITHUB_TOKEN) {
-    console.error('GITHUB_TOKEN no está configurado. Por favor, configúralo en las variables de entorno de Vercel.');
-    throw new Error('GITHUB_TOKEN no está configurado. Configúralo en Vercel: Settings > Environment Variables');
+    console.warn('GITHUB_TOKEN no está configurado. No se puede cargar desde GitHub.');
+    throw new Error('GITHUB_TOKEN_NOT_CONFIGURED');
   }
 
   try {
@@ -29,8 +29,13 @@ export async function getArticleContent(path: string) {
     throw new Error('No content found');
   } catch (error: any) {
     // Si es un error 404, lanzarlo para que se maneje arriba
-    if (error.status === 404) {
+    if (error.status === 404 || error.message === 'Not Found') {
       throw new Error('Article not found');
+    }
+    // Si es un error de autenticación o token
+    if (error.status === 401 || error.status === 403) {
+      console.error('Error de autenticación con GitHub:', error.message);
+      throw new Error('GITHUB_AUTH_ERROR');
     }
     console.error('Error fetching article content:', error);
     throw error;
