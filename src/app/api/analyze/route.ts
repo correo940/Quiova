@@ -6,12 +6,23 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Inicializar OpenAI solo si existe la API key
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: Request) {
   try {
+    // Verificar que OpenAI esté configurado
+    if (!openai) {
+      return NextResponse.json({ 
+        error: 'OpenAI API key no está configurada. Por favor, configura OPENAI_API_KEY en las variables de entorno.' 
+      }, { status: 500 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 

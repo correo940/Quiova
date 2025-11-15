@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
+// pdf-parse no tiene exportación por defecto, usar require
+const pdf = require('pdf-parse');
 
 interface RawTransaction { [key: string]: any; }
 
