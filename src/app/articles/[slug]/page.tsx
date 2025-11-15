@@ -7,45 +7,87 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getYoutubeEmbedUrl, slugify } from '@/lib/utils';
 import ArticleCard from '@/components/article-card';
 import type { Metadata, ResolvingMetadata } from 'next';
+import { getArticleContent } from '@/lib/github';
+import { parseMarkdown } from '@/lib/markdown';
 
 type Props = {
   params: { slug: string };
 };
 
+// Usar ISR (Incremental Static Regeneration) para Vercel
+// Esto permite que la página se regenere en el fondo cada 60 segundos
+export const revalidate = 60; // Revalidar cada 60 segundos
+
 export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const article = allArticles.find((a) => a.slug === params.slug);
+  const resolvedParams = await Promise.resolve(params);
+  const slug = resolvedParams.slug;
 
-  if (!article) {
+  try {
+    // Intentar cargar desde GitHub
+    const markdownContent = await getArticleContent(`${slug}.md`);
+    const article = await parseMarkdown(markdownContent);
+
     return {
-      title: 'Artículo No Encontrado',
+      title: `${article.title} | Quiova`,
+      description: article.description,
+      openGraph: {
+        title: article.title,
+        description: article.description,
+        images: article.image ? [
+          {
+            url: article.image,
+            width: 1200,
+            height: 630,
+            alt: article.title,
+          },
+        ] : [],
+      },
+    };
+  } catch (error) {
+    // Fallback a allArticles
+    const article = allArticles.find((a) => a.slug === slug);
+    if (!article) {
+      return {
+        title: 'Artículo No Encontrado',
+      };
+    }
+
+    return {
+      title: `${article.title} | Quiova`,
+      description: article.excerpt,
+      openGraph: {
+        title: article.title,
+        description: article.excerpt,
+        images: [
+          {
+            url: article.imageUrl,
+            width: 1200,
+            height: 630,
+            alt: article.title,
+          },
+        ],
+      },
     };
   }
-
-  return {
-    title: `${article.title} | Quiova`,
-    description: article.excerpt,
-    openGraph: {
-      title: article.title,
-      description: article.excerpt,
-      images: [
-        {
-          url: article.imageUrl,
-          width: 1200,
-          height: 630,
-          alt: article.title,
-        },
-      ],
-    },
-  };
 }
 
 export async function generateStaticParams() {
-  return allArticles.map((article) => ({
-    slug: article.slug,
-  }));
+  // Intentar obtener artículos desde GitHub, si no, usar allArticles
+  try {
+    const { listArticles } = await import('@/lib/github');
+    const githubArticles = await listArticles();
+    return githubArticles.map((article) => ({
+      slug: article.name.replace('.md', ''),
+    }));
+  } catch (error) {
+    // Fallback a allArticles
+    return allArticles.map((article) => ({
+      slug: article.slug,
+    }));
+  }
 }
 
 const YoutubeEmbed = ({ url }: { url: string }) => {
@@ -71,13 +113,54 @@ const YoutubeEmbed = ({ url }: { url: string }) => {
   );
 };
 
-export default function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = allArticles.find((a) => a.slug === params.slug);
+export default async function ArticlePage({ params }: { params: { slug: string } }) {
+  const resolvedParams = await Promise.resolve(params);
+  const slug = resolvedParams.slug;
 
-  if (!article) {
-    notFound();
+  // Intentar cargar desde GitHub primero
+  let article: any;
+
+  try {
+    const markdownContent = await getArticleContent(`${slug}.md`);
+    const parsedArticle = await parseMarkdown(markdownContent);
+    
+    // Log para debugging (solo en desarrollo)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Artículo cargado desde GitHub:', {
+        slug,
+        title: parsedArticle.title,
+        contentPreview: parsedArticle.content.substring(0, 100),
+        htmlPreview: parsedArticle.contentHtml.substring(0, 200),
+        hasLinks: parsedArticle.contentHtml.includes('<a href')
+      });
+    }
+    
+    // Convertir al formato esperado por la página
+    article = {
+      id: slug,
+      title: parsedArticle.title,
+      excerpt: parsedArticle.description,
+      content: parsedArticle.contentHtml,
+      category: parsedArticle.category,
+      imageUrl: parsedArticle.image || '/images/logo.png',
+      imageHint: parsedArticle.image ? 'Imagen del artículo' : undefined,
+      author: 'Autor',
+      authorImageUrl: '/images/logo.png',
+      authorImageHint: 'Avatar del autor',
+      date: parsedArticle.date,
+      slug: parsedArticle.slug,
+      youtubeUrl: undefined, // Los artículos de GitHub no tienen YouTube por ahora
+    };
+  } catch (error) {
+    console.error('Error cargando artículo desde GitHub:', error);
+    // Fallback a allArticles
+    article = allArticles.find((a) => a.slug === slug);
+    if (!article) {
+      notFound();
+    }
   }
 
+  // Para artículos relacionados, usar allArticles (o cargar desde GitHub si es necesario)
   const relatedArticles = allArticles.filter(
     (a) => a.category === article.category && a.id !== article.id
   ).slice(0, 3);

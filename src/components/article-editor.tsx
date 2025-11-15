@@ -60,14 +60,33 @@ export default function ArticleEditor({ initialData, content: initialContent, is
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Error al guardar el artículo');
+      // Parsear la respuesta
+      const contentType = response.headers.get('content-type');
+      let result;
+      
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        result = await response.text();
       }
 
-      router.push('/admin');
+      if (!response.ok) {
+        const errorMessage = result?.error || result?.message || `Error al guardar el artículo (${response.status})`;
+        throw new Error(errorMessage);
+      }
+
+      // Artículo guardado exitosamente
+      console.log('Artículo guardado exitosamente:', result);
+
+      // Mostrar mensaje de éxito y redirigir
+      alert('Artículo guardado exitosamente');
+      
+      // Usar window.location para asegurar la navegación
+      window.location.href = '/admin';
     } catch (error) {
       console.error('Error al guardar:', error);
-      alert('Error al guardar el artículo');
+      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el artículo';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }

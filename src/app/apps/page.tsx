@@ -40,6 +40,12 @@ const apps = [
     icon: Users, // Puedes cambiar el icono si quieres
     description: 'Descripción de la aplicación Nucleo.',
   },
+  {
+    name: 'Master en Subastas',
+    href: '/apps/subastas-master',
+    icon: BarChart, // Puedes cambiar el icono si quieres
+    description: 'Aprende a invertir en subastas inmobiliarias.',
+  },
 ];
 
 export default function AppsPage() {

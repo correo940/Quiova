@@ -17,24 +17,41 @@ export interface Article extends ArticleMetadata {
 }
 
 export async function parseMarkdown(markdown: string): Promise<Article> {
-  const { data, content } = matter(markdown);
-  
-  const processedContent = await remark()
-    .use(html)
-    .process(content);
-  
-  const contentHtml = processedContent.toString();
+  try {
+    const { data, content } = matter(markdown);
+    
+    // Procesar el markdown a HTML
+    const processedContent = await remark()
+      .use(html, { sanitize: false }) // No sanitizar para permitir HTML embebido
+      .process(content);
+    
+    const contentHtml = processedContent.toString();
 
-  return {
-    title: data.title,
-    date: data.date,
-    category: data.category,
-    description: data.description,
-    image: data.image,
-    slug: data.slug,
-    content,
-    contentHtml,
-  };
+    // Log para debugging (solo en desarrollo)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Markdown parseado:', {
+        title: data.title,
+        contentLength: content.length,
+        htmlLength: contentHtml.length,
+        hasLinks: contentHtml.includes('<a href')
+      });
+    }
+
+    return {
+      title: data.title || '',
+      date: data.date || new Date().toLocaleDateString('es-ES'),
+      category: data.category || 'salud física',
+      description: data.description || '',
+      image: data.image,
+      slug: data.slug || '',
+      content: content || '',
+      contentHtml,
+    };
+  } catch (error) {
+    console.error('Error parsing markdown:', error);
+    console.error('Markdown que causó el error:', markdown.substring(0, 500));
+    throw new Error('Error al parsear el markdown del artículo');
+  }
 }
 
 export function createArticleMarkdown(metadata: ArticleMetadata, content: string): string {
