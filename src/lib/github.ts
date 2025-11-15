@@ -5,12 +5,13 @@ const REPO_OWNER = 'correo940';
 const REPO_NAME = 'Quiova';
 const CONTENT_PATH = 'content/articles';
 
-export const octokit = new Octokit({
+// Solo inicializar Octokit si hay token para evitar errores en build time
+export const octokit = GITHUB_TOKEN ? new Octokit({
   auth: GITHUB_TOKEN,
-});
+}) : null;
 
 export async function getArticleContent(path: string) {
-  if (!GITHUB_TOKEN) {
+  if (!GITHUB_TOKEN || !octokit) {
     console.warn('GITHUB_TOKEN no está configurado. No se puede cargar desde GitHub.');
     throw new Error('GITHUB_TOKEN_NOT_CONFIGURED');
   }
@@ -48,6 +49,10 @@ export async function createOrUpdateArticle(
   message: string,
   sha?: string
 ) {
+  if (!GITHUB_TOKEN || !octokit) {
+    throw new Error('GITHUB_TOKEN no está configurado');
+  }
+
   try {
     const response = await octokit.rest.repos.createOrUpdateFileContents({
       owner: REPO_OWNER,
@@ -65,6 +70,10 @@ export async function createOrUpdateArticle(
 }
 
 export async function deleteArticle(path: string, message: string, sha: string) {
+  if (!GITHUB_TOKEN || !octokit) {
+    throw new Error('GITHUB_TOKEN no está configurado');
+  }
+
   try {
     const response = await octokit.rest.repos.deleteFile({
       owner: REPO_OWNER,
@@ -81,6 +90,10 @@ export async function deleteArticle(path: string, message: string, sha: string) 
 }
 
 export async function listArticles() {
+  if (!GITHUB_TOKEN || !octokit) {
+    return [];
+  }
+
   try {
     const response = await octokit.rest.repos.getContent({
       owner: REPO_OWNER,
