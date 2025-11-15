@@ -1,6 +1,6 @@
 ---
-title: 'PROBANDO SIGO '
-description: SIGO SIGO SIGO
+title: probandoooooooooooooooooooooooooooooooo
+description: aewraerfrrrrrrrrrrrrrrrr
 category: salud física
 date: 15 de junio de 2024
 slug: la-rutina-de-ejercicios-matutinos-de-10-minutos-para-gente-ocupada
