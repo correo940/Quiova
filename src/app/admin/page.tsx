@@ -1,13 +1,12 @@
 "use client";
-// Import 'useEffect' para cargar datos
+// Importa 'useEffect' para cargar datos
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-// ELIMINA esta importación:
+// ELIMINA LA IMPORTACIÓN ESTÁTICA:
 // import { allArticles as initialArticles } from "@/lib/data";
 
-// Define un tipo básico para tus artículos, ya que no los estamos importando
-// (Probablemente tengas un tipo mejor en '@/types/article' que puedas usar)
+// Define un tipo para el artículo (ajusta esto a tu tipo real si lo tienes)
 type Article = {
   id: string;
   slug: string;
@@ -16,13 +15,12 @@ type Article = {
 };
 
 export default function AdminPage() {
-  // Inicializa 'articles' como un array vacío
+  // Inicializa los artículos como un array vacío
   const [articles, setArticles] = useState<Article[]>([]);
-  // Añade un estado de carga
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Añade un estado de carga
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Usa useEffect para cargar los artículos del lado del cliente
+  // Carga los artículos desde tu API cuando el componente se monta
   useEffect(() => {
     async function loadArticles() {
       try {
@@ -37,16 +35,19 @@ export default function AdminPage() {
         setLoading(false);
       }
     }
-    // Llama a la función
     loadArticles();
-  }, []); // El array vacío [] asegura que esto solo se ejecute una vez
+  }, []); // El array vacío asegura que solo se ejecute una vez
 
+  // Esta función ahora llamará a tu API DELETE
   const handleDelete = async (slug: string) => {
     if (!window.confirm("¿Seguro que deseas eliminar este artículo?")) return;
     setDeleting(slug);
     try {
+      // Llama a tu endpoint de la API
       const res = await fetch(`/api/articles/${slug}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Error al eliminar");
+      
+      // Si tiene éxito, actualiza el estado local
       setArticles((prev) => prev.filter((a) => a.slug !== slug));
     } catch (e) {
       alert("No se pudo eliminar el artículo");
@@ -55,7 +56,6 @@ export default function AdminPage() {
     }
   };
 
-  // Muestra un mensaje de carga mientras se obtienen los datos
   if (loading) {
     return <div className="container mx-auto p-6">Cargando artículos...</div>;
   }
@@ -77,12 +77,13 @@ export default function AdminPage() {
                 <div>
                   <h3 className="font-medium">{article.title}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {/* Formatea la fecha si es necesario, ya que puede venir como string */}
+                    {/* Formatea la fecha para que sea legible */}
                     {new Date(article.date).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button asChild variant="outline" size="sm">
+                    {/* El link "Ver" debe ir al artículo público */}
                     <Link href={`/articles/${article.slug}`}>Ver</Link>
                   </Button>
                   <Button asChild size="sm">
