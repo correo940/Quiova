@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { listArticles, createOrUpdateArticle } from '@/lib/github';
+// AÑADE 'getArticleContent'
+import { listArticles, createOrUpdateArticle, getArticleContent } from '@/lib/github';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import matter from 'gray-matter';
 
@@ -14,8 +15,34 @@ export async function GET() {
   }
 
   try {
-    const articles = await listArticles();
-    return NextResponse.json(articles);
+    // 1. Obtiene la lista de archivos (ej: 'articulo1.md')
+    const articleFiles = await listArticles();
+
+    // 2. Lee el contenido de cada archivo en paralelo
+    const articles = await Promise.all(
+      articleFiles.map(async (file) => {
+        try {
+          const content = await getArticleContent(file.name);
+          // 3. Extrae la metadata (frontmatter)
+          const { data } = matter(content); 
+          
+          return {
+            ...data, // Devuelve toda la metadata (title, date, excerpt, etc.)
+            id: data.id || file.name.replace(/\.md$/, ''),
+            slug: file.name.replace(/\.md$/, ''), // Añade el slug desde el nombre de archivo
+          };
+        } catch (e) {
+          console.error(`Error procesando el archivo ${file.name}:`, e);
+          return null; // Devuelve null si un archivo falla
+        }
+      })
+    );
+
+    // 4. Filtra cualquier archivo que haya fallado
+    const validArticles = articles.filter(Boolean);
+
+    return NextResponse.json(validArticles);
+
   } catch (error) {
     console.error('Error listando artículos:', error);
     return new NextResponse(
@@ -25,6 +52,7 @@ export async function GET() {
   }
 }
 
+// La función POST ya está correcta y no necesita cambios
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
