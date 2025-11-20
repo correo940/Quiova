@@ -1,9 +1,17 @@
 import matter from 'gray-matter';
+import { Octokit } from 'octokit';
 
 const GITHUB_API = 'https://api.github.com';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const owner = process.env.GITHUB_OWNER || 'correo940';
 const repo = process.env.GITHUB_REPO || 'quiova';
 const branch = process.env.GITHUB_BRANCH || 'main';
+const CONTENT_PATH = 'content/articles';
+
+// Solo inicializar Octokit si hay token
+export const octokit = GITHUB_TOKEN ? new Octokit({
+  auth: GITHUB_TOKEN,
+}) : null;
 
 export interface Article {
   title: string;
@@ -20,35 +28,39 @@ export interface Article {
 export async function getArticlesFromGitHub(): Promise<Article[]> {
   try {
     const response = await fetch(
-      `${GITHUB_API}/repos/${owner}/${repo}/contents/content/articles?ref=${branch}`,
+      `${GITHUB_API}/repos/${owner}/${repo}/contents/${CONTENT_PATH}?ref=${branch}`,
       {
         headers: {
-          Authorization: process.env.GITHUB_TOKEN ? `Bearer ${process.env.GITHUB_TOKEN}` : '',
+          Authorization: GITHUB_TOKEN ? `Bearer ${GITHUB_TOKEN}` : '',
           Accept: 'application/vnd.github.v3+json',
         },
-        // Si usas Next.js 13+ y quieres revalidar en ISR, puedes mantener esta opción
-        // next: { revalidate: 60 },
+        next: { revalidate: 60 }, // Revalidar cada 60 segundos
       }
     );
 
     if (!response.ok) {
-      console.error('Error al obtener artículos de GitHub', response.status, await response.text());
+      console.error('❌ Error al obtener artículos de GitHub', response.status, await response.text());
       return [];
     }
 
     const files = await response.json();
+    
+    if (!Array.isArray(files)) {
+      console.error('❌ La respuesta no es un array:', files);
+      return [];
+    }
+
     const articles: Article[] = [];
 
     // Leer cada archivo .md
     for (const file of files) {
       if (file.name && file.name.endsWith('.md')) {
-        // Usamos download_url si está disponible (contenido raw)
         const contentUrl = file.download_url || file.url;
         if (!contentUrl) continue;
 
         const contentResponse = await fetch(contentUrl);
         if (!contentResponse.ok) {
-          console.warn('No se pudo descargar el archivo', file.name);
+          console.warn('⚠️ No se pudo descargar el archivo', file.name);
           continue;
         }
         const raw = await contentResponse.text();
@@ -69,17 +81,31 @@ export async function getArticlesFromGitHub(): Promise<Article[]> {
       }
     }
 
+    console.log(`✅ ${articles.length} artículos cargados desde GitHub`);
     return articles;
   } catch (error) {
-    console.error('Error leyendo artículos desde GitHub:', error);
+    console.error('❌ Error leyendo artículos desde GitHub:', error);
     return [];
   }
 }
 
-// Obtener artículos por categoría
+// Obtener artículos por categoría (CON NORMALIZACIÓN)
 export async function getArticlesByCategory(category: string): Promise<Article[]> {
   const articles = await getArticlesFromGitHub();
-  return articles.filter((article) => article.category === category);
+  
+  // 🔧 NORMALIZAR: minúsculas y sin espacios extra
+  const normalizedSearch = category.toLowerCase().trim();
+  
+  const filtered = articles.filter((article) => {
+    const articleCategory = (article.category || '').toLowerCase().trim();
+    return articleCategory === normalizedSearch;
+  });
+
+  console.log(`🔍 Buscando categoría: "${category}"`);
+  console.log(`📋 Categorías disponibles:`, articles.map(a => `"${a.category}"`));
+  console.log(`✅ Encontrados: ${filtered.length} artículos`);
+  
+  return filtered;
 }
 
 // Obtener un artículo por slug
@@ -87,17 +113,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   const articles = await getArticlesFromGitHub();
   return articles.find((article) => article.slug === slug) || null;
 }
-import { Octokit } from 'octokit';
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'correo940';
-const REPO_NAME = 'Quiova';
-const CONTENT_PATH = 'content/articles';
-
-// Solo inicializar Octokit si hay token para evitar errores en build time
-export const octokit = GITHUB_TOKEN ? new Octokit({
-  auth: GITHUB_TOKEN,
-}) : null;
+// ===== FUNCIONES PARA CREAR/EDITAR/ELIMINAR =====
 
 export async function getArticleContent(path: string) {
   if (!GITHUB_TOKEN || !octokit) {
@@ -107,8 +124,8 @@ export async function getArticleContent(path: string) {
 
   try {
     const response = await octokit.rest.repos.getContent({
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
+      owner,
+      repo,
       path: `${CONTENT_PATH}/${path}`,
     });
 
@@ -118,11 +135,9 @@ export async function getArticleContent(path: string) {
     }
     throw new Error('No content found');
   } catch (error: any) {
-    // Si es un error 404, lanzarlo para que se maneje arriba
     if (error.status === 404 || error.message === 'Not Found') {
       throw new Error('Article not found');
     }
-    // Si es un error de autenticación o token
     if (error.status === 401 || error.status === 403) {
       console.error('Error de autenticación con GitHub:', error.message);
       throw new Error('GITHUB_AUTH_ERROR');
@@ -144,8 +159,8 @@ export async function createOrUpdateArticle(
 
   try {
     const response = await octokit.rest.repos.createOrUpdateFileContents({
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
+      owner,
+      repo,
       path: `${CONTENT_PATH}/${path}`,
       message,
       content: Buffer.from(content).toString('base64'),
@@ -165,8 +180,8 @@ export async function deleteArticle(path: string, message: string, sha: string) 
 
   try {
     const response = await octokit.rest.repos.deleteFile({
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
+      owner,
+      repo,
       path: `${CONTENT_PATH}/${path}`,
       message,
       sha,
@@ -185,8 +200,8 @@ export async function listArticles() {
 
   try {
     const response = await octokit.rest.repos.getContent({
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
+      owner,
+      repo,
       path: CONTENT_PATH,
     });
 
