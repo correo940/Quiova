@@ -1,3 +1,92 @@
+import matter from 'gray-matter';
+
+const GITHUB_API = 'https://api.github.com';
+const owner = process.env.GITHUB_OWNER || 'correo940';
+const repo = process.env.GITHUB_REPO || 'quiova';
+const branch = process.env.GITHUB_BRANCH || 'main';
+
+export interface Article {
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  author: string;
+  slug: string;
+  content: string;
+  image?: string;
+}
+
+// Obtener todos los artículos desde GitHub
+export async function getArticlesFromGitHub(): Promise<Article[]> {
+  try {
+    const response = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/contents/content/articles?ref=${branch}`,
+      {
+        headers: {
+          Authorization: process.env.GITHUB_TOKEN ? `Bearer ${process.env.GITHUB_TOKEN}` : '',
+          Accept: 'application/vnd.github.v3+json',
+        },
+        // Si usas Next.js 13+ y quieres revalidar en ISR, puedes mantener esta opción
+        // next: { revalidate: 60 },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Error al obtener artículos de GitHub', response.status, await response.text());
+      return [];
+    }
+
+    const files = await response.json();
+    const articles: Article[] = [];
+
+    // Leer cada archivo .md
+    for (const file of files) {
+      if (file.name && file.name.endsWith('.md')) {
+        // Usamos download_url si está disponible (contenido raw)
+        const contentUrl = file.download_url || file.url;
+        if (!contentUrl) continue;
+
+        const contentResponse = await fetch(contentUrl);
+        if (!contentResponse.ok) {
+          console.warn('No se pudo descargar el archivo', file.name);
+          continue;
+        }
+        const raw = await contentResponse.text();
+
+        // Parsear frontmatter
+        const { data, content: articleContent } = matter(raw);
+
+        articles.push({
+          title: data.title || '',
+          description: data.description || '',
+          category: data.category || '',
+          date: data.date || '',
+          author: data.author || 'Anónimo',
+          slug: data.slug || file.name.replace('.md', ''),
+          content: articleContent,
+          image: data.image,
+        });
+      }
+    }
+
+    return articles;
+  } catch (error) {
+    console.error('Error leyendo artículos desde GitHub:', error);
+    return [];
+  }
+}
+
+// Obtener artículos por categoría
+export async function getArticlesByCategory(category: string): Promise<Article[]> {
+  const articles = await getArticlesFromGitHub();
+  return articles.filter((article) => article.category === category);
+}
+
+// Obtener un artículo por slug
+export async function getArticleBySlug(slug: string): Promise<Article | null> {
+  const articles = await getArticlesFromGitHub();
+  return articles.find((article) => article.slug === slug) || null;
+}
 import { Octokit } from 'octokit';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;

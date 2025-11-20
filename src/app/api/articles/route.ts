@@ -67,6 +67,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Metadata y contenido son requeridos' }, { status: 400 });
     }
 
+    // Validar que la categoría esté presente en el frontmatter
+    if (!metadata.category) {
+      return NextResponse.json({ error: 'La categoría es requerida en el frontmatter' }, { status: 400 });
+    }
+
     if (!metadata.slug) {
       return NextResponse.json({ error: 'El slug es requerido' }, { status: 400 });
     }
