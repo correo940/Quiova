@@ -1,12 +1,19 @@
 import React from 'react';
-import { getArticlesByCategory } from '@/lib/github';
+import { getArticlesByCategory, getArticlesFromGitHub } from '@/lib/github';
 import ArticleCard from '@/components/article-card';
 import type { Article as SiteArticle, ArticleCategory } from '@/types';
 
 export default async function SaludFisicaPage() {
+  // 🔍 DEBUG: Ver todos los artículos
+  const allArticles = await getArticlesFromGitHub();
+  console.log('='.repeat(50));
+  console.log('📚 TOTAL ARTÍCULOS:', allArticles.length);
+  console.log('📋 CATEGORÍAS:', allArticles.map(a => `"${a.category}"`).join(', '));
+  console.log('='.repeat(50));
+
   const articlesFromGitHub = await getArticlesByCategory('salud física');
 
-  // Mapear al tipo interno esperado por ArticleCard (completando campos faltantes)
+  // Mapear al tipo interno esperado por ArticleCard
   const mapped: SiteArticle[] = articlesFromGitHub.map((a) => ({
     id: a.slug,
     slug: a.slug,
@@ -29,7 +36,12 @@ export default async function SaludFisicaPage() {
       <h1 className="text-4xl font-bold mb-8">Salud Física</h1>
 
       {mapped.length === 0 ? (
-        <p>No hay artículos en esta categoría aún.</p>
+        <div>
+          <p className="text-red-500 font-bold">⚠️ No hay artículos en esta categoría.</p>
+          <p className="mt-2 text-sm text-gray-600">
+            Total de artículos en GitHub: {allArticles.length}
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {mapped.map((article) => (
