@@ -3,9 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { allArticles, ArticleCategory, categories } from '@/lib/data';
+import { ArticleCategory, categories } from '@/lib/data';
 import ArticleCard from '@/components/article-card';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -14,6 +13,30 @@ import CategoryIcon from '@/components/category-icon';
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 🆕 Cargar artículos desde la API
+  useEffect(() => {
+    async function loadArticles() {
+      try {
+        const response = await fetch('/api/articles');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📚 Artículos cargados desde API:', data.length);
+          console.log('📋 Categorías:', data.map((a: any) => a.category));
+          setArticles(data);
+        } else {
+          console.error('❌ Error al cargar artículos');
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadArticles();
+  }, []);
 
   // Carrusel con gradientes temáticos
   const slides = [
@@ -48,16 +71,30 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  const featuredArticles = useMemo(() => allArticles.filter((article) => article.featured), []);
+  const featuredArticles = useMemo(() => articles.filter((article) => article.featured), [articles]);
 
   const filteredArticles = useMemo(() => {
     if (selectedCategory === 'all') {
-      return allArticles.filter((article) => !article.featured);
+      return articles.filter((article) => !article.featured);
     }
-    return allArticles.filter(
-      (article) => article.category === selectedCategory && !article.featured
+
+    // 🔧 Normalizar la comparación de categorías
+    const normalizedCategory = selectedCategory.toLowerCase().trim();
+
+    return articles.filter((article) => {
+      const articleCategory = (article.category || '').toLowerCase().trim();
+      return articleCategory === normalizedCategory && !article.featured;
+    });
+  }, [selectedCategory, articles]);
+
+  // 🆕 Mostrar loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center">
+        <p className="text-xl">Cargando artículos...</p>
+      </div>
     );
-  }, [selectedCategory]);
+  }
 
   return (
     <div className="w-full">
@@ -65,7 +102,7 @@ export default function Home() {
       <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
         <div className="relative w-full h-full">
           {/* Slide actual */}
-          <div 
+          <div
             className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
           >
             <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
@@ -90,9 +127,8 @@ export default function Home() {
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentSlide ? 'bg-white' : 'bg-white/50'
-                }`}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-white' : 'bg-white/50'
+                  }`}
               />
             ))}
           </div>
@@ -115,32 +151,39 @@ export default function Home() {
 
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Featured Articles */}
-        <section className="mb-12 md:mb-16">
-          <h2 className="font-headline text-3xl font-bold mb-6 text-center">Artículos Destacados</h2>
-          <Carousel
-            opts={{
-              align: 'start',
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
-              {featuredArticles.map((article) => (
-                <CarouselItem key={article.id} className="md:basis-1/2 lg:basis-1/3">
-                  <div className="p-1 h-full">
-                    <ArticleCard article={article} className="h-full" />
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden md:flex"/>
-            <CarouselNext className="hidden md:flex"/>
-          </Carousel>
-        </section>
+        {featuredArticles.length > 0 && (
+          <section className="mb-12 md:mb-16">
+            <h2 className="font-headline text-3xl font-bold mb-6 text-center">Artículos Destacados</h2>
+            <Carousel
+              opts={{
+                align: 'start',
+                loop: true,
+              }}
+              className="w-full"
+            >
+              <CarouselContent>
+                {featuredArticles.map((article) => (
+                  <CarouselItem key={article.id} className="md:basis-1/2 lg:basis-1/3">
+                    <div className="p-1 h-full">
+                      <ArticleCard article={article} className="h-full" />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="hidden md:flex" />
+              <CarouselNext className="hidden md:flex" />
+            </Carousel>
+          </section>
+        )}
 
         {/* Latest Articles */}
         <section id="latest-articles">
           <h2 className="font-headline text-3xl font-bold mb-6 text-center">Últimos Artículos</h2>
+
+          {/* 🆕 Debug info */}
+          <div className="mb-4 text-center text-sm text-muted-foreground">
+            Total: {articles.length} artículos | Mostrando: {filteredArticles.length}
+          </div>
 
           {/* Category Filters */}
           <div className="flex justify-center flex-wrap gap-2 mb-8">
