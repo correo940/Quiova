@@ -10,15 +10,16 @@ import { getArticleContent } from '@/lib/github';
 import { parseMarkdown } from '@/lib/markdown';
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export const revalidate = 60;
 
 export async function generateMetadata(
-  { params }: Props,
+  props: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const params = await props.params;
   const slug = params.slug;
 
   try {
@@ -57,9 +58,9 @@ const YoutubeEmbed = ({ url }: { url: string }) => {
   );
 };
 
-export default async function ArticlePage({ params }: { params: { slug: string } }) {
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   try {
-    const resolvedParams = await Promise.resolve(params);
+    const resolvedParams = await params;
     const slug = resolvedParams.slug;
 
     let article: any;
@@ -112,7 +113,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     }
 
     // 🆕 ARTÍCULOS RELACIONADOS DESDE GITHUB
-    let relatedArticles = [];
+    let relatedArticles: any[] = [];
     try {
       const { getArticlesByCategory } = await import('@/lib/github');
       const categoryArticles = await getArticlesByCategory(article.category);
