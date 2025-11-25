@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart, Calendar, Lock, Users } from 'lucide-react';
+import { BarChart, Calendar, Lock, Users, Home } from 'lucide-react';
 import Link from 'next/link';
 
 const apps = [
@@ -45,6 +45,12 @@ const apps = [
     href: '/apps/subastas-master',
     icon: BarChart, // Puedes cambiar el icono si quieres
     description: 'Aprende a invertir en subastas inmobiliarias.',
+  },
+  {
+    name: 'Mi Hogar',
+    href: '/apps/mi-hogar',
+    icon: Home,
+    description: 'Gestión integral del hogar: contraseñas, compras, manuales y más.',
   },
 ];
 
