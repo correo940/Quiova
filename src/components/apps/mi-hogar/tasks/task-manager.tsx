@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type Task = {
     id: string;
@@ -27,24 +29,53 @@ export default function TaskManager() {
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [hasAlarm, setHasAlarm] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
-    // Load tasks
     useEffect(() => {
-        const saved = localStorage.getItem('mi-hogar-tasks');
-        if (saved) {
-            setTasks(JSON.parse(saved));
+        if (user) {
+            fetchTasks();
+        } else {
+            setTasks([]);
+            setLoading(false);
         }
 
         // Request notification permission
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
-    }, []);
+    }, [user]);
 
-    // Save tasks
-    useEffect(() => {
-        localStorage.setItem('mi-hogar-tasks', JSON.stringify(tasks));
-    }, [tasks]);
+    const fetchTasks = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .order('due_date', { ascending: true });
+
+            if (error) throw error;
+
+            const mappedTasks: Task[] = data.map((item: any) => {
+                const dueDate = new Date(item.due_date);
+                return {
+                    id: item.id,
+                    title: item.title,
+                    date: format(dueDate, 'yyyy-MM-dd'),
+                    time: format(dueDate, 'HH:mm'),
+                    hasAlarm: item.has_alarm,
+                    completed: item.is_completed,
+                };
+            });
+
+            setTasks(mappedTasks);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            toast.error('Error al cargar las tareas');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Alarm Checker
     useEffect(() => {
@@ -73,10 +104,9 @@ export default function TaskManager() {
     }, [tasks]);
 
     const playAlarmSound = () => {
-        // Simple beep using AudioContext or just a console log if audio not allowed without interaction
         try {
-            const audio = new Audio('/alarm-sound.mp3'); // Placeholder, won't play if file missing, but logic is here
-            // Fallback to browser beep logic or just rely on visual toast
+            const audio = new Audio('/alarm-sound.mp3');
+            audio.play().catch(e => console.log('Audio play failed', e));
         } catch (e) {
             console.error('Audio play failed', e);
         }
@@ -86,43 +116,102 @@ export default function TaskManager() {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Mi Hogar - Alarma', {
                 body: title,
-                icon: '/icons/icon-192x192.png' // Placeholder
+                icon: '/icons/icon-192x192.png'
             });
         }
     };
 
-    const addTask = () => {
-        if (!title || !date || !time) {
+    const addTask = async () => {
+        if (!title || !date || !time || !user) {
             toast.error('Completa todos los campos');
             return;
         }
 
-        const newTask: Task = {
-            id: crypto.randomUUID(),
-            title,
-            date,
-            time,
-            hasAlarm,
-            completed: false,
-        };
+        const dueDate = new Date(`${date}T${time}`);
 
-        setTasks([...tasks, newTask].sort((a, b) => {
-            return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
-        }));
+        try {
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([
+                    {
+                        user_id: user.id,
+                        title,
+                        due_date: dueDate.toISOString(),
+                        has_alarm: hasAlarm,
+                        is_completed: false,
+                    },
+                ])
+                .select()
+                .single();
 
-        setTitle('');
-        toast.success('Tarea programada');
+            if (error) throw error;
+
+            const newTask: Task = {
+                id: data.id,
+                title: data.title,
+                date: format(new Date(data.due_date), 'yyyy-MM-dd'),
+                time: format(new Date(data.due_date), 'HH:mm'),
+                hasAlarm: data.has_alarm,
+                completed: data.is_completed,
+            };
+
+            setTasks([...tasks, newTask].sort((a, b) => {
+                return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+            }));
+
+            setTitle('');
+            toast.success('Tarea programada');
+        } catch (error) {
+            console.error('Error adding task:', error);
+            toast.error('Error al programar la tarea');
+        }
     };
 
-    const toggleComplete = (id: string) => {
-        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    const toggleComplete = async (id: string) => {
+        const task = tasks.find(t => t.id === id);
+        if (!task) return;
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .update({ is_completed: !task.completed })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+        } catch (error) {
+            console.error('Error updating task:', error);
+            toast.error('Error al actualizar la tarea');
+        }
     };
 
-    const deleteTask = (id: string) => {
-        setTasks(tasks.filter(t => t.id !== id));
+    const deleteTask = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setTasks(tasks.filter(t => t.id !== id));
+            toast.success('Tarea eliminada');
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            toast.error('Error al eliminar la tarea');
+        }
     };
 
     const today = format(new Date(), 'yyyy-MM-dd');
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

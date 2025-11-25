@@ -8,9 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type Manual = {
     id: string;
@@ -26,6 +28,8 @@ export default function ManualsGallery() {
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [search, setSearch] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     // Form states
     const [title, setTitle] = useState('');
@@ -36,22 +40,49 @@ export default function ManualsGallery() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const saved = localStorage.getItem('mi-hogar-manuals');
-        if (saved) {
-            setManuals(JSON.parse(saved));
+        if (user) {
+            fetchManuals();
+        } else {
+            setManuals([]);
+            setLoading(false);
         }
-    }, []);
+    }, [user]);
 
-    useEffect(() => {
-        localStorage.setItem('mi-hogar-manuals', JSON.stringify(manuals));
-    }, [manuals]);
+    const fetchManuals = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('manuals')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const mappedManuals: Manual[] = data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                category: item.category || '',
+                description: item.description || '',
+                type: item.type as any,
+                content: item.content || '',
+                date: new Date(item.created_at).toLocaleDateString(),
+            }));
+
+            setManuals(mappedManuals);
+        } catch (error) {
+            console.error('Error fetching manuals:', error);
+            toast.error('Error al cargar los manuales');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 1024 * 1024 * 2) { // 2MB limit for localStorage safety
-            toast.error('El archivo es demasiado grande para guardar localmente (>2MB).');
+        if (file.size > 1024 * 1024 * 2) { // 2MB limit
+            toast.error('El archivo es demasiado grande (>2MB).');
             return;
         }
 
@@ -63,32 +94,66 @@ export default function ManualsGallery() {
         reader.readAsDataURL(file);
     };
 
-    const addManual = () => {
-        if (!title || !category) {
+    const addManual = async () => {
+        if (!title || !category || !user) {
             toast.error('Título y categoría son obligatorios');
             return;
         }
 
-        const newManual: Manual = {
-            id: crypto.randomUUID(),
-            title,
-            category,
-            description,
-            type,
-            content,
-            date: new Date().toLocaleDateString(),
-        };
+        try {
+            const { data, error } = await supabase
+                .from('manuals')
+                .insert([
+                    {
+                        user_id: user.id,
+                        title,
+                        category,
+                        description,
+                        type,
+                        content,
+                    },
+                ])
+                .select()
+                .single();
 
-        setManuals([newManual, ...manuals]);
-        setIsDialogOpen(false);
-        resetForm();
-        toast.success('Manual añadido correctamente');
+            if (error) throw error;
+
+            const newManual: Manual = {
+                id: data.id,
+                title: data.title,
+                category: data.category || '',
+                description: data.description || '',
+                type: data.type as any,
+                content: data.content || '',
+                date: new Date(data.created_at).toLocaleDateString(),
+            };
+
+            setManuals([newManual, ...manuals]);
+            setIsDialogOpen(false);
+            resetForm();
+            toast.success('Manual añadido correctamente');
+        } catch (error) {
+            console.error('Error adding manual:', error);
+            toast.error('Error al guardar el manual');
+        }
     };
 
-    const deleteManual = (id: string) => {
-        if (confirm('¿Eliminar este manual?')) {
+    const deleteManual = async (id: string) => {
+        if (!confirm('¿Eliminar este manual?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('manuals')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
             setManuals(manuals.filter(m => m.id !== id));
             toast.success('Manual eliminado');
+        } catch (error) {
+            console.error('Error deleting manual:', error);
+            toast.error('Error al eliminar el manual');
         }
     };
 
@@ -104,6 +169,14 @@ export default function ManualsGallery() {
         m.title.toLowerCase().includes(search.toLowerCase()) ||
         m.category.toLowerCase().includes(search.toLowerCase())
     );
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Shield, Plus, Calendar, DollarSign, AlertTriangle, CheckCircle, Trash2, Building2 } from 'lucide-react';
+import { Shield, Plus, Calendar, DollarSign, AlertTriangle, CheckCircle, Trash2, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO, addYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type Insurance = {
     id: string;
@@ -23,6 +25,8 @@ type Insurance = {
 export default function InsuranceManager() {
     const [policies, setPolicies] = useState<Insurance[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     // Form
     const [type, setType] = useState('');
@@ -32,41 +36,101 @@ export default function InsuranceManager() {
     const [notes, setNotes] = useState('');
 
     useEffect(() => {
-        const saved = localStorage.getItem('mi-hogar-insurance');
-        if (saved) {
-            setPolicies(JSON.parse(saved));
+        if (user) {
+            fetchPolicies();
+        } else {
+            setPolicies([]);
+            setLoading(false);
         }
-    }, []);
+    }, [user]);
 
-    useEffect(() => {
-        localStorage.setItem('mi-hogar-insurance', JSON.stringify(policies));
-    }, [policies]);
+    const fetchPolicies = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('insurances')
+                .select('*')
+                .order('expiration_date', { ascending: true });
 
-    const addPolicy = () => {
-        if (!type || !company || !expirationDate) {
+            if (error) throw error;
+
+            const mappedPolicies: Insurance[] = data.map((item: any) => ({
+                id: item.id,
+                type: item.name,
+                company: item.provider || '',
+                price: Number(item.cost) || 0,
+                expirationDate: item.expiration_date,
+                notes: item.notes || '',
+            }));
+
+            setPolicies(mappedPolicies);
+        } catch (error) {
+            console.error('Error fetching policies:', error);
+            toast.error('Error al cargar los seguros');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addPolicy = async () => {
+        if (!type || !company || !expirationDate || !user) {
             toast.error('Tipo, Compañía y Fecha son obligatorios');
             return;
         }
 
-        const newPolicy: Insurance = {
-            id: crypto.randomUUID(),
-            type,
-            company,
-            price: Number(price) || 0,
-            expirationDate,
-            notes,
-        };
+        try {
+            const { data, error } = await supabase
+                .from('insurances')
+                .insert([
+                    {
+                        user_id: user.id,
+                        name: type,
+                        provider: company,
+                        cost: Number(price) || 0,
+                        expiration_date: expirationDate,
+                        notes: notes,
+                    },
+                ])
+                .select()
+                .single();
 
-        setPolicies([...policies, newPolicy].sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
-        setIsDialogOpen(false);
-        resetForm();
-        toast.success('Seguro añadido');
+            if (error) throw error;
+
+            const newPolicy: Insurance = {
+                id: data.id,
+                type: data.name,
+                company: data.provider || '',
+                price: Number(data.cost) || 0,
+                expirationDate: data.expiration_date,
+                notes: data.notes || '',
+            };
+
+            setPolicies([...policies, newPolicy].sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
+            setIsDialogOpen(false);
+            resetForm();
+            toast.success('Seguro añadido');
+        } catch (error) {
+            console.error('Error adding policy:', error);
+            toast.error('Error al guardar el seguro');
+        }
     };
 
-    const deletePolicy = (id: string) => {
-        if (confirm('¿Eliminar este seguro?')) {
+    const deletePolicy = async (id: string) => {
+        if (!confirm('¿Eliminar este seguro?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('insurances')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
             setPolicies(policies.filter(p => p.id !== id));
             toast.success('Seguro eliminado');
+        } catch (error) {
+            console.error('Error deleting policy:', error);
+            toast.error('Error al eliminar el seguro');
         }
     };
 
@@ -89,6 +153,14 @@ export default function InsuranceManager() {
         if (days < 30) return 'Vence pronto';
         return 'Activo';
     };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

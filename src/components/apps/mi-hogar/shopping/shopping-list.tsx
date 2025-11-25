@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type ShoppingItem = {
     id: string;
@@ -19,50 +21,135 @@ type ShoppingItem = {
 export default function ShoppingList() {
     const [items, setItems] = useState<ShoppingItem[]>([]);
     const [newItemName, setNewItemName] = useState('');
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
-    // Load from localStorage
     useEffect(() => {
-        const saved = localStorage.getItem('mi-hogar-shopping');
-        if (saved) {
-            setItems(JSON.parse(saved));
+        if (user) {
+            fetchItems();
+        } else {
+            setItems([]);
+            setLoading(false);
         }
-    }, []);
+    }, [user]);
 
-    // Save to localStorage
-    useEffect(() => {
-        localStorage.setItem('mi-hogar-shopping', JSON.stringify(items));
-    }, [items]);
+    const fetchItems = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-    const addItem = () => {
-        if (!newItemName.trim()) return;
-        const newItem: ShoppingItem = {
-            id: crypto.randomUUID(),
-            name: newItemName,
-            category: 'General',
-            status: 'to_buy',
-        };
-        setItems([...items, newItem]);
-        setNewItemName('');
-        toast.success('Añadido a la lista de compra');
+            if (error) throw error;
+
+            const mappedItems: ShoppingItem[] = data.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                category: item.category || 'General',
+                status: item.is_checked ? 'in_stock' : 'to_buy',
+            }));
+
+            setItems(mappedItems);
+        } catch (error) {
+            console.error('Error fetching shopping items:', error);
+            toast.error('Error al cargar la lista de compra');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const toggleStatus = (id: string) => {
-        setItems(items.map(item => {
-            if (item.id === id) {
-                const newStatus = item.status === 'to_buy' ? 'in_stock' : 'to_buy';
-                toast.success(newStatus === 'to_buy' ? '¡Añadido a la lista!' : '¡Comprado!');
-                return { ...item, status: newStatus };
-            }
-            return item;
-        }));
+    const addItem = async () => {
+        if (!newItemName.trim() || !user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .insert([
+                    {
+                        user_id: user.id,
+                        name: newItemName,
+                        category: 'General',
+                        is_checked: false, // to_buy
+                    },
+                ])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            const newItem: ShoppingItem = {
+                id: data.id,
+                name: data.name,
+                category: data.category || 'General',
+                status: 'to_buy',
+            };
+
+            setItems([newItem, ...items]);
+            setNewItemName('');
+            toast.success('Añadido a la lista de compra');
+        } catch (error) {
+            console.error('Error adding item:', error);
+            toast.error('Error al añadir el producto');
+        }
     };
 
-    const deleteItem = (id: string) => {
-        setItems(items.filter(i => i.id !== id));
+    const toggleStatus = async (id: string) => {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        const newStatus = item.status === 'to_buy' ? 'in_stock' : 'to_buy';
+        const isChecked = newStatus === 'in_stock';
+
+        try {
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({ is_checked: isChecked })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setItems(items.map(i => {
+                if (i.id === id) {
+                    return { ...i, status: newStatus };
+                }
+                return i;
+            }));
+
+            toast.success(newStatus === 'to_buy' ? '¡Añadido a la lista!' : '¡Comprado!');
+        } catch (error) {
+            console.error('Error updating item:', error);
+            toast.error('Error al actualizar el estado');
+        }
+    };
+
+    const deleteItem = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('shopping_items')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setItems(items.filter(i => i.id !== id));
+            toast.success('Producto eliminado');
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            toast.error('Error al eliminar el producto');
+        }
     };
 
     const toBuyItems = items.filter(i => i.status === 'to_buy');
     const inStockItems = items.filter(i => i.status === 'in_stock');
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
