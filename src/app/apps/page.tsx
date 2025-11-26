@@ -5,48 +5,6 @@ import Link from 'next/link';
 
 const apps = [
   {
-    name: 'Tareas',
-    href: '/apps/tasks',
-    icon: Users,
-    description: 'Organiza tus proyectos y tareas diarias.',
-  },
-  {
-    name: 'Calendario',
-    href: '/apps/calendar',
-    icon: Calendar,
-    description: 'Gestiona tus eventos y fechas importantes.',
-  },
-  {
-    name: 'Contraseñas',
-    href: '/passwords',
-    icon: Lock,
-    description: 'Guarda y gestiona tus contraseñas de forma segura.',
-  },
-  {
-    name: 'Economía Doméstica',
-    href: '/apps/economia-domestica',
-    icon: BarChart, // Un icono apropiado para finanzas
-    description: 'Analiza tus gastos e ingresos desde extractos bancarios.',
-  },
-  {
-    name: 'Rentabilidad Inmobiliario',
-    href: '/apps/rentabilidad-inmobiliario',
-    icon: BarChart, // Puedes cambiar el icono si quieres
-    description: 'Calcula la rentabilidad de tus inversiones inmobiliarias.',
-  },
-  {
-    name: 'Nucleo',
-    href: '/apps/nucleo',
-    icon: Users, // Puedes cambiar el icono si quieres
-    description: 'Descripción de la aplicación Nucleo.',
-  },
-  {
-    name: 'Master en Subastas',
-    href: '/apps/subastas-master',
-    icon: BarChart, // Puedes cambiar el icono si quieres
-    description: 'Aprende a invertir en subastas inmobiliarias.',
-  },
-  {
     name: 'Mi Hogar',
     href: '/apps/mi-hogar',
     icon: Home,
