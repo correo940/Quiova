@@ -11,11 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Search, Eye, EyeOff, Copy, RefreshCw, Download, Upload, Edit, Trash2, Lock, Unlock, ShieldCheck } from 'lucide-react';
 
 export default function PasswordsClient() {
-  const { passwords, addPassword, updatePassword, deletePassword, decryptPassword, importPasswords, isLocked, unlock, lock } = usePasswords();
+  const { passwords, loading, addPassword, updatePassword, deletePassword, decryptPassword, importPasswords, isLocked, unlock, lock } = usePasswords();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, string>>({});
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, string | undefined>>({});
   const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,37 +182,68 @@ export default function PasswordsClient() {
     );
   }, [passwords, search]);
 
-  if (isLocked) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
-              <Lock className="h-8 w-8 text-primary" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    const isFirstTime = passwords.length === 0;
+
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
+              {isFirstTime ? <ShieldCheck className="h-10 w-10 text-primary" /> : <Lock className="h-10 w-10 text-primary" />}
             </div>
-            <CardTitle className="text-2xl">Bóveda Bloqueada</CardTitle>
-            <CardDescription>Introduce tu Contraseña Maestra para acceder.</CardDescription>
+            <CardTitle className="text-2xl font-bold">
+              {isFirstTime ? 'Configura tu Bóveda Segura' : 'Bóveda Bloqueada'}
+            </CardTitle>
+            <CardDescription className="text-base">
+              {isFirstTime
+                ? 'Tu seguridad es nuestra prioridad. Antes de empezar, necesitas crear una Llave Maestra.'
+                : 'Introduce tu Contraseña Maestra para descifrar y acceder a tus contraseñas.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
+            {isFirstTime && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4 mb-6 text-sm text-yellow-700 dark:text-yellow-200 rounded-r">
+                <p className="font-bold mb-2">⚠️ Información Importante:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Esta contraseña será la <strong>única llave</strong> para ver tus datos.</li>
+                  <li><strong>Solo tú la conoces</strong>. Nosotros no la guardamos.</li>
+                  <li>Si la olvidas, <strong>perderás acceso</strong> a tus contraseñas para siempre.</li>
+                  <li>Debes usar <strong>siempre la misma</strong> para entrar.</li>
+                </ul>
+              </div>
+            )}
+
             <form onSubmit={handleUnlock} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="master-password">Contraseña Maestra</Label>
+                <Label htmlFor="master-password">
+                  {isFirstTime ? 'Crea tu Contraseña Maestra' : 'Contraseña Maestra'}
+                </Label>
                 <Input
                   id="master-password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={isFirstTime ? "Elige una contraseña fuerte..." : "••••••••"}
                   value={masterPasswordInput}
                   onChange={(e) => setMasterPasswordInput(e.target.value)}
                   autoFocus
+                  className="text-lg py-6"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={unlocking}>
-                {unlocking ? 'Desbloqueando...' : 'Desbloquear Bóveda'}
+              <Button type="submit" className="w-full py-6 text-lg" disabled={unlocking || !masterPasswordInput}>
+                {unlocking ? 'Procesando...' : (isFirstTime ? 'Crear Bóveda y Acceder' : 'Desbloquear Bóveda')}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="justify-center text-xs text-muted-foreground text-center">
-            <p>Tus contraseñas están cifradas con seguridad de grado militar (AES-256) derivada de tu clave maestra.</p>
+          <CardFooter className="justify-center text-xs text-muted-foreground text-center border-t pt-4 bg-muted/20">
+            <p>Cifrado de extremo a extremo (AES-256) • Tu privacidad está garantizada</p>
           </CardFooter>
         </Card>
       </div>
@@ -256,7 +287,7 @@ export default function PasswordsClient() {
               className="pl-10"
             />
           </div>
-        </CardHeader>
+        </CardHeader >
         <CardContent>
           {filteredPasswords.length > 0 ? (
             <ul className="space-y-4">
@@ -294,7 +325,7 @@ export default function PasswordsClient() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card >
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
@@ -346,6 +377,6 @@ export default function PasswordsClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
