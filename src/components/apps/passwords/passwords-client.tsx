@@ -21,6 +21,7 @@ export default function PasswordsClient() {
 
   // Lock Screen State
   const [masterPasswordInput, setMasterPasswordInput] = useState('');
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
 
   const [name, setName] = useState('');
@@ -227,15 +228,30 @@ export default function PasswordsClient() {
                 <Label htmlFor="master-password">
                   {isFirstTime ? 'Crea tu Contraseña Maestra' : 'Contraseña Maestra'}
                 </Label>
-                <Input
-                  id="master-password"
-                  type="password"
-                  placeholder={isFirstTime ? "Elige una contraseña fuerte..." : "••••••••"}
-                  value={masterPasswordInput}
-                  onChange={(e) => setMasterPasswordInput(e.target.value)}
-                  autoFocus
-                  className="text-lg py-6"
-                />
+                <div className="relative">
+                  <Input
+                    id="master-password"
+                    type={showMasterPassword ? "text" : "password"}
+                    placeholder={isFirstTime ? "Elige una contraseña fuerte..." : "••••••••"}
+                    value={masterPasswordInput}
+                    onChange={(e) => setMasterPasswordInput(e.target.value)}
+                    autoFocus
+                    className="text-lg py-6 pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowMasterPassword(!showMasterPassword)}
+                  >
+                    {showMasterPassword ? (
+                      <EyeOff className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <Button type="submit" className="w-full py-6 text-lg" disabled={unlocking || !masterPasswordInput}>
                 {unlocking ? 'Procesando...' : (isFirstTime ? 'Crear Bóveda y Acceder' : 'Desbloquear Bóveda')}
