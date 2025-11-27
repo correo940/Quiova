@@ -1,4 +1,5 @@
 'use client';
+// Force rebuild
 
 import React, { useState, useMemo, useRef } from 'react';
 import { usePasswords, Password, PasswordInput } from '@/context/PasswordsContext';
@@ -8,13 +9,39 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, Eye, EyeOff, Copy, RefreshCw, Download, Upload, Edit, Trash2, Lock, Unlock, ShieldCheck } from 'lucide-react';
+import { Plus, Search, Eye, EyeOff, Copy, RefreshCw, Download, Upload, Edit, Trash2, Lock, Unlock, ShieldCheck, Globe, Smartphone, MapPin, Users, Cloud, Film, ShoppingBag, Briefcase, CreditCard, Folder, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const POPULAR_SERVICES = [
+  { name: 'Google', url: 'google.com', category: 'Correo/Nube', color: 'bg-red-500' },
+  { name: 'Facebook', url: 'facebook.com', category: 'Redes Sociales', color: 'bg-blue-600' },
+  { name: 'Instagram', url: 'instagram.com', category: 'Redes Sociales', color: 'bg-pink-600' },
+  { name: 'Twitter (X)', url: 'twitter.com', category: 'Redes Sociales', color: 'bg-black' },
+  { name: 'Netflix', url: 'netflix.com', category: 'Entretenimiento', color: 'bg-red-600' },
+  { name: 'Spotify', url: 'spotify.com', category: 'Entretenimiento', color: 'bg-green-500' },
+  { name: 'Amazon', url: 'amazon.com', category: 'Compras', color: 'bg-orange-500' },
+  { name: 'Apple', url: 'apple.com', category: 'Tecnología', color: 'bg-gray-800' },
+  { name: 'Microsoft', url: 'microsoft.com', category: 'Trabajo', color: 'bg-blue-500' },
+  { name: 'LinkedIn', url: 'linkedin.com', category: 'Trabajo', color: 'bg-blue-700' },
+];
+
+const CATEGORY_CONFIG: Record<string, { icon: React.ElementType, color: string, gradient: string }> = {
+  'Redes Sociales': { icon: Users, color: 'text-blue-500', gradient: 'from-blue-500/20 to-purple-500/20' },
+  'Correo/Nube': { icon: Cloud, color: 'text-sky-500', gradient: 'from-sky-500/20 to-blue-500/20' },
+  'Entretenimiento': { icon: Film, color: 'text-red-500', gradient: 'from-red-500/20 to-orange-500/20' },
+  'Compras': { icon: ShoppingBag, color: 'text-pink-500', gradient: 'from-pink-500/20 to-rose-500/20' },
+  'Trabajo': { icon: Briefcase, color: 'text-indigo-500', gradient: 'from-indigo-500/20 to-slate-500/20' },
+  'Finanzas': { icon: CreditCard, color: 'text-green-500', gradient: 'from-green-500/20 to-emerald-500/20' },
+  'Otros': { icon: Folder, color: 'text-gray-500', gradient: 'from-gray-500/20 to-slate-500/20' },
+  'Tecnología': { icon: Smartphone, color: 'text-zinc-500', gradient: 'from-zinc-500/20 to-neutral-500/20' },
+};
 
 export default function PasswordsClient() {
   const { passwords, loading, addPassword, updatePassword, deletePassword, decryptPassword, importPasswords, isLocked, unlock, lock } = usePasswords();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, string | undefined>>({});
   const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +90,12 @@ export default function PasswordsClient() {
   const handleAddNewClick = () => {
     resetForm();
     setIsDialogOpen(true);
+  };
+
+  const handleServiceClick = (service: typeof POPULAR_SERVICES[0]) => {
+    setName(service.name);
+    setWebsite(`https://www.${service.url}`);
+    setCategory(service.category);
   };
 
   const handleEditClick = (p: Password) => {
@@ -182,6 +215,16 @@ export default function PasswordsClient() {
       p.location?.toLowerCase().includes(search.toLowerCase())
     );
   }, [passwords, search]);
+
+  const groupedPasswords = useMemo(() => {
+    const groups: Record<string, Password[]> = {};
+    filteredPasswords.forEach(p => {
+      const cat = p.category || 'Otros';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    });
+    return groups;
+  }, [filteredPasswords]);
 
   if (loading) {
     return (
@@ -306,34 +349,97 @@ export default function PasswordsClient() {
         </CardHeader >
         <CardContent>
           {filteredPasswords.length > 0 ? (
-            <ul className="space-y-4">
-              {filteredPasswords.map(p => (
-                <li key={p.id} className="p-4 border rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-accent/50 transition-colors">
-                  <div className="flex-grow">
-                    <h3 className="font-semibold text-lg">{p.name}</h3>
-                    <div className="text-sm text-muted-foreground flex items-center">
-                      <p>{p.username}</p>
-                      <span className="mx-2">-</span>
-                      <p className={`font-mono transition-opacity duration-300 ${visiblePasswords[p.id] ? 'opacity-100' : 'opacity-0'}`}>{visiblePasswords[p.id] || '●●●●●●●●'}</p>
-                    </div>
-                    {p.website && <a href={p.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline block mt-1">{p.website}</a>}
-                    {(p.device || p.location) && (
-                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-                        {p.device && <p>Dispositivo: {p.device}</p>}
-                        {p.device && p.location && <span>|</span>}
-                        {p.location && <p>Ubicación: {p.location}</p>}
+            selectedCategory ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedCategory(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
+                    <ArrowLeft className="h-4 w-4" /> Volver
+                  </Button>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    {(() => {
+                      const Config = CATEGORY_CONFIG[selectedCategory] || CATEGORY_CONFIG['Otros'];
+                      const Icon = Config.icon;
+                      return <Icon className={`h-6 w-6 ${Config.color}`} />;
+                    })()}
+                    {selectedCategory}
+                  </h2>
+                </div>
+                <ul className="space-y-3">
+                  {(groupedPasswords[selectedCategory] || []).map(p => (
+                    <li key={p.id} className="p-3 border rounded-md flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-accent/30 transition-colors gap-4">
+                      <div className="flex items-start gap-3 flex-grow">
+                        <Avatar className="h-10 w-10 rounded-md border bg-background">
+                          <AvatarImage src={`https://logo.clearbit.com/${p.website || 'example.com'}`} alt={p.name} />
+                          <AvatarImage src={`https://www.google.com/s2/favicons?domain=${p.website || 'example.com'}&sz=128`} alt={p.name} />
+                          <AvatarFallback className="rounded-md bg-primary/10 text-primary font-bold">
+                            {p.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold text-base">{p.name}</h3>
+                          <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-2">
+                            <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> {p.username}</span>
+                            <span className="text-muted-foreground/40 hidden sm:inline">|</span>
+                            <div className="flex items-center gap-2 font-mono bg-muted/50 px-2 py-0.5 rounded text-xs">
+                              <span>{visiblePasswords[p.id] || '••••••••'}</span>
+                              <button onClick={() => handleTogglePasswordVisibility(p.id, p.passwordHash)} className="hover:text-primary transition-colors">
+                                {visiblePasswords[p.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            {p.website && (
+                              <a href={p.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary hover:underline">
+                                <Globe className="h-3 w-3" />
+                                {(() => {
+                                  try {
+                                    return new URL(p.website).hostname.replace('www.', '');
+                                  } catch {
+                                    return p.website;
+                                  }
+                                })()}
+                              </a>
+                            )}
+                            {p.device && <span className="flex items-center gap-1"><Smartphone className="h-3 w-3" /> {p.device}</span>}
+                            {p.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {p.location}</span>}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                    <Button variant="ghost" size="icon" onClick={() => handleCopyPassword(p.passwordHash)}><Copy className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleTogglePasswordVisibility(p.id, p.passwordHash)}>{visiblePasswords[p.id] ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(p)}><Edit className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)}><Trash2 className="h-5 w-5" /></Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      <div className="flex items-center gap-1 self-end sm:self-center ml-auto sm:ml-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyPassword(p.passwordHash)} title="Copiar contraseña"><Copy className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteClick(p.id)} title="Eliminar"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(groupedPasswords).map(([category, items]) => {
+                  const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG['Otros'];
+                  const Icon = config.icon;
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`relative overflow-hidden p-6 rounded-xl border text-left transition-all hover:shadow-md hover:scale-[1.02] group bg-gradient-to-br ${config.gradient}`}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-lg bg-background/80 backdrop-blur-sm shadow-sm ${config.color}`}>
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <span className="text-2xl font-bold opacity-20 group-hover:opacity-40 transition-opacity">{items.length}</span>
+                      </div>
+                      <h3 className="font-bold text-lg mb-1">{category}</h3>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        {items.length} {items.length === 1 ? 'Contraseña' : 'Contraseñas'}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <p>No tienes contraseñas guardadas.</p>
@@ -350,6 +456,34 @@ export default function PasswordsClient() {
             <DialogDescription>Completa los detalles para guardar una nueva contraseña de forma segura.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {!editingPassword && (
+              <div className="space-y-3 mb-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Servicios Populares</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {POPULAR_SERVICES.map((service) => (
+                    <button
+                      key={service.name}
+                      type="button"
+                      onClick={() => handleServiceClick(service)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors group"
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-110 transition-transform ${service.color}`}>
+                        {service.name.charAt(0)}
+                      </div>
+                      <span className="text-[10px] text-center leading-tight truncate w-full">{service.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">O rellena manualmente</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre del Servicio</Label>
               <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Google, Facebook..." />
