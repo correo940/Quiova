@@ -43,22 +43,22 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-white/20"
+                className="w-full max-w-md bg-card rounded-2xl p-8 shadow-2xl border border-border"
             >
                 <div className="flex justify-center mb-8">
-                    <div className="p-4 bg-blue-500/20 rounded-full">
-                        <Home className="w-8 h-8 text-blue-400" />
+                    <div className="p-4 bg-primary/20 rounded-full">
+                        <Home className="w-8 h-8 text-primary" />
                     </div>
                 </div>
 
-                <h2 className="text-3xl font-bold text-center text-white mb-2">
+                <h2 className="text-3xl font-bold text-center text-foreground mb-2">
                     {mode === 'signin' ? 'Bienvenido a Mi Hogar' : 'Crear Cuenta'}
                 </h2>
-                <p className="text-slate-400 text-center mb-8">
+                <p className="text-muted-foreground text-center mb-8">
                     {mode === 'signin'
                         ? 'Ingresa tus credenciales para continuar'
                         : 'Regístrate para gestionar tu hogar'}
@@ -66,14 +66,14 @@ export default function LoginPage() {
 
                 <form onSubmit={handleAuth} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Email</label>
+                        <label className="text-sm font-medium text-foreground">Email</label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                className="w-full bg-input border border-input rounded-lg py-3 pl-10 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                                 placeholder="tu@email.com"
                                 required
                             />
@@ -81,14 +81,14 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Contraseña</label>
+                        <label className="text-sm font-medium text-foreground">Contraseña</label>
                         <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                className="w-full bg-input border border-input rounded-lg py-3 pl-10 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                                 placeholder="••••••••"
                                 required
                             />
@@ -96,7 +96,7 @@ export default function LoginPage() {
                     </div>
 
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm text-center">
                             {error}
                         </div>
                     )}
@@ -104,7 +104,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         {loading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -119,7 +119,7 @@ export default function LoginPage() {
                 <div className="mt-6 text-center">
                     <button
                         onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                        className="text-sm text-slate-400 hover:text-white transition-colors"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                         {mode === 'signin'
                             ? '¿No tienes cuenta? Regístrate'
