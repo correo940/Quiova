@@ -7,4 +7,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+})
