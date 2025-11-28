@@ -1,7 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { Session } from "next-auth";
-import { AdapterUser } from "next-auth/adapters";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -9,10 +9,26 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GITHUB_ID || "",
       clientSecret: process.env.GITHUB_SECRET || "",
     }),
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        if (credentials?.password === adminPassword) {
+          return { id: "1", name: "Admin", email: "admin@example.com" };
+        }
+        return null;
+      }
+    })
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Solo permitir usuarios específicos
+      if (account?.provider === "credentials") {
+        return true;
+      }
+      // Solo permitir usuarios específicos para GitHub
       return profile?.email === process.env.ADMIN_EMAIL;
     },
     async session({ session }: { session: Session }) {
