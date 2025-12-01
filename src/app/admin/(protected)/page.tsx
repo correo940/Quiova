@@ -1,9 +1,19 @@
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useState } from "react";
 
 // ... imports
 
 export default function AdminPage() {
+  const [articles, setArticles] = useState<any[]>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDelete = (slug: string) => {
+    console.log("Delete", slug);
+  };
+
   // ... existing state
 
   // ... existing useEffect
