@@ -7,7 +7,6 @@ export type Article = {
   excerpt: string;
   content: string;
   category: ArticleCategory;
-  youtubeUrl?: string;
   imageUrl: string;
   imageHint: string;
   author: string;
@@ -15,4 +14,6 @@ export type Article = {
   authorImageHint: string;
   date: string;
   featured?: boolean;
+  youtubeUrl?: string;
+  ingredients?: string[];
 };

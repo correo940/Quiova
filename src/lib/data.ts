@@ -31,6 +31,11 @@ const articles: Omit<Article, 'slug'>[] = [
     authorImageHint: getImage('author-1').hint,
     date: '15 de junio de 2024',
     featured: true,
+    ingredients: [
+      "Agua (hidratación)",
+      "Ropa cómoda",
+      "Esterilla de yoga (opcional)"
+    ]
   },
   {
     id: '2',
@@ -75,6 +80,11 @@ const articles: Omit<Article, 'slug'>[] = [
     authorImageUrl: getImage('author-3').url,
     authorImageHint: getImage('author-3').hint,
     date: '10 de junio de 2024',
+    ingredients: [
+      "Libreta de gastos",
+      "Calculadora",
+      "Sobres para efectivo"
+    ]
   },
   {
     id: '4',
@@ -95,6 +105,12 @@ const articles: Omit<Article, 'slug'>[] = [
     authorImageUrl: getImage('author-1').url,
     authorImageHint: getImage('author-1').hint,
     date: '28 de mayo de 2024',
+    ingredients: [
+      "Zapatillas de correr",
+      "Cronómetro",
+      "Toalla",
+      "Botella de agua"
+    ]
   },
   {
     id: '5',
@@ -118,6 +134,11 @@ const articles: Omit<Article, 'slug'>[] = [
     authorImageHint: getImage('author-3').hint,
     date: '25 de mayo de 2024',
     featured: true,
+    ingredients: [
+      "Huchas transparentes (3)",
+      "Monedas de juguete o reales",
+      "Libreta de ahorro infantil"
+    ]
   },
   {
     id: '6',
@@ -138,6 +159,11 @@ const articles: Omit<Article, 'slug'>[] = [
     authorImageUrl: getImage('author-2').url,
     authorImageHint: getImage('author-2').hint,
     date: '20 de mayo de 2024',
+    ingredients: [
+      "Cuaderno bonito",
+      "Bolígrafo de gel",
+      "Vela relajante (opcional)"
+    ]
   },
   {
     id: '7',

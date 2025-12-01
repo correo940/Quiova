@@ -3,13 +3,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { ArticleCategory, categories } from '@/lib/data';
+
+import { categories } from '@/lib/data';
+import { ArticleCategory } from '@/types';
 import ArticleCard from '@/components/article-card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import CategoryIcon from '@/components/category-icon';
-
+import PostItQuotes from '@/components/post-it-quotes';
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -148,6 +150,9 @@ export default function Home() {
           </button>
         </div>
       </section>
+
+      {/* Post-it Quotes Section */}
+      <PostItQuotes />
 
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Featured Articles */}

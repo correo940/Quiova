@@ -8,6 +8,7 @@ import { Menu, Search } from 'lucide-react';
 import { Logo } from '../logo';
 import { categories } from '@/lib/data';
 import CategoryIcon from '../category-icon';
+import HeaderAuth from './header-auth';
 
 const navLinks = [
   { href: '#latest-articles', label: 'Artículos' },
@@ -65,26 +66,27 @@ export default function Header() {
                 </Link>
               ))}
               <div className="pt-4 border-t">
-                 <p className="font-medium mb-2">Categorías</p>
-                 {categories.map((category) => (
-                     <Link key={category} href={`/category/${category}`} className="flex items-center capitalize p-2 rounded-md hover:bg-accent">
-                        <CategoryIcon category={category} className="mr-2 h-4 w-4" />
-                        {category.replace('physical health', 'salud física').replace('mental health', 'salud mental').replace('family finance', 'finanzas familiares')}
-                     </Link>
-                 ))}
+                <p className="font-medium mb-2">Categorías</p>
+                {categories.map((category) => (
+                  <Link key={category} href={`/category/${category}`} className="flex items-center capitalize p-2 rounded-md hover:bg-accent">
+                    <CategoryIcon category={category} className="mr-2 h-4 w-4" />
+                    {category.replace('physical health', 'salud física').replace('mental health', 'salud mental').replace('family finance', 'finanzas familiares')}
+                  </Link>
+                ))}
               </div>
             </div>
           </SheetContent>
         </Sheet>
-        
+
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
-             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar artículos..." className="pl-9" />
-             </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input type="search" placeholder="Buscar artículos..." className="pl-9" />
+            </div>
           </div>
           <Button className="hidden sm:inline-flex bg-primary hover:bg-primary/90 text-primary-foreground">Enviar Artículo</Button>
+          <HeaderAuth />
         </div>
       </div>
     </header>

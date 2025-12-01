@@ -8,6 +8,7 @@ import ArticleCard from '@/components/article-card';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { getArticleContent } from '@/lib/github';
 import { parseMarkdown } from '@/lib/markdown';
+import AddToShoppingListButton from '@/components/add-to-shopping-list-button';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -93,6 +94,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         date: parsedArticle.date || new Date().toLocaleDateString('es-ES'),
         slug: parsedArticle.slug || slug,
         youtubeUrl: undefined,
+        ingredients: parsedArticle.ingredients || [],
       };
     } catch (error: any) {
       const errorMessage = error?.message || '';
@@ -175,6 +177,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               {article.youtubeUrl && <YoutubeEmbed url={article.youtubeUrl} />}
               <div dangerouslySetInnerHTML={{ __html: article.content }} />
             </div>
+
+            {/* Shopping List Button */}
+            {article.ingredients && article.ingredients.length > 0 && (
+              <AddToShoppingListButton ingredients={article.ingredients} />
+            )}
           </article>
         </div>
 
