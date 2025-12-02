@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import PostItQuotes from '@/components/post-it-quotes';
 import HomeDashboard from '@/components/dashboard/home-dashboard';
 import { supabase } from '@/lib/supabase';
 
-export default function Home() {
+function HomeContent() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [articles, setArticles] = useState<any[]>([]);
@@ -263,5 +263,13 @@ export default function Home() {
         </section>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-20 text-center">Cargando...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
