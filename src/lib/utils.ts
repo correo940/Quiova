@@ -18,7 +18,7 @@ export function slugify(text: string): string {
 
 export function getYoutubeEmbedUrl(url: string): string | null {
   if (!url) return null;
-  
+
   let videoId;
   try {
     const urlObj = new URL(url);
@@ -32,7 +32,7 @@ export function getYoutubeEmbedUrl(url: string): string | null {
       videoId = urlObj.pathname.slice(1);
     }
   } catch (error) {
-     // Regex fallback for non-URL strings
+    // Regex fallback for non-URL strings
     const match = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     videoId = match ? match[1] : null;
   }
@@ -43,4 +43,19 @@ export function getYoutubeEmbedUrl(url: string): string | null {
   }
 
   return null;
+}
+
+export function translateAuthError(errorMessage: string): string {
+  switch (errorMessage) {
+    case 'Invalid login credentials':
+      return 'Credenciales incorrectas. Por favor, verifica tu correo y contraseña.';
+    case 'Email not confirmed':
+      return 'Tu correo electrónico no ha sido confirmado. Por favor, revisa tu bandeja de entrada.';
+    case 'User not found':
+      return 'Usuario no encontrado. Regístrate si aún no tienes cuenta.';
+    case 'Password should be at least 6 characters':
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    default:
+      return errorMessage;
+  }
 }

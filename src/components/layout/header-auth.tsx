@@ -19,17 +19,19 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
-import { LogIn, User, LogOut, Loader2, Mail, Lock, LayoutDashboard } from 'lucide-react';
+import { LogIn, User, LogOut, Loader2, Mail, Lock, LayoutDashboard, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { translateAuthError } from '@/lib/utils';
 
 export default function HeaderAuth() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
 
@@ -57,7 +59,7 @@ export default function HeaderAuth() {
             if (error) throw error;
             toast.success('¡Bienvenido de nuevo!');
         } catch (error: any) {
-            toast.error(error.message || 'Error al iniciar sesión');
+            toast.error(translateAuthError(error.message) || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }
@@ -138,13 +140,24 @@ export default function HeaderAuth() {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 placeholder="Contraseña"
-                                className="pl-9"
+                                className="pl-9 pr-9"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="w-4 h-4" />
+                                ) : (
+                                    <Eye className="w-4 h-4" />
+                                )}
+                            </button>
                         </div>
                     </div>
                     <Button
@@ -156,6 +169,18 @@ export default function HeaderAuth() {
                         Iniciar Sesión
                     </Button>
                 </form>
+                <div className="mt-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                        ¿No tienes cuenta?{' '}
+                        <Link
+                            href="/apps/mi-hogar/login"
+                            className="text-primary hover:underline font-medium"
+                            onClick={() => setIsOpen(false)}
+                        >
+                            Regístrate aquí
+                        </Link>
+                    </p>
+                </div>
             </DialogContent>
         </Dialog>
     );

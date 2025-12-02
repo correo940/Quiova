@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import ClientProvider from '@/components/layout/ClientProvider';
@@ -31,6 +32,7 @@ export default function RootLayout({
           <main className="flex-grow">{children}</main>
           <Footer />
           <Toaster />
+          <SonnerToaster />
         </ClientProvider>
       </body>
     </html>

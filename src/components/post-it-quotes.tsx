@@ -1,83 +1,157 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-const allQuotes = [
+type Category = 'mental' | 'physical' | 'finance';
+
+interface Quote {
+    text: string;
+    author: string;
+    category: Category;
+    color: string;
+}
+
+const allQuotes: Quote[] = [
+    // Salud Física
     {
         text: "Que tu medicina sea tu alimento, y el alimento tu medicina.",
         author: "Hipócrates",
-        color: "bg-yellow-200",
-    },
-    {
-        text: "Cuida de los pequeños gastos; un pequeño agujero hunde un barco.",
-        author: "Benjamin Franklin",
-        color: "bg-blue-200",
+        category: "physical",
+        color: "bg-green-200",
     },
     {
         text: "Comer es una necesidad, pero comer de forma inteligente es un arte.",
         author: "La Rochefoucauld",
-        color: "bg-green-200",
-    },
-    {
-        text: "No ahorres lo que te queda después de gastar, gasta lo que te queda después de ahorrar.",
-        author: "Warren Buffett",
-        color: "bg-pink-200",
+        category: "physical",
+        color: "bg-emerald-200",
     },
     {
         text: "La primera riqueza es la salud.",
         author: "Ralph Waldo Emerson",
-        color: "bg-orange-200",
+        category: "physical",
+        color: "bg-lime-200",
+    },
+    {
+        text: "Cuida tu cuerpo. Es el único lugar que tienes para vivir.",
+        author: "Jim Rohn",
+        category: "physical",
+        color: "bg-green-100",
+    },
+    {
+        text: "El movimiento es una medicina para crear el cambio físico, emocional y mental.",
+        author: "Carol Welch",
+        category: "physical",
+        color: "bg-teal-200",
+    },
+
+    // Finanzas Personales
+    {
+        text: "Cuida de los pequeños gastos; un pequeño agujero hunde un barco.",
+        author: "Benjamin Franklin",
+        category: "finance",
+        color: "bg-yellow-200",
+    },
+    {
+        text: "No ahorres lo que te queda después de gastar, gasta lo que te queda después de ahorrar.",
+        author: "Warren Buffett",
+        category: "finance",
+        color: "bg-amber-200",
     },
     {
         text: "El precio es lo que pagas. El valor es lo que obtienes.",
         author: "Warren Buffett",
-        color: "bg-purple-200",
+        category: "finance",
+        color: "bg-orange-200",
     },
     {
         text: "Invierte en ti mismo. Es la mejor inversión que harás.",
         author: "Anónimo",
+        category: "finance",
         color: "bg-yellow-100",
     },
     {
-        text: "Desayuna como un rey, almuerza como un príncipe y cena como un mendigo.",
-        author: "Refrán popular",
-        color: "bg-teal-200",
+        text: "La riqueza no consiste en tener grandes posesiones, sino en tener pocas necesidades.",
+        author: "Epicteto",
+        category: "finance",
+        color: "bg-gold-200", // Note: tailwind might not have gold, fallback to yellow/orange
+    },
+
+    // Salud Mental
+    {
+        text: "La felicidad no es algo que pospones para el futuro; es algo que diseñas para el presente.",
+        author: "Jim Rohn",
+        category: "mental",
+        color: "bg-purple-200",
+    },
+    {
+        text: "No puedes controlar todo lo que te sucede, pero puedes controlar tu actitud hacia lo que te sucede.",
+        author: "Brian Tracy",
+        category: "mental",
+        color: "bg-indigo-200",
+    },
+    {
+        text: "La paz viene de adentro. No la busques afuera.",
+        author: "Buda",
+        category: "mental",
+        color: "bg-violet-200",
+    },
+    {
+        text: "Sé amable contigo mismo. Estás haciendo lo mejor que puedes.",
+        author: "Anónimo",
+        category: "mental",
+        color: "bg-fuchsia-200",
+    },
+    {
+        text: "A veces, lo más productivo que puedes hacer es relajarte.",
+        author: "Mark Black",
+        category: "mental",
+        color: "bg-pink-200",
     }
 ];
 
+const categoryLabels: Record<Category, string> = {
+    mental: "Salud Mental",
+    physical: "Salud Física",
+    finance: "Finanzas"
+};
+
 export default function PostItQuotes() {
-    const [displayedQuotes, setDisplayedQuotes] = useState(allQuotes.slice(0, 4));
+    const [dailyQuotes, setDailyQuotes] = useState<Quote[]>([]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setDisplayedQuotes((current) => {
-                const newQuotes = [...current];
-                // Elegir una posición aleatoria para cambiar (0-3)
-                const replaceIndex = Math.floor(Math.random() * 4);
+        // Obtener la fecha actual
+        const today = new Date();
+        const dateString = today.toLocaleDateString();
 
-                // Elegir una frase nueva que no esté mostrándose actualmente
-                const currentTexts = newQuotes.map(q => q.text);
-                const availableQuotes = allQuotes.filter(q => !currentTexts.includes(q.text));
+        // Generar hash base del día
+        let dayHash = 0;
+        for (let i = 0; i < dateString.length; i++) {
+            dayHash = ((dayHash << 5) - dayHash) + dateString.charCodeAt(i);
+            dayHash |= 0;
+        }
 
-                if (availableQuotes.length > 0) {
-                    const randomQuote = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
-                    newQuotes[replaceIndex] = randomQuote;
-                }
+        const categories: Category[] = ['mental', 'physical', 'finance'];
+        const selectedQuotes: Quote[] = [];
 
-                return newQuotes;
-            });
-        }, 4000); // Cambiar cada 4 segundos
+        categories.forEach((cat, index) => {
+            const catQuotes = allQuotes.filter(q => q.category === cat);
+            if (catQuotes.length > 0) {
+                // Usar el hash del día + índice de categoría para variedad pero consistencia
+                // Multiplicar index para "saltar" en el generador pseudo-aleatorio
+                const quoteIndex = Math.abs(dayHash + index * 123) % catQuotes.length;
+                selectedQuotes.push(catQuotes[quoteIndex]);
+            }
+        });
 
-        return () => clearInterval(interval);
+        setDailyQuotes(selectedQuotes);
     }, []);
 
-    // Generar rotaciones aleatorias estables para las posiciones
-    const rotations = ["rotate-2", "-rotate-3", "rotate-1", "-rotate-2"];
+    if (dailyQuotes.length === 0) return null;
 
     return (
         <section className="py-16 bg-slate-200 relative overflow-hidden">
-            {/* Textura de nevera (sutil ruido o gradiente metálico) */}
+            {/* Textura de nevera */}
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/brushed-alum.png')]"></div>
 
             <div className="container mx-auto px-4 relative z-10">
@@ -85,34 +159,37 @@ export default function PostItQuotes() {
                     La Nevera de la Sabiduría
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 min-h-[250px]">
-                    {displayedQuotes.map((quote, index) => (
-                        <div key={index} className="relative h-full flex justify-center items-center">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={quote.text} // Clave única para forzar la animación al cambiar
-                                    initial={{ opacity: 0, scale: 0.8, rotate: Math.random() * 10 - 5 }}
-                                    animate={{ opacity: 1, scale: 1, rotate: Math.random() * 6 - 3 }} // Rotación aleatoria viva
-                                    exit={{ opacity: 0, scale: 1.1, rotate: 0 }}
-                                    transition={{ duration: 0.5 }}
-                                    className={`relative p-6 ${quote.color} shadow-xl w-full max-w-[280px] aspect-square flex flex-col justify-between font-handwriting`}
-                                    style={{
-                                        boxShadow: '10px 10px 20px rgba(0,0,0,0.2)'
-                                    }}
-                                >
-                                    {/* Imán de nevera */}
-                                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-black shadow-md border-2 border-gray-600 z-20 flex items-center justify-center">
-                                        <div className="w-2 h-2 rounded-full bg-gray-400 opacity-50"></div>
-                                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+                    {dailyQuotes.map((quote, index) => (
+                        <div key={`${quote.category}-${index}`} className="flex justify-center">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8, rotate: -5 + (index * 5) }} // Rotaciones variadas iniciales
+                                animate={{ opacity: 1, scale: 1, rotate: index % 2 === 0 ? 2 : -2 }} // Alternar rotación final
+                                transition={{ duration: 0.5, delay: index * 0.2 }}
+                                className={`relative p-6 ${quote.color} shadow-xl w-full max-w-[300px] aspect-square flex flex-col justify-between font-handwriting transform transition-transform hover:scale-105 duration-300`}
+                                style={{
+                                    boxShadow: '10px 10px 25px rgba(0,0,0,0.2)'
+                                }}
+                            >
+                                {/* Imán de nevera */}
+                                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-black shadow-md border-2 border-gray-600 z-20 flex items-center justify-center">
+                                    <div className="w-2 h-2 rounded-full bg-gray-400 opacity-50"></div>
+                                </div>
 
-                                    <p className="text-xl text-slate-800 font-medium leading-relaxed font-sans text-center mt-4">
+                                {/* Etiqueta de categoría (estilo cinta adhesiva o sello) */}
+                                <div className="absolute -top-2 -right-2 bg-white/80 px-2 py-1 text-xs font-bold text-slate-600 rotate-12 shadow-sm border border-white/50">
+                                    {categoryLabels[quote.category]}
+                                </div>
+
+                                <div className="flex-grow flex items-center justify-center mt-4">
+                                    <p className="text-xl text-slate-800 font-medium leading-relaxed font-sans text-center">
                                         "{quote.text}"
                                     </p>
-                                    <p className="text-right text-slate-700 text-sm font-bold italic font-sans mt-2">
-                                        — {quote.author}
-                                    </p>
-                                </motion.div>
-                            </AnimatePresence>
+                                </div>
+                                <p className="text-right text-slate-700 text-sm font-bold italic font-sans mt-2">
+                                    — {quote.author}
+                                </p>
+                            </motion.div>
                         </div>
                     ))}
                 </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
@@ -12,11 +13,30 @@ import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import CategoryIcon from '@/components/category-icon';
 import PostItQuotes from '@/components/post-it-quotes';
+import HomeDashboard from '@/components/dashboard/home-dashboard';
+import { supabase } from '@/lib/supabase';
+
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams?.get('search')?.toLowerCase() || '';
+
+  // 🆕 Verificar sesión
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // 🆕 Cargar artículos desde la API
   useEffect(() => {
@@ -76,18 +96,29 @@ export default function Home() {
   const featuredArticles = useMemo(() => articles.filter((article) => article.featured), [articles]);
 
   const filteredArticles = useMemo(() => {
+    let filtered = articles;
+
+    // Filtrar por búsqueda
+    if (searchQuery) {
+      filtered = filtered.filter(article =>
+        (article.title?.toLowerCase() || '').includes(searchQuery) ||
+        (article.description?.toLowerCase() || '').includes(searchQuery) ||
+        (article.category?.toLowerCase() || '').includes(searchQuery)
+      );
+    }
+
     if (selectedCategory === 'all') {
-      return articles.filter((article) => !article.featured);
+      return filtered.filter((article) => !article.featured);
     }
 
     // 🔧 Normalizar la comparación de categorías
     const normalizedCategory = selectedCategory.toLowerCase().trim();
 
-    return articles.filter((article) => {
+    return filtered.filter((article) => {
       const articleCategory = (article.category || '').toLowerCase().trim();
       return articleCategory === normalizedCategory && !article.featured;
     });
-  }, [selectedCategory, articles]);
+  }, [selectedCategory, articles, searchQuery]);
 
   // 🆕 Mostrar loading state
   if (loading) {
@@ -101,58 +132,63 @@ export default function Home() {
   return (
     <div className="w-full">
       {/* Hero Section with Auto Carousel */}
-      <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
-        <div className="relative w-full h-full">
-          {/* Slide actual */}
-          <div
-            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
-          >
-            <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
-              {slides[currentSlide].title}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">
-              {slides[currentSlide].description}
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Link href="#latest-articles">Explorar Artículos</Link>
-              </Button>
-              <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
-                <Link href="/apps">Portal de Apps</Link>
-              </Button>
+      {/* Hero Section with Auto Carousel OR Dashboard */}
+      {user ? (
+        <HomeDashboard />
+      ) : (
+        <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
+          <div className="relative w-full h-full">
+            {/* Slide actual */}
+            <div
+              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
+            >
+              <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+                {slides[currentSlide].title}
+              </h1>
+              <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">
+                {slides[currentSlide].description}
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-4">
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Link href="#latest-articles">Explorar Artículos</Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
+                  <Link href="/apps">Portal de Apps</Link>
+                </Button>
+              </div>
             </div>
+
+            {/* Indicadores de navegación */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-white' : 'bg-white/50'
+                    }`}
+                />
+              ))}
+            </div>
+
+            {/* Botones de navegación */}
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+            >
+              →
+            </button>
           </div>
+        </section>
+      )}
 
-          {/* Indicadores de navegación */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-white' : 'bg-white/50'
-                  }`}
-              />
-            ))}
-          </div>
-
-          {/* Botones de navegación */}
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
-          >
-            ←
-          </button>
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
-          >
-            →
-          </button>
-        </div>
-      </section>
-
-      {/* Post-it Quotes Section */}
-      <PostItQuotes />
+      {/* Post-it Quotes Section - Solo visible si hay usuario logueado */}
+      {user && <PostItQuotes />}
 
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Featured Articles */}

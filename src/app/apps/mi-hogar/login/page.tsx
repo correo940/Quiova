@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Lock, Mail, Loader2, Home } from 'lucide-react'
+import { Lock, Mail, Loader2, Home, Eye, EyeOff } from 'lucide-react'
+import { translateAuthError } from '@/lib/utils'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -12,6 +13,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+    const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
 
     const handleAuth = async (e: React.FormEvent) => {
@@ -36,7 +38,7 @@ export default function LoginPage() {
                 router.push('/apps/mi-hogar')
             }
         } catch (err: any) {
-            setError(err.message)
+            setError(translateAuthError(err.message))
         } finally {
             setLoading(false)
         }
@@ -85,13 +87,24 @@ export default function LoginPage() {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-input border border-input rounded-lg py-3 pl-10 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                className="w-full bg-input border border-input rounded-lg py-3 pl-10 pr-12 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                                 placeholder="••••••••"
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="w-5 h-5" />
+                                ) : (
+                                    <Eye className="w-5 h-5" />
+                                )}
+                            </button>
                         </div>
                     </div>
 

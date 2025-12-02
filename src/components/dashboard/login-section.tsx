@@ -102,6 +102,14 @@ export default function LoginSection() {
                                 Iniciar Sesión
                             </Button>
                         </form>
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                                ¿No tienes cuenta?{' '}
+                                <a href="/apps/mi-hogar/login" className="text-primary hover:underline font-medium">
+                                    Regístrate aquí
+                                </a>
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </motion.div>

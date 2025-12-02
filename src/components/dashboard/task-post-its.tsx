@@ -72,7 +72,14 @@ export default function TaskPostIts() {
         }, 3 * 60 * 1000);
     };
 
-    const handleTaskClick = () => {
+    const isDraggingRef = React.useRef(false);
+
+    const handleTaskClick = (e: React.MouseEvent) => {
+        if (isDraggingRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         router.push('/apps/mi-hogar/tasks');
     };
 
@@ -89,10 +96,19 @@ export default function TaskPostIts() {
                 {visibleTasks.map((task, index) => (
                     <motion.div
                         key={task.id}
+                        drag
+                        dragMomentum={false}
+                        dragElastic={0} // Follow cursor exactly
+                        onDragStart={() => { isDraggingRef.current = true; }}
+                        onDragEnd={() => {
+                            // Small delay to ensure onClick sees the drag state
+                            setTimeout(() => { isDraggingRef.current = false; }, 100);
+                        }}
+                        whileDrag={{ scale: 1.1, cursor: 'grabbing', zIndex: 100 }}
                         initial={{ opacity: 0, scale: 0.8, x: -50, rotate: -10 }}
                         animate={{ opacity: 1, scale: 1, x: 0, rotate: index % 2 === 0 ? -2 : 2 }}
                         exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-                        className="pointer-events-auto relative w-48 bg-[#fef3c7] dark:bg-[#fcd34d] text-black p-4 shadow-lg transform transition-transform hover:scale-105 hover:z-50 cursor-pointer"
+                        className="pointer-events-auto relative w-48 bg-[#fef3c7] dark:bg-[#fcd34d] text-black p-4 shadow-lg transform transition-transform hover:scale-105 hover:z-50 cursor-grab active:cursor-grabbing"
                         style={{
                             boxShadow: '2px 2px 10px rgba(0,0,0,0.1)',
                             fontFamily: '"Comic Sans MS", "Chalkboard SE", sans-serif', // Fallback to handwritten-ish font
