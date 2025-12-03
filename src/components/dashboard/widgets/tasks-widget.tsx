@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 type Task = {
     id: string;
     title: string;
+    description?: string;
     due_date: string;
     is_completed: boolean;
 };
@@ -88,6 +89,32 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
         if (!error) fetchTasks();
     };
 
+    const toggleSubtask = async (taskId: string, description: string, lineIndex: number, currentChecked: boolean) => {
+        const lines = description.split('\n');
+        if (lineIndex >= lines.length) return;
+
+        const line = lines[lineIndex];
+        const newLine = currentChecked
+            ? line.replace('- [x]', '- [ ]')
+            : line.replace('- [ ]', '- [x]');
+
+        lines[lineIndex] = newLine;
+        const newDescription = lines.join('\n');
+
+        // Optimistic update
+        setTasks(tasks.map(t => t.id === taskId ? { ...t, description: newDescription } : t));
+
+        const { error } = await supabase
+            .from('tasks')
+            .update({ description: newDescription })
+            .eq('id', taskId);
+
+        if (error) {
+            // Revert on error
+            setTasks(tasks.map(t => t.id === taskId ? { ...t, description: description } : t));
+        }
+    };
+
     return (
         <Card className="h-full flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -124,6 +151,41 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
                                         <p className={`font-medium truncate ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                                             {task.title}
                                         </p>
+                                        {task.description && (
+                                            <div className="mt-1.5 space-y-1">
+                                                {task.description.split('\n').map((line, i) => {
+                                                    const isSubtask = line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]');
+                                                    if (isSubtask) {
+                                                        const isChecked = line.trim().startsWith('- [x]');
+                                                        const text = line.replace(/- \[[ x]\]/, '').trim();
+                                                        return (
+                                                            <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground/90">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleSubtask(task.id, task.description!, i, isChecked);
+                                                                    }}
+                                                                    className="hover:text-primary transition-colors"
+                                                                >
+                                                                    {isChecked ? (
+                                                                        <CheckCircle2 className="w-3 h-3 mt-0.5 text-primary/60 shrink-0" />
+                                                                    ) : (
+                                                                        <Circle className="w-3 h-3 mt-0.5 shrink-0" />
+                                                                    )}
+                                                                </button>
+                                                                <span className={`${isChecked ? 'line-through opacity-70' : ''} leading-tight`}>{text}</span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    if (line.trim() === '') return null;
+                                                    return (
+                                                        <p key={i} className="text-xs text-muted-foreground leading-snug">
+                                                            {line}
+                                                        </p>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                         <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
                                             <Clock className="w-3 h-3" />
                                             <span>

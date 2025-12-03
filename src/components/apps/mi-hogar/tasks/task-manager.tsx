@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2, Pencil, X, FileText } from 'lucide-react';
+import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2, Pencil, X, FileText, CheckSquare, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -31,6 +31,7 @@ export default function TaskManager() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [title, setTitle] = useState('');
     const [notes, setNotes] = useState('');
+    const [subtasks, setSubtasks] = useState<string[]>([]);
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [hasAlarm, setHasAlarm] = useState(true);
@@ -137,6 +138,15 @@ export default function TaskManager() {
 
         const dueDate = new Date(`${date}T${time}`);
 
+        // Format subtasks
+        const subtasksString = subtasks
+            .filter(t => t.trim() !== '')
+            .map(t => `- [ ] ${t}`)
+            .join('\n');
+
+        // Combine notes and subtasks
+        const description = [notes.trim(), subtasksString].filter(Boolean).join('\n\n');
+
         try {
             if (editingTask) {
                 // Update existing task
@@ -144,7 +154,7 @@ export default function TaskManager() {
                     .from('tasks')
                     .update({
                         title,
-                        description: notes,
+                        description: description,
                         due_date: dueDate.toISOString(),
                         has_alarm: hasAlarm,
                     })
@@ -173,7 +183,7 @@ export default function TaskManager() {
                         {
                             user_id: user.id,
                             title,
-                            description: notes,
+                            description: description,
                             due_date: dueDate.toISOString(),
                             has_alarm: hasAlarm,
                             is_completed: false,
@@ -200,6 +210,7 @@ export default function TaskManager() {
 
                 setTitle('');
                 setNotes('');
+                setSubtasks([]);
                 toast.success('Tarea programada');
             }
         } catch (error) {
@@ -211,7 +222,28 @@ export default function TaskManager() {
     const startEditing = (task: Task) => {
         setEditingTask(task);
         setTitle(task.title);
-        setNotes(task.notes || '');
+
+        // Parse notes and subtasks
+        if (task.notes) {
+            const lines = task.notes.split('\n');
+            const noteLines: string[] = [];
+            const subtaskLines: string[] = [];
+
+            lines.forEach(line => {
+                if (line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]')) {
+                    subtaskLines.push(line.replace(/^- \[[ x]\] /, ''));
+                } else {
+                    noteLines.push(line);
+                }
+            });
+
+            setNotes(noteLines.join('\n').trim());
+            setSubtasks(subtaskLines);
+        } else {
+            setNotes('');
+            setSubtasks([]);
+        }
+
         setDate(task.date);
         setTime(task.time);
         setHasAlarm(task.hasAlarm);
@@ -222,6 +254,7 @@ export default function TaskManager() {
         setEditingTask(null);
         setTitle('');
         setNotes('');
+        setSubtasks([]);
         setDate('');
         setTime('');
         setHasAlarm(true);
@@ -264,6 +297,89 @@ export default function TaskManager() {
         }
     };
 
+    const toggleNoteSubtask = async (taskId: string, lineIndex: number, currentChecked: boolean) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task || !task.notes) return;
+
+        const lines = task.notes.split('\n');
+        if (lineIndex >= lines.length) return;
+
+        const line = lines[lineIndex];
+        const newLine = currentChecked
+            ? line.replace('- [x]', '- [ ]')
+            : line.replace('- [ ]', '- [x]');
+
+        lines[lineIndex] = newLine;
+        const newNotes = lines.join('\n');
+
+        // Optimistic update
+        setTasks(tasks.map(t => t.id === taskId ? { ...t, notes: newNotes } : t));
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .update({ description: newNotes })
+                .eq('id', taskId);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error updating subtask:', error);
+            toast.error('Error al actualizar la subtarea');
+            // Revert on error
+            setTasks(tasks.map(t => t.id === taskId ? { ...t, notes: task.notes } : t));
+        }
+    };
+
+    const renderNotes = (task: Task) => {
+        if (!task.notes) return null;
+
+        return (
+            <div className="mt-3 ml-12 p-3 bg-secondary/50 rounded-md text-sm text-muted-foreground flex flex-col gap-1">
+                <div className="flex items-start gap-2 mb-1">
+                    <FileText className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span className="text-xs font-semibold uppercase tracking-wider opacity-70">Notas</span>
+                </div>
+                <div className="pl-6 space-y-1">
+                    {task.notes.split('\n').map((line, index) => {
+                        const isCheckbox = line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]');
+
+                        if (isCheckbox) {
+                            const isChecked = line.trim().startsWith('- [x]');
+                            const text = line.replace(/- \[[ x]\]/, '').trim();
+
+                            return (
+                                <div key={index} className="flex items-start gap-2 group/item">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleNoteSubtask(task.id, index, isChecked);
+                                        }}
+                                        className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                                    >
+                                        {isChecked ? (
+                                            <CheckCircle2 className="h-4 w-4" />
+                                        ) : (
+                                            <Circle className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                    <span className={`${isChecked ? 'line-through opacity-70' : ''} transition-all`}>
+                                        {text}
+                                    </span>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <p key={index} className="whitespace-pre-wrap min-h-[1.25rem]">
+                                {line}
+                            </p>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     const today = format(new Date(), 'yyyy-MM-dd');
 
     if (loading) {
@@ -273,6 +389,30 @@ export default function TaskManager() {
             </div>
         );
     }
+
+    const handleAddSubtask = () => {
+        setSubtasks([...subtasks, '']);
+    };
+
+    const handleSubtaskChange = (index: number, value: string) => {
+        const newSubtasks = [...subtasks];
+        newSubtasks[index] = value;
+        setSubtasks(newSubtasks);
+    };
+
+    const handleSubtaskKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const newSubtasks = [...subtasks];
+            newSubtasks.splice(index + 1, 0, '');
+            setSubtasks(newSubtasks);
+            // Focus next input logic would go here ideally
+        } else if (e.key === 'Backspace' && subtasks[index] === '' && subtasks.length > 0) {
+            e.preventDefault();
+            const newSubtasks = subtasks.filter((_, i) => i !== index);
+            setSubtasks(newSubtasks);
+        }
+    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -304,8 +444,57 @@ export default function TaskManager() {
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Detalles adicionales..."
-                                className="resize-none h-20"
+                                className="resize-none h-20 font-mono text-sm"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <Label>Subtareas (Opcional)</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                                    onClick={handleAddSubtask}
+                                    title="Añadir subtarea"
+                                >
+                                    <Plus className="w-3 h-3 mr-1" />
+                                    Añadir
+                                </Button>
+                            </div>
+                            <div className="space-y-2">
+                                {subtasks.length === 0 && (
+                                    <div
+                                        className="text-sm text-muted-foreground italic cursor-pointer hover:text-primary border border-dashed rounded-md p-2 text-center"
+                                        onClick={handleAddSubtask}
+                                    >
+                                        Click para añadir subtareas...
+                                    </div>
+                                )}
+                                {subtasks.map((subtask, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                                        <Input
+                                            value={subtask}
+                                            onChange={(e) => handleSubtaskChange(index, e.target.value)}
+                                            onKeyDown={(e) => handleSubtaskKeyDown(index, e)}
+                                            placeholder={`Subtarea ${index + 1}`}
+                                            className="h-8"
+                                            autoFocus={subtasks[index] === ''}
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                            onClick={() => {
+                                                const newSubtasks = subtasks.filter((_, i) => i !== index);
+                                                setSubtasks(newSubtasks);
+                                            }}
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -458,12 +647,7 @@ export default function TaskManager() {
                                                     </Button>
                                                 </div>
                                             </div>
-                                            {task.notes && (
-                                                <div className="mt-3 ml-12 p-2 bg-secondary/50 rounded-md text-sm text-muted-foreground flex items-start gap-2">
-                                                    <FileText className="h-4 w-4 mt-0.5 shrink-0" />
-                                                    <p className="whitespace-pre-wrap">{task.notes}</p>
-                                                </div>
-                                            )}
+                                            {renderNotes(task)}
                                         </div>
                                     )
                                 })}
