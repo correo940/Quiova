@@ -9,6 +9,7 @@ export interface ArticleMetadata {
   description: string;
   image?: string;
   slug: string;
+  ingredients?: string[];
 }
 
 export interface Article extends ArticleMetadata {
@@ -23,14 +24,14 @@ export async function parseMarkdown(markdown: string): Promise<Article> {
     }
 
     const { data, content } = matter(markdown);
-    
+
     // Procesar el markdown a HTML
     let contentHtml = '';
     try {
       const processedContent = await remark()
         .use(html, { sanitize: false }) // No sanitizar para permitir HTML embebido
         .process(content || '');
-      
+
       contentHtml = processedContent.toString();
     } catch (remarkError) {
       console.warn('Error procesando markdown con remark, usando contenido sin procesar:', remarkError);
@@ -57,12 +58,13 @@ export async function parseMarkdown(markdown: string): Promise<Article> {
       slug: data.slug || '',
       content: content || '',
       contentHtml: contentHtml || '',
+      ingredients: data.ingredients || [],
     };
   } catch (error) {
     console.error('Error parsing markdown:', error);
     const preview = typeof markdown === 'string' ? markdown.substring(0, 500) : 'No markdown disponible';
     console.error('Markdown que causó el error:', preview);
-    
+
     // Retornar un artículo vacío en lugar de lanzar error para evitar romper la página
     return {
       title: '',
@@ -73,6 +75,7 @@ export async function parseMarkdown(markdown: string): Promise<Article> {
       slug: '',
       content: '',
       contentHtml: '',
+      ingredients: [],
     };
   }
 }

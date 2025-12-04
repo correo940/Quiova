@@ -14,9 +14,9 @@ export default function Footer() {
 
   return (
     <footer className="border-t bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
+      <div className="container mx-auto px-4 py-8" suppressHydrationWarning>
+        <div className="flex flex-col md:flex-row justify-between items-center" suppressHydrationWarning>
+          <div className="flex items-center space-x-2 mb-4 md:mb-0" suppressHydrationWarning>
             <Logo className="h-7 w-auto" />
             <span className="font-bold text-lg">Quiova</span>
           </div>
@@ -27,7 +27,7 @@ export default function Footer() {
               'Cargando...'
             )}
           </p>
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
+          <div className="flex items-center space-x-4 mt-4 md:mt-0" suppressHydrationWarning>
             <Link href="#" aria-label="Twitter">
               <Twitter className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
             </Link>

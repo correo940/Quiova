@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import CalendarWidget from './widgets/calendar-widget';
-import TasksWidget from './widgets/tasks-widget';
+import OrganizerWidget from './widgets/organizer-widget';
 
 export default function HomeDashboard() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -17,9 +17,9 @@ export default function HomeDashboard() {
                     <CalendarWidget date={selectedDate} onDateSelect={setSelectedDate} />
                 </div>
 
-                {/* Tareas */}
+                {/* Organizador */}
                 <div className="col-span-1">
-                    <TasksWidget selectedDate={selectedDate} />
+                    <OrganizerWidget selectedDate={selectedDate} />
                 </div>
             </div>
         </div>

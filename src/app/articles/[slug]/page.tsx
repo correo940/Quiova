@@ -173,7 +173,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </div>
 
             <div className="prose prose-lg max-w-none text-foreground">
-              <p className="lead text-xl italic text-muted-foreground">{article.excerpt}</p>
+              <div className="lead text-xl italic text-muted-foreground" suppressHydrationWarning>{article.excerpt}</div>
               {article.youtubeUrl && <YoutubeEmbed url={article.youtubeUrl} />}
               <div dangerouslySetInnerHTML={{ __html: article.content }} />
             </div>

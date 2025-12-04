@@ -37,8 +37,8 @@ export default function Header() {
   };
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 hidden md:flex">
+      <div className="container flex h-16 items-center" suppressHydrationWarning>
+        <div className="mr-4 hidden md:flex" suppressHydrationWarning>
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Logo className="h-7 w-auto" />
             <span className="font-bold text-lg">Quiova</span>
@@ -96,9 +96,9 @@ export default function Header() {
           </SheetContent>
         </Sheet>
 
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            <div className="relative">
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end" suppressHydrationWarning>
+          <div className="w-full flex-1 md:w-auto md:flex-none" suppressHydrationWarning>
+            <div className="relative" suppressHydrationWarning>
               <button onClick={handleSearch} className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-primary transition-colors">
                 <Search className="h-4 w-4" />
               </button>

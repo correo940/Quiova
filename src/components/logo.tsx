@@ -7,7 +7,7 @@ interface LogoProps extends Omit<ComponentProps<'div'>, 'children'> {
 
 export function Logo({ className, ...props }: LogoProps) {
   return (
-    <div className={className} {...props}>
+    <div className={className} {...props} suppressHydrationWarning>
       <Image
         src="/images/logo.png"  // Cambia la extensión según tu archivo
         alt="Quiova Logo"
