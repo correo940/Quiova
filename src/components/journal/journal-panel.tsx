@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import ImageExtension from '@tiptap/extension-image';
+import { AudioExtension } from './extensions/audio-extension';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -51,6 +52,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             Color,
             Highlight.configure({ multicolor: true }),
             ImageExtension,
+            AudioExtension,
         ],
         content: '',
         editorProps: {
@@ -64,11 +66,17 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         immediatelyRender: false,
     });
 
-    // Fetch user
+    // Fetch user and subscribe to auth changes
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
         });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     // Load content when pathname, user, or selectedDate changes
@@ -191,7 +199,10 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     };
 
     const handleImageUpload = async (file: File) => {
-        if (!user) return;
+        if (!user) {
+            toast.error('Debes iniciar sesión para subir imágenes');
+            return;
+        }
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         const { data, error } = await supabase.storage
@@ -220,18 +231,50 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     };
 
     const startRecording = async () => {
+        if (!user) {
+            toast.error('Debes iniciar sesión para grabar audio');
+            return;
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
+
+            // Determine supported mime type
+            let mimeType = 'audio/webm';
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                mimeType = 'audio/webm;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                mimeType = 'audio/mp4';
+            }
+
+            const recorder = new MediaRecorder(stream, { mimeType });
             const chunks: BlobPart[] = [];
 
-            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunks.push(e.data);
+                }
+            };
+
             recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'audio/webm' });
-                const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+                const blob = new Blob(chunks, { type: mimeType });
+
+                if (blob.size === 0) {
+                    toast.error('La grabación está vacía. Intenta hablar más fuerte o verifica tu micrófono.');
+                    return;
+                }
+
+                console.log(`Recording finished. Type: ${mimeType}, Size: ${blob.size} bytes`);
+
+                const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const file = new File([blob], `voice-${Date.now()}.${fileExt}`, { type: mimeType });
 
                 // Upload audio
-                if (!user) return;
+                if (!user) {
+                    console.error('User not found in onstop');
+                    toast.error('Usuario no autenticado al finalizar grabación');
+                    return;
+                }
+
                 const fileName = `${user.id}/${file.name}`;
                 const { error } = await supabase.storage
                     .from('journal-media')
@@ -247,17 +290,18 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                     .from('journal-media')
                     .getPublicUrl(fileName);
 
-                // Insert audio player
-                editor?.chain().focus().insertContent(`<audio controls src="${publicUrl}"></audio><p></p>`).run();
+                // Insert audio player using custom extension
+                editor?.chain().focus().setAudio({ src: publicUrl }).run();
 
                 stream.getTracks().forEach(track => track.stop());
             };
 
-            recorder.start();
+            recorder.start(100); // Collect chunks every 100ms
             setMediaRecorder(recorder);
             setIsRecording(true);
         } catch (err) {
-            toast.error('No se pudo acceder al micrófono');
+            console.error('Error accessing microphone:', err);
+            toast.error('No se pudo acceder al micrófono. Verifica los permisos.');
         }
     };
 
