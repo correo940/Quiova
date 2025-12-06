@@ -6,10 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2 } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Webcam from 'react-webcam';
+import { identifyProductAction } from '@/app/actions/identify-product';
 
 type ShoppingItem = {
     id: string;
@@ -22,7 +25,48 @@ export default function ShoppingList() {
     const [items, setItems] = useState<ShoppingItem[]>([]);
     const [newItemName, setNewItemName] = useState('');
     const [loading, setLoading] = useState(true);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const { user } = useAuth();
+
+    const webcamRef = React.useRef<Webcam>(null);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+
+    const captureAndIdentify = React.useCallback(async () => {
+        const imageSrc = webcamRef.current?.getScreenshot();
+        if (imageSrc) {
+            setCapturedImage(imageSrc);
+            setIsProcessing(true);
+            toast.info("Analizando imagen con IA...");
+
+            try {
+                // Call Server Action
+                const result = await identifyProductAction(imageSrc);
+
+                if (result.success && result.data) {
+                    const productName = result.data;
+                    toast.success(`¡Identificado: ${productName}!`);
+                    await addItem(productName);
+                    setTimeout(() => {
+                        setCapturedImage(null);
+                        setIsScannerOpen(false);
+                    }, 1500);
+                } else {
+                    const errorMsg = result.error || "No se pudo identificar.";
+                    toast.error(errorMsg);
+                    setTimeout(() => setCapturedImage(null), 2000);
+                }
+            } catch (error) {
+                console.error("Error calling Server Action:", error);
+                toast.error("Error de conexión con el servidor.");
+                setCapturedImage(null);
+            } finally {
+                setIsProcessing(false);
+            }
+        } else {
+            toast.error("Error al capturar imagen.");
+        }
+    }, [webcamRef]);
 
     useEffect(() => {
         if (user) {
@@ -59,8 +103,8 @@ export default function ShoppingList() {
         }
     };
 
-    const addItem = async () => {
-        if (!newItemName.trim() || !user) return;
+    const addItem = async (name: string = newItemName) => {
+        if (!name.trim() || !user) return;
 
         try {
             const { data, error } = await supabase
@@ -68,7 +112,7 @@ export default function ShoppingList() {
                 .insert([
                     {
                         user_id: user.id,
-                        name: newItemName,
+                        name: name,
                         category: 'General',
                         is_checked: false, // to_buy
                     },
@@ -88,9 +132,11 @@ export default function ShoppingList() {
             setItems([newItem, ...items]);
             setNewItemName('');
             toast.success('Añadido a la lista de compra');
+            return true;
         } catch (error) {
             console.error('Error adding item:', error);
             toast.error('Error al añadir el producto');
+            return false;
         }
     };
 
@@ -161,11 +207,74 @@ export default function ShoppingList() {
                         onChange={(e) => setNewItemName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addItem()}
                     />
-                    <Button onClick={addItem}>
+                    <Button onClick={() => addItem()}>
                         <Plus className="mr-2 h-4 w-4" /> Añadir
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsScannerOpen(true)} title="Identificar producto con IA">
+                        <Camera className="h-4 w-4 mr-2" />
+                        <Sparkles className="h-3 w-3 text-yellow-500" />
                     </Button>
                 </div>
             </div>
+
+            <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Identificar Producto (IA)</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center p-4 bg-black rounded-lg overflow-hidden min-h-[300px] relative">
+
+                        {isScannerOpen && !capturedImage && (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <Webcam
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    screenshotQuality={0.8}
+                                    forceScreenshotSourceSize={true}
+                                    videoConstraints={{
+                                        facingMode: "environment",
+                                        width: { ideal: 1280 },
+                                        height: { ideal: 720 }
+                                    }}
+                                    className="w-full h-full object-cover"
+                                />
+                                <p className="absolute bottom-4 text-white text-sm font-medium drop-shadow-md">Haz una foto al producto</p>
+                            </div>
+                        )}
+                        {capturedImage && (
+                            <div className="relative w-full h-full flex items-center justify-center bg-black">
+                                <img src={capturedImage} alt="Captura" className="max-w-full max-h-full object-contain opacity-50" />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <Loader2 className="h-12 w-12 text-white animate-spin mb-4" />
+                                    <p className="text-white font-medium text-lg animate-pulse">Analizando con Gemini AI...</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-center mt-4">
+                        <Button
+                            size="lg"
+                            onClick={captureAndIdentify}
+                            disabled={isProcessing}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : (
+                                <>
+                                    <Camera className="mr-2 h-5 w-5" />
+                                    Identificar
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <Tabs defaultValue="list" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
