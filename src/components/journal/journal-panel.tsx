@@ -41,7 +41,9 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const [tags, setTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState('');
     const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const recordingInterval = React.useRef<NodeJS.Timeout | null>(null);
 
     const editor = useEditor({
         extensions: [
@@ -235,6 +237,12 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             toast.error('Debes iniciar sesión para grabar audio');
             return;
         }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            toast.error('Tu navegador no soporta grabación de audio.');
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -256,6 +264,13 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             };
 
             recorder.onstop = async () => {
+                // Clear timer
+                if (recordingInterval.current) {
+                    clearInterval(recordingInterval.current);
+                    recordingInterval.current = null;
+                }
+                setRecordingTime(0);
+
                 const blob = new Blob(chunks, { type: mimeType });
 
                 if (blob.size === 0) {
@@ -299,9 +314,28 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             recorder.start(100); // Collect chunks every 100ms
             setMediaRecorder(recorder);
             setIsRecording(true);
-        } catch (err) {
+
+            // Start timer
+            setRecordingTime(0);
+            recordingInterval.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (err: any) {
             console.error('Error accessing microphone:', err);
-            toast.error('No se pudo acceder al micrófono. Verifica los permisos.');
+            let errorMessage = 'No se pudo acceder al micrófono.';
+
+            if (err.name === 'NotAllowedError') {
+                errorMessage = 'Permiso denegado. Por favor permite el acceso al micrófono en tu navegador.';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage = 'No se encontró ningún micrófono.';
+            } else if (err.name === 'NotReadableError') {
+                errorMessage = 'El micrófono está siendo usado por otra aplicación.';
+            } else {
+                errorMessage = `Error: ${err.message || err.name || 'Desconocido'}`;
+            }
+
+            toast.error(errorMessage);
         }
     };
 
@@ -309,6 +343,17 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         mediaRecorder?.stop();
         setIsRecording(false);
         setMediaRecorder(null);
+        if (recordingInterval.current) {
+            clearInterval(recordingInterval.current);
+            recordingInterval.current = null;
+        }
+        setRecordingTime(0);
+    };
+
+    const formatRecordingTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
     return (
@@ -570,15 +615,22 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                                 }}
                             />
                         </Button>
-                        <Button
-                            variant={isRecording ? 'destructive' : 'ghost'}
-                            size="sm"
-                            onClick={isRecording ? stopRecording : startRecording}
-                            title={isRecording ? "Detener Grabación" : "Grabar Voz"}
-                            className={isRecording ? "animate-pulse" : ""}
-                        >
-                            <Mic className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {isRecording && (
+                                <span className="text-xs text-red-500 font-medium animate-pulse">
+                                    Grabando {formatRecordingTime(recordingTime)}...
+                                </span>
+                            )}
+                            <Button
+                                variant={isRecording ? 'destructive' : 'ghost'}
+                                size="sm"
+                                onClick={isRecording ? stopRecording : startRecording}
+                                title={isRecording ? "Detener Grabación" : "Grabar Voz"}
+                                className={isRecording ? "animate-pulse" : ""}
+                            >
+                                <Mic className="w-4 h-4" />
+                            </Button>
+                        </div>
 
                         <div className="w-px h-6 bg-border mx-1" />
 
