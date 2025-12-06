@@ -167,7 +167,8 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
         setIsSaving(false);
         if (error) {
-            toast.error('Error al guardar');
+            console.error('Error saving journal entry:', error);
+            toast.error(`Error al guardar: ${error.message}`);
         } else {
             toast.success('Guardado');
         }
