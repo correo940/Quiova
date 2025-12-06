@@ -136,7 +136,7 @@ export default function ShoppingList() {
                 status: 'to_buy',
             };
 
-            setItems([newItem, ...items]);
+            setItems(prevItems => [newItem, ...prevItems]);
             setNewItemName('');
             toast.success('Añadido a la lista de compra');
             return true;
