@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -18,6 +18,7 @@ type ShoppingItem = {
     id: string;
     name: string;
     category: string;
+    supermarket?: string;
     status: 'to_buy' | 'in_stock';
 };
 
@@ -44,9 +45,12 @@ export default function ShoppingList() {
                 const result = await identifyProductAction(imageSrc);
 
                 if (result.success && result.data) {
-                    const productName = result.data;
+                    const { productName, supermarket } = result.data;
                     toast.success(`¡Identificado: ${productName}!`);
-                    await addItem(productName);
+                    if (supermarket) toast.success(`Supermercado detectado: ${supermarket}`);
+
+                    await addItem(productName, supermarket);
+
                     setTimeout(() => {
                         setCapturedImage(null);
                         setIsScannerOpen(false);
@@ -91,6 +95,7 @@ export default function ShoppingList() {
                 id: item.id,
                 name: item.name,
                 category: item.category || 'General',
+                supermarket: item.supermarket,
                 status: item.is_checked ? 'in_stock' : 'to_buy',
             }));
 
@@ -103,7 +108,7 @@ export default function ShoppingList() {
         }
     };
 
-    const addItem = async (name: string = newItemName) => {
+    const addItem = async (name: string = newItemName, supermarket?: string) => {
         if (!name.trim() || !user) return;
 
         try {
@@ -114,6 +119,7 @@ export default function ShoppingList() {
                         user_id: user.id,
                         name: name,
                         category: 'General',
+                        supermarket: supermarket || null,
                         is_checked: false, // to_buy
                     },
                 ])
@@ -126,6 +132,7 @@ export default function ShoppingList() {
                 id: data.id,
                 name: data.name,
                 category: data.category || 'General',
+                supermarket: data.supermarket,
                 status: 'to_buy',
             };
 
@@ -188,6 +195,17 @@ export default function ShoppingList() {
 
     const toBuyItems = items.filter(i => i.status === 'to_buy');
     const inStockItems = items.filter(i => i.status === 'in_stock');
+
+    const getSupermarketBadgeColor = (supermarket?: string) => {
+        if (!supermarket) return "bg-gray-100 text-gray-800";
+        const lower = supermarket.toLowerCase();
+        if (lower.includes('mercadona')) return "bg-green-100 text-green-800 border-green-200";
+        if (lower.includes('carrefour')) return "bg-blue-100 text-blue-800 border-blue-200";
+        if (lower.includes('lidl')) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        if (lower.includes('dia')) return "bg-red-100 text-red-800 border-red-200";
+        if (lower.includes('aldi')) return "bg-blue-50 text-blue-900 border-blue-100";
+        return "bg-gray-100 text-gray-800";
+    };
 
     if (loading) {
         return (
@@ -307,9 +325,20 @@ export default function ShoppingList() {
                             ) : (
                                 <ul className="space-y-2">
                                     {toBuyItems.map(item => (
-                                        <li key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors group">
-                                            <span className="font-medium">{item.name}</span>
-                                            <div className="flex gap-2">
+                                        <li key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors group gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{item.name}</span>
+                                                    {item.supermarket && (
+                                                        <Badge variant="outline" className={`w-fit mt-1 text-xs border ${getSupermarketBadgeColor(item.supermarket)}`}>
+                                                            <Store className="w-3 h-3 mr-1" />
+                                                            {item.supermarket}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2 w-full sm:w-auto justify-end">
                                                 <Button size="sm" variant="outline" onClick={() => toggleStatus(item.id)} className="text-green-600 hover:text-green-700 hover:bg-green-50">
                                                     <ArrowRight className="mr-2 h-4 w-4" />
                                                     Marcar Comprado
@@ -341,9 +370,16 @@ export default function ShoppingList() {
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                     {inStockItems.map(item => (
-                                        <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg bg-secondary/20">
-                                            <span className="truncate mr-2">{item.name}</span>
-                                            <Button size="sm" variant="secondary" onClick={() => toggleStatus(item.id)} title="Se ha gastado">
+                                        <div key={item.id} className="flex flex-col p-3 border rounded-lg bg-secondary/20 gap-2">
+                                            <div className="flex justify-between items-start">
+                                                <span className="truncate font-medium">{item.name}</span>
+                                                {item.supermarket && (
+                                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 opacity-70">
+                                                        {item.supermarket}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <Button size="sm" variant="secondary" onClick={() => toggleStatus(item.id)} title="Se ha gastado" className="w-full mt-1">
                                                 <RefreshCw className="h-4 w-4 mr-2" />
                                                 Gastado
                                             </Button>
