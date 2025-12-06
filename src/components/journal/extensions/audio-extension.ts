@@ -1,4 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import AudioComponent from './audio-component';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
@@ -11,7 +13,9 @@ declare module '@tiptap/core' {
 export const AudioExtension = Node.create({
     name: 'audio',
 
-    group: 'block',
+    group: 'inline',
+
+    inline: true,
 
     atom: true,
 
@@ -26,13 +30,17 @@ export const AudioExtension = Node.create({
     parseHTML() {
         return [
             {
-                tag: 'audio',
+                tag: 'audio-component',
             },
         ];
     },
 
     renderHTML({ HTMLAttributes }) {
-        return ['audio', mergeAttributes(HTMLAttributes, { controls: 'true' })];
+        return ['audio-component', mergeAttributes(HTMLAttributes)];
+    },
+
+    addNodeView() {
+        return ReactNodeViewRenderer(AudioComponent);
     },
 
     addCommands() {
