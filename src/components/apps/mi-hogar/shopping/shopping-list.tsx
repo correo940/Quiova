@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -32,6 +32,55 @@ export default function ShoppingList() {
 
     const webcamRef = React.useRef<Webcam>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [isListening, setIsListening] = useState(false);
+
+    const handleVoiceInput = () => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            toast.error("Tu navegador no soporta entrada de voz.");
+            return;
+        }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = 'es-ES';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+            setIsListening(true);
+            toast.info("Escuchando...");
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setNewItemName(prev => {
+                const cleanPrev = prev.trim();
+                return cleanPrev ? `${cleanPrev} ${transcript}` : transcript;
+            });
+            toast.success("Texto añadido");
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error);
+            setIsListening(false);
+            if (event.error === 'not-allowed') {
+                toast.error("Permiso de micrófono denegado.");
+            } else {
+                toast.error("Error al escuchar.");
+            }
+        };
+
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    };
 
     const captureAndIdentify = React.useCallback(async () => {
         const imageSrc = webcamRef.current?.getScreenshot();
@@ -227,6 +276,13 @@ export default function ShoppingList() {
                     />
                     <Button onClick={() => addItem()}>
                         <Plus className="mr-2 h-4 w-4" /> Añadir
+                    </Button>
+                    <Button
+                        variant={isListening ? "destructive" : "outline"}
+                        onClick={handleVoiceInput}
+                        title={isListening ? "Detener escucha" : "Dictar producto"}
+                    >
+                        {isListening ? <MicOff className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
                     </Button>
                     <Button variant="outline" onClick={() => setIsScannerOpen(true)} title="Identificar producto con IA">
                         <Camera className="h-4 w-4 mr-2" />
