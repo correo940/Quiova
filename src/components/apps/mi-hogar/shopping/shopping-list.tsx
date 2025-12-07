@@ -19,6 +19,7 @@ type ShoppingItem = {
     name: string;
     category: string;
     supermarket?: string;
+    created_at?: string;
     status: 'to_buy' | 'in_stock';
 };
 
@@ -193,6 +194,7 @@ export default function ShoppingList() {
                 name: item.name,
                 category: item.category || 'General',
                 supermarket: item.supermarket,
+                created_at: item.created_at,
                 status: item.is_checked ? 'in_stock' : 'to_buy',
             }));
 
@@ -230,6 +232,7 @@ export default function ShoppingList() {
                 name: data.name,
                 category: data.category || 'General',
                 supermarket: data.supermarket,
+                created_at: data.created_at,
                 status: 'to_buy',
             };
 
@@ -302,6 +305,15 @@ export default function ShoppingList() {
         if (lower.includes('dia')) return "bg-red-100 text-red-800 border-red-200";
         if (lower.includes('aldi')) return "bg-blue-50 text-blue-900 border-blue-100";
         return "bg-gray-100 text-gray-800";
+    };
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "";
+        return new Date(dateString).toLocaleDateString('es-ES', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     };
 
     if (loading) {
@@ -439,6 +451,11 @@ export default function ShoppingList() {
                                                             {item.supermarket}
                                                         </Badge>
                                                     )}
+                                                    {item.created_at && (
+                                                        <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                                                            Añadido el {formatDate(item.created_at)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -483,6 +500,11 @@ export default function ShoppingList() {
                                                     </Badge>
                                                 )}
                                             </div>
+                                            {item.created_at && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {formatDate(item.created_at)}
+                                                </span>
+                                            )}
                                             <Button size="sm" variant="secondary" onClick={() => toggleStatus(item.id)} title="Se ha gastado" className="w-full mt-1">
                                                 <RefreshCw className="h-4 w-4 mr-2" />
                                                 Gastado
