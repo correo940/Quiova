@@ -33,6 +33,7 @@ export default function ShoppingList() {
     const webcamRef = React.useRef<Webcam>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
+    const recognitionRef = React.useRef<any>(null);
 
     const handleVoiceInput = () => {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -40,46 +41,93 @@ export default function ShoppingList() {
             return;
         }
 
+        if (isListening) {
+            if (recognitionRef.current) {
+                try {
+                    recognitionRef.current.stop();
+                } catch (e) {
+                    console.error("Error stopping recognition:", e);
+                }
+            }
+            setIsListening(false);
+            return;
+        }
+
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
 
         recognition.lang = 'es-ES';
+        recognition.continuous = true;
         recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
 
         recognition.onstart = () => {
             setIsListening(true);
-            toast.info("Escuchando...");
+            toast.info("Escuchando... Di productos para añadir.");
         };
 
         recognition.onend = () => {
-            setIsListening(false);
+            // If we didn't manually stop (isListening is true), restart to keep "continuous" feel if browser stops it?
+            // Browsers differ. Chrome stops after a while.
+            // For now, let's just respect the browser stop, or check isListening?
+            // If the user wants "say another", continuous=true usually keeps going until silence timeout.
+            // Let's just update state to false if it stops.
+            if (isListening) {
+                setIsListening(false);
+            }
         };
 
         recognition.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            setNewItemName(prev => {
-                const cleanPrev = prev.trim();
-                return cleanPrev ? `${cleanPrev} ${transcript}` : transcript;
-            });
-            toast.success("Texto añadido");
+            const results = event.results;
+            const lastResult = results[results.length - 1];
+
+            if (lastResult.isFinal) {
+                const transcript = lastResult[0].transcript.trim();
+                if (transcript && transcript.length > 1) {
+                    // Start adding item - we invoke addItem directly
+                    // Note: addItem is async but we don't await it here to not block recognition events
+                    addItem(transcript);
+                    playSuccessBeep();
+                    toast.success(`Añadido: ${transcript}`);
+                }
+            }
         };
 
         recognition.onerror = (event: any) => {
             console.error("Speech recognition error", event.error);
-            setIsListening(false);
             if (event.error === 'not-allowed') {
                 toast.error("Permiso de micrófono denegado.");
-            } else {
-                toast.error("Error al escuchar.");
+                setIsListening(false);
+            }
+            // For other errors like 'no-speech', we might want to just stop.
+            if (event.error !== 'no-speech') {
+                setIsListening(false);
             }
         };
 
-        if (isListening) {
-            recognition.stop();
-        } else {
+        try {
             recognition.start();
+        } catch (e) {
+            console.error("Error starting recognition", e);
+            toast.error("Error al iniciar el reconocimiento de voz.");
+            setIsListening(false);
         }
+    };
+
+    const playSuccessBeep = () => {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1); // Short beep
     };
 
     const captureAndIdentify = React.useCallback(async () => {
