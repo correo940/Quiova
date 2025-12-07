@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -35,6 +35,44 @@ export default function ShoppingList() {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef<any>(null);
+
+    const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editSupermarket, setEditSupermarket] = useState("");
+
+    const openEditDialog = (item: ShoppingItem) => {
+        setEditingItem(item);
+        setEditName(item.name);
+        setEditSupermarket(item.supermarket || "");
+    };
+
+    const updateItem = async () => {
+        if (!editingItem || !editName.trim()) return;
+
+        try {
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({
+                    name: editName,
+                    supermarket: editSupermarket || null
+                })
+                .eq('id', editingItem.id);
+
+            if (error) throw error;
+
+            setItems(items.map(i =>
+                i.id === editingItem.id
+                    ? { ...i, name: editName, supermarket: editSupermarket || undefined }
+                    : i
+            ));
+
+            setEditingItem(null);
+            toast.success("Producto actualizado");
+        } catch (error) {
+            console.error('Error updating item:', error);
+            toast.error("Error al actualizar");
+        }
+    };
 
     const handleVoiceInput = () => {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -408,6 +446,37 @@ export default function ShoppingList() {
                         </Button>
                     </div>
                 </DialogContent>
+
+            </Dialog>
+
+            <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Editar Producto</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Nombre del producto</label>
+                            <Input
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                placeholder="Ej. Leche"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Supermercado (Opcional)</label>
+                            <Input
+                                value={editSupermarket}
+                                onChange={(e) => setEditSupermarket(e.target.value)}
+                                placeholder="Ej. Mercadona"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
+                            <Button onClick={updateItem}>Guardar Cambios</Button>
+                        </div>
+                    </div>
+                </DialogContent>
             </Dialog>
 
             <Tabs defaultValue="list" className="w-full">
@@ -457,6 +526,9 @@ export default function ShoppingList() {
                                                         </span>
                                                     )}
                                                 </div>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => openEditDialog(item)}>
+                                                    <Pencil className="h-3 w-3" />
+                                                </Button>
                                             </div>
 
                                             <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -493,12 +565,17 @@ export default function ShoppingList() {
                                     {inStockItems.map(item => (
                                         <div key={item.id} className="flex flex-col p-3 border rounded-lg bg-secondary/20 gap-2">
                                             <div className="flex justify-between items-start">
-                                                <span className="truncate font-medium">{item.name}</span>
-                                                {item.supermarket && (
-                                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 opacity-70">
-                                                        {item.supermarket}
-                                                    </Badge>
-                                                )}
+                                                <div className="flex flex-col overflow-hidden">
+                                                    <span className="truncate font-medium">{item.name}</span>
+                                                    {item.supermarket && (
+                                                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 opacity-70 w-fit">
+                                                            {item.supermarket}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0" onClick={() => openEditDialog(item)}>
+                                                    <Pencil className="h-3 w-3" />
+                                                </Button>
                                             </div>
                                             {item.created_at && (
                                                 <span className="text-[10px] text-muted-foreground">
@@ -517,6 +594,6 @@ export default function ShoppingList() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     );
 }
