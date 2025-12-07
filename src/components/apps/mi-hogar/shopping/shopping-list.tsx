@@ -13,6 +13,8 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Webcam from 'react-webcam';
 import { identifyProductAction } from '@/app/actions/identify-product';
+import Link from 'next/link';
+import { ChefHat } from 'lucide-react';
 
 type ShoppingItem = {
     id: string;
@@ -365,7 +367,7 @@ export default function ShoppingList() {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 flex gap-2">
+                <div className="flex-1 flex gap-2 flex-wrap">
                     <Input
                         placeholder="¿Qué necesitas comprar? (ej. Leche, Pan...)"
                         value={newItemName}
@@ -386,6 +388,12 @@ export default function ShoppingList() {
                         <Camera className="h-4 w-4 mr-2" />
                         <Sparkles className="h-3 w-3 text-yellow-500" />
                     </Button>
+                    <Link href="/apps/mi-hogar/recipes">
+                        <Button variant="outline" title="Chef Inteligente">
+                            <ChefHat className="h-4 w-4 mr-2" />
+                            <Sparkles className="h-3 w-3 text-orange-500" />
+                        </Button>
+                    </Link>
                 </div>
             </div>
 

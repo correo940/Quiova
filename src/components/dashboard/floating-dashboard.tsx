@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -20,6 +20,8 @@ export default function FloatingDashboard() {
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
     const router = useRouter();
+
+    const dashboardRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // Check initial session
@@ -41,7 +43,18 @@ export default function FloatingDashboard() {
             }
         });
 
-        return () => subscription.unsubscribe();
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dashboardRef.current && !dashboardRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => {
+            subscription.unsubscribe();
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, []);
 
     const fetchCounts = async (userId: string) => {
@@ -78,7 +91,7 @@ export default function FloatingDashboard() {
         <>
             <JournalPanel isOpen={isJournalOpen} onClose={() => setIsJournalOpen(false)} />
 
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+            <div ref={dashboardRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
                 {/* Journal Button */}
                 {/* Journal Button */}
                 <motion.button
@@ -165,8 +178,10 @@ export default function FloatingDashboard() {
                                             <span className="text-sm font-medium">Contraseñas</span>
                                         </Link>
 
+
+
                                         <Link href="/apps/mi-hogar/manuals" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
-                                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+                                            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
                                                 <FileText className="w-4 h-4" />
                                             </div>
                                             <span className="text-sm font-medium">Manuales</span>

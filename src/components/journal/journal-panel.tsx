@@ -81,6 +81,24 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Click outside to close
+    const panelRef = React.useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isOpen && panelRef.current && !panelRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen, onClose]);
+
     // Load content when pathname, user, or selectedDate changes
     useEffect(() => {
         if (!user || !editor) return;
@@ -369,6 +387,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                     className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex flex-col"
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
+                    ref={panelRef}
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
