@@ -677,11 +677,6 @@ export default function GaragePage() {
                 </div>
             </div>
 
-            import {VehicleDialog} from '@/components/apps/mi-hogar/garage/vehicle-dialog';
-
-            // ... (other imports)
-
-            // ... (inside component)
 
             {/* Modal Añadir/Editar Vehículo */}
             <VehicleDialog
