@@ -11,7 +11,7 @@ export default function MobileNav() {
 
     const handleNavClick = async () => {
         try {
-            await Haptics.impact({ style: ImpactStyle.Light });
+            await Haptics.impact({ style: ImpactStyle.Heavy });
         } catch (e) {
             // Ignore errors (e.g. on web)
         }
