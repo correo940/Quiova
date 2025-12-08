@@ -512,107 +512,14 @@ export default function GaragePage() {
                 </Dialog>
 
                 {/* Modal Añadir/Editar Vehículo (In Detail View) */}
-                <Dialog open={isVehicleDialogOpen} onOpenChange={setIsVehicleDialogOpen}>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>{vehicleForm.id ? 'Editar Vehículo' : 'Nuevo Vehículo'}</DialogTitle></DialogHeader>
-                        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-1">
-                            <div className="space-y-2">
-                                <Label>Tipo</Label>
-                                <div className="flex gap-4">
-                                    <button
-                                        className={cn("flex-1 p-4 rounded-lg border-2 flex flex-col items-center gap-2", vehicleForm.type === 'car' ? "border-blue-500 bg-blue-50" : "border-slate-200")}
-                                        onClick={() => setVehicleForm({ ...vehicleForm, type: 'car' })}
-                                    >
-                                        <Car className="w-8 h-8" /> <span>Coche</span>
-                                    </button>
-                                    <button
-                                        className={cn("flex-1 p-4 rounded-lg border-2 flex flex-col items-center gap-2", vehicleForm.type === 'moto' ? "border-blue-500 bg-blue-50" : "border-slate-200")}
-                                        onClick={() => setVehicleForm({ ...vehicleForm, type: 'moto' })}
-                                    >
-                                        <Bike className="w-8 h-8" /> <span>Moto</span>
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Marca ({vehicleForm.type === 'moto' ? 'Yamaha...' : 'Ford...'})</Label>
-                                    <Input placeholder="Marca" value={vehicleForm.brand || ''} onChange={e => setVehicleForm({ ...vehicleForm, brand: e.target.value })} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Modelo</Label>
-                                    <Input placeholder="Fiesta" value={vehicleForm.model || ''} onChange={e => setVehicleForm({ ...vehicleForm, model: e.target.value })} />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Matrícula</Label>
-                                    <Input placeholder="1234 ABC" value={vehicleForm.license_plate || ''} onChange={e => setVehicleForm({ ...vehicleForm, license_plate: e.target.value.toUpperCase() })} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Año</Label>
-                                    <Input type="number" placeholder="2020" value={vehicleForm.year || ''} onChange={e => setVehicleForm({ ...vehicleForm, year: parseInt(e.target.value) })} />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Aceite Motor</Label>
-                                    <Input placeholder="5W-30" value={vehicleForm.oil_type || ''} onChange={e => setVehicleForm({ ...vehicleForm, oil_type: e.target.value })} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Presión Ruedas</Label>
-                                    <Input placeholder="2.5 bar" value={vehicleForm.tire_pressure || ''} onChange={e => setVehicleForm({ ...vehicleForm, tire_pressure: e.target.value })} />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Próxima ITV</Label>
-                                    <Input type="date" value={vehicleForm.next_itv_date || ''} onChange={e => setVehicleForm({ ...vehicleForm, next_itv_date: e.target.value })} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Vencimiento Seguro</Label>
-                                    <Input type="date" value={vehicleForm.insurance_expiry_date || ''} onChange={e => setVehicleForm({ ...vehicleForm, insurance_expiry_date: e.target.value })} />
-                                </div>
-                            </div>
-
-                            <div className="border-t pt-4 mt-4">
-                                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                    <Wrench className="w-4 h-4" /> Configuración de Mantenimiento
-                                </h3>
-                                <div className="grid grid-cols-1 gap-4 mb-4">
-                                    <div className="space-y-2">
-                                        <Label>Kilómetros Actuales</Label>
-                                        <Input type="number" placeholder="Ej. 125000" value={vehicleForm.current_kilometers || ''} onChange={e => setVehicleForm({ ...vehicleForm, current_kilometers: parseInt(e.target.value) })} />
-                                        <p className="text-xs text-muted-foreground">Actualízalo registrando eventos o editando aquí.</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Cambio de Aceite (cada km)</Label>
-                                        <Input type="number" placeholder="Ej. 15000" value={vehicleForm.oil_change_interval_km || ''} onChange={e => setVehicleForm({ ...vehicleForm, oil_change_interval_km: parseInt(e.target.value) })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Cambio Ruedas (cada km)</Label>
-                                        <Input type="number" placeholder="Ej. 40000" value={vehicleForm.tire_change_interval_km || ''} onChange={e => setVehicleForm({ ...vehicleForm, tire_change_interval_km: parseInt(e.target.value) })} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsVehicleDialogOpen(false)}>Cancelar</Button>
-                            <Button onClick={saveVehicle}>Guardar Vehículo</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                    <VehicleDialog
-                        open={isVehicleDialogOpen}
-                        onOpenChange={setIsVehicleDialogOpen}
-                        form={vehicleForm}
-                        setForm={(f) => setVehicleForm(f as any)}
-                        onSave={saveVehicle}
-                    />
+                <VehicleDialog
+                    open={isVehicleDialogOpen}
+                    onOpenChange={setIsVehicleDialogOpen}
+                    form={vehicleForm}
+                    setForm={(f) => setVehicleForm(f as any)}
+                    onSave={saveVehicle}
+                />
             </div>
         );
     }
