@@ -142,7 +142,7 @@ function HomeContent() {
             <div
               className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
             >
-              <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+              <h1 className="font-headline text-3xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
                 {slides[currentSlide].title}
               </h1>
               <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">

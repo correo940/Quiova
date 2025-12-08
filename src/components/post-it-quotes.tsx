@@ -166,7 +166,7 @@ export default function PostItQuotes() {
                                 initial={{ opacity: 0, scale: 0.8, rotate: -5 + (index * 5) }} // Rotaciones variadas iniciales
                                 animate={{ opacity: 1, scale: 1, rotate: index % 2 === 0 ? 2 : -2 }} // Alternar rotación final
                                 transition={{ duration: 0.5, delay: index * 0.2 }}
-                                className={`relative p-6 ${quote.color} shadow-xl w-full max-w-[300px] aspect-square flex flex-col justify-between font-handwriting transform transition-transform hover:scale-105 duration-300`}
+                                className={`relative p-6 ${quote.color} shadow-xl w-full max-w-[280px] md:max-w-[300px] aspect-square flex flex-col justify-between font-handwriting transform transition-transform hover:scale-105 duration-300`}
                                 style={{
                                     boxShadow: '10px 10px 25px rgba(0,0,0,0.2)'
                                 }}

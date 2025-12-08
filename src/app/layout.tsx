@@ -4,11 +4,13 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
+import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
 
 export const metadata: Metadata = {
   title: 'Quiova',
   description: 'Tu espacio para la salud y el bienestar financiero.',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0', // Critical for native-like feel
 };
 
 export default function RootLayout({
@@ -26,11 +28,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased flex flex-col min-h-screen" suppressHydrationWarning>
+      <body className="font-body antialiased flex flex-col min-h-screen pb-16 md:pb-0" suppressHydrationWarning>
         <ClientProvider>
           <Header />
           <main className="flex-grow">{children}</main>
           <Footer />
+          <MobileNav />
           <Toaster />
           <SonnerToaster />
         </ClientProvider>

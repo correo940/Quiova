@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
     "@genkit-ai/googleai": "1.5.0",
     "@genkit-ai/next": "1.5.0",
     "@google/generative-ai": "^0.24.1",
