@@ -606,7 +606,13 @@ export default function GaragePage() {
                             <Button onClick={saveVehicle}>Guardar Vehículo</Button>
                         </DialogFooter>
                     </DialogContent>
-                </Dialog>
+                    <VehicleDialog
+                        open={isVehicleDialogOpen}
+                        onOpenChange={setIsVehicleDialogOpen}
+                        form={vehicleForm}
+                        setForm={(f) => setVehicleForm(f as any)}
+                        onSave={saveVehicle}
+                    />
             </div>
         );
     }
