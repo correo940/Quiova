@@ -123,12 +123,17 @@ export default function GaragePage() {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { id, user_id, created_at, ...updates } = vehicleForm as any;
 
+                console.log('UPDATING VEHICLE:', vehicleForm.id);
+
                 const { error } = await supabase
                     .from('vehicles')
                     .update({ ...updates, name: displayName })
                     .eq('id', vehicleForm.id);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('SUPABASE ERROR:', error);
+                    throw error;
+                }
                 toast.success('Vehículo actualizado');
 
                 // If we are editing the currently selected vehicle, update it in view
@@ -138,16 +143,19 @@ export default function GaragePage() {
             } else {
                 // Insert
                 const { error } = await supabase.from('vehicles').insert([{ ...vehicleForm, name: displayName, user_id: user.id }]);
-                if (error) throw error;
+                if (error) {
+                    console.error('INSERT ERROR:', error);
+                    throw error;
+                }
                 toast.success('Vehículo añadido');
             }
 
             setIsVehicleDialogOpen(false);
             setVehicleForm({ type: 'car' });
             fetchVehicles();
-        } catch (e) {
-            console.error(e);
-            toast.error('Error al guardar vehículo');
+        } catch (e: any) {
+            console.error('FINAL ERROR:', e);
+            toast.error(`Error: ${e.message || e.error_description || 'No se pudo guardar'}`);
         }
     };
 
