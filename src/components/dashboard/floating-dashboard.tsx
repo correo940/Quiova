@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -122,18 +122,29 @@ export default function FloatingDashboard() {
 
                             <div className="p-2 grid gap-2">
                                 {menuView === 'main' ? (
-                                    <button
-                                        onClick={() => setMenuView('mi-hogar')}
-                                        className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group w-full text-left"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                                <Home className="w-4 h-4" />
+                                    <>
+                                        <button
+                                            onClick={() => setMenuView('mi-hogar')}
+                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group w-full text-left"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                                    <Home className="w-4 h-4" />
+                                                </div>
+                                                <span className="text-sm font-medium">Mi Hogar</span>
                                             </div>
-                                            <span className="text-sm font-medium">Mi Hogar</span>
-                                        </div>
-                                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                                    </button>
+                                            <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                                        </button>
+
+                                        <Link href="/apps/mi-hogar/garage" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group w-full text-left mt-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                                                    <Car className="w-4 h-4" />
+                                                </div>
+                                                <span className="text-sm font-medium">Mis Vehículos</span>
+                                            </div>
+                                        </Link>
+                                    </>
                                 ) : (
                                     <>
                                         <button
@@ -177,6 +188,15 @@ export default function FloatingDashboard() {
                                             </div>
                                             <span className="text-sm font-medium">Contraseñas</span>
                                         </Link>
+
+                                        <Link href="/apps/mi-hogar/pharmacy" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-600 dark:text-red-400">
+                                                <Pill className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Botiquín</span>
+                                        </Link>
+
+                                        <Link href="/apps/mi-hogar/garage" className="hidden" />
 
 
 
