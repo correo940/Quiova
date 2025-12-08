@@ -119,10 +119,13 @@ export default function GaragePage() {
 
         try {
             if (vehicleForm.id) {
-                // Update
+                // Update - Sanitize payload
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, user_id, created_at, ...updates } = vehicleForm as any;
+
                 const { error } = await supabase
                     .from('vehicles')
-                    .update({ ...vehicleForm, name: displayName })
+                    .update({ ...updates, name: displayName })
                     .eq('id', vehicleForm.id);
 
                 if (error) throw error;
@@ -143,6 +146,7 @@ export default function GaragePage() {
             setVehicleForm({ type: 'car' });
             fetchVehicles();
         } catch (e) {
+            console.error(e);
             toast.error('Error al guardar vehículo');
         }
     };
