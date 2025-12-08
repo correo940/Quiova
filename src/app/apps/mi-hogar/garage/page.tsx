@@ -31,6 +31,11 @@ type Vehicle = {
     oil_type?: string;
     tire_pressure?: string;
     image_url?: string;
+    current_kilometers?: number;
+    last_oil_change_km?: number;
+    last_tire_change_km?: number;
+    oil_change_interval_km?: number;
+    tire_change_interval_km?: number;
 };
 
 type VehicleEvent = {
@@ -113,9 +118,27 @@ export default function GaragePage() {
         const displayName = vehicleForm.name || `${vehicleForm.brand || ''} ${vehicleForm.model || ''}`.trim() || 'Mi Vehículo';
 
         try {
-            const { error } = await supabase.from('vehicles').insert([{ ...vehicleForm, name: displayName, user_id: user.id }]);
-            if (error) throw error;
-            toast.success('Vehículo añadido');
+            if (vehicleForm.id) {
+                // Update
+                const { error } = await supabase
+                    .from('vehicles')
+                    .update({ ...vehicleForm, name: displayName })
+                    .eq('id', vehicleForm.id);
+
+                if (error) throw error;
+                toast.success('Vehículo actualizado');
+
+                // If we are editing the currently selected vehicle, update it in view
+                if (selectedVehicle && selectedVehicle.id === vehicleForm.id) {
+                    setSelectedVehicle({ ...selectedVehicle, ...vehicleForm, name: displayName } as Vehicle);
+                }
+            } else {
+                // Insert
+                const { error } = await supabase.from('vehicles').insert([{ ...vehicleForm, name: displayName, user_id: user.id }]);
+                if (error) throw error;
+                toast.success('Vehículo añadido');
+            }
+
             setIsVehicleDialogOpen(false);
             setVehicleForm({ type: 'car' });
             fetchVehicles();
@@ -131,17 +154,48 @@ export default function GaragePage() {
         }
 
         try {
-            const { error } = await supabase.from('vehicle_events').insert([{
+            // 1. Insert Event
+            const { error: eventError } = await supabase.from('vehicle_events').insert([{
                 ...eventForm,
                 user_id: user.id,
                 vehicle_id: selectedVehicle.id
             }]);
-            if (error) throw error;
-            toast.success('Evento registrado');
+            if (eventError) throw eventError;
+
+            // 2. Update Vehicle Stats based on Event
+            const updates: any = {};
+            if (eventForm.kilometers && eventForm.kilometers > (selectedVehicle.current_kilometers || 0)) {
+                updates.current_kilometers = eventForm.kilometers;
+            }
+
+            if (eventForm.type === 'oil_change' && eventForm.kilometers) {
+                updates.last_oil_change_km = eventForm.kilometers;
+            }
+
+            // Check maintenance items for tires
+            if (eventForm.maintenance_items?.includes('tires') && eventForm.kilometers) {
+                updates.last_tire_change_km = eventForm.kilometers;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                const { error: vehicleError } = await supabase
+                    .from('vehicles')
+                    .update(updates)
+                    .eq('id', selectedVehicle.id);
+
+                if (vehicleError) throw vehicleError;
+
+                // Update local state immediately
+                setSelectedVehicle({ ...selectedVehicle, ...updates });
+            }
+
+            toast.success('Evento registrado y vehículo actualizado');
             setIsEventDialogOpen(false);
             setEventForm({ type: 'maintenance', date: new Date().toISOString().split('T')[0], maintenance_items: [] });
             fetchEvents(selectedVehicle.id);
+            fetchVehicles(); // Refresh main list too
         } catch (e) {
+            console.error(e);
             toast.error('Error al guardar evento');
         }
     };
@@ -206,9 +260,17 @@ export default function GaragePage() {
                                 </div>
                             </div>
                         </div>
-                        <Button variant="destructive" size="sm" onClick={() => deleteVehicle(selectedVehicle.id)}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Eliminar Vehículo
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => {
+                                setVehicleForm(selectedVehicle);
+                                setIsVehicleDialogOpen(true);
+                            }}>
+                                <Settings className="w-4 h-4 mr-2" /> Editar
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => deleteVehicle(selectedVehicle.id)}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Eliminar Vehículo
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Tech Specs Grid */}
@@ -247,6 +309,58 @@ export default function GaragePage() {
                                     <Gauge className="w-4 h-4 mr-2 text-blue-500" />
                                     {selectedVehicle.tire_pressure || '-'}
                                 </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Maintenance Status Grid */}
+                    <h2 className="text-lg font-semibold mt-6 mb-2">Mantenimiento</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Oil Status */}
+                        <Card className={cn(
+                            "border-l-4",
+                            (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000)
+                                ? "border-l-red-500"
+                                : "border-l-green-500"
+                        )}>
+                            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Aceite Motor</CardTitle>
+                                <Droplets className={cn("w-4 h-4",
+                                    (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000)
+                                        ? "text-red-500" : "text-green-500"
+                                )} />
+                            </CardHeader>
+                            <CardContent className="p-4 pt-1">
+                                <div className="text-2xl font-bold">
+                                    {Math.max(0, (selectedVehicle.oil_change_interval_km || 15000) - ((selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0))).toLocaleString()} km
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    restantes para el cambio (cada {(selectedVehicle.oil_change_interval_km || 15000).toLocaleString()} km)
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {/* Tires Status */}
+                        <Card className={cn(
+                            "border-l-4",
+                            (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000)
+                                ? "border-l-red-500"
+                                : "border-l-green-500"
+                        )}>
+                            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Neumáticos</CardTitle>
+                                <Gauge className={cn("w-4 h-4",
+                                    (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000)
+                                        ? "text-red-500" : "text-green-500"
+                                )} />
+                            </CardHeader>
+                            <CardContent className="p-4 pt-1">
+                                <div className="text-2xl font-bold">
+                                    {Math.max(0, (selectedVehicle.tire_change_interval_km || 40000) - ((selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0))).toLocaleString()} km
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    restantes para el cambio (cada {(selectedVehicle.tire_change_interval_km || 40000).toLocaleString()} km)
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
@@ -453,10 +567,10 @@ export default function GaragePage() {
                 </div>
             </div>
 
-            {/* Modal Añadir Vehículo */}
+            {/* Modal Añadir/Editar Vehículo */}
             <Dialog open={isVehicleDialogOpen} onOpenChange={setIsVehicleDialogOpen}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Nuevo Vehículo</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>{vehicleForm.id ? 'Editar Vehículo' : 'Nuevo Vehículo'}</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>Tipo</Label>
@@ -517,6 +631,29 @@ export default function GaragePage() {
                             <div className="space-y-2">
                                 <Label>Vencimiento Seguro</Label>
                                 <Input type="date" value={vehicleForm.insurance_expiry_date || ''} onChange={e => setVehicleForm({ ...vehicleForm, insurance_expiry_date: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                            <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                <Wrench className="w-4 h-4" /> Configuración de Mantenimiento
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4 mb-4">
+                                <div className="space-y-2">
+                                    <Label>Kilómetros Actuales</Label>
+                                    <Input type="number" placeholder="Ej. 125000" value={vehicleForm.current_kilometers || ''} onChange={e => setVehicleForm({ ...vehicleForm, current_kilometers: parseInt(e.target.value) })} />
+                                    <p className="text-xs text-muted-foreground">Actualízalo registrando eventos o editando aquí.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Cambio de Aceite (cada km)</Label>
+                                    <Input type="number" placeholder="Ej. 15000" value={vehicleForm.oil_change_interval_km || ''} onChange={e => setVehicleForm({ ...vehicleForm, oil_change_interval_km: parseInt(e.target.value) })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Cambio Ruedas (cada km)</Label>
+                                    <Input type="number" placeholder="Ej. 40000" value={vehicleForm.tire_change_interval_km || ''} onChange={e => setVehicleForm({ ...vehicleForm, tire_change_interval_km: parseInt(e.target.value) })} />
+                                </div>
                             </div>
                         </div>
                     </div>

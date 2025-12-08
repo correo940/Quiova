@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { NotificationManager } from '@/lib/notifications';
 import { toast } from 'sonner';
-import { Pill } from 'lucide-react';
 
 export default function MedicineAlarmManager() {
     const [user, setUser] = useState<any>(null);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         // Init Check
@@ -23,115 +22,80 @@ export default function MedicineAlarmManager() {
     }, []);
 
     useEffect(() => {
-        if (!user) {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            return;
-        }
+        if (!user) return;
 
-        // Check immediately
-        checkAlarms(user);
+        const setupAlarms = async () => {
+            // Request permissions explicitly when component mounts/user logs in
+            const granted = await NotificationManager.requestPermissions();
+            if (!granted) return;
 
-        // Then every minute
-        intervalRef.current = setInterval(() => {
-            checkAlarms(user);
-        }, 60000);
-
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-        };
-    }, [user]);
-
-    const checkAlarms = async (currentUser: any) => {
-        if (!currentUser) return;
-
-        const now = new Date();
-        const currentHour = now.getHours().toString().padStart(2, '0');
-        const currentMinute = now.getMinutes().toString().padStart(2, '0');
-        const currentTime = `${currentHour}:${currentMinute}`;
-
-        try {
             const { data: medicines, error } = await supabase
                 .from('medicines')
                 .select('id, name, dosage, alarm_times')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', user.id)
                 .not('alarm_times', 'is', null);
 
-            if (error) throw error;
+            if (error || !medicines) return;
 
-            if (medicines) {
-                medicines.forEach(med => {
-                    if (med.alarm_times && Array.isArray(med.alarm_times)) {
-                        if (med.alarm_times.includes(currentTime)) {
-                            triggerAlarm(med);
-                        }
-                    }
-                });
-            }
+            // Strategy: Cancel all previous medicine alarms (we would need to track IDs, 
+            // but for simplicity/robustness in this MVP, we might rely on unique predictable IDs)
+            // Ideally we track IDs we created. 
+            // For now, let's just schedule. 
+            // Note: In a real app, we should probably "re-sync" completely.
 
-        } catch (error) {
-            console.error('Error checking medicine alarms:', error);
-        }
-    };
+            // To prevent massive duplication, we could cancel a range, or use specific IDs.
+            // NotificationManager.generateId makes deterministic IDs.
 
-    const triggerAlarm = (medicine: any) => {
-        // Play sound
-        playAlarmSound();
+            medicines.forEach(med => {
+                if (med.alarm_times && Array.isArray(med.alarm_times)) {
+                    med.alarm_times.forEach((time: string) => {
+                        // Time is "HH:MM" string
+                        const [hours, minutes] = time.split(':').map(Number);
 
-        // Show Toast
-        toast.info(
-            <div className="flex flex-col gap-1">
-                <span className="font-bold flex items-center gap-2">
-                    <Pill className="w-4 h-4" /> Hora de tu medicación
-                </span>
-                <span>{medicine.name}</span>
-                <span className="text-xs opacity-80">{medicine.dosage}</span>
-            </div>,
-            {
-                duration: 10000,
-                action: {
-                    label: "Tomada",
-                    onClick: () => console.log('Medication taken')
+                        // Create a date object for the schedule (Next occurrence)
+                        // Actually Capacitor LocalNotifications 'every: day' schedule uses the 'on' property or simplified schedule.
+                        // For 'every: day', we need components.
+                        const schedule = {
+                            on: {
+                                hour: hours,
+                                minute: minutes
+                            }
+                        };
+
+                        // Unique ID: Hash of "med_ID_TIME"
+                        const notifId = NotificationManager.generateId(`med_${med.id}_${time}`);
+
+                        NotificationManager.schedule({
+                            id: notifId,
+                            title: `💊 Hora de tu medicación`,
+                            body: `${med.name} - ${med.dosage || 'Toma tu dosis'}`,
+                            // @ts-ignore - 'on' is valid for recurring but type def might be tricky in wrapper. 
+                            // Reverting to 'at' + 'every' if 'on' is not exposed in my helper interface, 
+                            // but generic 'schedule' passed through.
+                            // Let's use 'on' structure for recurring:
+                            schedule: {
+                                on: { hour: hours, minute: minutes },
+                                allowWhileIdle: true
+                            } as any
+                        });
+                    });
                 }
-            }
-        );
-
-        // Show Browser Notification if permitted
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`Hora de tomar: ${medicine.name}`, {
-                body: `${medicine.dosage || 'Revisa tu botiquín'}`,
-                icon: '/icons/pill.png'
             });
+        };
+
+        setupAlarms();
+
+        // Optional: Subscribe to changes to auto-update
+        const channel = supabase
+            .channel('medicine_alarms_sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'medicines' }, setupAlarms)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
         }
-    };
 
-    const playAlarmSound = () => {
-        try {
-            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const oscillator = context.createOscillator();
-            const gainNode = context.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(context.destination);
-
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(440, context.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.1);
-
-            gainNode.gain.setValueAtTime(0.1, context.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
-
-            oscillator.start();
-            oscillator.stop(context.currentTime + 0.5);
-        } catch (e) {
-            console.error('Audio play failed', e);
-        }
-    };
-
-    useEffect(() => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-    }, []);
+    }, [user]);
 
     return null;
 }

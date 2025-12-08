@@ -7,6 +7,7 @@ import TaskPostIts from '@/components/dashboard/task-post-its';
 import { PostItSettingsProvider } from '@/context/PostItSettingsContext';
 import { JournalProvider } from '@/context/JournalContext';
 import MedicineAlarmManager from '@/components/apps/mi-hogar/pharmacy/medicine-alarm-manager';
+import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
         <JournalProvider>
           <TextSelectionToolbar />
           <MedicineAlarmManager />
+          <TaskNotificationManager />
           {children}
           <FloatingDashboard />
           <TaskPostIts />
