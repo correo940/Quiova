@@ -8,6 +8,7 @@ import { PostItSettingsProvider } from '@/context/PostItSettingsContext';
 import { JournalProvider } from '@/context/JournalContext';
 import MedicineAlarmManager from '@/components/apps/mi-hogar/pharmacy/medicine-alarm-manager';
 import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notification-manager';
+import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicle-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
           <TextSelectionToolbar />
           <MedicineAlarmManager />
           <TaskNotificationManager />
+          <VehicleNotificationManager />
           {children}
           <FloatingDashboard />
           <TaskPostIts />

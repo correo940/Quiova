@@ -18,7 +18,7 @@ import { format, differenceInDays, parseISO, addYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-type Vehicle = {
+export type Vehicle = {
     id: string;
     name: string; // Used as display name or nickname
     brand?: string;
@@ -36,6 +36,8 @@ type Vehicle = {
     last_tire_change_km?: number;
     oil_change_interval_km?: number;
     tire_change_interval_km?: number;
+    notify_km_before?: number; // Configurable threshold for mileage alerts
+    notify_days_before?: number; // Configurable threshold for date alerts
 };
 
 type VehicleEvent = {
@@ -681,10 +683,104 @@ export default function GaragePage() {
                 </div>
             </div>
 
+            import {VehicleDialog} from '@/components/apps/mi-hogar/garage/vehicle-dialog';
+
+            // ... (other imports)
+
+            // ... (inside component)
+
             {/* Modal Añadir/Editar Vehículo */}
-            <Dialog open={isVehicleDialogOpen} onOpenChange={setIsVehicleDialogOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>{vehicleForm.id ? 'Editar Vehículo' : 'Nuevo Vehículo'}</DialogTitle></DialogHeader>
+            <VehicleDialog
+                open={isVehicleDialogOpen}
+                onOpenChange={setIsVehicleDialogOpen}
+                form={vehicleForm}
+                setForm={(f) => setVehicleForm(f as any)}
+        <div className="max-w-5xl mx-auto space-y-6">
+                <div>
+                    <Link href="/apps/mi-hogar">
+                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                        </Button>
+                    </Link>
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                        <span className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-xl text-blue-600 dark:text-blue-400">
+                            <Car className="w-8 h-8" />
+                        </span>
+                        Garaje
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Gestiona tus vehículos y su mantenimiento</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Add Card */}
+                    <button
+                        onClick={() => setIsVehicleDialogOpen(true)}
+                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group h-[200px]"
+                    >
+                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                            <Plus className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <span className="font-medium text-slate-600 dark:text-slate-400">Añadir Vehículo</span>
+                    </button>
+
+                    {vehicles.map(vehicle => (
+                        <Card
+                            key={vehicle.id}
+                            onClick={() => setSelectedVehicle(vehicle)}
+                            className="cursor-pointer hover:shadow-lg transition-all group border-blue-100 dark:border-blue-900/20"
+                        >
+                            <CardHeader className="pb-2">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                            {vehicle.type === 'moto' ? <Bike className="w-6 h-6 text-blue-600" /> : <Car className="w-6 h-6 text-blue-600" />}
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">{vehicle.brand ? `${vehicle.brand} ${vehicle.model}` : vehicle.name}</CardTitle>
+                                            <CardDescription className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded w-fit text-xs mt-1">{vehicle.license_plate}</CardDescription>
+                                        </div>
+                                    </div>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
+                                        <Settings className="w-4 h-4" />
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-2 pt-4">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> ITV</span>
+                                    <span className={cn("font-medium", getStatusColor(vehicle.next_itv_date).split(' ')[0])}>
+                                        {vehicle.next_itv_date ? format(parseISO(vehicle.next_itv_date), 'dd/MM/yy') : '-'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Seguro</span>
+                                    <span className={cn("font-medium", getStatusColor(vehicle.insurance_expiry_date).split(' ')[0])}>
+                                        {vehicle.insurance_expiry_date ? format(parseISO(vehicle.insurance_expiry_date), 'dd/MM/yy') : '-'}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+
+            import {VehicleDialog} from '@/components/apps/mi-hogar/garage/vehicle-dialog';
+
+            // ... (other imports)
+
+            // ... (inside component)
+
+            {/* Modal Añadir/Editar Vehículo */}
+            <VehicleDialog
+                open={isVehicleDialogOpen}
+                onOpenChange={setIsVehicleDialogOpen}
+                form={vehicleForm}
+                setForm={(f) => setVehicleForm(f as any)}
+                onSave={saveVehicle}
+            />
+        </div>
+    );
+}
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>Tipo</Label>
@@ -769,14 +865,30 @@ export default function GaragePage() {
                                     <Input type="number" placeholder="Ej. 40000" value={vehicleForm.tire_change_interval_km || ''} onChange={e => setVehicleForm({ ...vehicleForm, tire_change_interval_km: parseInt(e.target.value) })} />
                                 </div>
                             </div>
+                            <div className="grid grid-cols-2 gap-4 mt-4 border-t pt-4">
+                                <div className="space-y-2">
+                                    <Label>Avisar (km antes)</Label>
+                                    <Input type="number" placeholder="Ej. 1000" value={vehicleForm.notify_km_before || ''} onChange={e => setVehicleForm({ ...vehicleForm, notify_km_before: parseInt(e.target.value) })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Avisar (días antes)</Label>
+                                    <Input type="number" placeholder="Ej. 30" value={vehicleForm.notify_days_before || ''} onChange={e => setVehicleForm({ ...vehicleForm, notify_days_before: parseInt(e.target.value) })} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsVehicleDialogOpen(false)}>Cancelar</Button>
                         <Button onClick={saveVehicle}>Guardar Vehículo</Button>
                     </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
+                <VehicleDialog
+                    open={isVehicleDialogOpen}
+                    onOpenChange={setIsVehicleDialogOpen}
+                    form={vehicleForm}
+                    setForm={(f) => setVehicleForm(f as any)}
+                    onSave={saveVehicle}
+                />
+            </div >
+        );
 }
+```
