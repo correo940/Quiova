@@ -109,6 +109,9 @@ export default function GaragePage() {
     };
 
     const saveVehicle = async () => {
+        toast.info('DEBUG: Iniciando proceso de guardado...'); // Debug feedback
+        console.log('DEBUG: Button clicked, form:', vehicleForm);
+
         if (!user || !vehicleForm.license_plate) {
             toast.warning('La matrícula es obligatoria');
             return;
@@ -274,6 +277,8 @@ export default function GaragePage() {
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
+                                console.log('DEBUG: Edit button clicked');
+                                toast.info('Abriendo editor...');
                                 setVehicleForm(selectedVehicle);
                                 setIsVehicleDialogOpen(true);
                             }}>
