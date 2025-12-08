@@ -4,9 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Grid, User, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 export default function MobileNav() {
     const pathname = usePathname();
+
+    const handleNavClick = async () => {
+        try {
+            await Haptics.impact({ style: ImpactStyle.Light });
+        } catch (e) {
+            // Ignore errors (e.g. on web)
+        }
+    };
 
     const navItems = [
         {
@@ -35,6 +44,7 @@ export default function MobileNav() {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={handleNavClick}
                             className={cn(
                                 "flex flex-col items-center justify-center w-full h-full space-y-1",
                                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -46,7 +56,10 @@ export default function MobileNav() {
                     );
                 })}
                 {/* Menu Toggle Placeholder - Could be used for a drawer later */}
-                <button className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground hover:text-foreground">
+                <button
+                    onClick={handleNavClick}
+                    className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground hover:text-foreground"
+                >
                     <Menu className="h-6 w-6" />
                     <span className="text-[10px] font-medium">Menú</span>
                 </button>
