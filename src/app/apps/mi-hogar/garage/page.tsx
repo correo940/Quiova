@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Car, Bike, Plus, Calendar, AlertTriangle, Droplets, Wrench, ArrowLeft, Trash2, Fuel, Gauge, CheckCircle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { format, differenceInDays, parseISO, addYears } from 'date-fns';
+import { format, differenceInDays, parseISO, addYears, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { VehicleDialog } from '@/components/apps/mi-hogar/garage/vehicle-dialog';
 
 export type Vehicle = {
     id: string;
@@ -38,6 +39,10 @@ export type Vehicle = {
     tire_change_interval_km?: number;
     notify_km_before?: number; // Configurable threshold for mileage alerts
     notify_days_before?: number; // Configurable threshold for date alerts
+    last_oil_change_date?: string;
+    last_tire_change_date?: string;
+    oil_change_interval_months?: number;
+    tire_change_interval_months?: number;
 };
 
 type VehicleEvent = {
@@ -336,17 +341,27 @@ export default function GaragePage() {
                     <h2 className="text-lg font-semibold mt-6 mb-2">Mantenimiento</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Oil Status */}
+                        {/* Oil Status */}
                         <Card className={cn(
                             "border-l-4",
-                            (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000)
-                                ? "border-l-red-500"
-                                : "border-l-green-500"
+                            (() => {
+                                const kmDue = (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000);
+                                const dateDue = selectedVehicle.last_oil_change_date ?
+                                    differenceInDays(new Date(), addMonths(parseISO(selectedVehicle.last_oil_change_date), selectedVehicle.oil_change_interval_months || 12)) >= 0
+                                    : false;
+                                return (kmDue || dateDue) ? "border-l-red-500" : "border-l-green-500";
+                            })()
                         )}>
                             <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
                                 <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Aceite Motor</CardTitle>
                                 <Droplets className={cn("w-4 h-4",
-                                    (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000)
-                                        ? "text-red-500" : "text-green-500"
+                                    (() => {
+                                        const kmDue = (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0) >= (selectedVehicle.oil_change_interval_km || 15000);
+                                        const dateDue = selectedVehicle.last_oil_change_date ?
+                                            differenceInDays(new Date(), addMonths(parseISO(selectedVehicle.last_oil_change_date), selectedVehicle.oil_change_interval_months || 12)) >= 0
+                                            : false;
+                                        return (kmDue || dateDue) ? "text-red-500" : "text-green-500";
+                                    })()
                                 )} />
                             </CardHeader>
                             <CardContent className="p-4 pt-1">
@@ -354,23 +369,33 @@ export default function GaragePage() {
                                     {Math.max(0, (selectedVehicle.oil_change_interval_km || 15000) - ((selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_oil_change_km || 0))).toLocaleString()} km
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    restantes para el cambio (cada {(selectedVehicle.oil_change_interval_km || 15000).toLocaleString()} km)
+                                    restantes (o fecha: {selectedVehicle.last_oil_change_date ? format(addMonths(parseISO(selectedVehicle.last_oil_change_date), selectedVehicle.oil_change_interval_months || 12), 'dd/MM/yy') : '-'})
                                 </p>
                             </CardContent>
                         </Card>
 
                         {/* Tires Status */}
+                        {/* Tires Status */}
                         <Card className={cn(
                             "border-l-4",
-                            (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000)
-                                ? "border-l-red-500"
-                                : "border-l-green-500"
+                            (() => {
+                                const kmDue = (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000);
+                                const dateDue = selectedVehicle.last_tire_change_date ?
+                                    differenceInDays(new Date(), addMonths(parseISO(selectedVehicle.last_tire_change_date), selectedVehicle.tire_change_interval_months || 48)) >= 0
+                                    : false;
+                                return (kmDue || dateDue) ? "border-l-red-500" : "border-l-green-500";
+                            })()
                         )}>
                             <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
                                 <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Neumáticos</CardTitle>
                                 <Gauge className={cn("w-4 h-4",
-                                    (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000)
-                                        ? "text-red-500" : "text-green-500"
+                                    (() => {
+                                        const kmDue = (selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0) >= (selectedVehicle.tire_change_interval_km || 40000);
+                                        const dateDue = selectedVehicle.last_tire_change_date ?
+                                            differenceInDays(new Date(), addMonths(parseISO(selectedVehicle.last_tire_change_date), selectedVehicle.tire_change_interval_months || 48)) >= 0
+                                            : false;
+                                        return (kmDue || dateDue) ? "text-red-500" : "text-green-500";
+                                    })()
                                 )} />
                             </CardHeader>
                             <CardContent className="p-4 pt-1">
@@ -378,7 +403,7 @@ export default function GaragePage() {
                                     {Math.max(0, (selectedVehicle.tire_change_interval_km || 40000) - ((selectedVehicle.current_kilometers || 0) - (selectedVehicle.last_tire_change_km || 0))).toLocaleString()} km
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    restantes para el cambio (cada {(selectedVehicle.tire_change_interval_km || 40000).toLocaleString()} km)
+                                    restantes (o fecha: {selectedVehicle.last_tire_change_date ? format(addMonths(parseISO(selectedVehicle.last_tire_change_date), selectedVehicle.tire_change_interval_months || 48), 'dd/MM/yy') : '-'})
                                 </p>
                             </CardContent>
                         </Card>
@@ -516,7 +541,7 @@ export default function GaragePage() {
                 <VehicleDialog
                     open={isVehicleDialogOpen}
                     onOpenChange={setIsVehicleDialogOpen}
-                    form={vehicleForm}
+                    form={vehicleForm as any}
                     setForm={(f) => setVehicleForm(f as any)}
                     onSave={saveVehicle}
                 />
@@ -528,87 +553,6 @@ export default function GaragePage() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
             <div className="max-w-5xl mx-auto space-y-6">
-                <div>
-                    <Link href="/apps/mi-hogar">
-                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-                        </Button>
-                    </Link>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <span className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-xl text-blue-600 dark:text-blue-400">
-                            <Car className="w-8 h-8" />
-                        </span>
-                        Garaje
-                    </h1>
-                    <p className="text-muted-foreground mt-1">Gestiona tus vehículos y su mantenimiento</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Add Card */}
-                    <button
-                        onClick={() => setIsVehicleDialogOpen(true)}
-                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group h-[200px]"
-                    >
-                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                            <Plus className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <span className="font-medium text-slate-600 dark:text-slate-400">Añadir Vehículo</span>
-                    </button>
-
-                    {vehicles.map(vehicle => (
-                        <Card
-                            key={vehicle.id}
-                            onClick={() => setSelectedVehicle(vehicle)}
-                            className="cursor-pointer hover:shadow-lg transition-all group border-blue-100 dark:border-blue-900/20"
-                        >
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                            {vehicle.type === 'moto' ? <Bike className="w-6 h-6 text-blue-600" /> : <Car className="w-6 h-6 text-blue-600" />}
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg">{vehicle.brand ? `${vehicle.brand} ${vehicle.model}` : vehicle.name}</CardTitle>
-                                            <CardDescription className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded w-fit text-xs mt-1">{vehicle.license_plate}</CardDescription>
-                                        </div>
-                                    </div>
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
-                                        <Settings className="w-4 h-4" />
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-2 pt-4">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> ITV</span>
-                                    <span className={cn("font-medium", getStatusColor(vehicle.next_itv_date).split(' ')[0])}>
-                                        {vehicle.next_itv_date ? format(parseISO(vehicle.next_itv_date), 'dd/MM/yy') : '-'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Seguro</span>
-                                    <span className={cn("font-medium", getStatusColor(vehicle.insurance_expiry_date).split(' ')[0])}>
-                                        {vehicle.insurance_expiry_date ? format(parseISO(vehicle.insurance_expiry_date), 'dd/MM/yy') : '-'}
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-
-            import {VehicleDialog} from '@/components/apps/mi-hogar/garage/vehicle-dialog';
-
-            // ... (other imports)
-
-            // ... (inside component)
-
-            {/* Modal Añadir/Editar Vehículo */}
-            <VehicleDialog
-                open={isVehicleDialogOpen}
-                onOpenChange={setIsVehicleDialogOpen}
-                form={vehicleForm}
-                setForm={(f) => setVehicleForm(f as any)}
-        <div className="max-w-5xl mx-auto space-y-6">
                 <div>
                     <Link href="/apps/mi-hogar">
                         <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
@@ -689,4 +633,5 @@ export default function GaragePage() {
         </div>
     );
 }
+
 

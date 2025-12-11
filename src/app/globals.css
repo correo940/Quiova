@@ -10,7 +10,8 @@
     --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
-    --primary: 145 63% 36%; /* #228B22 */
+    --primary: 145 63% 36%;
+    /* #228B22 */
     --primary-foreground: 0 0% 98%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 220.9 39.3% 11%;
@@ -74,7 +75,36 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  @page {
+    margin: 10mm;
+    /* Pequeño margen para evitar cortes pero ocultar cabeceras grandes del navegador */
+    size: auto;
+    /* auto is the initial value */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

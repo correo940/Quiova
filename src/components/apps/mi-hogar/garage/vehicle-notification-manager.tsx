@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { NotificationManager } from '@/lib/notifications';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, addMonths } from 'date-fns';
 
 export default function VehicleNotificationManager() {
     const [user, setUser] = useState<any>(null);
@@ -42,32 +42,56 @@ export default function VehicleNotificationManager() {
                 const notifyKm = vehicle.notify_km_before || 1000;
                 const notifyDays = vehicle.notify_days_before || 30;
 
-                // 1. Check Oil Change
+                // 1. Check Oil Change (Km OR Date)
                 if (vehicle.current_kilometers && vehicle.last_oil_change_km && vehicle.oil_change_interval_km) {
                     const kmDriven = vehicle.current_kilometers - vehicle.last_oil_change_km;
                     const kmRemaining = vehicle.oil_change_interval_km - kmDriven;
-
                     if (kmRemaining <= notifyKm) {
                         NotificationManager.schedule({
-                            id: NotificationManager.generateId(`oil_${vehicle.id}`),
-                            title: `🛢️ Cambio de Aceite Recomendado`,
-                            body: `${vehicle.name || vehicle.brand}: Te quedan ${kmRemaining > 0 ? kmRemaining : 0} km (o menos) para el cambio de aceite.`,
-                            schedule: { at: new Date(now.getTime() + 1000 * 5) } // Alert 5 seconds from now (Demo mode) - In real app, schedule properly or just notify if not already notified
+                            id: NotificationManager.generateId(`oil_km_${vehicle.id}`),
+                            title: `🛢️ Cambio de Aceite (Km)`,
+                            body: `${vehicle.name || vehicle.brand}: Te quedan ${kmRemaining > 0 ? kmRemaining : 0} km para el cambio de aceite.`,
+                            schedule: { at: new Date(now.getTime() + 1000 * 5) }
+                        });
+                    }
+                }
+                // Oil Date Check
+                if (vehicle.last_oil_change_date) {
+                    const dueDate = addMonths(parseISO(vehicle.last_oil_change_date), vehicle.oil_change_interval_months || 12);
+                    const daysRemaining = differenceInDays(dueDate, now);
+                    if (daysRemaining <= notifyDays && daysRemaining >= 0) {
+                        NotificationManager.schedule({
+                            id: NotificationManager.generateId(`oil_date_${vehicle.id}`),
+                            title: `🛢️ Cambio de Aceite (Fecha)`,
+                            body: `${vehicle.name || vehicle.brand}: Toca cambio de aceite en ${daysRemaining} días.`,
+                            schedule: { at: new Date(now.getTime() + 1000 * 6) }
                         });
                     }
                 }
 
-                // 2. Check Tires
+                // 2. Check Tires (Km OR Date)
                 if (vehicle.current_kilometers && vehicle.last_tire_change_km && vehicle.tire_change_interval_km) {
                     const kmDriven = vehicle.current_kilometers - vehicle.last_tire_change_km;
                     const kmRemaining = vehicle.tire_change_interval_km - kmDriven;
-
                     if (kmRemaining <= notifyKm) {
                         NotificationManager.schedule({
-                            id: NotificationManager.generateId(`tires_${vehicle.id}`),
-                            title: `🛞 Cambio de Ruedas Recomendado`,
+                            id: NotificationManager.generateId(`tires_km_${vehicle.id}`),
+                            title: `🛞 Cambio de Ruedas (Km)`,
                             body: `${vehicle.name || vehicle.brand}: Te quedan ${kmRemaining > 0 ? kmRemaining : 0} km para el cambio de ruedas.`,
                             schedule: { at: new Date(now.getTime() + 1000 * 7) }
+                        });
+                    }
+                }
+                // Tires Date Check
+                if (vehicle.last_tire_change_date) {
+                    const dueDate = addMonths(parseISO(vehicle.last_tire_change_date), vehicle.tire_change_interval_months || 48);
+                    const daysRemaining = differenceInDays(dueDate, now);
+                    if (daysRemaining <= notifyDays && daysRemaining >= 0) {
+                        NotificationManager.schedule({
+                            id: NotificationManager.generateId(`tires_date_${vehicle.id}`),
+                            title: `🛞 Cambio de Ruedas (Fecha)`,
+                            body: `${vehicle.name || vehicle.brand}: Toca cambio de ruedas en ${daysRemaining} días.`,
+                            schedule: { at: new Date(now.getTime() + 1000 * 8) }
                         });
                     }
                 }

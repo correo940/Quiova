@@ -16,6 +16,7 @@ interface CalendarWidgetProps {
 export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetProps) {
     const [taskDates, setTaskDates] = useState<Date[]>([]);
     const [journalDates, setJournalDates] = useState<Date[]>([]);
+    const [shiftDates, setShiftDates] = useState<Date[]>([]);
     const { setIsOpen, setSelectedDate } = useJournal();
 
     useEffect(() => {
@@ -45,6 +46,17 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
                 const dates = entries.map((entry: any) => new Date(entry.updated_at));
                 setJournalDates(dates);
             }
+
+            // Fetch Work Shifts
+            const { data: shifts } = await supabase
+                .from('work_shifts')
+                .select('start_time')
+                .eq('user_id', session.user.id);
+
+            if (shifts) {
+                const dates = shifts.map((s: any) => new Date(s.start_time));
+                setShiftDates(dates);
+            }
         };
 
         fetchData();
@@ -69,11 +81,13 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
                     className="rounded-md border"
                     modifiers={{
                         hasTask: taskDates,
-                        hasJournal: journalDates
+                        hasJournal: journalDates,
+                        hasShift: shiftDates
                     }}
                     modifiersStyles={{
                         hasTask: { fontWeight: 'bold', textDecoration: 'underline', color: 'var(--primary)' },
-                        hasJournal: { border: '2px solid var(--primary)', borderRadius: '50%' }
+                        hasJournal: { border: '2px solid var(--primary)', borderRadius: '50%' },
+                        hasShift: { backgroundColor: '#dcfce7', color: '#166534', fontWeight: 'bold' } // green-100 bg, green-800 text
                     }}
                 />
             </CardContent>

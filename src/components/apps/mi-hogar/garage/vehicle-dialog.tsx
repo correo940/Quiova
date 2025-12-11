@@ -25,6 +25,10 @@ type VehicleForm = {
     tire_change_interval_km?: number;
     notify_km_before?: number;
     notify_days_before?: number;
+    last_oil_change_date?: string;
+    last_tire_change_date?: string;
+    oil_change_interval_months?: number;
+    tire_change_interval_months?: number;
 };
 
 interface VehicleDialogProps {
@@ -126,6 +130,27 @@ export function VehicleDialog({ open, onOpenChange, form, setForm, onSave }: Veh
                                 <div className="space-y-2">
                                     <Label>Cambio Ruedas (cada km)</Label>
                                     <Input type="number" placeholder="Ej. 40000" value={form.tire_change_interval_km || ''} onChange={e => setForm({ ...form, tire_change_interval_km: parseInt(e.target.value) })} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                <div className="space-y-2">
+                                    <Label>Cambio Aceite (cada meses)</Label>
+                                    <Input type="number" placeholder="Ej. 12" value={form.oil_change_interval_months || ''} onChange={e => setForm({ ...form, oil_change_interval_months: parseInt(e.target.value) })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Cambio Ruedas (cada meses)</Label>
+                                    <Input type="number" placeholder="Ej. 48" value={form.tire_change_interval_months || ''} onChange={e => setForm({ ...form, tire_change_interval_months: parseInt(e.target.value) })} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-2 border-t border-dashed pt-2">
+                                <div className="space-y-2">
+                                    <Label>Fecha Último Cambio Aceite</Label>
+                                    <Input type="date" value={form.last_oil_change_date || ''} onChange={e => setForm({ ...form, last_oil_change_date: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Fecha Último Cambio Ruedas</Label>
+                                    <Input type="date" value={form.last_tire_change_date || ''} onChange={e => setForm({ ...form, last_tire_change_date: e.target.value })} />
                                 </div>
                             </div>
 

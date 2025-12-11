@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,16 +14,43 @@ import { useJournal } from '@/context/JournalContext';
 
 export default function FloatingDashboard() {
     const [isOpen, setIsOpen] = useState(false);
-    const [menuView, setMenuView] = useState<'main' | 'mi-hogar'>('main');
+    const [activeView, setActiveView] = useState<'menu' | 'apps'>('menu');
     const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen } = useJournal();
     const [user, setUser] = useState<any>(null);
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const router = useRouter();
 
-    const dashboardRef = React.useRef<HTMLDivElement>(null);
+    // Use window size for constraints
+    const constraintsRef = React.useRef(null);
+    const menuRef = React.useRef<HTMLDivElement>(null);
+    const buttonRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (isOpen &&
+                menuRef.current &&
+                !menuRef.current.contains(event.target as Node) &&
+                buttonRef.current &&
+                !buttonRef.current.contains(event.target as Node)
+            ) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
+        setMounted(true);
         // Check initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
@@ -43,17 +70,8 @@ export default function FloatingDashboard() {
             }
         });
 
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dashboardRef.current && !dashboardRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-
         return () => {
             subscription.unsubscribe();
-            document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
 
@@ -83,7 +101,7 @@ export default function FloatingDashboard() {
         router.refresh();
     };
 
-    if (!user) return null;
+    if (!mounted || !user) return null;
 
     const totalNotifications = shoppingCount + taskCount;
 
@@ -91,69 +109,72 @@ export default function FloatingDashboard() {
         <>
             <JournalPanel isOpen={isJournalOpen} onClose={() => setIsJournalOpen(false)} />
 
-            <div ref={dashboardRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-                {/* Journal Button */}
-                {/* Journal Button */}
-                <motion.button
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsJournalOpen(!isJournalOpen)}
-                    className="flex items-center gap-2 px-4 py-3 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 rounded-full shadow-lg border border-amber-200 dark:border-amber-800 backdrop-blur-sm"
-                    title="Mis Apuntes"
-                >
-                    <Book className="w-5 h-5" />
-                    <span className="font-medium text-sm">Mis Apuntes</span>
-                </motion.button>
+            {/* Constraints area - invisible but covers screen */}
+            <div ref={constraintsRef} className="fixed inset-4 pointer-events-none z-40" />
 
+            <div className="fixed inset-0 pointer-events-none z-50 overflow-visible">
+                {/* Menu Popup */}
                 <AnimatePresence>
                     {isOpen && (
                         <motion.div
+                            ref={menuRef}
                             initial={{ opacity: 0, scale: 0.8, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                            className="mb-4 w-72 bg-white/80 dark:bg-black/80 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                            className="absolute pointer-events-auto bg-white/90 dark:bg-black/90 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden w-72"
+                            style={{
+                                bottom: '100px',
+                                right: '20px',
+                                zIndex: 60
+                            }}
                         >
-                            <div className="p-4 border-b border-white/10">
-                                <h3 className="font-bold text-lg">Mi Hogar</h3>
-                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                                <div>
+                                    <h3 className="font-bold text-lg">Mi Quiova</h3>
+                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                </div>
+                                {activeView === 'apps' && (
+                                    <Button variant="ghost" size="sm" onClick={() => setActiveView('menu')} className="h-8 w-8 p-0">
+                                        <ChevronDown className="h-4 w-4 rotate-90" />
+                                    </Button>
+                                )}
                             </div>
 
-                            <div className="p-2 grid gap-2">
-                                {menuView === 'main' ? (
-                                    <>
+                            <div className="p-2">
+                                {activeView === 'menu' ? (
+                                    <div className="grid gap-2">
                                         <button
-                                            onClick={() => setMenuView('mi-hogar')}
-                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group w-full text-left"
+                                            onClick={() => setActiveView('apps')}
+                                            className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                                    <Home className="w-4 h-4" />
-                                                </div>
-                                                <span className="text-sm font-medium">Mi Hogar</span>
+                                            <div className="p-3 bg-blue-500/10 rounded-full text-blue-500 group-hover:scale-110 transition-transform">
+                                                <Home className="w-6 h-6" />
                                             </div>
-                                            <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                                            <div>
+                                                <div className="font-semibold text-sm">Mis Aplicaciones</div>
+                                                <div className="text-xs text-muted-foreground">Accede a tus herramientas</div>
+                                            </div>
+                                            <ChevronDown className="w-4 h-4 ml-auto -rotate-90 text-muted-foreground" />
                                         </button>
 
-                                        <Link href="/apps/mi-hogar/garage" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group w-full text-left mt-1">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-                                                    <Car className="w-4 h-4" />
-                                                </div>
-                                                <span className="text-sm font-medium">Mis Vehículos</span>
-                                            </div>
-                                        </Link>
-                                    </>
-                                ) : (
-                                    <>
                                         <button
-                                            onClick={() => setMenuView('main')}
-                                            className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground hover:text-foreground mb-1"
+                                            onClick={() => {
+                                                setIsJournalOpen(true);
+                                                setIsOpen(false);
+                                            }}
+                                            className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
                                         >
-                                            <ChevronDown className="w-3 h-3 rotate-90" />
-                                            Volver
+                                            <div className="p-3 bg-amber-500/10 rounded-full text-amber-500 group-hover:scale-110 transition-transform">
+                                                <Book className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold text-sm">Mis Apuntes</div>
+                                                <div className="text-xs text-muted-foreground">Diario y notas rápidas</div>
+                                            </div>
                                         </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-2 max-h-[60vh] overflow-y-auto pr-1">
                                         <Link href="/apps/mi-hogar/shopping" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
@@ -168,6 +189,7 @@ export default function FloatingDashboard() {
                                             )}
                                         </Link>
 
+                                        {/* Task Link */}
                                         <Link href="/apps/mi-hogar/tasks" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
@@ -196,9 +218,47 @@ export default function FloatingDashboard() {
                                             <span className="text-sm font-medium">Botiquín</span>
                                         </Link>
 
-                                        <Link href="/apps/mi-hogar/garage" className="hidden" />
+                                        <Link href="/apps/mi-hogar/garage" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                                                <Car className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Garaje</span>
+                                        </Link>
 
+                                        <Link href="/apps/mi-hogar/insurance" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg text-rose-600 dark:text-rose-400">
+                                                <Shield className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Seguros</span>
+                                        </Link>
 
+                                        <Link href="/apps/mi-hogar/warranties" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400">
+                                                <Receipt className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Garantías</span>
+                                        </Link>
+
+                                        <Link href="/apps/mi-hogar/documents" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+                                                <ShieldCheck className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Caja Fuerte</span>
+                                        </Link>
+
+                                        <Link href="/apps/mi-hogar/expenses" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                                                <PiggyBank className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Hucha Común</span>
+                                        </Link>
+
+                                        <Link href="/apps/mi-hogar/roster" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg text-cyan-600 dark:text-cyan-400">
+                                                <Calendar className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Cuadrante</span>
+                                        </Link>
 
                                         <Link href="/apps/mi-hogar/manuals" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
                                             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
@@ -206,7 +266,7 @@ export default function FloatingDashboard() {
                                             </div>
                                             <span className="text-sm font-medium">Manuales</span>
                                         </Link>
-                                    </>
+                                    </div>
                                 )}
                             </div>
 
@@ -225,26 +285,57 @@ export default function FloatingDashboard() {
                     )}
                 </AnimatePresence>
 
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                {/* Draggable Button */}
+                <motion.div
+                    ref={buttonRef}
+                    drag
+                    dragConstraints={constraintsRef}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    dragMomentum={false}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
                     onClick={() => setIsOpen(!isOpen)}
-                    className="group flex items-center gap-3 px-4 py-3 bg-white/90 dark:bg-black/90 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-full shadow-lg hover:shadow-xl transition-all"
+                    className="absolute z-50 pointer-events-auto cursor-grab active:cursor-grabbing text-foreground"
+                    style={{ bottom: 24, right: 24 }} // Initial position via CSS
                 >
-                    <div className="relative">
-                        <Home className="w-5 h-5 text-primary" />
+                    <motion.div
+                        animate={{
+                            scale: [1, 1.05, 1],
+                        }}
+                        transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }}
+                        className="relative w-16 h-16 rounded-full shadow-2xl overflow-hidden border-4 border-white dark:border-zinc-800 bg-white dark:bg-black"
+                    >
+                        <img
+                            src="/images/logo.png"
+                            alt="Quiova"
+                            className="w-full h-full object-cover pointer-events-none"
+                        />
+
                         {totalNotifications > 0 && !isOpen && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-black" />
+                            <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-black animate-pulse" />
                         )}
-                    </div>
-                    <span className="font-medium text-sm">Mis aplicaciones</span>
-                    {isOpen ? (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    )}
-                </motion.button>
-            </div >
+                    </motion.div>
+
+                    {/* Tooltip */}
+                    <AnimatePresence>
+                        {isHovered && !isOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                className="absolute bottom-full mb-3 right-0 mr-[-0.5rem] px-3 py-1 bg-black/80 text-white text-xs font-bold rounded-full whitespace-nowrap backdrop-blur-sm pointer-events-none"
+                            >
+                                Mi Quiova
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+            </div>
         </>
     );
 }

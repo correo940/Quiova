@@ -30,12 +30,16 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen pb-16 md:pb-0" suppressHydrationWarning>
         <ClientProvider>
-          <Header />
+          <div className="print:hidden">
+            <Header />
+          </div>
           <main className="flex-grow">{children}</main>
-          <Footer />
-          <MobileNav />
+          <div className="print:hidden">
+            <Footer />
+            <MobileNav />
+          </div>
           <Toaster />
-          <SonnerToaster />
+          <SonnerToaster position="top-right" />
         </ClientProvider>
       </body>
     </html>

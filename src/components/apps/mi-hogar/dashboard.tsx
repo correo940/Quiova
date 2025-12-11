@@ -8,7 +8,11 @@ import {
     CheckSquare,
     Shield,
     Home,
-    LogOut
+    LogOut,
+    Receipt,
+    ShieldCheck,
+    PiggyBank,
+    Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +59,38 @@ const modules = [
         href: '/apps/mi-hogar/insurance',
         color: 'text-rose-500',
         bg: 'bg-rose-500/10',
+    },
+    {
+        title: 'Garantías',
+        description: 'Tus tickets escaneados y alertas',
+        icon: Receipt,
+        href: '/apps/mi-hogar/warranties',
+        color: 'text-pink-500',
+        bg: 'bg-pink-500/10',
+    },
+    {
+        title: 'Caja Fuerte',
+        description: 'Documentos seguros y encriptados',
+        icon: ShieldCheck,
+        href: '/apps/mi-hogar/documents',
+        color: 'text-amber-500',
+        bg: 'bg-amber-500/10',
+    },
+    {
+        title: 'Hucha Común',
+        description: 'Gastos compartidos 50/50',
+        icon: PiggyBank,
+        href: '/apps/mi-hogar/expenses',
+        color: 'text-emerald-500',
+        bg: 'bg-emerald-500/10',
+    },
+    {
+        title: 'Cuadrante',
+        description: 'Gestión de turnos de trabajo',
+        icon: Calendar,
+        href: '/apps/mi-hogar/roster',
+        color: 'text-cyan-500',
+        bg: 'bg-cyan-500/10',
     },
 ];
 

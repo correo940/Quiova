@@ -11,7 +11,13 @@ import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notif
 import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicle-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
+
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => {
+    defineCustomElements(window);
+  }, []);
+
   return (
     <TasksProviderWrapper>
       <PostItSettingsProvider>

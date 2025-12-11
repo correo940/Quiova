@@ -37,6 +37,7 @@ interface OrganizerWidgetProps {
 export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+    const [shifts, setShifts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { setIsOpen, setSelectedDate } = useJournal();
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -105,6 +106,30 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
             setAvailableTags(Array.from(allTags));
         }
 
+        // --- Fetch Work Shifts ---
+        let shiftQuery = supabase
+            .from('work_shifts')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('start_time', { ascending: true });
+
+        if (selectedDate) {
+            const startOfDay = new Date(selectedDate);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(selectedDate);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            shiftQuery = shiftQuery
+                .gte('start_time', startOfDay.toISOString())
+                .lte('start_time', endOfDay.toISOString());
+        } else {
+            // If no date selected, maybe show upcoming 3?
+            shiftQuery = shiftQuery.gte('start_time', new Date().toISOString()).limit(3);
+        }
+
+        const { data: shiftData } = await shiftQuery;
+        if (shiftData) setShifts(shiftData);
+
         setLoading(false);
     };
 
@@ -169,16 +194,56 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
             </CardHeader>
             <CardContent className="flex-1 min-h-0">
                 <Tabs defaultValue="tasks" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
                         <TabsTrigger value="tasks" className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" />
                             Tareas ({tasks.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="shifts" className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Turnos ({shifts.length})
                         </TabsTrigger>
                         <TabsTrigger value="journal" className="flex items-center gap-2">
                             <Book className="w-4 h-4" />
                             Apuntes ({journalEntries.length})
                         </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="shifts" className="flex-1 min-h-0">
+                        <ScrollArea className="h-[300px] pr-4">
+                            {loading ? (
+                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                            ) : shifts.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <p>Sin turnos</p>
+                                    <p className="text-sm">Todo despejado hoy.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {shifts.map((shift) => (
+                                        <Link href="/apps/mi-hogar/roster" key={shift.id} className="block group">
+                                            <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 transition-all hover:shadow-md hover:border-green-300">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="font-bold text-green-800 dark:text-green-300">{shift.title}</span>
+                                                    <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
+                                                        {format(new Date(shift.start_time), "HH:mm")} - {format(new Date(shift.end_time), "HH:mm")}
+                                                    </span>
+                                                </div>
+                                                {shift.description && (
+                                                    <div className="text-sm font-medium text-green-700 dark:text-green-400 mt-1 mb-1 line-clamp-2">
+                                                        {shift.description}
+                                                    </div>
+                                                )}
+                                                <div className="text-xs text-green-600 dark:text-green-500 opacity-80 group-hover:underline">
+                                                    Ver en Cuadrante
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </TabsContent>
 
                     <TabsContent value="tasks" className="flex-1 min-h-0">
                         <ScrollArea className="h-[300px] pr-4">
