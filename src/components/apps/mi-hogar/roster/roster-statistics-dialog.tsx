@@ -67,31 +67,45 @@ export default function RosterStatisticsDialog({ open, onOpenChange, currentMont
 
     const calculateStats = (shifts: WorkShift[]) => {
         const typeStats: { [key: string]: { count: number, color: string } } = {};
-        const serviceStats: { [key: string]: number } = {
-            'PUERTAS': 0,
-            'PRESOS': 0,
-            'SUBDELEGACION': 0,
-            'CENTRO': 0,
-            'SALIENTE': 0
-        };
+        const serviceStats: { [key: string]: number } = {};
         const colleagueStats: { [key: string]: number } = {};
 
         shifts.forEach(shift => {
-            // 1. Shift Types
-            const name = shift.title.replace('Turno: ', '').trim();
+            // 1. Shift Types (e.g. "MAÑANA", "TARDE", "NOCHE")
+            // Remove "Turno: " and remove any content in parentheses
+            let name = shift.title.replace('Turno: ', '').trim();
+            if (name.includes('(')) {
+                name = name.split('(')[0].trim();
+            }
+
             if (!typeStats[name]) {
                 typeStats[name] = { count: 0, color: shift.color || '#gray' };
             }
             typeStats[name].count++;
 
-            // 2. Services (Keywords)
+            // 2. Services (Dynamic Extraction from Parentheses)
+            // Look for content inside parens in title or explicit keywords
             const combinedText = (shift.title + ' ' + (shift.description || '')).toUpperCase();
-            if (combinedText.includes('PUERTAS')) serviceStats['PUERTAS']++;
-            if (combinedText.includes('PRESOS')) serviceStats['PRESOS']++;
-            if (combinedText.includes('SUBDELEGACION') || combinedText.includes('SUBDELEGACIÓN')) serviceStats['SUBDELEGACION']++;
-            if (combinedText.includes('CENTRO') || combinedText.includes('PENITENCIARIO')) serviceStats['CENTRO']++;
-            // Salientes detection might be via title "Saliente" or tag
-            if (combinedText.includes('SALIENTE')) serviceStats['SALIENTE']++;
+
+            // Extract from Title: "Turno: TARDE (SUBDELEGACION)" -> "SUBDELEGACION"
+            const match = shift.title.match(/\((.*?)\)/);
+            if (match && match[1]) {
+                const serviceName = match[1].trim().toUpperCase();
+                serviceStats[serviceName] = (serviceStats[serviceName] || 0) + 1;
+            } else {
+                // Fallback for legacy manually added keywords if no parens found
+                if (combinedText.includes('PUERTAS')) serviceStats['PUERTAS'] = (serviceStats['PUERTAS'] || 0) + 1;
+                else if (combinedText.includes('PRESOS')) serviceStats['PRESOS'] = (serviceStats['PRESOS'] || 0) + 1;
+                else if (combinedText.includes('SUBDELEGACION') || combinedText.includes('SUBDELEGACIÓN')) {
+                    serviceStats['SUBDELEGACION'] = (serviceStats['SUBDELEGACION'] || 0) + 1;
+                }
+                else if (combinedText.includes('CENTRO') || combinedText.includes('PENITENCIARIO')) {
+                    serviceStats['CENTRO'] = (serviceStats['CENTRO'] || 0) + 1;
+                }
+                else if (combinedText.includes('SALIENTE')) {
+                    serviceStats['SALIENTE'] = (serviceStats['SALIENTE'] || 0) + 1;
+                }
+            }
 
             // 3. Colleagues
             if (shift.description && shift.description.includes('Con: ')) {
@@ -128,6 +142,8 @@ export default function RosterStatisticsDialog({ open, onOpenChange, currentMont
 
     const StatsGrid = ({ shifts }: { shifts: WorkShift[] }) => {
         const { types, services, colleagues } = calculateStats(shifts);
+
+        // Calculate total days (count unique days with shifts?) or just total shifts
         const total = shifts.length;
 
         if (total === 0) {
@@ -135,10 +151,11 @@ export default function RosterStatisticsDialog({ open, onOpenChange, currentMont
         }
 
         const getServiceIcon = (name: string) => {
-            if (name === 'PUERTAS') return <DoorOpenIcon className="h-4 w-4" />;
-            if (name === 'PRESOS') return <UserCheck className="h-4 w-4" />;
-            if (name === 'SUBDELEGACION') return <Shield className="h-4 w-4" />;
-            if (name === 'CENTRO') return <Building2 className="h-4 w-4" />;
+            const n = name.toUpperCase();
+            if (n.includes('PUERTAS')) return <DoorOpenIcon className="h-4 w-4" />;
+            if (n.includes('PRESOS')) return <UserCheck className="h-4 w-4" />;
+            if (n.includes('SUBDELEGACI')) return <Shield className="h-4 w-4" />;
+            if (n.includes('CENTRO') || n.includes('PENITENCIARIO')) return <Building2 className="h-4 w-4" />;
             return <MapPin className="h-4 w-4" />;
         };
 
@@ -176,25 +193,24 @@ export default function RosterStatisticsDialog({ open, onOpenChange, currentMont
                     </div>
                 </div>
 
-                {/* SECTION 2: SERVICES */}
                 {services.length > 0 && (
                     <div className="space-y-3">
                         <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 border-t pt-4">
-                            <Shield className="h-4 w-4" /> Servicios Específicos
+                            <MapPin className="h-4 w-4" /> Lugares
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {services.map((stat) => (
                                 <Card key={stat.name} className="bg-slate-50 dark:bg-slate-900 overflow-hidden">
-                                    <CardContent className="p-3 flex items-center justify-between">
-                                        <div className="flex items-center gap-2 overflow-hidden">
-                                            <div className="p-2 bg-background rounded-full shrink-0 border">
+                                    <CardContent className="p-2.5 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <div className="p-1.5 bg-background rounded-full shrink-0 border">
                                                 {getServiceIcon(stat.name)}
                                             </div>
-                                            <span className="text-xs font-medium truncate capitalize">
+                                            <span className="text-xs font-medium capitalize leading-tight break-words text-wrap">
                                                 {stat.name.toLowerCase()}
                                             </span>
                                         </div>
-                                        <span className="text-xl font-bold">{stat.count}</span>
+                                        <span className="text-lg font-bold shrink-0">{stat.count}</span>
                                     </CardContent>
                                 </Card>
                             ))}

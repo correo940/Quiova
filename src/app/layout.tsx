@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -10,7 +10,13 @@ import ClientProvider from '@/components/layout/ClientProvider';
 export const metadata: Metadata = {
   title: 'Quiova',
   description: 'Tu espacio para la salud y el bienestar financiero.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0', // Critical for native-like feel
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

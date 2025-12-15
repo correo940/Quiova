@@ -48,6 +48,7 @@ import '@/app/globals.css'; // Ensure print styles are available if added there,
 import BulkImportDialog from './bulk-import-dialog';
 import HolidaySettingsDialog from './holiday-settings-dialog';
 import RosterStatisticsDialog from './roster-statistics-dialog';
+import ShiftSettingsDialog from './shift-settings-dialog';
 import { fetchHolidays, PublicHoliday } from '@/lib/holidays';
 
 interface WorkShift {
@@ -57,6 +58,7 @@ interface WorkShift {
     title: string;
     description?: string;
     color?: string;
+    style?: string;
 }
 
 interface RosterCalendarProps {
@@ -79,6 +81,7 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
     const [isHolidaySettingsOpen, setIsHolidaySettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
+    const [isShiftSettingsOpen, setIsShiftSettingsOpen] = useState(false);
 
     useEffect(() => {
         fetchShifts();
@@ -91,10 +94,51 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
         const loadHolidays = async () => {
             const region = localStorage.getItem('holiday_region_es') || '';
             setHolidayRegion(region);
-            const year = currentDate.getFullYear();
-            // Fetch for current year
-            const data = await fetchHolidays(year, region === 'ALL' ? undefined : region);
-            setHolidays(data);
+
+            // Calculate grid range to know which years to fetch
+            const viewStart = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
+            const viewEnd = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
+
+            const startYear = viewStart.getFullYear();
+            const endYear = viewEnd.getFullYear();
+            const yearsToFetch = Array.from(new Set([startYear, endYear])); // Unique years
+
+            try {
+                const promises = yearsToFetch.map(y => fetchHolidays(y, region === 'ALL' ? undefined : region));
+                const results = await Promise.all(promises);
+                let allHolidays = results.flat();
+
+                // Load custom holidays
+                const savedCustom = localStorage.getItem('custom_holidays_es');
+                if (savedCustom) {
+                    try {
+                        const customs: any[] = JSON.parse(savedCustom);
+                        // For each year we are fetching, add the custom holidays
+                        yearsToFetch.forEach(year => {
+                            const mappedCustoms = customs.map(c => {
+                                // Simple date construction YYYY-MM-DD
+                                const dateStr = `${year}-${c.month.toString().padStart(2, '0')}-${c.day.toString().padStart(2, '0')}`;
+                                return {
+                                    id: `custom-${year}-${c.id}`,
+                                    startDate: dateStr,
+                                    endDate: dateStr,
+                                    type: "Local",
+                                    name: [{ text: c.name, language: "es" }],
+                                    nationwide: false,
+                                    isCustom: true // Optional marker
+                                };
+                            });
+                            allHolidays = [...allHolidays, ...mappedCustoms];
+                        });
+                    } catch (e) {
+                        console.error("Error loading custom holidays", e);
+                    }
+                }
+
+                setHolidays(allHolidays);
+            } catch (error) {
+                console.error("Error loading holidays", error);
+            }
         };
         loadHolidays();
     }, [currentDate, holidayRegion]); // Re-fetch on date or region change
@@ -235,30 +279,39 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
 
                             {/* Shifts */}
                             <div className="flex-1 w-full space-y-1.5 mt-1 overflow-y-auto no-scrollbar min-h-0">
-                                {dayShifts.map((shift) => (
-                                    <div
-                                        key={shift.id}
-                                        className="text-xs px-2 py-1.5 rounded-md border shadow-sm truncate flex items-center gap-1.5 print:whitespace-normal print:overflow-visible print:h-auto print:flex-col print:items-start print:gap-0.5"
-                                        style={{
-                                            backgroundColor: shift.color ? `${shift.color}20` : '#e2e8f0',
-                                            borderColor: shift.color ? `${shift.color}40` : '#cbd5e1',
-                                            color: shift.color ? shift.color : 'inherit',
-                                            pageBreakInside: 'avoid' // Prevent split across pages
-                                        }}
-                                    >
-                                        <div className="flex items-center gap-1.5 w-full">
-                                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: shift.color || 'gray' }} />
-                                            <span className="font-semibold truncate flex-1 print:whitespace-normal print:text-[10px] print:leading-tight">{shift.title.replace('Turno: ', '')}</span>
-                                            {shift.description && <Users className="w-3 h-3 opacity-50 shrink-0 print:hidden" />}
-                                        </div>
+                                {dayShifts.map((shift) => {
+                                    const isDotStyle = shift.style === 'dot';
 
-                                        {shift.description && (
-                                            <span className="hidden print:block text-[9px] opacity-80 pl-3 leading-tight mt-0.5">
-                                                {shift.description}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
+                                    return (
+                                        <div
+                                            key={shift.id}
+                                            className={`
+                                                text-xs rounded-md truncate flex items-center gap-1.5 print:whitespace-normal print:overflow-visible print:h-auto print:flex-col print:items-start print:gap-0.5
+                                                ${isDotStyle ? 'bg-transparent px-1 py-0.5' : 'px-2 py-1.5 border shadow-sm'}
+                                            `}
+                                            style={!isDotStyle ? {
+                                                backgroundColor: shift.color ? `${shift.color}20` : '#e2e8f0',
+                                                borderColor: shift.color ? `${shift.color}40` : '#cbd5e1',
+                                                color: shift.color ? shift.color : 'inherit',
+                                                pageBreakInside: 'avoid'
+                                            } : {}}
+                                        >
+                                            <div className="flex items-center gap-1.5 w-full">
+                                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: shift.color || 'gray' }} />
+                                                <span className={`font-semibold truncate flex-1 print:whitespace-normal print:text-[10px] print:leading-tight ${isDotStyle ? 'text-foreground' : ''}`}>
+                                                    {shift.title.replace('Turno: ', '')}
+                                                </span>
+                                                {shift.description && <Users className="w-3 h-3 opacity-50 shrink-0 print:hidden" />}
+                                            </div>
+
+                                            {shift.description && !isDotStyle && (
+                                                <span className="hidden print:block text-[9px] opacity-80 pl-3 leading-tight mt-0.5">
+                                                    {shift.description}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     );
@@ -301,6 +354,10 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
                     <MapPin className={`h-5 w-5 ${holidayRegion ? 'text-green-600' : 'text-muted-foreground'}`} />
                 </Button>
 
+                <Button variant="ghost" size="icon" onClick={() => setIsShiftSettingsOpen(true)} title="Configurar Turnos">
+                    <Settings className={`h-5 w-5 ${isShiftSettingsOpen ? 'text-primary' : 'text-muted-foreground'}`} />
+                </Button>
+
                 <Button variant="ghost" size="icon" onClick={() => window.print()} title="Imprimir / Guardar PDF">
                     <Printer className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -309,18 +366,18 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
 
                 <div className="h-6 w-px bg-border hidden md:block mx-1" />
 
-                <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="flex-1 md:flex-none">
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Importar
+                <Button variant="outline" size="sm" onClick={() => setIsBulkImportOpen(true)} className="flex-1 md:flex-none text-xs">
+                    <ClipboardList className="mr-2 h-3.5 w-3.5" />
+                    Insertar Cuadrante
                 </Button>
 
-                <Button variant="outline" className="flex-1 md:flex-none" onClick={onScanClick}>
-                    <ScanLine className="mr-2 h-4 w-4" />
-                    Escanear
+                <Button variant="outline" size="sm" className="flex-1 md:flex-none text-xs" onClick={onScanClick}>
+                    <ScanLine className="mr-2 h-3.5 w-3.5" />
+                    Escanea tu turno
                 </Button>
-                <Button className="flex-1 md:flex-none" onClick={onAddClick}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Añadir
+                <Button size="sm" className="flex-1 md:flex-none text-xs" onClick={onAddClick}>
+                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    Añadir turno
                 </Button>
             </div>
         </div>
@@ -496,6 +553,28 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
                 />
 
                 {renderShiftDetailsDialog()}
+
+
+                <BulkImportDialog
+                    open={isBulkImportOpen}
+                    onOpenChange={setIsBulkImportOpen}
+                    onSuccess={fetchShifts}
+                />
+
+                <HolidaySettingsDialog
+                    open={isHolidaySettingsOpen}
+                    onOpenChange={setIsHolidaySettingsOpen}
+                    onRegionChange={setHolidayRegion}
+                    onSave={() => {
+                        // Force re-fetch logic is in useEffect dependency
+                        if (currentDate) setCurrentDate(new Date(currentDate));
+                    }}
+                />
+
+                <ShiftSettingsDialog
+                    open={isShiftSettingsOpen}
+                    onOpenChange={setIsShiftSettingsOpen}
+                />
 
                 <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                     <AlertDialogContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -11,26 +11,26 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload, FileImage, Check, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, FileImage, Check, AlertCircle, Maximize2, ZoomIn, ZoomOut, RotateCw, Trash2, Plus } from 'lucide-react';
 import { scanRosterImage, findUserShift } from '@/lib/gemini';
 import { findUserShiftOCRSpace } from '@/lib/ocr-space';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 import { format } from 'date-fns';
+import { DEFAULT_SHIFT_TYPES } from './shift-settings-dialog';
 
 interface ScanRosterDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
+}
+
+interface ColleagueRow {
+    name: string;
+    startTime: string;
+    endTime: string;
 }
 
 export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: ScanRosterDialogProps) {
@@ -41,11 +41,56 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
     const [mySearchName, setMySearchName] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const resultRef = useRef<HTMLDivElement>(null);
 
-    // Editing states
-    const [editedColleagues, setEditedColleagues] = useState<string>('');
+    // Editing states (single source of truth for the form)
+    const [editedShiftTitle, setEditedShiftTitle] = useState<string>('');
+    const [editedDate, setEditedDate] = useState<string>('');
+    const [editedStartTime, setEditedStartTime] = useState<string>('');
+    const [editedEndTime, setEditedEndTime] = useState<string>('');
     const [editedService, setEditedService] = useState<string>('');
+
+    // New Structured Colleague State
+    const [editedColleagueRows, setEditedColleagueRows] = useState<ColleagueRow[]>([]);
+
+    const [searchResult, setSearchResult] = useState<any>(null); // Keep original result for reference
+
+    // Image manipulation state
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [rotation, setRotation] = useState(0);
+
+    // Configurable Shift Types
+    const [shiftTypes, setShiftTypes] = useState<any[]>(DEFAULT_SHIFT_TYPES);
+
+    // Fetch Shift Types
+    useEffect(() => {
+        if (open) {
+            const fetchTypes = async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data } = await supabase.from('shift_types').select('*').eq('user_id', user.id);
+                    if (data && data.length > 0) {
+                        setShiftTypes(data);
+                    }
+                }
+            };
+            fetchTypes();
+        }
+    }, [open]);
+
+    const resetState = () => {
+        setPreviewUrl(null);
+        setDigitalRoster(null);
+        setSearchResult(null);
+        setDebugText('');
+        setZoomLevel(1);
+        setRotation(0);
+        setEditedShiftTitle('');
+        setEditedDate('');
+        setEditedStartTime('');
+        setEditedEndTime('');
+        setEditedColleagueRows([]);
+        setEditedService('');
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -58,25 +103,19 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
         }
     };
 
-    const [searchResult, setSearchResult] = useState<any>(null);
-
     const handleAnalyze = async () => {
         if (!previewUrl) return;
 
         setIsLoading(true);
         setDigitalRoster(null);
         setSearchResult(null);
-        setDigitalRoster(null);
-        setSearchResult(null);
         setDebugText('');
-        setEditedColleagues('');
-        setEditedService('');
 
         try {
             // STRATEGY A: Detective Mode (Name Provided)
             if (mySearchName.length > 2) {
-                // 1. Try OCR.space (User Key)
-                let result = await findUserShiftOCRSpace(previewUrl, mySearchName);
+                // 1. Try OCR.space (User Key) with Custom Shift Types
+                let result = await findUserShiftOCRSpace(previewUrl, mySearchName, shiftTypes);
 
                 // 2. Fallback to Local/Gemini if OCR.space misses
                 if (!result || !result.found) {
@@ -86,27 +125,58 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
 
                 if (result && result.found) {
                     setSearchResult(result);
-                    toast.success(`¡Te encontré!`);
-                    // Ensure valid shift text
-                    if (!result.shift || result.shift === "DETECTADO POR OCR.SPACE") {
-                        setSearchResult((prev: any) => ({ ...prev, shift: "Revisa el contexto" }));
+                    toast.success(`¡Te encontré! Comprueba los datos.`);
+
+                    // --- PRE-FILL EDITABLE FIELDS ---
+                    setEditedShiftTitle(result.shift || '');
+                    setEditedDate(result.date || format(new Date(), 'yyyy-MM-dd'));
+
+                    // Parse times from result or guess based on shift name
+                    let start = result.startTime !== "--:--" ? result.startTime : "";
+                    let end = result.endTime !== "--:--" ? result.endTime : "";
+
+                    if (!start && result.shift) {
+                        if (result.shift.includes("MAÑANA")) { start = "06:00"; end = "14:00"; }
+                        else if (result.shift.includes("TARDE")) { start = "14:00"; end = "22:00"; }
+                        else if (result.shift.includes("NOCHE")) { start = "22:00"; end = "06:00"; }
                     }
+                    setEditedStartTime(start);
+                    setEditedEndTime(end);
 
-                    // Init editing
-                    const cols = result.colleagues && result.colleagues.length > 0 && result.colleagues[0] !== "Ver contexto abajo"
-                        ? result.colleagues.join(", ")
-                        : "";
-                    setEditedColleagues(cols);
+                    // Parse Colleagues into Structured Rows
+                    const rows: ColleagueRow[] = [];
+                    if (result.colleagues && result.colleagues.length > 0) {
+                        result.colleagues.forEach((colString: string) => {
+                            if (colString === "Solo/a en este horario") return;
 
-                    // Try to extract service from column title or context if present in result, else empty
-                    // Assuming result might have 'columnTitle' one day, for now empty or guess from keywords
-                    let foundService = '';
-                    const rawUpper = (result.rawContext || '').toUpperCase();
-                    if (rawUpper.includes('PUERTAS')) foundService = 'PUERTAS';
-                    else if (rawUpper.includes('PRESOS')) foundService = 'PRESOS';
-                    setEditedService(foundService);
+                            // Try to extract specific time from string: "Juan (08:00-15:00)"
+                            const timeMatch = colString.match(/\((\d{2}:\d{2})-(\d{2}:\d{2})\)/);
+                            let colName = colString;
+                            let colStart = "";
+                            let colEnd = "";
 
-                    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                            if (timeMatch) {
+                                colName = colString.replace(timeMatch[0], "").trim();
+                                colStart = timeMatch[1];
+                                colEnd = timeMatch[2];
+                            } else {
+                                // Default to user's shift time if no specific time found?
+                                colStart = start;
+                                colEnd = end;
+                            }
+
+                            rows.push({
+                                name: colName,
+                                startTime: colStart,
+                                endTime: colEnd
+                            });
+                        });
+                    }
+                    setEditedColleagueRows(rows);
+
+                    // Set Service from OCR result
+                    setEditedService(result.service || '');
+
                 } else {
                     toast.warning(`No encontré a "${mySearchName}" en el cuadrante.`);
                     // Fallback to full scan so they can see why
@@ -114,8 +184,7 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
                     if (fullResult) {
                         setDigitalRoster(fullResult);
                     } else {
-                        // Even if full structure fails, show raw text if we have it
-                        setDebugText("No se encontró estructura, pero aquí está el texto detectado para que lo revises manualment.");
+                        setDebugText("No se encontró estructura, pero aquí está el texto detectado para que lo revises manualmente.");
                     }
                 }
             }
@@ -141,50 +210,105 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
     };
 
     const handleClose = () => {
-        setPreviewUrl(null);
-        setDigitalRoster(null);
+        resetState();
         onOpenChange(false);
     };
 
-    const handleSaveToCalendar = async () => {
-        if (!searchResult) return;
+    // Helper to manage colleague rows
+    const updateColleagueRow = (index: number, field: keyof ColleagueRow, value: string) => {
+        const newRows = [...editedColleagueRows];
+        newRows[index] = { ...newRows[index], [field]: value };
+        setEditedColleagueRows(newRows);
+    };
 
+    const removeColleagueRow = (index: number) => {
+        const newRows = [...editedColleagueRows];
+        newRows.splice(index, 1);
+        setEditedColleagueRows(newRows);
+    };
+
+    const addColleagueRow = () => {
+        setEditedColleagueRows([...editedColleagueRows, { name: "", startTime: editedStartTime, endTime: editedEndTime }]);
+    };
+
+
+    const handleSaveToCalendar = async () => {
         setIsSaving(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No usuario");
 
-            // Parse startTime/endTime or default
-            let start = "09:00";
-            let end = "17:00";
+            // Use EDITED values
+            // Fix: Strip seconds if present (HH:MM:SS -> HH:MM)
+            let start = (editedStartTime || "").trim();
+            if (start.length > 5 && start.includes(':')) {
+                start = start.substring(0, 5);
+            }
 
-            if (searchResult.startTime !== "--:--") start = searchResult.startTime;
-            else if (searchResult.shift.includes("MAÑANA")) { start = "06:00"; end = "14:00"; }
-            else if (searchResult.shift.includes("TARDE")) { start = "14:00"; end = "22:00"; }
-            else if (searchResult.shift.includes("NOCHE")) { start = "22:00"; end = "06:00"; }
+            let end = (editedEndTime || "").trim();
+            if (end.length > 5 && end.includes(':')) {
+                end = end.substring(0, 5);
+            }
+            const date = editedDate || format(new Date(), 'yyyy-MM-dd');
+
+            // Validate format H:MM or HH:MM
+            console.log('DEBUG SAVE ATTEMPT:', { start, end, date });
+            // Regex permits "9:00" (d:dd) or "09:00" (dd:dd)
+            const timeRegex = /^\d{1,2}:\d{2}$/;
+
+            if (!timeRegex.test(start) || !timeRegex.test(end)) {
+                toast.error(`Horario inválido. Inicio: "${start}", Fin: "${end}". Asegúrate de usar el formato HH:MM (ej. 09:00)`);
+                setIsSaving(false);
+                return;
+            }
 
             // Construct Timestamps
-            // searchResult.date is "YYYY-MM-DD"
-            const startTimestamp = new Date(`${searchResult.date}T${start}:00`).toISOString();
-            let endTimestampCheck = new Date(`${searchResult.date}T${end}:00`);
+            // Safely construct dates
+            const startTimestamp = new Date(`${date}T${start}:00`).toISOString();
+            let endTimestampCheck = new Date(`${date}T${end}:00`);
 
-            // Handle Night Shift crossing midnight?
-            const sDate = new Date(`${searchResult.date}T${start}:00`);
+            // Handle Night Shift crossing midnight
+            const sDate = new Date(`${date}T${start}:00`);
+            if (isNaN(sDate.getTime()) || isNaN(endTimestampCheck.getTime())) {
+                toast.error("Error en el formato de fecha/hora.");
+                setIsSaving(false);
+                return;
+            }
+
             if (endTimestampCheck < sDate) {
                 endTimestampCheck.setDate(endTimestampCheck.getDate() + 1);
             }
             const endTimestamp = endTimestampCheck.toISOString();
 
             // Prepare description with colleagues
-            const description = editedColleagues.trim().length > 0
-                ? `Con: ${editedColleagues}`
-                : undefined;
+            // Format: "Con: Juan (08:00-15:00), Pepe (09:00-17:00)"
+            let description: string | undefined = undefined;
+            if (editedColleagueRows.length > 0) {
+                const colleagueStrings = editedColleagueRows
+                    .filter(r => r.name.trim().length > 0)
+                    .map(r => {
+                        // Check if times differ from main shift to avoid clutter? 
+                        // Let's always show time if it matches the format HH:MM
+                        if (r.startTime && r.endTime) {
+                            return `${r.name} (${r.startTime}-${r.endTime})`;
+                        }
+                        return r.name;
+                    });
+
+                if (colleagueStrings.length > 0) {
+                    description = `Con:\n${colleagueStrings.join('\n')}`;
+                }
+            }
 
             // Combine Service into title if present
-            let finalTitle = `Turno: ${searchResult.shift}`;
+            let finalTitle = `Turno: ${editedShiftTitle}`;
             if (editedService.trim().length > 0) {
                 finalTitle += ` (${editedService.toUpperCase()})`;
             }
+
+            // Determine color based on title text
+            const upperTitle = editedShiftTitle.toUpperCase();
+            const color = upperTitle.includes("NOCHE") ? "#1e293b" : upperTitle.includes("TARDE") ? "#f97316" : "#eab308";
 
             const { error } = await supabase.from('work_shifts').insert({
                 user_id: user.id,
@@ -192,7 +316,8 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
                 description: description,
                 start_time: startTimestamp,
                 end_time: endTimestamp,
-                color: searchResult.shift.includes("NOCHE") ? "#1e293b" : searchResult.shift.includes("TARDE") ? "#f97316" : "#eab308"
+                color: color,
+                style: 'dot'
             });
 
             if (error) throw error;
@@ -209,203 +334,327 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
         }
     };
 
+    // Zoom/Pan controls
+    const zoomIn = () => setZoomLevel(prev => Math.min(prev + 0.05, 3));
+    const zoomOut = () => setZoomLevel(prev => Math.max(prev - 0.05, 1));
+    const rotate = () => setRotation(prev => (prev + 90) % 360);
+
+    // Helper to apply fallback schedule
+    const applyFallbackSchedule = (type: 'M' | 'T' | 'N') => {
+        let s = "", e = "";
+        if (type === 'M') { s = "06:00"; e = "14:00"; }
+        if (type === 'T') { s = "14:00"; e = "22:00"; }
+        if (type === 'N') { s = "22:00"; e = "06:00"; }
+
+        setEditedStartTime(s);
+        setEditedEndTime(e);
+        // Also update title if empty? Maybe not, keep what OCR found or empty.
+        // But we can append to title if it's generic
+        if (!editedShiftTitle || editedShiftTitle === "HORARIO NO DETECTADO") {
+            setEditedShiftTitle(type === 'M' ? "MAÑANA" : type === 'T' ? "TARDE" : "NOCHE");
+        }
+    };
+
+    const isTimeMissing = !editedStartTime || editedStartTime === "--:--" || !editedEndTime || editedEndTime === "--:--";
+
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Escanear Cuadrante (Réplica Digital)</DialogTitle>
-                    <DialogDescription>
-                        Sube la imagen. El sistema reconstruirá la tabla y podrás buscar tu nombre.
+            <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-4 border-b shrink-0 bg-background z-10 w-full overflow-hidden">
+                    <DialogTitle>Escanear Cuadrante</DialogTitle>
+                    <DialogDescription className="text-xs md:text-sm whitespace-normal">
+                        Sube la imagen de tu cuadrante, escribe tu nombre o apellido ( la mejor forma de buscarte) y la IA te encontrara, una vez te encuentre, comprueba que los datos sean correctos y guarda para que lo veas en tu cuadrante
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto py-4 space-y-4">
-                    {!previewUrl ? (
-                        <div
-                            className="border-2 border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Upload className="h-12 w-12 mb-4" />
-                            <p>Haz clic para subir imagen del cuadrante</p>
-                            <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                        </div>
-                    ) : (
-                        <div className="flex flex-col md:flex-row gap-4 h-full">
-                            {/* Left: Image / Controls */}
-                            <div className="w-full md:w-1/3 space-y-4">
-                                <div className="relative h-48 w-full rounded-lg overflow-hidden border">
-                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                                    <Button size="sm" variant="secondary" className="absolute bottom-2 right-2" onClick={() => { setPreviewUrl(null); setDigitalRoster(null); }}>
-                                        Cambiar
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Tu Nombre (para resaltar)</Label>
-                                    <Input
-                                        placeholder="Ej. GARCIA"
-                                        value={mySearchName}
-                                        onChange={(e) => setMySearchName(e.target.value)}
-                                    />
-                                </div>
-
-                                {!digitalRoster && !isLoading && (
-                                    <Button className="w-full" onClick={handleAnalyze}>
-                                        <ScanLineIcon className="mr-2 h-4 w-4" />
-                                        Digitalizar Cuadrante
-                                    </Button>
-                                )}
-
-                                {isLoading && (
-                                    <div className="flex items-center justify-center py-4 text-primary">
-                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                                        <span>Reconstruyendo...</span>
-                                    </div>
-                                )}
+                <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    {/* LEFT (or TOP): Image Area - Always visible if image exists */}
+                    {previewUrl ? (
+                        <div className={`
+                            relative bg-slate-900 overflow-hidden flex flex-col
+                            ${searchResult ? 'w-full md:w-1/2 h-1/3 md:h-full border-b md:border-b-0 md:border-r' : 'w-full h-full'}
+                         `}>
+                            {/* Image Controls */}
+                            <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                                <Button size="icon" variant="secondary" className="h-8 w-8 bg-black/50 hover:bg-black/70 text-white border-none" onClick={zoomIn}><ZoomIn className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="secondary" className="h-8 w-8 bg-black/50 hover:bg-black/70 text-white border-none" onClick={zoomOut}><ZoomOut className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="secondary" className="h-8 w-8 bg-black/50 hover:bg-black/70 text-white border-none" onClick={rotate}><RotateCw className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="destructive" className="h-8 w-8 opacity-80 hover:opacity-100" onClick={resetState} title="Cambiar imagen"><Upload className="h-4 w-4" /></Button>
                             </div>
 
-                            {/* Detective Result Card */}
-                            {searchResult && (
-                                <div ref={resultRef} className="w-full md:w-2/3 border rounded-lg bg-green-50 dark:bg-green-900/20 p-6 flex flex-col justify-center text-center space-y-4 shadow-lg border-green-200">
-                                    <h3 className="text-2xl font-bold text-green-800 dark:text-green-300">
-                                        ¡ENCONTRADO!
-                                    </h3>
-                                    <div className="text-lg">
-                                        Hola <span className="font-bold">{searchResult.targetName}</span>, tu turno es:
+                            {/* Image Container with Scroll support */}
+                            <div className="flex-1 w-full h-full overflow-auto relative bg-slate-950">
+                                <div className={`min-w-full min-h-full flex ${zoomLevel > 1 ? 'items-start justify-start p-0' : 'items-center justify-center p-4'}`}>
+                                    <img
+                                        src={previewUrl}
+                                        alt="Preview"
+                                        className="transition-transform duration-200 ease-out origin-top-left"
+                                        style={{
+                                            transform: zoomLevel > 1 ? `scale(${zoomLevel})` : `rotate(${rotation}deg)`,
+                                            // When not zoomed, we let it fit contained. When zoomed, we let it expand natural size * scale
+                                            maxWidth: zoomLevel === 1 ? '100%' : 'none',
+                                            maxHeight: zoomLevel === 1 ? '100%' : 'none',
+                                            // Rotation logic for fit mode needs specific handling if rotated 90deg, 
+                                            // simpler to just apply rotation style if zoom is 1. 
+                                            // If zoomed, rotation + scale is complex in CSS without container. 
+                                            // For V1 simple zoom:
+                                        }}
+                                    />
+                                    {/* Rotation helper for zoomed state if needed, but simplification: Apply rotation to img always, handle container */}
+                                </div>
+                            </div>
+
+                            {/* Initial Controls (Overlaid if no result yet) */}
+                            {!searchResult && !digitalRoster && !isLoading && (
+                                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent flex flex-col gap-4 items-center z-10">
+                                    <div className="w-full max-w-sm space-y-2">
+                                        <Label className="text-white">Tu Nombre (para resaltar)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Ej. GARCIA"
+                                                value={mySearchName}
+                                                onChange={(e) => setMySearchName(e.target.value)}
+                                                className="bg-white/90 text-black border-none"
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                                            />
+                                            <Button onClick={handleAnalyze} disabled={mySearchName.length < 3}>
+                                                <Maximize2 className="mr-2 h-4 w-4" />
+                                                Analizar
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="text-4xl font-black text-green-700 dark:text-green-400 p-4 bg-white dark:bg-black/20 rounded-xl border border-green-100 dark:border-green-800 break-words">
-                                        {searchResult.shift}
+                                </div>
+                            )}
+
+                            {isLoading && (
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-sm z-30">
+                                    <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
+                                    <p className="font-semibold animate-pulse">Analizando cuadrante...</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        // NO IMAGE STATE
+                        <div
+                            className="w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed m-4 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mb-6">
+                                <Upload className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Sube tu cuadrante</h3>
+                            <p className="text-muted-foreground text-center max-w-md">
+                                Haz clic aquí para seleccionar una imagen.
+                            </p>
+                            <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                        </div>
+                    )}
+
+                    {/* RIGHT (or BOTTOM): Result / Form Area - Only visible if we have a result */}
+                    {searchResult && (
+                        <div className="w-full md:w-1/2 h-2/3 md:h-full flex flex-col bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                            <div className="p-6 flex-1 overflow-y-auto">
+                                <div className="mb-6 flex items-center gap-3 text-green-600 dark:text-green-500">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                        <Check className="h-6 w-6" />
                                     </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">
-                                        {searchResult.startTime} - {searchResult.endTime}
+                                    <div>
+                                        <h3 className="font-bold text-lg leading-none">¡Turno Encontrado!</h3>
+                                        <p className="text-xs text-muted-foreground mt-1">Por favor verifica los datos antes de guardar.</p>
+                                    </div>
+                                </div>
+
+                                {/* FALLBACK WARNING & OPTIONS */}
+                                {isTimeMissing && (
+                                    <div className="mb-6 p-4 border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900 rounded-lg">
+                                        <div className="flex gap-2 items-start mb-3">
+                                            <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-500 mt-0.5" />
+                                            <div>
+                                                <h4 className="font-semibold text-orange-800 dark:text-orange-400">Horario no detectado</h4>
+                                                <p className="text-sm text-orange-700 dark:text-orange-300">
+                                                    No hemos podido leer las horas exactas. Selecciona una opción rápida:
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1 border-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40"
+                                                onClick={() => applyFallbackSchedule('M')}
+                                            >
+                                                <div className="flex flex-col items-center py-1">
+                                                    <span className="font-bold">Mañana</span>
+                                                    <span className="text-[10px]">06:00 - 14:00</span>
+                                                </div>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1 border-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40"
+                                                onClick={() => applyFallbackSchedule('T')}
+                                            >
+                                                <div className="flex flex-col items-center py-1">
+                                                    <span className="font-bold">Tarde</span>
+                                                    <span className="text-[10px]">14:00 - 22:00</span>
+                                                </div>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1 border-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40"
+                                                onClick={() => applyFallbackSchedule('N')}
+                                            >
+                                                <div className="flex flex-col items-center py-1">
+                                                    <span className="font-bold">Noche</span>
+                                                    <span className="text-[10px]">22:00 - 06:00</span>
+                                                </div>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="col-span-2">
+                                            <Label>Nombre del Turno</Label>
+                                            <Input
+                                                value={editedShiftTitle}
+                                                onChange={(e) => setEditedShiftTitle(e.target.value)}
+                                                className="font-bold text-lg"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-2 sm:col-span-1">
+                                            <Label>Fecha</Label>
+                                            <Input
+                                                type="date"
+                                                value={editedDate}
+                                                onChange={(e) => setEditedDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-span-2 sm:col-span-1">
+                                            <Label>Fecha (Original)</Label>
+                                            <div className="text-xs p-2 bg-muted rounded border mt-1 truncate">
+                                                {searchResult.date}
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Raw Context Toggle */}
-                                    <div className="mt-4 p-3 bg-white/50 dark:bg-black/20 rounded text-sm text-left border border-green-100 dark:border-green-800">
-                                        <p className="font-bold text-xs mb-1 text-green-800 dark:text-green-300">Contexto Detectado:</p>
-                                        <div className="font-mono text-xs whitespace-pre-wrap text-green-900 dark:text-green-200">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label>Hora Inicio</Label>
+                                            <Input
+                                                type="time"
+                                                value={editedStartTime}
+                                                onChange={(e) => setEditedStartTime(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Hora Fin</Label>
+                                            <Input
+                                                type="time"
+                                                value={editedEndTime}
+                                                onChange={(e) => setEditedEndTime(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* STRUCTURED COLLEAGUES LIST */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <Label>Compañeros y Horarios</Label>
+                                            <Button variant="ghost" size="sm" onClick={addColleagueRow} className="h-6 px-2 text-xs">
+                                                <Plus className="h-3 w-3 mr-1" /> Añadir
+                                            </Button>
+                                        </div>
+
+                                        <div className="space-y-2 border rounded-md p-2 bg-muted/10 max-h-60 overflow-y-auto">
+                                            {editedColleagueRows.length === 0 && (
+                                                <p className="text-xs text-muted-foreground text-center py-2">No se han detectado compañeros.</p>
+                                            )}
+
+                                            {editedColleagueRows.map((row, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <Input
+                                                        value={row.name}
+                                                        onChange={(e) => updateColleagueRow(idx, 'name', e.target.value)}
+                                                        placeholder="Nombre"
+                                                        className="flex-1 h-8 text-xs"
+                                                    />
+                                                    <Input
+                                                        type="time"
+                                                        value={row.startTime}
+                                                        onChange={(e) => updateColleagueRow(idx, 'startTime', e.target.value)}
+                                                        className="w-20 h-8 text-xs px-1"
+                                                    />
+                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                    <Input
+                                                        type="time"
+                                                        value={row.endTime}
+                                                        onChange={(e) => updateColleagueRow(idx, 'endTime', e.target.value)}
+                                                        className="w-20 h-8 text-xs px-1"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                                        onClick={() => removeColleagueRow(idx)}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Ajusta los horarios individuales para cada compañero si difieren de tu turno.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <Label>Servicio / Puesto</Label>
+                                        <Input
+                                            value={editedService}
+                                            onChange={(e) => setEditedService(e.target.value)}
+                                            placeholder="Ej. PUERTAS, RASTRILLO..."
+                                        />
+                                    </div>
+
+                                    {/* Raw Context for Reference */}
+                                    <div className="mt-6 pt-4 border-t">
+                                        <Label className="text-xs text-muted-foreground mb-2 block">Contexto Original (Referencia):</Label>
+                                        <div className="text-xs font-mono bg-muted/50 p-3 rounded max-h-32 overflow-y-auto whitespace-pre-wrap border select-all">
                                             {searchResult.rawContext}
                                         </div>
                                     </div>
-
-                                    {/* Manual Overrides */}
-                                    <div className="w-full text-left space-y-3 pt-4 border-t border-green-200 dark:border-green-800">
-                                        <div>
-                                            <Label className="text-xs font-semibold text-green-800 dark:text-green-300">
-                                                Compañeros (Editar si hay errores)
-                                            </Label>
-                                            <Input
-                                                value={editedColleagues}
-                                                onChange={(e) => setEditedColleagues(e.target.value)}
-                                                className="bg-white/80 dark:bg-black/20 border-green-200 dark:border-green-800 h-8 text-sm"
-                                                placeholder="Ej. GARCIA, LOPEZ (separar por comas)"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs font-semibold text-green-800 dark:text-green-300">
-                                                Servicio / Puesto (Para estadísticas)
-                                            </Label>
-                                            <Input
-                                                value={editedService}
-                                                onChange={(e) => setEditedService(e.target.value)}
-                                                className="bg-white/80 dark:bg-black/20 border-green-200 dark:border-green-800 h-8 text-sm"
-                                                placeholder="Ej. PUERTAS, PRESOS, V. INT"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        onClick={handleSaveToCalendar}
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white mt-4"
-                                        disabled={isSaving}
-                                    >
-                                        {isSaving ? <Loader2 className="animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                        Confirmar y Guardar en Calendario
-                                    </Button>
-                                    <div className="text-xs text-muted-foreground mt-2">
-                                        Fecha: {searchResult.date}
-                                    </div>
                                 </div>
-                            )}
-
-                            {/* Right: Digital Replica (Fallback or Full View) */}
-                            {!searchResult && (
-                                <div className="w-full md:w-2/3 border rounded-lg bg-card p-4 overflow-y-auto min-h-[300px]">
-                                    {digitalRoster ? (
-                                        <div>
-                                            <h3 className="text-lg font-bold text-center mb-4 uppercase border-b pb-2">
-                                                {digitalRoster.date}
-                                            </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {digitalRoster.columns.map((col: any, idx: number) => (
-                                                    <div key={idx} className="border rounded bg-background shadow-sm">
-                                                        <div className="bg-muted p-2 text-center font-bold text-xs uppercase border-b truncate" title={col.title}>
-                                                            {col.title}
-                                                        </div>
-                                                        <div className="p-2 space-y-1">
-                                                            {col.names.length === 0 && <p className="text-xs text-muted-foreground italic text-center">Sin servicios</p>}
-                                                            {col.names.map((name: string, nIdx: number) => {
-                                                                const isMe = mySearchName.length > 2 && name.toUpperCase().includes(mySearchName.toUpperCase());
-                                                                return (
-                                                                    <div
-                                                                        key={nIdx}
-                                                                        className={`text-xs p-1.5 rounded border transition-colors ${isMe ? 'bg-green-100 border-green-500 text-green-800 font-bold dark:bg-green-900/40 dark:text-green-300' : 'border-transparent hover:bg-muted/50'}`}
-                                                                    >
-                                                                        {name}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm italic p-8">
-                                            <ScanLineIcon className="h-12 w-12 mb-4 opacity-20" />
-                                            <p>La réplica digital aparecerá aquí.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            </div>
+                            <div className="p-4 border-t bg-background shrink-0 flex gap-3">
+                                <Button variant="outline" onClick={() => setSearchResult(null)} className="flex-1">
+                                    Reintentar / Cancelar
+                                </Button>
+                                <Button onClick={handleSaveToCalendar} disabled={isSaving} className="flex-[2]">
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                    Confirmar y Guardar
+                                </Button>
+                            </div>
                         </div>
                     )}
 
-                    {/* Debug View */}
-                    {debugText && !digitalRoster && (
-                        <div className="mt-4 p-4 bg-muted rounded-md text-xs font-mono whitespace-pre-wrap max-h-48 overflow-y-auto border">
-                            <p className="font-bold mb-2">Raw Text (Debug):</p>
-                            {debugText}
+                    {/* Fallback View */}
+                    {digitalRoster && !searchResult && (
+                        <div className="w-full md:w-1/2 h-full bg-background p-4 overflow-y-auto">
+                            <h3 className="font-bold text-center mb-4">Vista Digital (Modo Exploración)</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                {digitalRoster.columns.map((col: any, idx: number) => (
+                                    <div key={idx} className="border p-2 rounded text-xs">
+                                        <div className="font-bold bg-muted p-1 mb-1">{col.title}</div>
+                                        <div>{col.names.join(', ')}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <Button className="w-full mt-4" variant="outline" onClick={() => setDigitalRoster(null)}>Volver</Button>
                         </div>
                     )}
                 </div>
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={handleClose}>Cerrar</Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
-}
-
-function ScanLineIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-            <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-            <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-            <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-        </svg>
-    )
 }

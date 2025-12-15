@@ -4,6 +4,7 @@ export interface UserShiftResult {
     date: string;
     targetName: string;
     shift: string;
+    service?: string;
     startTime: string;
     endTime: string;
     colleagues: string[];
@@ -12,10 +13,11 @@ export interface UserShiftResult {
 
 const OCR_SPACE_KEY = "K84515341388957";
 
-export async function findUserShiftOCRSpace(base64Image: string, targetName: string): Promise<UserShiftResult | null> {
-    console.log(`[OCR.space] Starting Detective Mode for: ${targetName}`);
+export async function findUserShiftOCRSpace(base64Image: string, targetName: string, shiftTypes: any[] = []): Promise<UserShiftResult | null> {
+    console.log(`[OCR.space] Starting Hierarchical Analysis for: ${targetName}`);
 
     try {
+        // ... (fetch logic same) ...
         const formData = new FormData();
         formData.append("base64Image", base64Image);
         formData.append("apikey", OCR_SPACE_KEY);
@@ -23,7 +25,7 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
         formData.append("isTable", "true");
         formData.append("isOverlayRequired", "true");
         formData.append("scale", "true");
-        formData.append("OCREngine", "2"); // Engine 2 is better for numbers/tables
+        formData.append("OCREngine", "2");
 
         const response = await fetch("/api/ocr-space", {
             method: "POST",
@@ -39,277 +41,255 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
         const parsedResult = data.ParsedResults?.[0];
         if (!parsedResult) throw new Error("No results from OCR.space");
 
-        const fullText = parsedResult.ParsedText || "";
+        const fullText = parsedResult.ParsedText || "Texto no detectado";
         const overlay = parsedResult.TextOverlay;
 
-        // If no overlay, fallback to text search only
         if (!overlay || !overlay.Lines) {
-            console.warn("No Overlay found, using text-only fallback");
-            // For brevity in this replacement, we keep the basic text logic or fail over.
-            // But actually, we will wrap the Logic B here.
-            // Fallback to original text-based logic if overlay is not available
-            const lines = fullText.split('\n').filter((l: string) => l.trim().length > 0);
-            const userLineIndex = lines.findIndex((l: string) => l.toUpperCase().includes(targetName.toUpperCase()));
-
-            if (userLineIndex !== -1) {
-                const userLine = lines[userLineIndex];
-                let detectedShift = "HORARIO DETECTADO";
-                let startTime = "--:--";
-                let endTime = "--:--";
-
-                const upperLine = userLine.toUpperCase();
-                if (upperLine.includes("MAÑANA") || upperLine.includes(" M ") || upperLine.endsWith(" M")) detectedShift = "MAÑANA";
-                else if (upperLine.includes("TARDE") || upperLine.includes(" T ") || upperLine.endsWith(" T")) detectedShift = "TARDE";
-                else if (upperLine.includes("NOCHE") || upperLine.includes(" N ") || upperLine.endsWith(" N")) detectedShift = "NOCHE";
-
-                const timeRegex = /(\d{1,2}[:.]\d{2})\s*[-a]\s*(\d{1,2}[:.]\d{2})/;
-                const timeMatch = userLine.match(timeRegex);
-                if (timeMatch) {
-                    startTime = timeMatch[1].replace('.', ':');
-                    endTime = timeMatch[2].replace('.', ':');
-                    if (detectedShift === "HORARIO DETECTADO") detectedShift = `${startTime} - ${endTime}`;
-                }
-
-                if (detectedShift === "HORARIO DETECTADO" || detectedShift.includes("-")) {
-                    const index = userLine.toUpperCase().indexOf(targetName.toUpperCase());
-                    const len = userLine.length;
-                    const ratio = index / len;
-
-                    if (len > 25) {
-                        if (ratio < 0.35) detectedShift = "MAÑANA";
-                        else if (ratio < 0.65) detectedShift = "TARDE";
-                        else detectedShift = "NOCHE";
-                    }
-                    else if (userLine.startsWith("     ")) {
-                        if (index > 15) detectedShift = "NOCHE";
-                        else detectedShift = "TARDE";
-                    }
-                    else {
-                        if (detectedShift === "HORARIO DETECTADO") detectedShift = "MAÑANA";
-                    }
-                }
-
-                return {
-                    found: true,
-                    date: new Date().toISOString().split('T')[0],
-                    targetName: targetName.toUpperCase(),
-                    shift: detectedShift,
-                    startTime: startTime,
-                    endTime: endTime,
-                    colleagues: ["Ver contexto abajo"],
-                    rawContext: `Línea (${userLine.length} chars, pos ${userLine.toUpperCase().indexOf(targetName.toUpperCase())}):\n"${userLine}"\n\nContexto:\n${lines.slice(Math.max(0, userLineIndex - 2), userLineIndex + 3).join('\n')}`
-                };
-            }
-            return null; // If no overlay and no text match
+            console.warn("No Overlay found, fallback to text search");
+            return null;
         }
 
-        // --- GEOMETRIC ANALYSIS ---
+        // --- HIERARCHICAL ANALYSIS ---
 
-        let foundLineObj: any = null;
-        let maxX = 0;
-        let foundDate: string | null = null;
+        // 1. Structure all lines for easier access
+        const lines = overlay.Lines.map((l: any) => {
+            const first = l.Words[0];
+            const last = l.Words[l.Words.length - 1];
+            let text = l.LineText || l.Words.map((w: any) => w.WordText).join(" ");
 
-        // 1. Calculate Page Width (MaxX) and Find Target Line
-        let salienteThresholdY = 100000;
-        let salienteHeadersMap: { [key: string]: string } = { "left": "SERVICIO", "mid": "SERVICIO", "right": "SERVICIO" };
-
-        for (const line of overlay.Lines) {
-            // Update MaxX based on last word in line
-            if (line.Words && line.Words.length > 0) {
-                const lastWord = line.Words[line.Words.length - 1];
-                const rightEdge = lastWord.Left + lastWord.Width;
-                if (rightEdge > maxX) maxX = rightEdge;
-            }
-
-            // HEADER DATE DETECTION
-            // Look for patterns like "11 DE DICIEMBRE DE 2025" or "11/12/2025"
-            const lineText = line.LineText || line.Words.map((w: any) => w.WordText).join(" ");
-
-            // Detect Salientes Section Start
-            if (lineText.toUpperCase().includes("SALIENTES")) {
-                salienteThresholdY = line.MinTop;
-                console.log(`[OCR.SPACE] Salientes Section detected at Y=${salienteThresholdY}`);
-            }
-
-            // Only check top 10 lines for date
-            if (line.MinTop < 500 && !foundDate) {
-                // Spnish Date Regex: \d{1,2} DE [A-Z]+ DE \d{4}
-                const dateMatch = lineText.toUpperCase().match(/(\d{1,2})\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})/);
-                if (dateMatch) {
-                    // Parse Date
-                    const day = dateMatch[1];
-                    const monthStr = dateMatch[2];
-                    const year = dateMatch[3];
-                    const months: any = { "ENERO": "01", "FEBRERO": "02", "MARZO": "03", "ABRIL": "04", "MAYO": "05", "JUNIO": "06", "JULIO": "07", "AGOSTO": "08", "SEPTIEMBRE": "09", "OCTUBRE": "10", "NOVIEMBRE": "11", "DICIEMBRE": "12" };
-                    if (months[monthStr]) {
-                        foundDate = `${year}-${months[monthStr]}-${day.padStart(2, '0')}`;
-                        console.log("Date Found in Header:", foundDate);
-                    }
-                }
-            }
-
-            // Check match
-            if (!foundLineObj && lineText.toUpperCase().includes(targetName.toUpperCase())) {
-                foundLineObj = line;
-            }
-        }
-
-        // Second Pass: Find Service Headers in Salientes Section (if any)
-        if (salienteThresholdY < 10000 && maxX > 0) {
-            for (const line of overlay.Lines) {
-                if (line.MinTop <= salienteThresholdY) continue; // Skip lines above Salientes
-
-                const lineText = (line.LineText || line.Words.map((w: any) => w.WordText).join(" ")).toUpperCase();
-                const serviceKeywords = ["PENITENCIARIO", "SUBDELEGACION", "PUERTAS", "ACUARTELAMIENTO", "CONTROLES", "PATRULLA", "SEGURIDAD", "PLANA MAYOR"];
-                const matchedKeyword = serviceKeywords.find(k => lineText.includes(k));
-
-                if (matchedKeyword) {
-                    // Determine bucket
-                    const firstWord = line.Words[0];
-                    const lastWord = line.Words[line.Words.length - 1];
-                    const midX = (firstWord.Left + lastWord.Left + lastWord.Width) / 2;
-                    const ratio = midX / maxX;
-
-                    let bucket = "mid";
-                    if (ratio < 0.35) bucket = "left";
-                    else if (ratio > 0.65) bucket = "right";
-
-                    salienteHeadersMap[bucket] = matchedKeyword;
-                    console.log(`[OCR.SPACE] Mapped Saliente Header '${matchedKeyword}' to bucket '${bucket}'`);
-                }
-            }
-        }
-
-        if (foundLineObj) {
-            const lineText = foundLineObj.LineText || foundLineObj.Words.map((w: any) => w.WordText).join(" ");
-            let detectedShift = "HORARIO DETECTADO";
-
-            // Calculate Geometric Position
-            // Get bounding box of the line (or at least the center of the first word vs last word)
-            const firstWord = foundLineObj.Words[0];
-            const lastWord = foundLineObj.Words[foundLineObj.Words.length - 1];
-
-            if (firstWord && lastWord && maxX > 0) {
-                const lineLeft = firstWord.Left;
-                const lineRight = lastWord.Left + lastWord.Width;
-                const lineCenter = (lineLeft + lineRight) / 2;
-                const ratio = lineCenter / maxX;
-
-                console.log(`Geometric Match: Center=${lineCenter}, MaxX=${maxX}, Ratio=${ratio}`);
-
-                // Check if user is in Salientes Section
-                if (foundLineObj.MinTop > salienteThresholdY) {
-                    // In Salientes!
-                    let bucket = "mid";
-                    if (ratio < 0.35) bucket = "left";
-                    else if (ratio > 0.65) bucket = "right";
-
-                    const serviceName = salienteHeadersMap[bucket];
-                    detectedShift = `SALIENTE ${serviceName}`;
-                    console.log(`[OCR.SPACE] User is in Salientes Section (${bucket}). Shift: ${detectedShift}`);
-
-                } else {
-                    // Regular 3 Column Layout Logic
-                    if (ratio < 0.35) detectedShift = "MAÑANA";
-                    else if (ratio < 0.65) detectedShift = "TARDE";
-                    else detectedShift = "NOCHE";
-                }
-            } else {
-                // Fallback if geometry fails (single word line?)
-                // Also check text-based Saliente fallback if needed, though hard without geometry
-                if (lineText.toUpperCase().includes("MAÑANA")) detectedShift = "MAÑANA";
-                else if (lineText.toUpperCase().includes("TARDE")) detectedShift = "TARDE";
-                else if (lineText.toUpperCase().includes("NOCHE")) detectedShift = "NOCHE";
-            }
-
-            // Attempt to find time in the line (regex)
-            let startTime = "--:--";
-            let endTime = "--:--";
-            const timeRegex = /(\d{1,2}[:.]\d{2})\s*[-a]\s*(\d{1,2}[:.]\d{2})/;
-            const timeMatch = lineText.match(timeRegex);
-            if (timeMatch) {
-                startTime = timeMatch[1].replace('.', ':');
-                endTime = timeMatch[2].replace('.', ':');
-                if (detectedShift === "HORARIO DETECTADO") detectedShift = `${startTime} - ${endTime}`;
-            }
-
-            // --- FIND COLLEAGUES (Geometrically Close) ---
-            const colleagues: string[] = [];
-
-            // Search config
-            const verticalTolerance = 60; // Approximate line height or cell buffer in pixels
-            // We want lines that share the same "Column Ratio" roughly, and are vertically close.
-
-            if (maxX > 0) {
-                const targetLineCenter = (firstWord.Left + firstWord.Width / 2); // Center of first word is safer? No, use line center.
-                const targetLineMid = (firstWord.Left + lastWord.Left + lastWord.Width) / 2;
-                const targetTop = foundLineObj.MinTop;
-                const targetBottom = targetTop + foundLineObj.MaxHeight; // Rough height
-
-                // Scan all lines
-                for (const otherLine of overlay.Lines) {
-                    // Skip self
-                    if (otherLine === foundLineObj) continue;
-
-                    const text = otherLine.LineText || otherLine.Words.map((w: any) => w.WordText).join(" ");
-
-                    // Skip obviously non-name lines (headers, empty) - Heuristic
-                    if (text.length < 4 || text.includes("HORAS") || text.includes("SERVICIO")) continue;
-
-                    // Geometric check
-                    const otherFirst = otherLine.Words[0];
-                    const otherLast = otherLine.Words[otherLine.Words.length - 1];
-
-                    const otherMid = (otherFirst.Left + otherLast.Left + otherLast.Width) / 2;
-                    const otherTop = otherLine.MinTop;
-
-                    // 1. Column Check: Is it aligned horizontally?
-                    // Using ratio difference:
-                    const otherRatio = otherMid / maxX;
-                    const targetRatio = targetLineMid / maxX;
-
-                    // Identify column buckets instead of strict alignment to allow for name length variance
-                    let otherBucket = "mid";
-                    if (otherRatio < 0.35) otherBucket = "left";
-                    else if (otherRatio > 0.65) otherBucket = "right";
-
-                    let targetBucket = "mid";
-                    if (targetRatio < 0.35) targetBucket = "left";
-                    else if (targetRatio > 0.65) targetBucket = "right";
-
-                    if (otherBucket !== targetBucket) continue;
-
-                    // 2. Vertical Proximity Check: Is it close Y-wise?
-                    // We look for lines in the same "cluster".
-                    // For now, let's grab anything within +/- 200px? Or look for nearest neighbors?
-                    // The roster has cells. It's safer to grab "nearest 3 neighbors".
-                    const distY = Math.abs(otherTop - targetTop);
-
-                    if (distY < 120) { // 120px is roughly 3-4 lines distance
-                        colleagues.push(text);
-                    }
-                }
-            }
+            // Fix common OCR error: "DI" -> "Dª" (Doña)
+            text = text.replace(/\bDI\s/g, "Dª ").replace(/^DI\s/g, "Dª ")
+                .replace(/\bD[I|l|1]\s/g, "Dª ")
+                .replace(/^D[I|l|1]\s/g, "Dª ")
+                .replace(/\bD\s+[I|l|1]\s/g, "Dª ");
 
             return {
-                found: true,
-                date: foundDate || new Date().toISOString().split('T')[0],
-                targetName: targetName.toUpperCase(),
-                shift: detectedShift,
-                startTime: startTime,
-                endTime: endTime,
-                colleagues: colleagues.length > 0 ? colleagues : ["Sin compañeros detectados"],
-                rawContext: `Detectado por Geometría (Ratio: ${(firstWord && lastWord && maxX) ? ((firstWord.Left + lastWord.Left + lastWord.Width) / 2 / maxX).toFixed(2) : 'N/A'})\nTexto: "${lineText}"`
+                text: text,
+                cleanText: text.toUpperCase().trim(),
+                top: l.MinTop,
+                bottom: l.MinTop + l.MaxHeight,
+                left: first.Left,
+                right: last.Left + last.Width,
+                center: (first.Left + last.Left + last.Width) / 2,
+                height: l.MaxHeight
+            };
+        });
+
+        // 2. Identify Metadata (Date) ... (same)
+        let foundDate = new Date().toISOString().split('T')[0];
+        const dateLine = lines.find((l: any) => l.top < 500 && /(\d{1,2})\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})/i.test(l.cleanText));
+        if (dateLine) {
+            const match = dateLine.cleanText.match(/(\d{1,2})\s+DE\s+([A-Z]+)\s+DE\s+(\d{4})/i);
+            if (match) {
+                const months: any = { "ENERO": "01", "FEBRERO": "02", "MARZO": "03", "ABRIL": "04", "MAYO": "05", "JUNIO": "06", "JULIO": "07", "AGOSTO": "08", "SEPTIEMBRE": "09", "OCTUBRE": "10", "NOVIEMBRE": "11", "DICIEMBRE": "12" };
+                const m = months[match[2]];
+                if (m) foundDate = `${match[3]}-${m}-${match[1].padStart(2, '0')}`;
+            }
+        }
+
+        // 3. Identify Section Headers
+        const sectionHeaders = lines.filter((l: any) => {
+            const t = l.cleanText;
+            return (t.includes("SERVICIO") || t.includes("CONDUCCIÓN") || t.includes("PLAN PATIO") || t.includes("SALIENTES")) && !t.includes("HORAS");
+        }).sort((a: any, b: any) => a.top - b.top);
+
+        // 4. Identify Time/Column Headers
+        // Logic: 
+        // A) Look for "DE X A Y" pattern
+        // B) Look for EXACT or STARTS_WITH matches with Configured Shift Codes (e.g. "M", "T", "N", "NOCHE")
+        // C) Look for common keywords "MAÑANA", "TARDE", "NOCHE" explicitly
+        const timeHeaders = lines.filter((l: any) => {
+            if (l.cleanText.includes("SERVICIO")) return false; // Not a time header
+
+            const txt = l.cleanText;
+
+            // A) Pattern match
+            if (/DE\s*\d{1,2}\s*A\s*\d{1,2}/.test(txt)) return true;
+
+            // B) Code/Label match (Flexible)
+            if (shiftTypes && shiftTypes.length > 0) {
+                // Check if line starts with a code or label (followed by space or end of line)
+                // e.g. "M" or "M 07-15" or "NOCHE (22-06)"
+                const match = shiftTypes.find(s =>
+                    txt === s.code ||
+                    txt === s.label ||
+                    txt.startsWith(s.code + " ") ||
+                    txt.startsWith(s.label + " ")
+                );
+                if (match) return true;
+            }
+
+            // C) Explicit Keywords
+            if (["MAÑANA", "TARDE", "NOCHE"].includes(txt) ||
+                txt.startsWith("MAÑANA ") ||
+                txt.startsWith("TARDE ") ||
+                txt.startsWith("NOCHE ")) {
+                return true;
+            }
+
+            return false;
+        }).map((l: any) => {
+            const txt = l.cleanText;
+
+            // Check for Configured Match First
+            if (shiftTypes && shiftTypes.length > 0) {
+                const knownShift = shiftTypes.find(s =>
+                    txt === s.code ||
+                    txt === s.label ||
+                    txt.startsWith(s.code + " ") ||
+                    txt.startsWith(s.label + " ")
+                );
+
+                if (knownShift) {
+                    return {
+                        ...l,
+                        shiftType: knownShift.label || knownShift.code, // Prefer Label
+                        startTime: knownShift.start_time,
+                        endTime: knownShift.end_time
+                    };
+                }
+            }
+
+            // Check for Keywords if no custom config matched
+            if (txt.startsWith("MAÑANA")) return { ...l, shiftType: "MAÑANA", startTime: "07:00", endTime: "15:00" };
+            if (txt.startsWith("TARDE")) return { ...l, shiftType: "TARDE", startTime: "15:00", endTime: "23:00" };
+            if (txt.startsWith("NOCHE")) return { ...l, shiftType: "NOCHE", startTime: "23:00", endTime: "07:00" };
+
+            // Fallback to Regex Parsing
+            const match = txt.match(/(?:(MAÑANA|TARDE|NOCHE).*?)?DE\s*(\d{1,2})\s*A\s*(\d{1,2})/);
+            return {
+                ...l,
+                shiftType: match && match[1] ? match[1] : "HORARIO DE SERVICIO",
+                startTime: match ? match[2].padStart(2, '0') + ":00" : "--:--",
+                endTime: match ? match[3].padStart(2, '0') + ":00" : "--:--"
+            };
+        });
+
+        // 5. Find Target User
+        const userLine = lines.find((l: any) => l.cleanText.includes(targetName.toUpperCase()));
+
+        if (!userLine) {
+            console.log("User not found in lines");
+            return {
+                found: false,
+                date: foundDate,
+                targetName: targetName,
+                shift: '', startTime: '', endTime: '', colleagues: [], rawContext: fullText
             };
         }
 
-        // Fallback for no overlay match but text match (rare)
-        // ... return null or search raw text as before.
+        console.log("User found at Y=" + userLine.top);
 
-        return null;
+        // 6. Determine Context (Parent Section & Parent Time Column)
+
+        // Find nearest Section Header ABOVE user
+        let parentSection = sectionHeaders.filter((h: any) => h.bottom < userLine.top).pop();
+
+        // New Simplified Logic: "First Valid Ancestor"
+        // 1. Get all headers strictly above the user and within the current section
+        const candidates = timeHeaders.filter((h: any) => {
+            if (h.bottom > userLine.top) return false;
+            if (parentSection && h.top < parentSection.bottom) return false;
+            return true;
+        });
+
+        // 2. Sort candidates by Vertical Nearness (closest to user first = Descending Top)
+        candidates.sort((a: any, b: any) => b.top - a.top);
+
+        // 3. Find the first candidate that is "Reasonably Aligned" horizontally
+        let parentTimeHeader = candidates.find((h: any) => {
+            const centerDist = Math.abs(h.center - userLine.center);
+            const verticalDist = userLine.top - h.bottom;
+
+            // Heuristic:
+            // - If it's very close vertically (< 50px), we can be strict horizontally.
+            // - If it's far vertically, we must be strict horizontally to avoid drifting to neighbor columns.
+            // - For Configurable Shifts (often just "M", "N"), width is small, so center align is key.
+
+            // Rule 1: Must be reasonably close in center alignment (e.g. within 200px)
+            // Rule 2: If it's a "narrow" header (width < 50), center dist must be tighter (e.g. 100) to be sure.
+
+            const isNarrow = (h.right - h.left) < 60;
+            const threshold = isNarrow ? 120 : 250;
+
+            return centerDist < threshold;
+        });
+
+
+        // 7. Extract Data
+        let service = parentSection ? parentSection.text : "Servicio Desconocido";
+
+        let shift = parentTimeHeader ? parentTimeHeader.shiftType : "HORARIO NO DETECTADO";
+        let start = parentTimeHeader ? parentTimeHeader.startTime : "--:--";
+        let end = parentTimeHeader ? parentTimeHeader.endTime : "--:--";
+
+        // 8. Find Colleagues
+        const cols: string[] = [];
+
+        if (parentTimeHeader) {
+            const blockTop = parentSection ? parentSection.bottom : 0;
+            const nextSectionY = sectionHeaders.find((s: any) => s.top > userLine.bottom)?.top || 100000;
+
+            const refCenter = parentTimeHeader.center;
+
+            lines.forEach((l: any) => {
+                if (l === userLine) return; // Skip self
+
+                // 1. Vertical Check: Must be in same Service Section
+                if (l.top <= blockTop) return;
+                if (l.top >= nextSectionY) return;
+
+                // 2. Horizontal Check: Must be in same visual column
+                //    Use a relaxed tolerance relative to the detected column
+                const dist = Math.abs(l.center - refCenter);
+                // 250px is generous but safe for preventing cross-column (unless columns are very packed)
+                if (dist > 250) return;
+
+                // 3. Filter Noise
+                if (l.cleanText.includes("HORAS") && l.cleanText.includes("A")) return;
+                if (l.cleanText.includes("SERVICIO")) return;
+
+                // 4. Determine Schedule (Sub-headers logic) for mixed columns
+                //    Find nearest header above THIS colleague, in the SAME column
+                let closestSubHeader: any = null;
+                const subCandidates = timeHeaders.filter((h: any) =>
+                    h.bottom < l.top &&
+                    h.top > blockTop &&
+                    Math.abs(h.center - refCenter) < 80
+                );
+                if (subCandidates.length > 0) {
+                    subCandidates.sort((a: any, b: any) => a.top - b.top);
+                    closestSubHeader = subCandidates[subCandidates.length - 1];
+                }
+
+                let colStr = l.text;
+                if (closestSubHeader) {
+                    const myStart = closestSubHeader.startTime;
+                    const myEnd = closestSubHeader.endTime;
+                    // If sub-header time differs from Main Header time, append it
+                    if ((myStart !== start || myEnd !== end) && myStart !== "--:--") {
+                        colStr += ` (${myStart}-${myEnd})`;
+                    }
+                }
+
+                cols.push(colStr);
+            });
+        }
+
+        return {
+            found: true,
+            date: foundDate,
+            targetName: targetName.toUpperCase(),
+            shift: shift,
+            service: service,
+            startTime: start,
+            endTime: end,
+            colleagues: cols.length > 0 ? cols : ["Solo/a en este horario"],
+            rawContext: `Detectado:\nServicio: ${service}\nHorario: ${shift} ${start}-${end}\n\nContexto Raw: ${parentSection?.text || 'N/A'} -> ${parentTimeHeader?.text || 'N/A'}`
+        };
 
     } catch (e: any) {
-        console.error("OCR.space Failed:", e);
-        return null;
+        console.error("OCR.space Hierarchical Failed:", e);
+        return null; // The caller (Dialog) will fallback
     }
 }

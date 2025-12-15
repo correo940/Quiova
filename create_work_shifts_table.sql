@@ -1,4 +1,4 @@
--- Create work_shifts table
+-- create work_shifts table
 create table if not exists public.work_shifts (
     id uuid not null default gen_random_uuid(),
     user_id uuid not null default auth.uid(),

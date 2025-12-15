@@ -308,16 +308,18 @@ export default function FloatingDashboard() {
                             repeat: Infinity,
                             ease: "easeInOut"
                         }}
-                        className="relative w-16 h-16 rounded-full shadow-2xl overflow-hidden border-4 border-white dark:border-zinc-800 bg-white dark:bg-black"
+                        className="relative w-16 h-16 rounded-full shadow-2xl border-4 border-white dark:border-zinc-800 bg-white dark:bg-black"
                     >
-                        <img
-                            src="/images/logo.png"
-                            alt="Quiova"
-                            className="w-full h-full object-cover pointer-events-none"
-                        />
+                        <div className="w-full h-full rounded-full overflow-hidden p-2 flex items-center justify-center">
+                            <img
+                                src="/images/logo.png"
+                                alt="Quiova"
+                                className="w-full h-full object-contain pointer-events-none"
+                            />
+                        </div>
 
                         {totalNotifications > 0 && !isOpen && (
-                            <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-black animate-pulse" />
+                            <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-black animate-pulse z-10" />
                         )}
                     </motion.div>
 

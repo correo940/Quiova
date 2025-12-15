@@ -34,17 +34,30 @@ export const SPANISH_REGIONS = [
 
 export async function fetchHolidays(year: number, regionCode?: string): Promise<PublicHoliday[]> {
     try {
-        let url = `https://openholidaysapi.org/PublicHolidays?countryIsoCode=ES&languageIsoCode=ES&validFrom=${year}-01-01&validTo=${year}-12-31`;
-
-        if (regionCode) {
-            url += `&subdivisionCode=${regionCode}`;
-        }
-
+        const url = `https://date.nager.at/api/v3/publicholidays/${year}/ES`;
         const response = await fetch(url);
         if (!response.ok) throw new Error("Failed to fetch holidays");
 
-        const data: PublicHoliday[] = await response.json();
-        return data;
+        const rawData: any[] = await response.json();
+
+        // 1. Filter based on region
+        const filtered = rawData.filter(item => {
+            if (item.global) return true; // Always include national holidays
+            if (regionCode && regionCode !== 'ALL') {
+                return item.counties && item.counties.includes(regionCode);
+            }
+            return false;
+        });
+
+        // 2. Map to internal PublicHoliday interface
+        return filtered.map((item: any) => ({
+            id: item.date + item.localName, // Generate a unique-ish ID
+            startDate: item.date,
+            endDate: item.date,
+            type: "Public",
+            name: [{ text: item.localName, language: "es" }],
+            nationwide: item.global
+        }));
     } catch (error) {
         console.error("Error fetching holidays:", error);
         return [];

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle, Loader2, Mic, Square, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
@@ -19,7 +19,7 @@ type Manual = {
     title: string;
     category: string;
     description: string;
-    type: 'text' | 'image' | 'video' | 'link';
+    type: 'text' | 'image' | 'video' | 'link' | 'audio';
     content: string; // URL or Base64 or Text
     date: string;
 };
@@ -32,12 +32,28 @@ export default function ManualsGallery() {
     const { user } = useAuth();
 
     // Form states
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState('');
     const [description, setDescription] = useState('');
-    const [type, setType] = useState<'text' | 'image' | 'video' | 'link'>('text');
-    const [content, setContent] = useState('');
+    const [type, setType] = useState<'text' | 'image' | 'video' | 'link' | 'audio'>('text');
+
+    // Separate draft states to prevent cross-contamination
+    const [draftText, setDraftText] = useState('');
+    const [draftVideo, setDraftVideo] = useState('');
+    const [draftLink, setDraftLink] = useState('');
+    const [draftImage, setDraftImage] = useState('');
+    const [draftAudio, setDraftAudio] = useState('');
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Audio Recorder State
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
+    const [viewManual, setViewManual] = useState<Manual | null>(null);
+    const [showFullMedia, setShowFullMedia] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -88,8 +104,8 @@ export default function ManualsGallery() {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            setContent(event.target?.result as string);
-            toast.success('Archivo cargado correctamente');
+            setDraftImage(event.target?.result as string);
+            toast.success('Imagen cargada correctamente');
         };
         reader.readAsDataURL(file);
     };
@@ -100,45 +116,142 @@ export default function ManualsGallery() {
             return;
         }
 
+        // Construct a composite content object
+        const contentObj = {
+            text: draftText,
+            video: draftVideo,
+            link: draftLink,
+            image: draftImage,
+            audio: draftAudio
+        };
+
+        // Determine effective type or use 'mixed'
+        // If we are strictly adding one type, we can keep the legacy behavior for compatibility?
+        // Let's just always save as JSON if we have multiple, or use string if simple?
+        // To be safe and consistent, let's use JSON if we have > 1 item, or if we have one item but it's not the main type?
+        // Actually, let's just serialize everything to JSON to be future proof mixed content.
+        // BUT, we need to respect legacy data.
+
+        // Let's just save the JSON string.
+        const finalContent = JSON.stringify(contentObj);
+
+        // We can set type to 'mixed' if user has multiple things, or keep the selected 'type' as primary category.
+        // Let's keep 'type' as the "Primary View" or category.
+
         try {
-            const { data, error } = await supabase
-                .from('manuals')
-                .insert([
-                    {
-                        user_id: user.id,
+            if (editingId) {
+                // UPDATE existing manual
+                const { data, error } = await supabase
+                    .from('manuals')
+                    .update({
                         title,
                         category,
                         description,
                         type,
-                        content,
-                    },
-                ])
-                .select()
-                .single();
+                        content: finalContent,
+                    })
+                    .eq('id', editingId)
+                    .select()
+                    .single();
 
-            if (error) throw error;
+                if (error) throw error;
 
-            const newManual: Manual = {
-                id: data.id,
-                title: data.title,
-                category: data.category || '',
-                description: data.description || '',
-                type: data.type as any,
-                content: data.content || '',
-                date: new Date(data.created_at).toLocaleDateString(),
-            };
+                setManuals(manuals.map(m => (m.id === editingId ? {
+                    ...m,
+                    title: data.title,
+                    category: data.category || '',
+                    description: data.description || '',
+                    type: data.type as any,
+                    content: data.content || '',
+                } : m)));
 
-            setManuals([newManual, ...manuals]);
+                toast.success('Manual actualizado');
+            } else {
+                // CREATE new manual
+                const { data, error } = await supabase
+                    .from('manuals')
+                    .insert([
+                        {
+                            user_id: user.id,
+                            title,
+                            category,
+                            description,
+                            type,
+                            content: finalContent,
+                        },
+                    ])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                const newManual: Manual = {
+                    id: data.id,
+                    title: data.title,
+                    category: data.category || '',
+                    description: data.description || '',
+                    type: data.type as any,
+                    content: data.content || '',
+                    date: new Date(data.created_at).toLocaleDateString(),
+                };
+
+                setManuals([newManual, ...manuals]);
+                toast.success('Manual añadido correctamente');
+            }
+
             setIsDialogOpen(false);
             resetForm();
-            toast.success('Manual añadido correctamente');
         } catch (error) {
-            console.error('Error adding manual:', error);
+            console.error('Error saving manual:', error);
             toast.error('Error al guardar el manual');
         }
     };
 
-    const deleteManual = async (id: string) => {
+    const handleEdit = (manual: Manual, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening view dialog
+        setEditingId(manual.id);
+        setTitle(manual.title);
+        setCategory(manual.category);
+        setDescription(manual.description);
+        setType(manual.type);
+
+        // Populate drafts from content
+        // Check if content is JSON
+        try {
+            if (manual.content.startsWith('{')) {
+                const parsed = JSON.parse(manual.content);
+                setDraftText(parsed.text || '');
+                setDraftVideo(parsed.video || '');
+                setDraftLink(parsed.link || '');
+                setDraftImage(parsed.image || '');
+                setDraftAudio(parsed.audio || '');
+            } else {
+                // Legacy fallback
+                resetForm(); // clear first
+                setEditingId(manual.id); // restore ID
+                setTitle(manual.title);
+                setCategory(manual.category);
+                setDescription(manual.description);
+                setType(manual.type);
+
+                switch (manual.type) {
+                    case 'text': setDraftText(manual.content); break;
+                    case 'video': setDraftVideo(manual.content); break;
+                    case 'link': setDraftLink(manual.content); break;
+                    case 'image': setDraftImage(manual.content); break;
+                    case 'audio': setDraftAudio(manual.content); break;
+                }
+            }
+        } catch (e) {
+            // Plain text fallback
+            setDraftText(manual.content);
+        }
+
+        setIsDialogOpen(true);
+    };
+
+    const deleteManual = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening view dialog
         if (!confirm('¿Eliminar este manual?')) return;
 
         try {
@@ -158,11 +271,59 @@ export default function ManualsGallery() {
     };
 
     const resetForm = () => {
+        setEditingId(null);
         setTitle('');
         setCategory('');
         setDescription('');
         setType('text');
-        setContent('');
+        setDraftText('');
+        setDraftVideo('');
+        setDraftLink('');
+        setDraftImage('');
+        setDraftAudio('');
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64Audio = reader.result as string;
+                    setDraftAudio(base64Audio);
+                };
+                reader.readAsDataURL(audioBlob);
+                stream.getTracks().forEach(track => track.stop()); // Stop mic
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            toast.error('No se pudo acceder al micrófono');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const handleTypeChange = (newType: string) => {
+        setType(newType as any);
     };
 
     const filteredManuals = manuals.filter(m =>
@@ -196,12 +357,12 @@ export default function ManualsGallery() {
                             <Plus className="mr-2 h-4 w-4" /> Nuevo Manual
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px]">
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                         <DialogHeader>
-                            <DialogTitle>Añadir Manual</DialogTitle>
+                            <DialogTitle>{editingId ? 'Editar Manual' : 'Añadir Manual'}</DialogTitle>
                             <DialogDescription>Sube instrucciones, fotos o vídeos de tus electrodomésticos.</DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-4 overflow-y-auto">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Título</Label>
@@ -218,11 +379,13 @@ export default function ManualsGallery() {
                                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Instrucciones breves..." />
                             </div>
 
-                            <Tabs defaultValue="text" value={type} onValueChange={(v: any) => setType(v)}>
-                                <TabsList className="grid w-full grid-cols-4">
+
+                            <Tabs defaultValue="text" value={type} onValueChange={(v: any) => setType(v as any)}>
+                                <TabsList className="grid w-full grid-cols-5">
                                     <TabsTrigger value="text">Texto</TabsTrigger>
                                     <TabsTrigger value="image">Imagen</TabsTrigger>
                                     <TabsTrigger value="video">Vídeo</TabsTrigger>
+                                    <TabsTrigger value="audio">Audio</TabsTrigger>
                                     <TabsTrigger value="link">Link</TabsTrigger>
                                 </TabsList>
 
@@ -230,8 +393,8 @@ export default function ManualsGallery() {
                                     <Label>Contenido del Manual</Label>
                                     <Textarea
                                         className="min-h-[150px]"
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
+                                        value={draftText}
+                                        onChange={(e) => setDraftText(e.target.value)}
                                         placeholder="Escribe aquí los pasos detallados..."
                                     />
                                 </TabsContent>
@@ -248,9 +411,12 @@ export default function ManualsGallery() {
                                             onChange={handleFileChange}
                                         />
                                     </div>
-                                    {content && content.startsWith('data:image') && (
+                                    {draftImage && (
                                         <div className="relative aspect-video rounded-lg overflow-hidden border">
-                                            <img src={content} alt="Preview" className="object-cover w-full h-full" />
+                                            <img src={draftImage} alt="Preview" className="object-cover w-full h-full" />
+                                            <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-6 w-6" onClick={(e) => { e.stopPropagation(); setDraftImage(''); }}>
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
                                         </div>
                                     )}
                                 </TabsContent>
@@ -258,7 +424,7 @@ export default function ManualsGallery() {
                                 <TabsContent value="video" className="pt-4 space-y-4">
                                     <div className="space-y-2">
                                         <Label>URL del Vídeo (YouTube/Vimeo)</Label>
-                                        <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="https://youtube.com/..." />
+                                        <Input value={draftVideo} onChange={(e) => setDraftVideo(e.target.value)} placeholder="https://youtube.com/..." />
                                     </div>
                                     <p className="text-xs text-muted-foreground flex items-center">
                                         <AlertCircle className="h-3 w-3 mr-1" />
@@ -266,21 +432,231 @@ export default function ManualsGallery() {
                                     </p>
                                 </TabsContent>
 
+                                <TabsContent value="audio" className="pt-4 space-y-4">
+                                    <div className="flex flex-col items-center justify-center space-y-4 border-2 border-dashed rounded-lg p-8">
+                                        {!isRecording ? (
+                                            <Button
+                                                variant="outline"
+                                                className="h-16 w-16 rounded-full border-red-500 hover:bg-red-50 hover:text-red-600"
+                                                onClick={startRecording}
+                                            >
+                                                <Mic className="h-8 w-8 text-red-500" />
+                                            </Button>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="animate-pulse text-red-500 font-bold mb-2">Grabando...</div>
+                                                <Button
+                                                    variant="destructive"
+                                                    className="h-16 w-16 rounded-full"
+                                                    onClick={stopRecording}
+                                                >
+                                                    <Square className="h-8 w-8 fill-current" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                        <p className="text-sm text-muted-foreground">
+                                            {isRecording ? 'Pulsa para detener' : 'Pulsa para grabar nota de voz'}
+                                        </p>
+                                    </div>
+                                    {draftAudio && (
+                                        <div className="w-full bg-muted p-3 rounded-lg flex items-center justify-between gap-2">
+                                            <div className="flex-1">
+                                                <p className="text-xs font-semibold mb-2">Vista previa:</p>
+                                                <audio controls src={draftAudio} className="w-full" />
+                                            </div>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDraftAudio(''); }}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </TabsContent>
+
                                 <TabsContent value="link" className="pt-4 space-y-4">
                                     <div className="space-y-2">
                                         <Label>Enlace al Manual PDF/Web</Label>
-                                        <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="https://..." />
+                                        <Input value={draftLink} onChange={(e) => setDraftLink(e.target.value)} placeholder="https://..." />
                                     </div>
                                 </TabsContent>
                             </Tabs>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                            <Button onClick={addManual}>Guardar Manual</Button>
+                            <Button onClick={addManual}>{editingId ? 'Guardar Cambios' : 'Guardar Manual'}</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* View Manual Dialog - Premium Design */}
+            <Dialog open={!!viewManual} onOpenChange={(open) => !open && setViewManual(null)}>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                                <Badge variant="secondary" className="mb-2">{viewManual?.category}</Badge>
+                                <DialogTitle className="text-2xl">{viewManual?.title}</DialogTitle>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto py-4 space-y-6">
+
+                        {/* 1. Description First (Always visible) */}
+                        {viewManual?.description && (
+                            <div className="space-y-2">
+                                <Label className="text-base font-semibold">Descripción</Label>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                    {viewManual.description}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* 2. Content / Thumbnails */}
+                        <div className="space-y-4">
+                            <Label className="text-base font-semibold block mb-2">
+                                Contenido Adjunto
+                            </Label>
+
+                            {(() => {
+                                let contentData = { text: '', image: '', video: '', audio: '', link: '' };
+                                let isMixed = false;
+                                try {
+                                    if (viewManual?.content.startsWith('{')) {
+                                        contentData = JSON.parse(viewManual.content);
+                                        isMixed = true;
+                                    }
+                                } catch { }
+
+                                // Fallback for legacy single-type content
+                                if (!isMixed && viewManual) {
+                                    if (viewManual.type === 'text') contentData.text = viewManual.content;
+                                    if (viewManual.type === 'image') contentData.image = viewManual.content;
+                                    if (viewManual.type === 'video') contentData.video = viewManual.content;
+                                    if (viewManual.type === 'audio') contentData.audio = viewManual.content;
+                                    if (viewManual.type === 'link') contentData.link = viewManual.content;
+                                }
+
+                                return (
+                                    <div className="space-y-4">
+                                        {/* Text Section */}
+                                        {contentData.text && contentData.text.trim() && (
+                                            <div className="p-4 bg-muted/50 rounded-lg border text-sm whitespace-pre-wrap">
+                                                {contentData.text}
+                                            </div>
+                                        )}
+
+                                        {/* Image Section */}
+                                        {contentData.image && (
+                                            <div>
+                                                {!showFullMedia ? (
+                                                    <div
+                                                        className="group relative w-40 h-40 bg-muted rounded-xl overflow-hidden cursor-zoom-in border hover:shadow-lg transition-all"
+                                                        onClick={() => setShowFullMedia(true)}
+                                                    >
+                                                        <img src={contentData.image} alt="Manual Image" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                                            <ImageIcon className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md" />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative animate-in fade-in zoom-in-95 duration-200">
+                                                        <img src={contentData.image} alt="Manual Full Sized" className="w-full h-auto rounded-lg border shadow-sm" />
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="absolute top-2 right-2 opacity-90 hover:opacity-100"
+                                                            onClick={(e) => { e.stopPropagation(); setShowFullMedia(false); }}
+                                                        >
+                                                            Minimizar
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Audio Section */}
+                                        {contentData.audio && (
+                                            <div>
+                                                {!showFullMedia ? (
+                                                    <div
+                                                        className="w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-4 group"
+                                                        onClick={() => setShowFullMedia(true)}
+                                                    >
+                                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                                            <Mic className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-sm">Nota de Voz</p>
+                                                            <p className="text-xs text-muted-foreground">Click para escuchar</p>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-full bg-muted/30 p-4 rounded-xl border animate-in slide-in-from-top-2">
+                                                        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground ml-1">Reproductor</p>
+                                                        <audio controls src={contentData.audio} className="w-full" />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="mt-2 h-6 text-xs text-muted-foreground"
+                                                            onClick={() => setShowFullMedia(false)}
+                                                        >
+                                                            Ocultar reproductor
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Video Section */}
+                                        {contentData.video && (
+                                            <a
+                                                href={contentData.video}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform">
+                                                        <Video className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-sm">Vídeo Externo</p>
+                                                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">Click para ver vídeo</p>
+                                                    </div>
+                                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                                </div>
+                                            </a>
+                                        )}
+
+                                        {/* Link Section */}
+                                        {contentData.link && (
+                                            <a
+                                                href={contentData.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                                                        <ExternalLink className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-sm">Enlace Externo</p>
+                                                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">Click para abrir</p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                    <DialogFooter className="sm:justify-end items-center border-t pt-4">
+                        <Button onClick={() => setViewManual(null)}>Cerrar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {filteredManuals.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed rounded-xl">
@@ -291,41 +667,43 @@ export default function ManualsGallery() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredManuals.map(manual => (
-                        <Card key={manual.id} className="overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                            {manual.type === 'image' && manual.content.startsWith('data:image') && (
-                                <div className="aspect-video w-full overflow-hidden bg-muted">
-                                    <img src={manual.content} alt={manual.title} className="object-cover w-full h-full hover:scale-105 transition-transform duration-500" />
-                                </div>
-                            )}
-                            <CardHeader>
+                        <Card
+                            key={manual.id}
+                            className="cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 group bg-white dark:bg-slate-900"
+                            onClick={() => setViewManual(manual)}
+                        >
+                            <CardHeader className="pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50">
                                 <div className="flex justify-between items-start">
-                                    <Badge variant="secondary" className="mb-2">{manual.category}</Badge>
-                                    {manual.type === 'video' && <Video className="h-4 w-4 text-muted-foreground" />}
-                                    {manual.type === 'image' && <ImageIcon className="h-4 w-4 text-muted-foreground" />}
-                                    {manual.type === 'link' && <ExternalLink className="h-4 w-4 text-muted-foreground" />}
-                                    {manual.type === 'text' && <FileText className="h-4 w-4 text-muted-foreground" />}
+                                    <div className={`
+                                        p-3 rounded-xl transition-colors
+                                        ${manual.type === 'video' ? 'bg-red-50 text-red-600' : ''}
+                                        ${manual.type === 'image' ? 'bg-blue-50 text-blue-600' : ''}
+                                        ${manual.type === 'text' ? 'bg-orange-50 text-orange-600' : ''}
+                                        ${manual.type === 'audio' ? 'bg-purple-50 text-purple-600' : ''}
+                                        ${manual.type === 'link' ? 'bg-green-50 text-green-600' : ''}
+                                    `}>
+                                        {manual.type === 'video' && <Video className="h-6 w-6" />}
+                                        {manual.type === 'image' && <ImageIcon className="h-6 w-6" />}
+                                        {manual.type === 'link' && <ExternalLink className="h-6 w-6" />}
+                                        {manual.type === 'text' && <FileText className="h-6 w-6" />}
+                                        {manual.type === 'audio' && <Mic className="h-6 w-6" />}
+                                    </div>
+                                    <Badge variant="outline" className="font-normal border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                        {manual.category}
+                                    </Badge>
                                 </div>
-                                <CardTitle className="line-clamp-1">{manual.title}</CardTitle>
-                                <CardDescription className="line-clamp-2">{manual.description}</CardDescription>
+                                <CardTitle className="mt-4 text-xl font-bold text-slate-800 dark:text-slate-100">{manual.title}</CardTitle>
                             </CardHeader>
-                            <CardContent className="flex-grow">
-                                {manual.type === 'text' && (
-                                    <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">{manual.content}</p>
-                                )}
-                                {manual.type === 'link' && (
-                                    <a href={manual.content} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline break-all">
-                                        {manual.content}
-                                    </a>
-                                )}
-                                {manual.type === 'video' && (
-                                    <a href={manual.content} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline break-all">
-                                        Ver vídeo externo
-                                    </a>
-                                )}
+                            <CardContent className="pt-4">
+                                <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                                    {manual.description || "Sin descripción"}
+                                </p>
                             </CardContent>
-                            <CardFooter className="border-t pt-4 flex justify-between text-xs text-muted-foreground">
-                                <span>{manual.date}</span>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteManual(manual.id)}>
+                            <CardFooter className="pt-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary" onClick={(e) => handleEdit(manual, e)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-destructive hover:bg-destructive/10" onClick={(e) => deleteManual(manual.id, e)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </CardFooter>
