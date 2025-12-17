@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, Sword } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -265,6 +265,12 @@ export default function FloatingDashboard() {
                                                 <FileText className="w-4 h-4" />
                                             </div>
                                             <span className="text-sm font-medium">Manuales</span>
+                                        </Link>
+                                        <Link href="/apps/debate" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-rose-600 dark:bg-rose-900/30 rounded-lg text-white dark:text-rose-400">
+                                                <Sword className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">El Debate</span>
                                         </Link>
                                     </div>
                                 )}

@@ -47,3 +47,5 @@ firestore-debug.log
 
 # backups
 *.zip
+
+tsc_error.log

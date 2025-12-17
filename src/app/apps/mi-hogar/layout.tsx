@@ -3,7 +3,7 @@
 import { AuthProvider, useAuth } from '@/components/apps/mi-hogar/auth-context'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Loader2, Lock } from 'lucide-react'
+import { Loader2, Lock, Sword } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { GuestExpensesAccess } from '@/components/apps/mi-hogar/expenses/guest-access'
 import { Button } from '@/components/ui/button'
@@ -112,6 +112,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
                 <div className="flex gap-4">
                     <Button variant="outline" onClick={() => window.location.href = '/apps/mi-hogar/expenses'}>
                         Ir a Hucha Común
+                    </Button>
+                    <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={() => window.location.href = '/apps/debate'}>
+                        <Sword className="w-4 h-4 mr-2" />
+                        Ir a El Debate
                     </Button>
                     <Button variant="ghost" className="text-red-500" onClick={() => supabase.auth.signOut()}>
                         Cerrar Sesión

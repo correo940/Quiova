@@ -12,7 +12,8 @@ import {
     Receipt,
     ShieldCheck,
     PiggyBank,
-    Calendar
+    Calendar,
+    Sword
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,6 +92,14 @@ const modules = [
         href: '/apps/mi-hogar/roster',
         color: 'text-cyan-500',
         bg: 'bg-cyan-500/10',
+    },
+    {
+        title: 'El Debate',
+        description: 'Discute y vota en el ring virtual',
+        icon: Sword,
+        href: '/apps/debate',
+        color: 'text-red-600',
+        bg: 'bg-red-600/10',
     },
 ];
 

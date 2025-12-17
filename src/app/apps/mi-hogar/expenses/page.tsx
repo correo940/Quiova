@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ShareExpensesDialog } from '@/components/apps/mi-hogar/expenses/share-expenses-dialog';
+import { ExpensesBreakdown } from '@/components/apps/mi-hogar/expenses/expenses-breakdown';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,21 +29,32 @@ type Expense = {
     user_id?: string;
     receipt_url?: string;
     created_at?: string;
+    folder_id?: string | null;
 };
 
 type ExpenseForm = {
     id?: string;
     title: string;
-    amount: string; // Keeps it as string for Input handling
-    paid_by: string; // Can be 'Mi', 'Partner', or UUID
+    amount: string;
+    paid_by: string;
     category: string;
     date: string;
     receipt_url?: string;
+    folder_id?: string;
 };
 
 type Category = {
     id: string;
     name: string;
+};
+
+type ExpenseFolder = {
+    id: string;
+    name: string;
+    start_date?: string;
+    end_date?: string;
+    status: 'active' | 'archived';
+    created_by: string;
 };
 
 
@@ -53,6 +65,7 @@ type Settlement = {
     amount: number;
     created_at: string;
     payment_method: string;
+    folder_id?: string | null;
 };
 
 
@@ -60,11 +73,12 @@ type Settlement = {
 
 const DEFAULT_FORM: ExpenseForm = {
     title: '',
-    amount: '', // Initialize as empty string
+    amount: '',
     paid_by: 'Mi',
     category: '',
     date: new Date().toISOString().split('T')[0],
     receipt_url: undefined,
+    folder_id: undefined
 };
 
 
@@ -75,6 +89,9 @@ export default function ExpensesPage() {
     const [user, setUser] = useState<any>(null);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [settlements, setSettlements] = useState<Settlement[]>([]);
+    const [folders, setFolders] = useState<ExpenseFolder[]>([]);
+    const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+
     const [partnerCount, setPartnerCount] = useState(0);
     const [nicknames, setNicknames] = useState<Record<string, string>>({});
     const [potentialPayers, setPotentialPayers] = useState<{ id: string, name: string }[]>([]);
@@ -84,6 +101,11 @@ export default function ExpensesPage() {
     const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
     const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
     const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
+    const [isManageFoldersOpen, setIsManageFoldersOpen] = useState(false);
+
+    // Folder Form State
+    const [folderForm, setFolderForm] = useState({ name: '', start: '', end: '' });
+
     const [formData, setFormData] = useState<ExpenseForm>(DEFAULT_FORM);
     const [saving, setSaving] = useState(false);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -97,7 +119,7 @@ export default function ExpensesPage() {
     useEffect(() => {
         fetchExpenses();
         if (user) fetchCategories(user.id);
-    }, [user]);
+    }, [user, activeFolderId]); // Reload when folder changes
 
     useEffect(() => {
         if (user && formData.paid_by === 'Mi') {
@@ -119,21 +141,45 @@ export default function ExpensesPage() {
                     .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`);
 
                 if (count !== null) setPartnerCount(count);
+
+                // Fetch Folders
+                const { data: foldersData } = await supabase
+                    .from('expense_folders')
+                    .select('*')
+                    .order('start_date', { ascending: false });
+                setFolders(foldersData || []);
             }
 
-            const { data, error } = await supabase
+            // Fetch Expenses (Filtered by Folder)
+            let query = supabase
                 .from('expenses')
                 .select('*')
                 .order('date', { ascending: false });
 
+            if (activeFolderId) {
+                query = query.eq('folder_id', activeFolderId);
+            } else {
+                query = query.is('folder_id', null);
+            }
+
+            const { data, error } = await query;
+
             if (error) throw error;
             setExpenses(data || []);
 
-            // Fetch Settlements
-            const { data: settlementData } = await supabase
+            // Fetch Settlements (Filtered by Folder)
+            let settlementsQuery = supabase
                 .from('settlements')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            if (activeFolderId) {
+                settlementsQuery = settlementsQuery.eq('folder_id', activeFolderId);
+            } else {
+                settlementsQuery = settlementsQuery.is('folder_id', null);
+            }
+
+            const { data: settlementData } = await settlementsQuery;
             setSettlements(settlementData || []);
 
             // Fetch ALL Linked Partners for Potential Payers logic
@@ -199,6 +245,40 @@ export default function ExpensesPage() {
             setLoading(false);
         }
     };
+
+    const handleCreateFolder = async () => {
+        if (!folderForm.name.trim()) return toast.error('Nombre obligatorio');
+        try {
+            const { error } = await supabase.from('expense_folders').insert({
+                name: folderForm.name,
+                start_date: folderForm.start || null,
+                end_date: folderForm.end || null,
+                created_by: user.id
+            });
+            if (error) throw error;
+            toast.success('Carpeta creada');
+            setFolderForm({ name: '', start: '', end: '' });
+            setIsManageFoldersOpen(false);
+            fetchExpenses();
+        } catch (error) {
+            toast.error('Error al crear carpeta');
+        }
+    };
+
+    // Deleting a folder deletes all expenses inside (CASCADE)
+    const handleDeleteFolder = async (id: string, name: string) => {
+        if (!confirm(`¿Borrar carpeta "${name}" y TODOS sus gastos?`)) return;
+        try {
+            const { error } = await supabase.from('expense_folders').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Carpeta eliminada');
+            if (activeFolderId === id) setActiveFolderId(null);
+            fetchExpenses();
+        } catch (error) {
+            toast.error('Error al borrar carpeta');
+        }
+    };
+
 
     const fetchCategories = async (userId: string) => {
         try {
@@ -307,7 +387,8 @@ export default function ExpensesPage() {
                 paid_by: formData.paid_by,
                 category: formData.category,
                 date: formData.date,
-                receipt_url: receiptUrl
+                receipt_url: receiptUrl,
+                folder_id: activeFolderId || null
             };
 
             if (formData.id) {
@@ -364,11 +445,11 @@ export default function ExpensesPage() {
 
     // Dynamic Split: Me + Partners
     const totalPeople = 1 + partnerCount;
-    const fairShare = totalSpent / totalPeople;
+    // const fairShare = totalSpent / totalPeople; // Unused but kept for ref
 
     // Settlements Calculation
-    const myPaidSettlements = settlements.filter(s => s.payer_id === user?.id).reduce((sum, s) => sum + s.amount, 0);
-    const myReceivedSettlements = settlements.filter(s => s.receiver_id === user?.id).reduce((sum, s) => sum + s.amount, 0);
+    // const myPaidSettlements = settlements.filter(s => s.payer_id === user?.id).reduce((sum, s) => sum + s.amount, 0); // Unused
+    // const myReceivedSettlements = settlements.filter(s => s.receiver_id === user?.id).reduce((sum, s) => sum + s.amount, 0); // Unused
 
     // --- PAIRWISE DEBT CALCULATION (Unified Logic) ---
     // 1. Calculate how much everyone owes everyone else based on expenses
@@ -449,7 +530,8 @@ export default function ExpensesPage() {
                 payer_id: user.id,
                 receiver_id: selectedReceiver,
                 amount: parseFloat(settleAmount),
-                payment_method: paymentMethod
+                payment_method: paymentMethod,
+                folder_id: activeFolderId || null
             });
             if (error) throw error;
             toast.success('Deuda saldada');
@@ -489,11 +571,88 @@ export default function ExpensesPage() {
 
                     <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="w-full md:w-auto">
-                            <UserPlus className="w-4 h-4 mr-2" /> Compartir
+                            <UserPlus className="w-4 h-4 mr-2" /> {activeFolderId ? 'Compartir Carpeta' : 'Compartir'}
                         </Button>
                         <Button onClick={() => { setFormData(DEFAULT_FORM); setReceiptFile(null); setIsDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white w-full md:w-auto shadow-lg shadow-emerald-500/20">
                             <Plus className="w-4 h-4 mr-2" /> Añadir Gasto
                         </Button>
+                    </div>
+                </div>
+
+                {/* Folders / Events Section */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Receipt className="w-5 h-5 text-emerald-600" />
+                            Eventos y Carpetas
+                        </h2>
+                        <Button variant="outline" size="sm" onClick={() => setIsManageFoldersOpen(true)}>
+                            <Plus className="w-4 h-4 mr-2" /> Nueva Carpeta
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {/* GENERAL / GLOBAL Context */}
+                        <div
+                            onClick={() => setActiveFolderId(null)}
+                            className={cn(
+                                "cursor-pointer rounded-xl border p-4 text-center transition-all hover:scale-105",
+                                activeFolderId === null
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-lg dark:bg-emerald-600 dark:border-emerald-600"
+                                    : "bg-white border-slate-200 hover:border-emerald-500 dark:bg-slate-900 dark:border-slate-800"
+                            )}
+                        >
+                            <PiggyBank className={cn("w-6 h-6 mx-auto mb-2", activeFolderId === null ? "text-emerald-400" : "text-emerald-600")} />
+                            <div className="font-bold text-sm">General</div>
+                            <div className="text-[10px] opacity-70">Hucha Global</div>
+                        </div>
+
+                        {/* Folder List */}
+                        {folders.map(folder => {
+                            const isActive = activeFolderId === folder.id;
+                            const daysLeft = folder.end_date
+                                ? Math.ceil((new Date(folder.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                : null;
+
+                            return (
+                                <div
+                                    key={folder.id}
+                                    onClick={() => setActiveFolderId(folder.id)}
+                                    className={cn(
+                                        "relative group cursor-pointer rounded-xl border p-4 text-center transition-all hover:scale-105",
+                                        isActive
+                                            ? "bg-emerald-600 text-white border-emerald-600 shadow-lg dark:bg-emerald-600 dark:border-emerald-600"
+                                            : "bg-white border-slate-200 hover:border-emerald-500 dark:bg-slate-900 dark:border-slate-800"
+                                    )}
+                                >
+                                    {isActive && (
+                                        <div className="absolute top-2 right-2">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id, folder.name); }}
+                                                className="text-white/50 hover:text-rose-400"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="font-bold text-sm truncate">{folder.name}</div>
+                                    <div className="text-[10px] opacity-70 mt-1">
+                                        {folder.start_date ? format(parseISO(folder.start_date), 'd MMM', { locale: es }) : 'Sin fecha'}
+                                    </div>
+                                    {daysLeft !== null && (
+                                        <div className={cn(
+                                            "mt-2 text-[10px] px-2 py-0.5 rounded-full inline-block",
+                                            daysLeft > 0
+                                                ? (isActive ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300")
+                                                : (isActive ? "bg-rose-500/50 text-white" : "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300")
+                                        )}>
+                                            {daysLeft > 0 ? `${daysLeft} días` : 'Terminado'}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -502,12 +661,12 @@ export default function ExpensesPage() {
                     <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <Wallet className="w-4 h-4" /> Total Gastado
+                                <Wallet className="w-4 h-4" /> Total Gastado {activeFolderId ? '(Evento)' : '(Global)'}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{totalSpent.toFixed(2)}€</div>
-                            <p className="text-xs text-muted-foreground mt-1">Acumulado total</p>
+                            <p className="text-xs text-muted-foreground mt-1">Acumulado {activeFolderId ? 'en carpeta' : 'total'}</p>
                         </CardContent>
                     </Card>
 
@@ -699,37 +858,11 @@ export default function ExpensesPage() {
 
                     {/* Chart */}
                     <div className="space-y-4">
-                        <h2 className="font-semibold text-lg flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5" /> Desglose
-                        </h2>
                         <Card className="p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                            <div className="h-[300px] w-full">
-                                {categoryData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={categoryData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                {categoryData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <RechartsTooltip formatter={(value: number) => `${value}€`} />
-                                            <Legend />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                                        Sin datos suficientes
-                                    </div>
-                                )}
-                            </div>
+                            <ExpensesBreakdown
+                                data={categoryData}
+                                totalAmount={categoryData.reduce((acc, curr) => acc + curr.value, 0)}
+                            />
                         </Card>
                     </div>
                 </div>
@@ -1025,7 +1158,54 @@ export default function ExpensesPage() {
             <ShareExpensesDialog
                 open={isShareDialogOpen}
                 onOpenChange={setIsShareDialogOpen}
+                folderId={activeFolderId}
+                folderName={folders.find(f => f.id === activeFolderId)?.name}
             />
-        </div >
+
+            {/* Manage Folders / New Folder Dialog */}
+            <Dialog open={isManageFoldersOpen} onOpenChange={setIsManageFoldersOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nueva Carpeta / Evento</DialogTitle>
+                        <DialogDescription>
+                            Crea una carpeta para agrupar gastos (ej. "Viaje a Roma").
+                            Los gastos aquí no afectarán al balance global.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Nombre del Evento</Label>
+                            <Input
+                                placeholder="Ej: Verano 2025"
+                                value={folderForm.name}
+                                onChange={e => setFolderForm({ ...folderForm, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Inicio (Opcional)</Label>
+                                <Input
+                                    type="date"
+                                    value={folderForm.start}
+                                    onChange={e => setFolderForm({ ...folderForm, start: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Fin (Opcional)</Label>
+                                <Input
+                                    type="date"
+                                    value={folderForm.end}
+                                    onChange={e => setFolderForm({ ...folderForm, end: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsManageFoldersOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleCreateFolder} className="bg-emerald-600 hover:bg-emerald-700">Crear Carpeta</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }
