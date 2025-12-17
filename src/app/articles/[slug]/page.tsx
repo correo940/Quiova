@@ -199,7 +199,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
       </div>
     );
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.digest === 'NEXT_NOT_FOUND') {
+      throw error;
+    }
     console.error('Error crítico cargando página de artículo:', error);
     notFound();
   }

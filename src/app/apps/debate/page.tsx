@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from "next/navigation";
 import { DebateRoomList } from "@/components/apps/debate/debate-room-list";
@@ -12,6 +12,14 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, Key, Search, MessageSquare } from "lucide-react";
 
 export default function DebatePage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center">Cargando debate...</div>}>
+            <DebateContent />
+        </Suspense>
+    );
+}
+
+function DebateContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const roomParam = searchParams?.get('room') ?? null;
