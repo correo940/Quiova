@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
+import AppsSummaryWidget from './widgets/apps-summary-widget';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
@@ -13,7 +14,7 @@ export default function HomeDashboard() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Tu Quiova</h1>
+            <h1 className="text-3xl font-bold mb-8">Mi Quiova</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {/* Calendario */}
@@ -22,7 +23,8 @@ export default function HomeDashboard() {
                 </div>
 
                 {/* Organizador */}
-                <div className="col-span-1">
+                <div className="col-span-1 space-y-8">
+                    <AppsSummaryWidget selectedDate={selectedDate} />
                     <OrganizerWidget selectedDate={selectedDate} />
                 </div>
             </div>

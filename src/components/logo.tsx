@@ -14,7 +14,7 @@ export function Logo({ className, ...props }: LogoProps) {
         width={32}
         height={32}
         className="object-contain"
-        style={{ height: 'auto' }}
+        style={{ width: 'auto', height: 'auto' }}
         priority
       />
     </div>

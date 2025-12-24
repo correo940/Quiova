@@ -63,7 +63,7 @@ export function GuestExpensesAccess({ onSuccess }: { onSuccess: () => void }) {
             const { error: rpcError } = await supabase.rpc('redeem_connection_code', { p_code: code });
             if (rpcError) throw rpcError;
 
-            toast.success('¡Bienvenido a la Hucha!');
+            toast.success('¡Bienvenido a Gastos!');
             toast.info('Configurando tu entorno...');
 
             // Wait for propagation
@@ -137,7 +137,7 @@ export function GuestExpensesAccess({ onSuccess }: { onSuccess: () => void }) {
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground text-center pt-2">
-                            Pide el código al administrador de la Hucha.
+                            Pide el código al administrador de Gastos.
                         </p>
                     </div>
 

@@ -107,11 +107,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
                 <Lock className="w-12 h-12 text-slate-300 mb-4" />
                 <h2 className="text-xl font-bold mb-2">Acceso Restringido</h2>
                 <p className="text-muted-foreground mb-6 max-w-md">
-                    No tienes plan Premium. Solo puedes acceder a la Hucha Común si te han invitado.
+                    No tienes plan Premium. Solo puedes acceder a Gastos si te han invitado.
                 </p>
                 <div className="flex gap-4">
                     <Button variant="outline" onClick={() => window.location.href = '/apps/mi-hogar/expenses'}>
-                        Ir a Hucha Común
+                        Ir a Gastos
                     </Button>
                     <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={() => window.location.href = '/apps/debate'}>
                         <Sword className="w-4 h-4 mr-2" />

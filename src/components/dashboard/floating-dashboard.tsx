@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, Sword } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -142,39 +142,79 @@ export default function FloatingDashboard() {
 
                             <div className="p-2">
                                 {activeView === 'menu' ? (
-                                    <div className="grid gap-2">
-                                        <button
-                                            onClick={() => setActiveView('apps')}
-                                            className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
-                                        >
-                                            <div className="p-3 bg-blue-500/10 rounded-full text-blue-500 group-hover:scale-110 transition-transform">
-                                                <Home className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold text-sm">Mis Aplicaciones</div>
-                                                <div className="text-xs text-muted-foreground">Accede a tus herramientas</div>
-                                            </div>
-                                            <ChevronDown className="w-4 h-4 ml-auto -rotate-90 text-muted-foreground" />
-                                        </button>
+                                    <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
+                                        <div className="grid gap-2">
+                                            <Link
+                                                href="/"
+                                                onClick={() => setIsOpen(false)}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-indigo-500/10 rounded-full text-indigo-500 group-hover:scale-110 transition-transform">
+                                                    <LayoutDashboard className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Mi Quiova</div>
+                                                    <div className="text-xs text-muted-foreground">Tu hogar digital</div>
+                                                </div>
+                                            </Link>
 
-                                        <button
-                                            onClick={() => {
-                                                setIsJournalOpen(true);
-                                                setIsOpen(false);
-                                            }}
-                                            className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
-                                        >
-                                            <div className="p-3 bg-amber-500/10 rounded-full text-amber-500 group-hover:scale-110 transition-transform">
-                                                <Book className="w-6 h-6" />
+                                            <button
+                                                onClick={() => setActiveView('apps')}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-blue-500/10 rounded-full text-blue-500 group-hover:scale-110 transition-transform">
+                                                    <Home className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Mis Aplicaciones</div>
+                                                    <div className="text-xs text-muted-foreground">Accede a tus herramientas</div>
+                                                </div>
+                                                <ChevronDown className="w-4 h-4 ml-auto -rotate-90 text-muted-foreground" />
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    setIsJournalOpen(true);
+                                                    setIsOpen(false);
+                                                }}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-amber-500/10 rounded-full text-amber-500 group-hover:scale-110 transition-transform">
+                                                    <Book className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Mis Apuntes</div>
+                                                    <div className="text-xs text-muted-foreground">Diario y notas rápidas</div>
+                                                </div>
+                                            </button>
+                                            <div className="mt-0">
+                                                <Link
+                                                    href="/apps/debate"
+                                                    onClick={() => setIsOpen(false)}
+                                                    className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                                >
+                                                    <div className="p-3 bg-green-500/10 rounded-full text-green-500 group-hover:scale-110 transition-transform">
+                                                        <MessageCircle className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-sm">El Debate</div>
+                                                        <div className="text-xs text-muted-foreground">Sala de discusión</div>
+                                                    </div>
+                                                </Link>
                                             </div>
-                                            <div>
-                                                <div className="font-semibold text-sm">Mis Apuntes</div>
-                                                <div className="text-xs text-muted-foreground">Diario y notas rápidas</div>
-                                            </div>
-                                        </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="grid gap-2 max-h-[60vh] overflow-y-auto pr-1">
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full justify-start mb-2 pl-2 gap-2 text-muted-foreground hover:text-foreground"
+                                            onClick={() => setActiveView('menu')}
+                                        >
+                                            <ChevronDown className="h-4 w-4 rotate-90" />
+                                            Volver al Menú
+                                        </Button>
+
                                         <Link href="/apps/mi-hogar/shopping" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors group">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
@@ -248,9 +288,16 @@ export default function FloatingDashboard() {
 
                                         <Link href="/apps/mi-hogar/expenses" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
                                             <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                                                <Wallet className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Gastos</span>
+                                        </Link>
+
+                                        <Link href="/apps/mi-hogar/savings" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
                                                 <PiggyBank className="w-4 h-4" />
                                             </div>
-                                            <span className="text-sm font-medium">Hucha Común</span>
+                                            <span className="text-sm font-medium">Ahorros</span>
                                         </Link>
 
                                         <Link href="/apps/mi-hogar/roster" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
@@ -265,12 +312,6 @@ export default function FloatingDashboard() {
                                                 <FileText className="w-4 h-4" />
                                             </div>
                                             <span className="text-sm font-medium">Manuales</span>
-                                        </Link>
-                                        <Link href="/apps/debate" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
-                                            <div className="p-2 bg-rose-600 dark:bg-rose-900/30 rounded-lg text-white dark:text-rose-400">
-                                                <Sword className="w-4 h-4" />
-                                            </div>
-                                            <span className="text-sm font-medium">El Debate</span>
                                         </Link>
                                     </div>
                                 )}
@@ -320,7 +361,8 @@ export default function FloatingDashboard() {
                             <img
                                 src="/images/logo.png"
                                 alt="Quiova"
-                                className="w-full h-full object-contain pointer-events-none"
+                                style={{ width: 'auto', height: '100%' }}
+                                className="object-contain pointer-events-none"
                             />
                         </div>
 
@@ -343,7 +385,7 @@ export default function FloatingDashboard() {
                         )}
                     </AnimatePresence>
                 </motion.div>
-            </div>
+            </div >
         </>
     );
 }

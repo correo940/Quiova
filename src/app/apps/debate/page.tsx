@@ -9,7 +9,9 @@ import { CreateDebateDialog } from "@/components/apps/debate/create-debate-dialo
 import { GuestDebateAccess } from "@/components/apps/debate/guest-debate-access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Key, Search, MessageSquare } from "lucide-react";
+import { MessageCircle, Key, Search, MessageSquare, Crown } from "lucide-react";
+import { useSuperAdmin } from "@/lib/hooks/useSuperAdmin";
+import Link from "next/link";
 
 export default function DebatePage() {
     return (
@@ -29,6 +31,7 @@ function DebateContent() {
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(roomParam);
     const [searchQuery, setSearchQuery] = useState("");
     const [showMobileChat, setShowMobileChat] = useState(!!roomParam);
+    const { isSuperAdmin } = useSuperAdmin();
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -117,6 +120,19 @@ function DebateContent() {
                                 <Key className="w-4 h-4 mr-2" />
                                 Código
                             </Button>
+                            {isSuperAdmin && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-yellow-600 hover:from-yellow-600 hover:to-amber-600"
+                                    title="Panel de Super Admin"
+                                    asChild
+                                >
+                                    <Link href="/apps/debate/admin">
+                                        <Crown className="w-4 h-4" />
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
 
                         <div className="relative">

@@ -12,7 +12,9 @@ import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '@/lib/supabase';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, Palette, Loader2, Settings, Heading1, Heading2, Heading3, ExternalLink, Quote, Plus, Tag, Image as ImageIcon, Mic } from 'lucide-react';
+import { X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, Palette, Loader2, Settings, Heading1, Heading2, Heading3, ExternalLink, Quote, Plus, Tag, Image as ImageIcon, Mic, Globe, ArrowLeft, ArrowRight, RotateCw, Search, Clipboard, Link as LinkIcon, MoveUpRight } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -32,25 +34,110 @@ interface JournalPanelProps {
 export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { selectedDate } = useJournal();
+    const { selectedDate, width, setWidth } = useJournal();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [opacity, setOpacity] = useState(1);
-    const [width, setWidth] = useState(33);
     const [tags, setTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const recordingInterval = React.useRef<NodeJS.Timeout | null>(null);
+    const popupRef = React.useRef<Window | null>(null);
+    const [pipWindow, setPipWindow] = useState<Window | null>(null);
+
+    const togglePiP = async () => {
+        if (pipWindow) {
+            pipWindow.close();
+            setPipWindow(null);
+            return;
+        }
+
+        // Check API support
+        if (!('documentPictureInPicture' in window)) {
+            toast.error('Tu navegador no soporta el modo "Notas Flotantes" (Picture-in-Picture). Prueba en Chrome o Edge.');
+            return;
+        }
+
+        try {
+            // Request PiP Window
+            const pip = await (window as any).documentPictureInPicture.requestWindow({
+                width: 400,
+                height: 600,
+            });
+
+            // Copy Styles
+            Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style')).forEach((style) => {
+                pip.document.head.appendChild(style.cloneNode(true));
+            });
+
+            // Add dark mode
+            if (document.documentElement.classList.contains('dark')) {
+                pip.document.documentElement.classList.add('dark');
+            }
+            if (document.body.classList.contains('dark')) {
+                pip.document.body.classList.add('dark');
+            }
+            pip.document.body.className = document.body.className;
+
+            // Handle closing
+            pip.addEventListener('pagehide', () => {
+                setPipWindow(null);
+            });
+
+            setPipWindow(pip);
+
+        } catch (err) {
+            console.error('Failed to open PiP:', err);
+            toast.error('Error al abrir notas flotantes.');
+        }
+    };
+
+    // Browser State
+    // Removed embedded browser state in favor of popup window
+    const openBrowserPopup = () => {
+        // If already open and not closed, just focus it
+        if (popupRef.current && !popupRef.current.closed) {
+            popupRef.current.focus();
+            return;
+        }
+
+        // Calculate the remaining width for the browser
+        // If panel is 33%, browser gets ~67% (minus a bit for margins/borders)
+        const screenWidth = window.screen.availWidth;
+        const screenHeight = window.screen.availHeight;
+
+        // Calculate width in pixels based on the panel's percentage width
+        // We leave the panel width for the main app, so the popup takes the REST
+        // Add a safety gap of 50px to prevent overlap and "feeling too big"
+        const panelWidthPx = (screenWidth * width) / 100;
+        const browserWidth = screenWidth - panelWidthPx - 50;
+
+        const left = 0; // Align to left
+        const top = 0;
+
+        const newWindow = window.open(
+            'https://www.google.com',
+            'QuiovaBrowser',
+            `width=${browserWidth},height=${screenHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+        );
+
+        if (newWindow) {
+            popupRef.current = newWindow;
+            toast.info('Navegador abierto. No se cerrará automáticamente.');
+        } else {
+            toast.error('No se pudo abrir la ventana. Revisa el bloqueador de popups.');
+        }
+    };
 
     const editor = useEditor({
         extensions: [
             StarterKit,
             TextStyle,
             FontFamily,
-            Underline,
+            // Underline,
             Color,
             Highlight.configure({ multicolor: true }),
             ImageExtension,
@@ -81,8 +168,9 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Click outside to close
+    // Click outside to close (DISABLED by user request)
     const panelRef = React.useRef<HTMLDivElement>(null);
+    /*
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (isOpen && panelRef.current && !panelRef.current.contains(event.target as Node)) {
@@ -98,6 +186,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOpen, onClose]);
+    */
 
     // Load content when pathname, user, or selectedDate changes
     useEffect(() => {
@@ -244,10 +333,34 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
-        e.preventDefault();
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('image/')) {
+            e.preventDefault();
+            e.stopPropagation();
             await handleImageUpload(file);
+        }
+    };
+
+    const handleSmartPaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text) return;
+
+            // Simple URL detection
+            const isUrl = /^(http|https):\/\/[^ "]+$/.test(text);
+
+            if (isUrl) {
+                // If it's a URL, suggest linking context or inserting link
+                editor.chain().focus().setLink({ href: text }).insertContent(text).run();
+                toast.success('Enlace insertado');
+            } else {
+                // If text, insert as blockquote
+                editor.chain().focus().setBlockquote().insertContent(text).run();
+                toast.success('Texto pegado como cita');
+            }
+        } catch (err) {
+            console.error('Clipboard error:', err);
+            toast.error('No se pudo acceder al portapapeles');
         }
     };
 
@@ -375,6 +488,356 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+
+    const JournalUI = (
+        <div className="flex flex-col h-full bg-background">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+                <div>
+                    <h2 className="font-headline font-bold text-lg flex items-center gap-2">
+                        📒 Mis Apuntes
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-[10px] text-blue-500 hover:underline"
+                            onClick={() => {
+                                if (pipWindow) {
+                                    pipWindow.close();
+                                    setPipWindow(null);
+                                }
+                                router.push('/journal');
+                                onClose();
+                            }}
+                        >
+                            Ver Biblioteca Completa
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {selectedDate ? (
+                            <>
+                                Del: {selectedDate.toLocaleDateString()}
+                            </>
+                        ) : (
+                            <>Sobre: {pathname === '/' ? 'Inicio' : pathname}</>
+                        )}
+                    </p>
+                    {selectedDate && (
+                        <Button
+                            variant="link"
+                            className="h-auto p-0 text-xs text-blue-500"
+                            onClick={async () => {
+                                const startOfDay = new Date(selectedDate);
+                                startOfDay.setHours(0, 0, 0, 0);
+                                const endOfDay = new Date(selectedDate);
+                                endOfDay.setHours(23, 59, 59, 999);
+
+                                const { data } = await supabase
+                                    .from('journal_entries')
+                                    .select('context_id')
+                                    .eq('user_id', user.id)
+                                    .gte('updated_at', startOfDay.toISOString())
+                                    .lte('updated_at', endOfDay.toISOString())
+                                    .limit(1)
+                                    .single();
+
+                                if (data?.context_id) {
+                                    router.push(data.context_id);
+                                    onClose();
+                                } else {
+                                    toast.info('No hay entrada para esta fecha');
+                                }
+                            }}
+                        >
+                            Ir al sitio
+                        </Button>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={pipWindow ? "secondary" : "ghost"}
+                        size="icon"
+                        onClick={togglePiP}
+                        title={pipWindow ? "Volver a acoplar" : "Desacoplar (Notas Flotantes)"}
+                    >
+                        <MoveUpRight className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={openBrowserPopup}
+                        title="Abrir Navegador Flotante (Sin restricciones)"
+                    >
+                        <Globe className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleSmartPaste}
+                        title="Pegar desde Portapapeles (Enlaces/Texto)"
+                    >
+                        <Clipboard className="w-4 h-4" />
+                    </Button>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Settings className="w-4 h-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 z-[70]" align="end">
+                            <div className="grid gap-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Apariencia</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Personaliza tu diario.
+                                    </p>
+                                </div>
+                                <div className="grid gap-2">
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <span className="text-sm">Opacidad</span>
+                                        <Slider
+                                            defaultValue={[opacity]}
+                                            max={1}
+                                            min={0.2}
+                                            step={0.1}
+                                            className="col-span-2"
+                                            onValueChange={(value) => setOpacity(value[0])}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <span className="text-sm">Ancho</span>
+                                        <Slider
+                                            defaultValue={[width]}
+                                            max={100}
+                                            min={20}
+                                            step={5}
+                                            className="col-span-2"
+                                            onValueChange={(value) => setWidth(value[0])}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                    <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                            if (pipWindow) {
+                                pipWindow.close();
+                                setPipWindow(null);
+                            }
+                            onClose();
+                        }}
+                    >
+                        <X className="w-5 h-5" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Tags Input */}
+            <div className="px-4 py-2 border-b border-border bg-background/50">
+                <div className="flex flex-wrap gap-2 mb-2">
+                    {tags.map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                            <button onClick={() => handleRemoveTag(tag)} className="ml-1 hover:text-destructive">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-muted-foreground" />
+                    <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddTag();
+                            }
+                        }}
+                        placeholder="Añadir etiqueta..."
+                        className="h-7 text-xs border-none shadow-none focus-visible:ring-0 px-0"
+                    />
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleAddTag}>
+                        <Plus className="w-3 h-3" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap gap-1 p-2 border-b border-border bg-background sticky top-0 z-10 items-center">
+                <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()}>
+                    <SelectTrigger className="w-[120px] h-8">
+                        <SelectValue placeholder="Fuente" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                        <SelectItem value="Inter">Inter</SelectItem>
+                        <SelectItem value="Comic Sans MS, Comic Sans">Comic Sans</SelectItem>
+                        <SelectItem value="serif">Serif</SelectItem>
+                        <SelectItem value="monospace">Monospace</SelectItem>
+                        <SelectItem value="cursive">Cursive</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Button
+                    variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleBold().run()}
+                >
+                    <Bold className="w-4 h-4" />
+                </Button>
+                <Button
+                    variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                >
+                    <Italic className="w-4 h-4" />
+                </Button>
+                <Button
+                    variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                >
+                    <UnderlineIcon className="w-4 h-4" />
+                </Button>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Button
+                    variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                >
+                    <Heading1 className="w-4 h-4" />
+                </Button>
+                <Button
+                    variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                >
+                    <Heading2 className="w-4 h-4" />
+                </Button>
+                <Button
+                    variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                >
+                    <Heading3 className="w-4 h-4" />
+                </Button>
+                <div className="w-px h-6 bg-border mx-1" />
+                <Button
+                    variant={editor.isActive('highlight') ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleHighlight().run()}
+                >
+                    <Highlighter className="w-4 h-4" />
+                </Button>
+
+                {/* Color Picker (Simplified) */}
+                <div className="flex items-center gap-1 ml-2">
+                    <button
+                        className="w-4 h-4 rounded-full bg-black border border-gray-300"
+                        onClick={() => editor.chain().focus().setColor('#000000').run()}
+                    />
+                    <button
+                        className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"
+                        onClick={() => editor.chain().focus().setColor('#EF4444').run()}
+                    />
+                    <button
+                        className="w-4 h-4 rounded-full bg-blue-500 border border-gray-300"
+                        onClick={() => editor.chain().focus().setColor('#3B82F6').run()}
+                    />
+                    <button
+                        className="w-4 h-4 rounded-full bg-green-500 border border-gray-300"
+                        onClick={() => editor.chain().focus().setColor('#22C55E').run()}
+                    />
+                    <button
+                        className="w-4 h-4 rounded-full bg-purple-500 border border-gray-300"
+                        onClick={() => editor.chain().focus().setColor('#A855F7').run()}
+                    />
+                </div>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => document.getElementById('image-upload')?.click()}
+                    title="Insertar Imagen"
+                >
+                    <ImageIcon className="w-4 h-4" />
+                    <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(file);
+                        }}
+                    />
+                </Button>
+                <div className="flex items-center gap-2">
+                    {isRecording && (
+                        <span className="text-xs text-red-500 font-medium animate-pulse">
+                            Grabando {formatRecordingTime(recordingTime)}...
+                        </span>
+                    )}
+                    <Button
+                        variant={isRecording ? 'destructive' : 'ghost'}
+                        size="sm"
+                        onClick={isRecording ? stopRecording : startRecording}
+                        title={isRecording ? "Detener Grabación" : "Grabar Voz"}
+                        className={isRecording ? "animate-pulse" : ""}
+                    >
+                        <Mic className="w-4 h-4" />
+                    </Button>
+                </div>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleQuote}
+                    className={editor.isActive('blockquote') ? 'bg-muted' : ''}
+                    title="Citar texto seleccionado"
+                >
+                    <Quote className="w-4 h-4" />
+                </Button>
+
+                <div className="w-px h-4 bg-border mx-1" />
+            </div>
+
+            {/* Editor Area */}
+            <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                        Cargando notas...
+                    </div>
+                ) : (
+                    <EditorContent editor={editor} />
+                )}
+            </div>
+        </div>
+    );
+
+    if (pipWindow) {
+        return createPortal(
+            JournalUI,
+            pipWindow.document.body
+        );
+    }
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -389,295 +852,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                     onDrop={handleDrop}
                     ref={panelRef}
                 >
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-                        <div>
-                            <h2 className="font-headline font-bold text-lg flex items-center gap-2">
-                                📒 Mis Apuntes
-                            </h2>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                {selectedDate ? (
-                                    <>
-                                        Del: {selectedDate.toLocaleDateString()}
-                                        {/* We need to fetch context_id for this entry to link back */}
-                                    </>
-                                ) : (
-                                    <>Sobre: {pathname === '/' ? 'Inicio' : pathname}</>
-                                )}
-                            </p>
-                            {selectedDate && (
-                                <Button
-                                    variant="link"
-                                    className="h-auto p-0 text-xs text-blue-500"
-                                    onClick={async () => {
-                                        // Fetch context_id for this date to navigate
-                                        const startOfDay = new Date(selectedDate);
-                                        startOfDay.setHours(0, 0, 0, 0);
-                                        const endOfDay = new Date(selectedDate);
-                                        endOfDay.setHours(23, 59, 59, 999);
-
-                                        const { data } = await supabase
-                                            .from('journal_entries')
-                                            .select('context_id')
-                                            .eq('user_id', user.id)
-                                            .gte('updated_at', startOfDay.toISOString())
-                                            .lte('updated_at', endOfDay.toISOString())
-                                            .limit(1)
-                                            .single();
-
-                                        if (data?.context_id) {
-                                            router.push(data.context_id);
-                                            onClose();
-                                        } else {
-                                            toast.info('No hay entrada para esta fecha');
-                                        }
-                                    }}
-                                >
-                                    Ir al sitio
-                                </Button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <Settings className="w-4 h-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 z-[70]" align="end">
-                                    <div className="grid gap-4">
-                                        <div className="space-y-2">
-                                            <h4 className="font-medium leading-none">Apariencia</h4>
-                                            <p className="text-sm text-muted-foreground">
-                                                Personaliza tu diario.
-                                            </p>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <div className="grid grid-cols-3 items-center gap-4">
-                                                <span className="text-sm">Opacidad</span>
-                                                <Slider
-                                                    defaultValue={[opacity]}
-                                                    max={1}
-                                                    min={0.2}
-                                                    step={0.1}
-                                                    className="col-span-2"
-                                                    onValueChange={(value) => setOpacity(value[0])}
-                                                />
-                                            </div>
-                                            <div className="grid grid-cols-3 items-center gap-4">
-                                                <span className="text-sm">Ancho</span>
-                                                <Slider
-                                                    defaultValue={[width]}
-                                                    max={100}
-                                                    min={20}
-                                                    step={5}
-                                                    className="col-span-2"
-                                                    onValueChange={(value) => setWidth(value[0])}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={onClose}>
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Tags Input */}
-                    <div className="px-4 py-2 border-b border-border bg-background/50">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {tags.map(tag => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                    {tag}
-                                    <button onClick={() => handleRemoveTag(tag)} className="ml-1 hover:text-destructive">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </Badge>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-muted-foreground" />
-                            <Input
-                                value={newTag}
-                                onChange={(e) => setNewTag(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAddTag();
-                                    }
-                                }}
-                                placeholder="Añadir etiqueta..."
-                                className="h-7 text-xs border-none shadow-none focus-visible:ring-0 px-0"
-                            />
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleAddTag}>
-                                <Plus className="w-3 h-3" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Toolbar */}
-                    <div className="flex flex-wrap gap-1 p-2 border-b border-border bg-background sticky top-0 z-10 items-center">
-                        <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()}>
-                            <SelectTrigger className="w-[120px] h-8">
-                                <SelectValue placeholder="Fuente" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[70]">
-                                <SelectItem value="Inter">Inter</SelectItem>
-                                <SelectItem value="Comic Sans MS, Comic Sans">Comic Sans</SelectItem>
-                                <SelectItem value="serif">Serif</SelectItem>
-                                <SelectItem value="monospace">Monospace</SelectItem>
-                                <SelectItem value="cursive">Cursive</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <div className="w-px h-6 bg-border mx-1" />
-
-                        <Button
-                            variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleBold().run()}
-                        >
-                            <Bold className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleItalic().run()}
-                        >
-                            <Italic className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleUnderline().run()}
-                        >
-                            <UnderlineIcon className="w-4 h-4" />
-                        </Button>
-
-                        <div className="w-px h-6 bg-border mx-1" />
-
-                        <Button
-                            variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                        >
-                            <Heading1 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                        >
-                            <Heading2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                        >
-                            <Heading3 className="w-4 h-4" />
-                        </Button>
-                        <div className="w-px h-6 bg-border mx-1" />
-                        <Button
-                            variant={editor.isActive('highlight') ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => editor.chain().focus().toggleHighlight().run()}
-                        >
-                            <Highlighter className="w-4 h-4" />
-                        </Button>
-
-                        {/* Color Picker (Simplified) */}
-                        <div className="flex items-center gap-1 ml-2">
-                            <button
-                                className="w-4 h-4 rounded-full bg-black border border-gray-300"
-                                onClick={() => editor.chain().focus().setColor('#000000').run()}
-                            />
-                            <button
-                                className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"
-                                onClick={() => editor.chain().focus().setColor('#EF4444').run()}
-                            />
-                            <button
-                                className="w-4 h-4 rounded-full bg-blue-500 border border-gray-300"
-                                onClick={() => editor.chain().focus().setColor('#3B82F6').run()}
-                            />
-                            <button
-                                className="w-4 h-4 rounded-full bg-green-500 border border-gray-300"
-                                onClick={() => editor.chain().focus().setColor('#22C55E').run()}
-                            />
-                            <button
-                                className="w-4 h-4 rounded-full bg-purple-500 border border-gray-300"
-                                onClick={() => editor.chain().focus().setColor('#A855F7').run()}
-                            />
-                        </div>
-
-                        <div className="w-px h-6 bg-border mx-1" />
-
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => document.getElementById('image-upload')?.click()}
-                            title="Insertar Imagen"
-                        >
-                            <ImageIcon className="w-4 h-4" />
-                            <input
-                                id="image-upload"
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleImageUpload(file);
-                                }}
-                            />
-                        </Button>
-                        <div className="flex items-center gap-2">
-                            {isRecording && (
-                                <span className="text-xs text-red-500 font-medium animate-pulse">
-                                    Grabando {formatRecordingTime(recordingTime)}...
-                                </span>
-                            )}
-                            <Button
-                                variant={isRecording ? 'destructive' : 'ghost'}
-                                size="sm"
-                                onClick={isRecording ? stopRecording : startRecording}
-                                title={isRecording ? "Detener Grabación" : "Grabar Voz"}
-                                className={isRecording ? "animate-pulse" : ""}
-                            >
-                                <Mic className="w-4 h-4" />
-                            </Button>
-                        </div>
-
-                        <div className="w-px h-6 bg-border mx-1" />
-
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleQuote}
-                            className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-                            title="Citar texto seleccionado"
-                        >
-                            <Quote className="w-4 h-4" />
-                        </Button>
-
-                        <div className="w-px h-4 bg-border mx-1" />
-                    </div>
-
-                    {/* Editor Area */}
-                    <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
-                        {isLoading ? (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                                <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                                Cargando notas...
-                            </div>
-                        ) : (
-                            <EditorContent editor={editor} />
-                        )}
-                    </div>
+                    {JournalUI}
                 </motion.div>
             )}
         </AnimatePresence>

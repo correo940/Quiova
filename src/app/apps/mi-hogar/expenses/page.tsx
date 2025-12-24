@@ -240,7 +240,7 @@ export default function ExpensesPage() {
 
         } catch (error) {
             console.error('Error fetching expenses:', error);
-            toast.error('Error al cargar la hucha');
+            toast.error('Error al cargar gastos');
         } finally {
             setLoading(false);
         }
@@ -565,7 +565,7 @@ export default function ExpensesPage() {
                             <span className="bg-emerald-100 dark:bg-emerald-900/40 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
                                 <PiggyBank className="w-8 h-8" />
                             </span>
-                            Hucha Común
+                            Gastos
                         </h1>
                     </div>
 
@@ -604,7 +604,7 @@ export default function ExpensesPage() {
                         >
                             <PiggyBank className={cn("w-6 h-6 mx-auto mb-2", activeFolderId === null ? "text-emerald-400" : "text-emerald-600")} />
                             <div className="font-bold text-sm">General</div>
-                            <div className="text-[10px] opacity-70">Hucha Global</div>
+                            <div className="text-[10px] opacity-70">Gastos Globales</div>
                         </div>
 
                         {/* Folder List */}

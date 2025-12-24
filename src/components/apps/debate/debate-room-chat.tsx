@@ -14,7 +14,14 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
+import { DebateManagementPanel } from "./debate-management-panel";
+import { RoleBadge } from "./role-badge";
+import { useDebatePermissions } from "@/lib/hooks/useDebatePermissions";
+import { MessageActionMenu } from "./message-action-menu";
+import { DeletedMessage } from "./deleted-message";
+import { useUserRestrictions } from "@/lib/hooks/useUserRestrictions";
 import { cn } from "@/lib/utils";
+import { usePendingReports } from "@/lib/hooks/usePendingReports";
 
 interface Message {
     id: string;
@@ -24,6 +31,8 @@ interface Message {
     type: 'text' | 'audio' | 'image' | 'video';
     media_url?: string;
     sender: { full_name: string; avatar_url: string } | null;
+    deleted_at?: string;
+    deleted_by?: string;
 }
 
 interface DebateRoom {
@@ -51,6 +60,9 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const permissions = useDebatePermissions(roomId);
+    const restriction = useUserRestrictions(roomId, currentUser?.id);
+    const pendingReports = usePendingReports(roomId);
 
     // Fetch room and messages
     useEffect(() => {
@@ -169,6 +181,10 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
             return;
         }
 
+        if (restriction.isRestricted) {
+            return; // Double check
+        }
+
         setSending(true);
         const content = newMessage;
         setNewMessage("");
@@ -285,8 +301,31 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                             {room.guest_score}
                         </Badge>
                     </div>
+
+                    {currentUser && (
+                        <DebateManagementPanel
+                            debateId={roomId}
+                            currentUserId={currentUser.id}
+                            trigger={
+                                (permissions.isSuperAdmin || permissions.role === 'admin' || permissions.role === 'moderator') ? (
+                                    <div className="relative type-button cursor-pointer transition-transform hover:scale-105 active:scale-95">
+                                        {permissions.isSuperAdmin && <RoleBadge role="super_admin" className="cursor-pointer" />}
+                                        {permissions.role === 'admin' && !permissions.isSuperAdmin && <RoleBadge role="admin" className="cursor-pointer" />}
+                                        {permissions.role === 'moderator' && <RoleBadge role="moderator" className="cursor-pointer" />}
+
+                                        {pendingReports > 0 && (
+                                            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm animate-in zoom-in">
+                                                {pendingReports > 9 ? '9+' : pendingReports}
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : undefined
+                            }
+                        />
+                    )}
                 </div>
             </div>
+
 
             {/* MENSAJES - Área scrollable */}
             <div style={messagesStyle}>
@@ -306,7 +345,7 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                                 <div
                                     key={message.id}
                                     className={cn(
-                                        "flex gap-2",
+                                        "flex gap-2 group",
                                         isMe ? "justify-end" : "justify-start"
                                     )}
                                 >
@@ -319,27 +358,47 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                                         </Avatar>
                                     )}
 
-                                    <Card className={cn(
-                                        "max-w-[70%] p-3 shadow-sm",
-                                        isMe
-                                            ? "bg-primary text-primary-foreground"
-                                            : isCreator
-                                                ? "bg-red-500/10 border-red-500/30"
-                                                : "bg-blue-500/10 border-blue-500/30"
-                                    )}>
-                                        {!isMe && (
-                                            <p className="text-xs font-semibold mb-1 opacity-80">
-                                                {message.sender?.full_name}
-                                            </p>
+                                    <div className="flex-1 max-w-[70%]">
+                                        {message.deleted_at ? (
+                                            <DeletedMessage
+                                                isAdmin={permissions.role === 'admin' || permissions.isSuperAdmin}
+                                                originalContent={message.content}
+                                                deletedAt={message.deleted_at}
+                                            />
+                                        ) : (
+                                            <Card className={cn(
+                                                "p-3 shadow-sm relative",
+                                                isMe
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : isCreator
+                                                        ? "bg-red-500/10 border-red-500/30"
+                                                        : "bg-blue-500/10 border-blue-500/30"
+                                            )}>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1">
+                                                        {!isMe && (
+                                                            <p className="text-xs font-semibold mb-1 opacity-80">
+                                                                {message.sender?.full_name}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                                        <p className={cn(
+                                                            "text-[10px] mt-1",
+                                                            isMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                                                        )}>
+                                                            {format(new Date(message.created_at), 'HH:mm')}
+                                                        </p>
+                                                    </div>
+                                                    <MessageActionMenu
+                                                        debateId={roomId}
+                                                        messageId={message.id}
+                                                        messageContent={message.content}
+                                                        messageSenderId={message.sender_id}
+                                                    />
+                                                </div>
+                                            </Card>
                                         )}
-                                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                                        <p className={cn(
-                                            "text-[10px] mt-1",
-                                            isMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                                        )}>
-                                            {format(new Date(message.created_at), 'HH:mm')}
-                                        </p>
-                                    </Card>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -349,31 +408,45 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
             </div>
 
             {/* INPUT - Fijo abajo */}
-            {isParticipant && (
-                <div style={inputAreaStyle}>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            placeholder="Escribe un mensaje..."
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                            className="flex-1"
-                            disabled={sending}
-                        />
-                        <Button
-                            onClick={handleSendMessage}
-                            disabled={!newMessage.trim() || sending}
-                            className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                        >
-                            {sending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Send className="w-4 h-4" />
-                            )}
-                        </Button>
+            {
+                isParticipant && (
+                    <div style={inputAreaStyle}>
+                        {restriction.isRestricted ? (
+                            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/50 rounded-md text-red-600 dark:text-red-400">
+                                <span className="font-semibold text-sm">
+                                    {restriction.type === 'banned' ? 'Estás baneado de este debate.' : `Estás silenciado temporalmente.`}
+                                </span>
+                                <span className="text-xs opacity-90">
+                                    Razón: {restriction.reason}
+                                    {restriction.remainingMinutes && ` • Expira en ${restriction.remainingMinutes} min`}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    placeholder="Escribe un mensaje..."
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                                    className="flex-1"
+                                    disabled={sending}
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    disabled={!newMessage.trim() || sending}
+                                    className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                                >
+                                    {sending ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Send className="w-4 h-4" />
+                                    )}
+                                </Button>
+                            </div>
+                        )}
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

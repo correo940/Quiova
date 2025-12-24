@@ -10,6 +10,8 @@ interface JournalContextType {
     pendingQuote: string | null;
     addQuote: (text: string) => void;
     clearPendingQuote: () => void;
+    width: number;
+    setWidth: (width: number) => void;
 }
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [pendingQuote, setPendingQuote] = useState<string | null>(null);
+    const [width, setWidth] = useState(33);
 
     const addQuote = (text: string) => {
         setPendingQuote(text);
@@ -36,7 +39,9 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
             setSelectedDate,
             pendingQuote,
             addQuote,
-            clearPendingQuote
+            clearPendingQuote,
+            width,
+            setWidth
         }}>
             {children}
         </JournalContext.Provider>

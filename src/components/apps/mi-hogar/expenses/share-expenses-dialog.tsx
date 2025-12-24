@@ -268,11 +268,11 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
     const handleSendEmail = () => {
         const subject = folderName
             ? `Únete a la carpeta "${folderName}" en Quiova`
-            : "Únete a mi Hucha Común en Quiova";
+            : "Únete a mis Gastos Compartidos en Quiova";
 
         const body = folderName
-            ? `Hola, \n\nQuiero compartir la carpeta "${folderName}" contigo en Quiova.\n\n1. Entra en 'Hucha Común'.\n2. Dale a 'Compartir' (desde General o cualquier lugar).\n3. Introduce este código: ${generatedCode} \n\n¡Acceso limitado solo a esta carpeta!`
-            : `Hola, \n\nQuiero compartir gastos contigo en la app Quiova.\n\n1.Entra en la sección 'Hucha Común'.\n2.Dale a 'Compartir' -> 'Tengo un código'.\n3.Introduce este código: ${generatedCode} \n\n¡Nos vemos dentro!`;
+            ? `Hola, \n\nQuiero compartir la carpeta "${folderName}" contigo en Quiova.\n\n1. Entra en 'Gastos'.\n2. Dale a 'Compartir' (desde General o cualquier lugar).\n3. Introduce este código: ${generatedCode} \n\n¡Acceso limitado solo a esta carpeta!`
+            : `Hola, \n\nQuiero compartir gastos contigo en la app Quiova.\n\n1.Entra en la sección 'Gastos'.\n2.Dale a 'Compartir' -> 'Tengo un código'.\n3.Introduce este código: ${generatedCode} \n\n¡Nos vemos dentro!`;
 
         window.open(`mailto:? subject = ${encodeURIComponent(subject)}& body=${encodeURIComponent(body)} `);
     };
@@ -326,7 +326,7 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {folderId ? <Folder className="w-5 h-5 text-emerald-600" /> : <Users className="w-5 h-5 text-emerald-600" />}
-                        {folderName ? `Compartir "${folderName}"` : 'Vincular Hucha Global'}
+                        {folderName ? `Compartir "${folderName}"` : 'Vincular Gastos Globales'}
                     </DialogTitle>
                     <DialogDescription>
                         {folderName

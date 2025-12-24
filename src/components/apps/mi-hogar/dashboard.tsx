@@ -13,7 +13,8 @@ import {
     ShieldCheck,
     PiggyBank,
     Calendar,
-    Sword
+    Sword,
+    Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,12 +79,20 @@ const modules = [
         bg: 'bg-amber-500/10',
     },
     {
-        title: 'Hucha Común',
+        title: 'Gastos',
         description: 'Gastos compartidos 50/50',
-        icon: PiggyBank,
+        icon: Wallet,
         href: '/apps/mi-hogar/expenses',
         color: 'text-emerald-500',
         bg: 'bg-emerald-500/10',
+    },
+    {
+        title: 'Ahorros',
+        description: 'Control de ahorro mensual y metas',
+        icon: PiggyBank,
+        href: '/apps/mi-hogar/savings',
+        color: 'text-amber-500',
+        bg: 'bg-amber-500/10',
     },
     {
         title: 'Cuadrante',
@@ -115,7 +124,7 @@ export default function MiHogarDashboard() {
                             <Home className="w-8 h-8 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Mi Hogar</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">Mi Quiova</h1>
                             <p className="text-muted-foreground">Centro de control doméstico inteligente</p>
                         </div>
                     </div>
