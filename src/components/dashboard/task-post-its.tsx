@@ -6,7 +6,7 @@ import { X, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { format, differenceInCalendarDays, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { usePostItSettings } from '@/context/PostItSettingsContext';
 
 type Task = {
@@ -22,7 +22,8 @@ export default function TaskPostIts() {
     const [hiddenTaskIds, setHiddenTaskIds] = useState<Set<string>>(new Set());
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
-    const { isVisible, colors, snoozeDuration, position, opacity, layout } = usePostItSettings();
+    const pathname = usePathname();
+    const { isVisible, colors, snoozeDuration, position, opacity, layout, visibilityMode, allowedPaths } = usePostItSettings();
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -87,7 +88,21 @@ export default function TaskPostIts() {
         router.push('/apps/mi-hogar/tasks');
     };
 
-    if (!user || tasks.length === 0 || !isVisible) return null;
+    // Visibility Check Logic
+    const shouldShow = () => {
+        if (!isVisible) return false;
+        if (visibilityMode === 'all') return true;
+        if (!pathname) return false;
+
+        // Check if current path is in allowed paths
+        // We use startsWith for sub-routes (like /tasks/detail) but exact match for dashboard
+        return allowedPaths.some(path => {
+            if (path === '/apps/mi-hogar') return pathname === '/apps/mi-hogar'; // Strict for dashboard to avoid matching all sub-apps
+            return pathname.startsWith(path);
+        });
+    };
+
+    if (!user || tasks.length === 0 || !shouldShow()) return null;
 
     // Filter out hidden tasks
     const visibleTasks = tasks.filter(task => !hiddenTaskIds.has(task.id));

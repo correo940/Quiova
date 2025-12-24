@@ -16,7 +16,11 @@ type PostItSettings = {
     position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'top-center' | 'bottom-center';
     opacity: number;
     layout: 'vertical' | 'horizontal';
+    visibilityMode: 'all' | 'custom';
+    allowedPaths: string[];
     setIsVisible: (visible: boolean) => void;
+    setVisibilityMode: (mode: 'all' | 'custom') => void;
+    setAllowedPaths: (paths: string[]) => void;
     setColors: (colors: PostItColors) => void;
     setSnoozeDuration: (duration: number) => void;
     setPosition: (position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'top-center' | 'bottom-center') => void;
@@ -35,6 +39,8 @@ const PostItSettingsContext = createContext<PostItSettings | undefined>(undefine
 
 export function PostItSettingsProvider({ children }: { children: React.ReactNode }) {
     const [isVisible, setIsVisible] = useState(true);
+    const [visibilityMode, setVisibilityMode] = useState<'all' | 'custom'>('all');
+    const [allowedPaths, setAllowedPaths] = useState<string[]>(['/apps/mi-hogar', '/apps/mi-hogar/tasks']);
     const [colors, setColors] = useState<PostItColors>(defaultColors);
     const [snoozeDuration, setSnoozeDuration] = useState(3);
     const [position, setPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'top-center' | 'bottom-center'>('top-left');
@@ -48,6 +54,8 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
             try {
                 const parsed = JSON.parse(savedSettings);
                 if (parsed.isVisible !== undefined) setIsVisible(parsed.isVisible);
+                if (parsed.visibilityMode) setVisibilityMode(parsed.visibilityMode);
+                if (parsed.allowedPaths) setAllowedPaths(parsed.allowedPaths);
                 if (parsed.colors) setColors({ ...defaultColors, ...parsed.colors });
                 if (parsed.snoozeDuration) setSnoozeDuration(parsed.snoozeDuration);
                 if (parsed.position) setPosition(parsed.position);
@@ -61,9 +69,9 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
 
     // Save to localStorage on change
     useEffect(() => {
-        const settings = { isVisible, colors, snoozeDuration, position, opacity, layout };
+        const settings = { isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout };
         localStorage.setItem('postItSettings', JSON.stringify(settings));
-    }, [isVisible, colors, snoozeDuration, position, opacity, layout]);
+    }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout]);
 
     return (
         <PostItSettingsContext.Provider value={{
@@ -73,7 +81,11 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
             position,
             opacity,
             layout,
+            visibilityMode,
+            allowedPaths,
             setIsVisible,
+            setVisibilityMode,
+            setAllowedPaths,
             setColors,
             setSnoozeDuration,
             setPosition,

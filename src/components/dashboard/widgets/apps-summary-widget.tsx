@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
+import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 
 export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Date }) {
     const [stats, setStats] = useState({
@@ -15,6 +17,9 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     });
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Initialize daily notifications logic
+    useDailyNotifications();
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -229,9 +234,12 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     return (
         <Card className="h-full overflow-hidden border-none shadow-md bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
             <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    Resumen General
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        Resumen General
+                    </CardTitle>
+                    <NotificationSettingsDialog />
+                </div>
             </CardHeader>
             <CardContent>
                 {loading ? (
