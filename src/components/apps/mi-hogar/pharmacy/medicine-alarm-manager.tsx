@@ -37,46 +37,33 @@ export default function MedicineAlarmManager() {
 
             if (error || !medicines) return;
 
-            // Strategy: Cancel all previous medicine alarms (we would need to track IDs, 
-            // but for simplicity/robustness in this MVP, we might rely on unique predictable IDs)
-            // Ideally we track IDs we created. 
-            // For now, let's just schedule. 
-            // Note: In a real app, we should probably "re-sync" completely.
+            // 1. Cancel previous medicine alarms to prevent duplicates/ghosts
+            const pending = await NotificationManager.getPending();
+            const medsToCancel = pending
+                .filter(n => n.title === '💊 Hora de tu medicación' || n.extra?.type === 'medicine')
+                .map(n => n.id);
 
-            // To prevent massive duplication, we could cancel a range, or use specific IDs.
-            // NotificationManager.generateId makes deterministic IDs.
+            if (medsToCancel.length > 0) {
+                await NotificationManager.cancel(medsToCancel);
+                console.log(`Cancelled ${medsToCancel.length} stale medicine alarms.`);
+            }
 
+            // 2. Schedule current alarms
             medicines.forEach(med => {
                 if (med.alarm_times && Array.isArray(med.alarm_times)) {
                     med.alarm_times.forEach((time: string) => {
-                        // Time is "HH:MM" string
                         const [hours, minutes] = time.split(':').map(Number);
-
-                        // Create a date object for the schedule (Next occurrence)
-                        // Actually Capacitor LocalNotifications 'every: day' schedule uses the 'on' property or simplified schedule.
-                        // For 'every: day', we need components.
-                        const schedule = {
-                            on: {
-                                hour: hours,
-                                minute: minutes
-                            }
-                        };
-
-                        // Unique ID: Hash of "med_ID_TIME"
                         const notifId = NotificationManager.generateId(`med_${med.id}_${time}`);
 
                         NotificationManager.schedule({
                             id: notifId,
                             title: `💊 Hora de tu medicación`,
                             body: `${med.name} - ${med.dosage || 'Toma tu dosis'}`,
-                            // @ts-ignore - 'on' is valid for recurring but type def might be tricky in wrapper. 
-                            // Reverting to 'at' + 'every' if 'on' is not exposed in my helper interface, 
-                            // but generic 'schedule' passed through.
-                            // Let's use 'on' structure for recurring:
                             schedule: {
                                 on: { hour: hours, minute: minutes },
                                 allowWhileIdle: true
-                            } as any
+                            } as any,
+                            extra: { type: 'medicine' }
                         });
                     });
                 }

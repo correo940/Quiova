@@ -53,6 +53,16 @@ export const NotificationManager = {
         }
     },
 
+    async getPending() {
+        try {
+            const pending = await LocalNotifications.getPending();
+            return pending.notifications;
+        } catch (e) {
+            console.error('Error getting pending notifications:', e);
+            return [];
+        }
+    },
+
     // Hash function to turn string IDs (UUIDs) into unique Integers for Android notifications
     generateId(str: string): number {
         let hash = 0;

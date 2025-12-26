@@ -58,11 +58,13 @@ export default function PharmacyPage() {
     }, [user]);
 
     const fetchMedicines = async () => {
+        if (!user) return;
         try {
             setLoading(true);
             const { data, error } = await supabase
                 .from('medicines')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('expiration_date', { ascending: true }); // Expiring first
 
             if (error) throw error;
