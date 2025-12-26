@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Bell, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface DailyNotificationSettings {
     enabled: boolean;
@@ -16,10 +17,17 @@ interface DailyNotificationSettings {
         tasks: boolean;
         shifts: boolean;
         vehicles: boolean;
+        shopping: boolean;
+        money: boolean;
+        medicines: boolean;
+        insurances: boolean;
+        warranties: boolean;
+        expenses: boolean;
     };
 }
 
 export default function NotificationSettingsDialog() {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [settings, setSettings] = useState<DailyNotificationSettings>({
         enabled: false,
@@ -27,7 +35,13 @@ export default function NotificationSettingsDialog() {
         categories: {
             tasks: true,
             shifts: true,
-            vehicles: true
+            vehicles: true,
+            shopping: true,
+            money: true,
+            medicines: true,
+            insurances: true,
+            warranties: true,
+            expenses: true
         }
     });
 
@@ -36,7 +50,23 @@ export default function NotificationSettingsDialog() {
         const saved = localStorage.getItem('dailyNotificationSettings');
         if (saved) {
             try {
-                setSettings(JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                // Merge with defaults to ensure new keys exist
+                setSettings({
+                    ...parsed,
+                    categories: {
+                        tasks: true,
+                        shifts: true,
+                        vehicles: true,
+                        shopping: true,
+                        money: true,
+                        medicines: true,
+                        insurances: true,
+                        warranties: true,
+                        expenses: true,
+                        ...(parsed.categories || {})
+                    }
+                });
             } catch (e) {
                 console.error("Error parsing notification settings", e);
             }
@@ -63,7 +93,7 @@ export default function NotificationSettingsDialog() {
                     <Bell className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Bell className="h-5 w-5" />
@@ -128,7 +158,25 @@ export default function NotificationSettingsDialog() {
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="cat-vehicles" className="text-sm font-normal cursor-pointer">Vehículos (ITV/Seguros)</Label>
+                                    <Label htmlFor="cat-shopping" className="text-sm font-normal cursor-pointer">Lista de Compra</Label>
+                                    <Switch
+                                        id="cat-shopping"
+                                        checked={settings.categories?.shopping ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, shopping: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-medicines" className="text-sm font-normal cursor-pointer">Botiquín (Tomas y Caducidad)</Label>
+                                    <Switch
+                                        id="cat-medicines"
+                                        checked={settings.categories?.medicines ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, medicines: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-vehicles" className="text-sm font-normal cursor-pointer">Garaje (Vehículos)</Label>
                                     <Switch
                                         id="cat-vehicles"
                                         checked={settings.categories?.vehicles ?? true}
@@ -136,13 +184,57 @@ export default function NotificationSettingsDialog() {
                                         className="scale-75"
                                     />
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-insurances" className="text-sm font-normal cursor-pointer">Seguros</Label>
+                                    <Switch
+                                        id="cat-insurances"
+                                        checked={settings.categories?.insurances ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, insurances: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-warranties" className="text-sm font-normal cursor-pointer">Garantías</Label>
+                                    <Switch
+                                        id="cat-warranties"
+                                        checked={settings.categories?.warranties ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, warranties: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-expenses" className="text-sm font-normal cursor-pointer">Gastos (Deudas)</Label>
+                                    <Switch
+                                        id="cat-expenses"
+                                        checked={settings.categories?.expenses ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, expenses: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="cat-money" className="text-sm font-normal cursor-pointer">Ahorros (Cuentas)</Label>
+                                    <Switch
+                                        id="cat-money"
+                                        checked={settings.categories?.money ?? true}
+                                        onCheckedChange={(c) => setSettings(prev => ({ ...prev, categories: { ...prev.categories, money: c } }))}
+                                        className="scale-75"
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    <Button className="w-full" onClick={handleSave}>
-                        Guardar Configuración
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button className="flex-1" variant="outline" onClick={() => {
+                            router.push('/apps/resumen-diario');
+                            setOpen(false);
+                        }}>
+                            Ver Resumen
+                        </Button>
+                        <Button className="flex-1" onClick={handleSave}>
+                            Guardar
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

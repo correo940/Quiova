@@ -59,6 +59,17 @@ export default function FloatingDashboard() {
             }
         });
 
+        // Set up real-time subscription for immediate updates
+        const channel = supabase
+            .channel('dashboard_badges')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+                if (user) fetchCounts(user.id);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items' }, () => {
+                if (user) fetchCounts(user.id);
+            })
+            .subscribe();
+
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
@@ -72,6 +83,7 @@ export default function FloatingDashboard() {
 
         return () => {
             subscription.unsubscribe();
+            supabase.removeChannel(channel);
         };
     }, []);
 
@@ -170,6 +182,11 @@ export default function FloatingDashboard() {
                                                     <div className="text-xs text-muted-foreground">Accede a tus herramientas</div>
                                                 </div>
                                                 <ChevronDown className="w-4 h-4 ml-auto -rotate-90 text-muted-foreground" />
+                                                {totalNotifications > 0 && (
+                                                    <Badge variant="destructive" className="ml-2 rounded-full h-5 px-2">
+                                                        {totalNotifications}
+                                                    </Badge>
+                                                )}
                                             </button>
 
                                             <button
