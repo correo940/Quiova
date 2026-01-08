@@ -215,7 +215,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             } else {
                 // Fetch by context (current page)
                 const contextId = pathname || '/';
-                query = query.eq('context_id', contextId).single();
+                query = query.eq('context_id', contextId).maybeSingle();
             }
 
             const { data, error } = await query;

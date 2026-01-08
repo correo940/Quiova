@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/lib/supabase';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -20,19 +21,21 @@ export function useDailyNotifications() {
                     await LocalNotifications.requestPermissions();
                 }
 
-                // Create high priority channel for daily summary
-                try {
-                    await LocalNotifications.createChannel({
-                        id: 'daily-summary',
-                        name: 'Resumen Diario',
-                        description: 'Notificaciones del resumen diario',
-                        importance: 5, // High
-                        visibility: 1, // Public
-                        sound: 'beep.wav',
-                        vibration: true
-                    });
-                } catch (e) {
-                    console.error("Error creating notification channel", e);
+                if (Capacitor.getPlatform() !== 'web') {
+                    // Create high priority channel for daily summary
+                    try {
+                        await LocalNotifications.createChannel({
+                            id: 'daily-summary',
+                            name: 'Resumen Diario',
+                            description: 'Notificaciones del resumen diario',
+                            importance: 5, // High
+                            visibility: 1, // Public
+                            sound: 'beep.wav',
+                            vibration: true
+                        });
+                    } catch (e) {
+                        console.error("Error creating notification channel", e);
+                    }
                 }
 
                 scheduleDailyNotification();

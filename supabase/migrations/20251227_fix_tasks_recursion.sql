@@ -41,9 +41,13 @@ create policy "Members can view members of their lists"
 
 -- 4. Update TASKS policies (Fixes recursion and allows legacy tasks)
 drop policy if exists "Users can view tasks in their lists" on public.tasks;
+drop policy if exists "Users can view their tasks" on public.tasks; -- Added this one
 drop policy if exists "Users can insert tasks into their lists" on public.tasks;
+drop policy if exists "Users can insert tasks" on public.tasks; -- Added this one
 drop policy if exists "Users can update tasks in their lists" on public.tasks;
+drop policy if exists "Users can update their tasks" on public.tasks; -- Added this one
 drop policy if exists "Users can delete tasks in their lists" on public.tasks;
+drop policy if exists "Users can delete their tasks" on public.tasks; -- Added this one
 
 create policy "Users can view their tasks"
     on public.tasks for select

@@ -83,6 +83,7 @@ export default function TaskManager() {
         } else {
             setTasks([]);
             setMembers([]);
+            setLoading(false); // Fix: Reset loading when no list is selected
         }
     }, [currentList]);
 

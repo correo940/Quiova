@@ -72,13 +72,13 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
 
             setLists(mappedLists);
 
-            // Auto-select first if none selected
+            // Auto-select first if none selected (only once, not on every render)
             if (!currentListId && mappedLists.length > 0) {
+                // Only select if we don't have a current selection yet
                 onListChange(mappedLists[0]);
-            } else if (currentListId) {
-                const current = mappedLists.find(l => l.id === currentListId);
-                if (current) onListChange(current);
             }
+            // Don't re-call onListChange if the list is already selected
+            // This prevents infinite loops
 
         } catch (error) {
             console.error('Error fetching lists:', error);
