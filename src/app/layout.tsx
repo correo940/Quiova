@@ -8,7 +8,7 @@ import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
 
 export const metadata: Metadata = {
-  title: 'Quiova',
+  title: 'Quioba',
   description: 'Tu espacio para la salud y el bienestar financiero.',
 };
 

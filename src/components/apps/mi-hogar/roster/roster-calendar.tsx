@@ -444,7 +444,7 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
                     <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-medium">Cuadrante de Turnos</p>
                 </div>
                 <div className="text-right">
-                    <span className="text-[10px] text-slate-400">Quiova</span>
+                    <span className="text-[10px] text-slate-400">Quioba</span>
                 </div>
             </div>
 

@@ -120,7 +120,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
         const newWindow = window.open(
             'https://www.google.com',
-            'QuiovaBrowser',
+            'QuiobaBrowser',
             `width=${browserWidth},height=${screenHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
         );
 

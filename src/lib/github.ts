@@ -4,7 +4,7 @@ import { Octokit } from 'octokit';
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const owner = process.env.GITHUB_OWNER || 'correo940';
-const repo = process.env.GITHUB_REPO || 'quiova';
+const repo = process.env.GITHUB_REPO || 'quioba';
 const branch = process.env.GITHUB_BRANCH || 'main';
 const CONTENT_PATH = 'content/articles';
 
@@ -44,7 +44,7 @@ export async function getArticlesFromGitHub(): Promise<Article[]> {
     }
 
     const files = await response.json();
-    
+
     if (!Array.isArray(files)) {
       console.error('❌ La respuesta no es un array:', files);
       return [];
@@ -92,10 +92,10 @@ export async function getArticlesFromGitHub(): Promise<Article[]> {
 // Obtener artículos por categoría (CON NORMALIZACIÓN)
 export async function getArticlesByCategory(category: string): Promise<Article[]> {
   const articles = await getArticlesFromGitHub();
-  
+
   // 🔧 NORMALIZAR: minúsculas y sin espacios extra
   const normalizedSearch = category.toLowerCase().trim();
-  
+
   const filtered = articles.filter((article) => {
     const articleCategory = (article.category || '').toLowerCase().trim();
     return articleCategory === normalizedSearch;
@@ -104,7 +104,7 @@ export async function getArticlesByCategory(category: string): Promise<Article[]
   console.log(`🔍 Buscando categoría: "${category}"`);
   console.log(`📋 Categorías disponibles:`, articles.map(a => `"${a.category}"`));
   console.log(`✅ Encontrados: ${filtered.length} artículos`);
-  
+
   return filtered;
 }
 

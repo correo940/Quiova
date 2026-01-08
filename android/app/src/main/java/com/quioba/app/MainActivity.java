@@ -1,4 +1,4 @@
-package com.quiova.app;
+package com.quioba.app;
 
 import com.getcapacitor.BridgeActivity;
 

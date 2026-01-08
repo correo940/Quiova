@@ -124,7 +124,7 @@ export default function MiHogarDashboard() {
                             <Home className="w-8 h-8 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Mi Quiova</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">Mi Quioba</h1>
                             <p className="text-muted-foreground">Centro de control doméstico inteligente</p>
                         </div>
                     </div>

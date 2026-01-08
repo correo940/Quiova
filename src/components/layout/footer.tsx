@@ -18,11 +18,11 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center" suppressHydrationWarning>
           <div className="flex items-center space-x-2 mb-4 md:mb-0" suppressHydrationWarning>
             <Logo className="h-7 w-auto" />
-            <span className="font-bold text-lg">Quiova</span>
+            <span className="font-bold text-lg">Quioba</span>
           </div>
           <p className="text-sm text-muted-foreground">
             {currentYear !== null ? (
-              `© ${currentYear} Quiova. Todos los derechos reservados.`
+              `© ${currentYear} Quioba. Todos los derechos reservados.`
             ) : (
               'Cargando...'
             )}

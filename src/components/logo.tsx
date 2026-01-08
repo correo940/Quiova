@@ -10,7 +10,7 @@ export function Logo({ className, ...props }: LogoProps) {
     <div className={className} {...props} suppressHydrationWarning>
       <Image
         src="/images/logo.png"  // Cambia la extensión según tu archivo
-        alt="Quiova Logo"
+        alt="Quioba Logo"
         width={32}
         height={32}
         className="object-contain"

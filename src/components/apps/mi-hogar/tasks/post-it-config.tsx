@@ -130,7 +130,7 @@ export default function PostItConfig() {
                                         { path: '/', label: 'Inicio (Home)' },
                                         { path: '/journal', label: 'Diario' },
                                         { path: '/apps/debate', label: 'Debate' },
-                                        { path: '/apps/mi-hogar', label: 'Mi Quiova (Resumen)' },
+                                        { path: '/apps/mi-hogar', label: 'Mi Quioba (Resumen)' },
                                         { path: '/apps/mi-hogar/tasks', label: 'Tareas' },
                                         { path: '/apps/mi-hogar/roster', label: 'Turnos / Calendario' },
                                         { path: '/apps/mi-hogar/shopping', label: 'Lista de la Compra' },

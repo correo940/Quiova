@@ -142,7 +142,7 @@ export default function FloatingDashboard() {
                         >
                             <div className="p-4 border-b border-white/10 flex justify-between items-center">
                                 <div>
-                                    <h3 className="font-bold text-lg">Mi Quiova</h3>
+                                    <h3 className="font-bold text-lg">Mi Quioba</h3>
                                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                 </div>
                                 {activeView === 'apps' && (
@@ -165,7 +165,7 @@ export default function FloatingDashboard() {
                                                     <LayoutDashboard className="w-6 h-6" />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-sm">Mi Quiova</div>
+                                                    <div className="font-semibold text-sm">Mi Quioba</div>
                                                     <div className="text-xs text-muted-foreground">Tu hogar digital</div>
                                                 </div>
                                             </Link>
@@ -377,7 +377,7 @@ export default function FloatingDashboard() {
                         <div className="w-full h-full rounded-full overflow-hidden p-2 flex items-center justify-center">
                             <img
                                 src="/images/logo.png"
-                                alt="Quiova"
+                                alt="Quioba"
                                 style={{ width: 'auto', height: '100%' }}
                                 className="object-contain pointer-events-none"
                             />
@@ -397,7 +397,7 @@ export default function FloatingDashboard() {
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 className="absolute bottom-full mb-3 right-0 mr-[-0.5rem] px-3 py-1 bg-black/80 text-white text-xs font-bold rounded-full whitespace-nowrap backdrop-blur-sm pointer-events-none"
                             >
-                                Mi Quiova
+                                Mi Quioba
                             </motion.div>
                         )}
                     </AnimatePresence>

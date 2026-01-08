@@ -267,12 +267,12 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
 
     const handleSendEmail = () => {
         const subject = folderName
-            ? `Únete a la carpeta "${folderName}" en Quiova`
-            : "Únete a mis Gastos Compartidos en Quiova";
+            ? `Únete a la carpeta "${folderName}" en Quioba`
+            : "Únete a mis Gastos Compartidos en Quioba";
 
         const body = folderName
-            ? `Hola, \n\nQuiero compartir la carpeta "${folderName}" contigo en Quiova.\n\n1. Entra en 'Gastos'.\n2. Dale a 'Compartir' (desde General o cualquier lugar).\n3. Introduce este código: ${generatedCode} \n\n¡Acceso limitado solo a esta carpeta!`
-            : `Hola, \n\nQuiero compartir gastos contigo en la app Quiova.\n\n1.Entra en la sección 'Gastos'.\n2.Dale a 'Compartir' -> 'Tengo un código'.\n3.Introduce este código: ${generatedCode} \n\n¡Nos vemos dentro!`;
+            ? `Hola, \n\nQuiero compartir la carpeta "${folderName}" contigo en Quioba.\n\n1. Entra en 'Gastos'.\n2. Dale a 'Compartir' (desde General o cualquier lugar).\n3. Introduce este código: ${generatedCode} \n\n¡Acceso limitado solo a esta carpeta!`
+            : `Hola, \n\nQuiero compartir gastos contigo en la app Quioba.\n\n1.Entra en la sección 'Gastos'.\n2.Dale a 'Compartir' -> 'Tengo un código'.\n3.Introduce este código: ${generatedCode} \n\n¡Nos vemos dentro!`;
 
         window.open(`mailto:? subject = ${encodeURIComponent(subject)}& body=${encodeURIComponent(body)} `);
     };

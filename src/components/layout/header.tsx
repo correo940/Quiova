@@ -41,7 +41,7 @@ export default function Header() {
         <div className="mr-4 hidden md:flex" suppressHydrationWarning>
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Logo className="h-7 w-auto" />
-            <span className="font-bold text-lg">Quiova</span>
+            <span className="font-bold text-lg">Quioba</span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
             {navLinks.map((link) => (
@@ -71,7 +71,7 @@ export default function Header() {
           <SheetContent side="left">
             <Link href="/" className="mb-8 flex items-center space-x-2">
               <Logo className="h-7 w-auto" />
-              <span className="font-bold text-lg">Quiova</span>
+              <span className="font-bold text-lg">Quioba</span>
             </Link>
             <div className="flex flex-col space-y-4">
               {navLinks.map((link) => (

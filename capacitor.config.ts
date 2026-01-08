@@ -1,13 +1,13 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.quiova.app',
-  appName: 'Quiova',
+  appId: 'com.quioba.app',
+  appName: 'Quioba',
   webDir: 'out',
   server: {
-    // ⚠️ IMPORTANTE: Cambia esto por tu URL real (ej: https://quiova.vercel.app)
-    // Para probar en local con el móvil en la misma red wifi: http://192.168.1.X:3000
-    url: 'https://quiova.vercel.app',
+    // ⚠️ IMPORTANTE: Cambia esto por tu URL real (ej: https://www.quioba.com)
+    // Esta es SOLO para desarrollo. En producción, comenta esta línea.
+    url: 'https://www.quioba.com',
     cleartext: true
   }
 };

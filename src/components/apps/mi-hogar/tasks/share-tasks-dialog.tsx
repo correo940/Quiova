@@ -98,8 +98,8 @@ export function ShareTasksDialog({ open, onOpenChange, listId, listName, isOwner
     };
 
     const handleSendEmail = () => {
-        const subject = `Únete a la lista de tareas "${listName}" en Quiova`;
-        const body = `Hola, \n\nQuiero compartir la lista de tareas "${listName}" contigo.\n\n1. Abre Tareas en Quiova.\n2. Dale a 'Unirme a Lista' (o usa el botón +).\n3. Introduce este código: ${generatedCode}\n\n¡A organizarse!`;
+        const subject = `Únete a la lista de tareas "${listName}" en Quioba`;
+        const body = `Hola, \n\nQuiero compartir la lista de tareas "${listName}" contigo.\n\n1. Abre Tareas en Quioba.\n2. Dale a 'Unirme a Lista' (o usa el botón +).\n3. Introduce este código: ${generatedCode}\n\n¡A organizarse!`;
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     };
 
