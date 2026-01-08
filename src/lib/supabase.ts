@@ -11,13 +11,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Custom storage adapter for Capacitor Preferences
 const capacitorStorage = {
     getItem: async (key: string) => {
+        // Prevent SSR crash
+        if (typeof window === 'undefined') return null;
         const { value } = await Preferences.get({ key })
         return value
     },
     setItem: async (key: string, value: string) => {
+        // Prevent SSR crash
+        if (typeof window === 'undefined') return;
         await Preferences.set({ key, value })
     },
     removeItem: async (key: string) => {
+        if (typeof window === 'undefined') return;
         await Preferences.remove({ key })
     },
 }

@@ -10,6 +10,11 @@ import ClientProvider from '@/components/layout/ClientProvider';
 export const metadata: Metadata = {
   title: 'Quioba',
   description: 'Tu espacio para la salud y el bienestar financiero.',
+  icons: {
+    icon: '/images/logo.png',
+    shortcut: '/images/logo.png',
+    apple: '/images/logo.png',
+  },
 };
 
 export const viewport: Viewport = {
