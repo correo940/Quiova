@@ -19,6 +19,7 @@
     "@capacitor/haptics": "^7.0.2",
     "@capacitor/ios": "^7.4.4",
     "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/preferences": "^8.0.0",
     "@genkit-ai/googleai": "1.5.0",
     "@genkit-ai/next": "1.5.0",
     "@google/generative-ai": "^0.24.1",
