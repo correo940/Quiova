@@ -109,9 +109,22 @@ export default function DailySummaryPage() {
             const { data: expenses } = await supabase.from('expenses').select('*').is('folder_id', null).order('date', { ascending: false });
             const { data: settlements } = await supabase.from('settlements').select('*').is('folder_id', null);
 
+            // Fetch Partners to ensure correct split denominator (same as Expenses App)
+            const { data: partners } = await supabase
+                .from('expense_partners')
+                .select('user_id_1, user_id_2')
+                .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`);
+
             // Get all unique users involved
             const userIds = new Set<string>();
             userIds.add(user.id);
+
+            // Add explicit partners to the group
+            partners?.forEach((p: any) => {
+                if (p.user_id_1 && p.user_id_1 !== user.id) userIds.add(p.user_id_1);
+                if (p.user_id_2 && p.user_id_2 !== user.id) userIds.add(p.user_id_2);
+            });
+
             if (expenses) {
                 expenses.forEach((e: any) => {
                     if (e.user_id) userIds.add(e.user_id);

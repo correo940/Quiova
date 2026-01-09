@@ -187,8 +187,7 @@ function HomeContent() {
         </section>
       )}
 
-      {/* Post-it Quotes Section - Solo visible si hay usuario logueado */}
-      {user && <PostItQuotes />}
+      {/* Sections removed here as they are now inside dashboard */}
 
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Featured Articles */}

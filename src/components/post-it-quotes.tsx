@@ -116,7 +116,9 @@ const categoryLabels: Record<Category, string> = {
     finance: "Finanzas"
 };
 
-export default function PostItQuotes() {
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+export default function PostItQuotes({ compact = false }: { compact?: boolean }) {
     const [dailyQuotes, setDailyQuotes] = useState<Quote[]>([]);
 
     useEffect(() => {
@@ -149,6 +151,51 @@ export default function PostItQuotes() {
 
     if (dailyQuotes.length === 0) return null;
 
+    if (compact) {
+        return (
+            <Card className="h-full flex flex-col border-none shadow-md overflow-hidden dark:bg-slate-950">
+                <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30 shrink-0">
+                    <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">
+                        Nevera de la Sabiduría
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 p-4 relative bg-white dark:bg-slate-950 flex flex-col">
+                    {/* Textura de nevera sutil */}
+                    <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/brushed-alum.png')]"></div>
+
+                    <div className="flex flex-col gap-3 w-full relative z-10 items-center justify-between flex-1 min-h-0 overflow-hidden pb-1">
+                        {dailyQuotes.map((quote, index) => (
+                            <motion.div
+                                key={`${quote.category}-${index}`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1, rotate: index % 2 === 0 ? 1 : -1 }}
+                                className={`relative p-3 ${quote.color} shadow-sm w-full max-w-[240px] flex-1 min-h-0 flex flex-col justify-between font-handwriting transform transition-transform hover:scale-105 duration-200 border border-black/5`}
+                            >
+                                {/* Imán de nevera pequeño */}
+                                <div className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full bg-gradient-to-br from-gray-700 to-black shadow-sm border border-gray-600 z-20"></div>
+
+                                {/* Etiqueta pequeña */}
+                                <div className="absolute -top-1 -right-1 bg-white/80 px-1 py-0.5 text-[9px] font-bold text-slate-600 rotate-6 shadow-sm">
+                                    {categoryLabels[quote.category]}
+                                </div>
+
+                                <div className="flex-grow flex items-center justify-center mt-1 overflow-hidden">
+                                    <p className="text-xs text-slate-800 font-medium leading-tight font-sans text-center line-clamp-4 text-[11px]">
+                                        "{quote.text}"
+                                    </p>
+                                </div>
+                                <p className="text-right text-slate-700 text-[9px] font-bold italic font-sans mt-0.5 shrink-0">
+                                    — {quote.author}
+                                </p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Default Layout (Full Page Section)
     return (
         <section className="py-16 bg-slate-200 relative overflow-hidden">
             {/* Textura de nevera */}

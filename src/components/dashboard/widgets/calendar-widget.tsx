@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { Briefcase, BookOpen, CheckSquare } from 'lucide-react';
 
 import { useJournal } from '@/context/JournalContext';
 
@@ -68,29 +69,50 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
     };
 
     return (
-        <Card className="h-full">
-            <CardHeader>
-                <CardTitle>Calendario</CardTitle>
+        <Card className="h-full flex flex-col overflow-hidden border-none shadow-md">
+            <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
+                <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">Calendario</CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-center">
-                <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateSelect}
-                    locale={es}
-                    className="rounded-md border"
-                    modifiers={{
-                        hasTask: taskDates,
-                        hasJournal: journalDates,
-                        hasShift: shiftDates
-                    }}
-                    modifiersStyles={{
-                        hasTask: { fontWeight: 'bold', textDecoration: 'underline', color: 'var(--primary)' },
-                        hasJournal: { border: '2px solid var(--primary)', borderRadius: '50%' },
-                        hasShift: { backgroundColor: '#dcfce7', color: '#166534', fontWeight: 'bold' } // green-100 bg, green-800 text
-                    }}
-                />
+            <CardContent className="flex justify-center p-0 pt-2 flex-1 min-h-0 items-center bg-white dark:bg-slate-950">
+                <div className="scale-90 origin-top transform-gpu">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={handleDateSelect}
+                        locale={es}
+                        className="rounded-lg"
+                        classNames={{
+                            head_cell: "text-emerald-600 dark:text-emerald-500 rounded-md w-9 font-bold text-[0.8rem]",
+                            day_selected: "bg-emerald-600 text-white hover:bg-emerald-700 focus:bg-emerald-700 shadow-lg transform scale-110 transition-transform z-10 font-bold rounded-lg",
+                            day_today: "bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-500/50 rounded-lg",
+                        }}
+                        modifiers={{
+                            hasTask: taskDates,
+                            hasJournal: journalDates,
+                            hasShift: shiftDates
+                        }}
+                        modifiersStyles={{
+                            hasTask: { textDecoration: 'underline', textDecorationColor: '#9333ea', textDecorationThickness: '3px', fontWeight: 'bold' },
+                            hasJournal: { color: '#ea580c', fontWeight: '600', fontStyle: 'italic' },
+                            hasShift: { backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '6px', fontWeight: 'bold' }
+                        }}
+                    />
+                </div>
             </CardContent>
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-slate-100 dark:border-slate-800 flex justify-around text-[10px] text-muted-foreground shrink-0">
+                <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-sm bg-purple-500"></div>
+                    <span>Tarea</span>
+                </div>
+                <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-emerald-200 border border-emerald-600"></div>
+                    <span>Turno</span>
+                </div>
+                <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                    <span>Diario</span>
+                </div>
+            </div>
         </Card>
     );
 }

@@ -181,36 +181,39 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
     };
 
     return (
-        <Card className="h-full flex flex-col">
-            <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between">
+        <Card className="h-full flex flex-col border-none shadow-md overflow-hidden dark:bg-slate-950">
+            <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
+                <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg flex items-center justify-between">
                     <span>
                         {selectedDate
-                            ? `Organizador: ${format(selectedDate, "d 'de' MMMM", { locale: es })}`
-                            : "Organizador Personal"
+                            ? `Organizador: ${format(selectedDate, "d MMMM", { locale: es })}`
+                            : "Organizador"
                         }
                     </span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 min-h-0">
+            <CardContent className="flex-1 min-h-0 p-0 sm:p-4 sm:pt-4 bg-white dark:bg-slate-950">
                 <Tabs defaultValue="tasks" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
-                        <TabsTrigger value="tasks" className="flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Tareas ({tasks.length})
+                    <TabsList className="grid w-full grid-cols-3 mb-3 h-auto bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                        <TabsTrigger value="tasks" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Tareas</span>
+                            <span className="sm:hidden">({tasks.length})</span>
                         </TabsTrigger>
-                        <TabsTrigger value="shifts" className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            Turnos ({shifts.length})
+                        <TabsTrigger value="shifts" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Turnos</span>
+                            <span className="sm:hidden">({shifts.length})</span>
                         </TabsTrigger>
-                        <TabsTrigger value="journal" className="flex items-center gap-2">
-                            <Book className="w-4 h-4" />
-                            Apuntes ({journalEntries.length})
+                        <TabsTrigger value="journal" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                            <Book className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Apuntes</span>
+                            <span className="sm:hidden">({journalEntries.length})</span>
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="shifts" className="flex-1 min-h-0">
-                        <ScrollArea className="h-[300px] pr-4">
+                    <TabsContent value="shifts" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
+                        <ScrollArea className="flex-1 pr-4">
                             {loading ? (
                                 <p className="text-center text-muted-foreground py-4">Cargando...</p>
                             ) : shifts.length === 0 ? (
@@ -245,8 +248,8 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="flex-1 min-h-0">
-                        <ScrollArea className="h-[300px] pr-4">
+                    <TabsContent value="tasks" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
+                        <ScrollArea className="flex-1 pr-4">
                             {loading ? (
                                 <p className="text-center text-muted-foreground py-4">Cargando...</p>
                             ) : tasks.length === 0 ? (
@@ -276,14 +279,12 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                                 </div>
                             )}
                         </ScrollArea>
-                        <div className="mt-4 text-center">
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href="/apps/mi-hogar/tasks">Gestionar Tareas</Link>
-                            </Button>
+                        <div className="mt-2 text-center pt-2 border-t text-xs">
+                            <Link href="/apps/mi-hogar/tasks" className="text-muted-foreground hover:text-primary hover:underline">Gestionar Tareas</Link>
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="journal" className="flex-1 min-h-0">
+                    <TabsContent value="journal" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
                         <div className="mb-2 px-1">
                             <Select value={selectedTag} onValueChange={setSelectedTag}>
                                 <SelectTrigger className="h-8 text-xs w-full">
@@ -300,7 +301,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                                 </SelectContent>
                             </Select>
                         </div>
-                        <ScrollArea className="h-[260px] pr-4">
+                        <ScrollArea className="flex-1 pr-4">
                             {loading ? (
                                 <p className="text-center text-muted-foreground py-4">Cargando...</p>
                             ) : journalEntries.length === 0 ? (
