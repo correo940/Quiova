@@ -12,7 +12,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { supabase } from '@/lib/supabase';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, Palette, Loader2, Settings, Heading1, Heading2, Heading3, ExternalLink, Quote, Plus, Tag, Image as ImageIcon, Mic, Globe, ArrowLeft, ArrowRight, RotateCw, Search, Clipboard, Link as LinkIcon, MoveUpRight } from 'lucide-react';
+import { X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, Palette, Loader2, Settings, Heading1, Heading2, Heading3, ExternalLink, Quote, Plus, Tag, Image as ImageIcon, Mic, Globe, ArrowLeft, ArrowRight, RotateCw, Search, Clipboard, Link as LinkIcon, MoveUpRight, Pin, HelpCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface JournalPanelProps {
     isOpen: boolean;
@@ -34,7 +40,7 @@ interface JournalPanelProps {
 export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { selectedDate, width, setWidth } = useJournal();
+    const { selectedDate, width, setWidth, isBrowserPinned, setBrowserPinned, browserWindow, setBrowserWindow, setBrowserOpen } = useJournal();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -96,41 +102,57 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     };
 
     // Browser State
-    // Removed embedded browser state in favor of popup window
-    const openBrowserPopup = () => {
-        // If already open and not closed, just focus it
-        if (popupRef.current && !popupRef.current.closed) {
-            popupRef.current.focus();
-            return;
-        }
+    const windowRef = React.useRef(browserWindow);
 
-        // Calculate the remaining width for the browser
-        // If panel is 33%, browser gets ~67% (minus a bit for margins/borders)
+    useEffect(() => {
+        windowRef.current = browserWindow;
+    }, [browserWindow]);
+
+    const openBrowserPopup = () => {
         const screenWidth = window.screen.availWidth;
         const screenHeight = window.screen.availHeight;
+        const screenLeft = (window.screen as any).availLeft || 0;
+        const screenTop = (window.screen as any).availTop || 0;
 
-        // Calculate width in pixels based on the panel's percentage width
-        // We leave the panel width for the main app, so the popup takes the REST
-        // Add a safety gap of 50px to prevent overlap and "feeling too big"
-        const panelWidthPx = (screenWidth * width) / 100;
-        const browserWidth = screenWidth - panelWidthPx - 50;
+        // Calculate remaining width (100% - Journal Width%)
+        const journalWidthPercent = width || 33;
+        const availableWidth = Math.floor(screenWidth * ((100 - journalWidthPercent) / 100));
 
-        const left = 0; // Align to left
-        const top = 0;
+        const browserWidth = availableWidth - 12;
+        const height = screenHeight - 60;
 
         const newWindow = window.open(
-            'https://www.google.com',
+            'https://www.google.com/search?igu=1',
             'QuiobaBrowser',
-            `width=${browserWidth},height=${screenHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+            `width=${browserWidth},height=${height},left=${screenLeft},top=${screenTop},resizable=yes,scrollbars=yes,status=yes`
         );
 
         if (newWindow) {
-            popupRef.current = newWindow;
-            toast.info('Navegador abierto. No se cerrará automáticamente.');
+            setBrowserWindow(newWindow);
+            newWindow.focus();
         } else {
-            toast.error('No se pudo abrir la ventana. Revisa el bloqueador de popups.');
+            toast.error('Revisa el bloqueador de ventanas emergentes.');
         }
     };
+
+    // Keep track of pinned state in a ref for the cleanup function
+    const isPinnedRef = React.useRef(isBrowserPinned);
+
+    // Update ref when state changes
+    useEffect(() => {
+        isPinnedRef.current = isBrowserPinned;
+    }, [isBrowserPinned]);
+
+    // Auto-close on unmount if NOT pinned
+    useEffect(() => {
+        return () => {
+            if (!isPinnedRef.current && windowRef.current && !windowRef.current.closed) {
+                windowRef.current.close();
+                setBrowserWindow(null);
+            }
+        };
+    }, []);
+
 
     const editor = useEditor({
         extensions: [
@@ -553,88 +575,138 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         </Button>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant={pipWindow ? "secondary" : "ghost"}
-                        size="icon"
-                        onClick={togglePiP}
-                        title={pipWindow ? "Volver a acoplar" : "Desacoplar (Notas Flotantes)"}
-                    >
-                        <MoveUpRight className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={openBrowserPopup}
-                        title="Abrir Navegador Flotante (Sin restricciones)"
-                    >
-                        <Globe className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleSmartPaste}
-                        title="Pegar desde Portapapeles (Enlaces/Texto)"
-                    >
-                        <Clipboard className="w-4 h-4" />
-                    </Button>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <Settings className="w-4 h-4" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 z-[70]" align="end">
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Apariencia</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Personaliza tu diario.
-                                    </p>
-                                </div>
-                                <div className="grid gap-2">
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <span className="text-sm">Opacidad</span>
-                                        <Slider
-                                            defaultValue={[opacity]}
-                                            max={1}
-                                            min={0.2}
-                                            step={0.1}
-                                            className="col-span-2"
-                                            onValueChange={(value) => setOpacity(value[0])}
-                                        />
+                <div className="flex items-center gap-1 flex-wrap justify-end max-w-[50%]">
+                    <TooltipProvider>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-muted-foreground mr-1 h-8 w-8 shrink-0">
+                                    <HelpCircle className="w-4 h-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-4 text-sm z-[70]" align="end">
+                                <h4 className="font-semibold mb-3">Ayuda de Navegación</h4>
+                                <ul className="space-y-3">
+                                    <li className="flex items-start gap-2">
+                                        <div className="mt-0.5 p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                                            <Globe className="w-3 h-3" />
+                                        </div>
+                                        <div>
+                                            <span className="font-medium block text-xs">Navegador Normal</span>
+                                            <span className="text-muted-foreground block text-[10px] leading-tight mt-0.5">
+                                                Abre una ventana externa. Se ocultará si tocas el diario.
+                                            </span>
+                                        </div>
+                                    </li>
+
+                                    <li className="flex items-start gap-2">
+                                        <div className="mt-0.5 p-1 bg-slate-100 dark:bg-slate-800 rounded">
+                                            <MoveUpRight className="w-3 h-3" />
+                                        </div>
+                                        <div>
+                                            <span className="font-medium block text-xs">Notas Flotantes</span>
+                                            <span className="text-muted-foreground block text-[10px] leading-tight mt-0.5">
+                                                Saca el diario fuera de la app (PiP).
+                                            </span>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant={pipWindow ? "secondary" : "ghost"}
+                                    size="icon"
+                                    onClick={togglePiP}
+                                    className="h-8 w-8 shrink-0"
+                                >
+                                    <MoveUpRight className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom"><p>Notas Flotantes</p></TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openBrowserPopup()}
+                                    className="h-8 w-8 shrink-0"
+                                >
+                                    <Globe className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom"><p>Abrir Navegador</p></TooltipContent>
+                        </Tooltip>
+
+
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleSmartPaste}
+                                    className="h-8 w-8 shrink-0"
+                                >
+                                    <Clipboard className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom"><p>Pegar inteligente</p></TooltipContent>
+                        </Tooltip>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                    <Settings className="w-4 h-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 z-[70]" align="end">
+                                <div className="grid gap-4">
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Apariencia</h4>
+                                        <p className="text-sm text-muted-foreground">Opciones de visualización.</p>
                                     </div>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <span className="text-sm">Ancho</span>
-                                        <Slider
-                                            defaultValue={[width]}
-                                            max={100}
-                                            min={20}
-                                            step={5}
-                                            className="col-span-2"
-                                            onValueChange={(value) => setWidth(value[0])}
-                                        />
+                                    <div className="grid gap-2">
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <span className="text-sm">Opacidad</span>
+                                            <Slider defaultValue={[opacity]} max={1} min={0.2} step={0.1} className="col-span-2" onValueChange={(value) => setOpacity(value[0])} />
+                                        </div>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <span className="text-sm">Ancho</span>
+                                            <Slider defaultValue={[width]} max={100} min={20} step={5} className="col-span-2" onValueChange={(value) => setWidth(value[0])} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                    <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                            if (pipWindow) {
-                                pipWindow.close();
-                                setPipWindow(null);
-                            }
-                            onClose();
-                        }}
-                    >
-                        <X className="w-5 h-5" />
-                    </Button>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving} className="h-8 w-8 shrink-0">
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom"><p>Guardar</p></TooltipContent>
+                        </Tooltip>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                if (pipWindow) {
+                                    pipWindow.close();
+                                    setPipWindow(null);
+                                }
+                                onClose();
+                            }}
+                            className="h-8 w-8 shrink-0"
+                        >
+                            <X className="w-5 h-5" />
+                        </Button>
+                    </TooltipProvider>
                 </div>
             </div>
 

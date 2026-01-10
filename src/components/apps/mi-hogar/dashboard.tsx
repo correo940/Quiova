@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import {
     Lock,
     ShoppingCart,
-    BookOpen,
     CheckSquare,
     Shield,
     Home,
@@ -14,7 +13,8 @@ import {
     PiggyBank,
     Calendar,
     Sword,
-    Wallet
+    Wallet,
+    BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,8 +39,8 @@ const modules = [
         bg: 'bg-green-500/10',
     },
     {
-        title: 'Manuales',
-        description: 'Guías y tutoriales de la casa',
+        title: 'Manual y Mantenimiento',
+        description: 'Guías, garantías y checklists',
         icon: BookOpen,
         href: '/apps/mi-hogar/manuals',
         color: 'text-amber-500',

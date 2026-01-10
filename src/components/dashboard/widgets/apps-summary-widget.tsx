@@ -150,7 +150,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
         { label: 'Gastos', value: `${Number(stats.expenseFolderCount).toFixed(0)}€`, count: stats.expenseFolderCount, icon: Receipt, color: 'bg-pink-500', href: '/apps/mi-hogar/expenses', detail: 'Total' },
         { label: 'Garantías', value: `${stats.warrantyCount}`, count: stats.warrantyCount, icon: ShieldCheck, color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties', detail: 'Activas' },
         { label: 'Recetas', value: `${stats.recipeCount}`, count: stats.recipeCount, icon: Utensils, color: 'bg-lime-500', href: '/apps/mi-hogar/recipes', detail: 'Guardadas' },
-        { label: 'Manuales', value: `${stats.manualCount}`, count: stats.manualCount, icon: Book, color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals', detail: 'Instrucc.' },
+        { label: 'Manual y Mantenimiento', value: `${stats.manualCount}`, count: stats.manualCount, icon: Book, color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals', detail: 'Instrucc.' },
         { label: 'Claves', value: `${stats.passwordCount}`, count: stats.passwordCount, icon: Key, color: 'bg-zinc-600', href: '/apps/mi-hogar/passwords', detail: 'Seguras' },
         { label: 'Seguros', value: `${stats.insuranceCount}`, count: stats.insuranceCount, icon: Shield, color: 'bg-teal-600', href: '/apps/mi-hogar/insurance', detail: 'Pólizas' },
         { label: 'Turnos', value: 'Ver', count: 0, icon: CalendarDays, color: 'bg-green-600', href: '/apps/mi-hogar/roster', detail: 'Cuadrante' },

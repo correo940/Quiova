@@ -12,6 +12,14 @@ interface JournalContextType {
     clearPendingQuote: () => void;
     width: number;
     setWidth: (width: number) => void;
+    isBrowserOpen: boolean;
+    setBrowserOpen: (isOpen: boolean) => void;
+    isBrowserPinned: boolean;
+    setBrowserPinned: (isPinned: boolean) => void;
+    browserUrl: string;
+    setBrowserUrl: (url: string) => void;
+    browserWindow: Window | null;
+    setBrowserWindow: (window: Window | null) => void;
 }
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
@@ -21,6 +29,10 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [pendingQuote, setPendingQuote] = useState<string | null>(null);
     const [width, setWidth] = useState(33);
+    const [isBrowserOpen, setBrowserOpen] = useState(false);
+    const [isBrowserPinned, setBrowserPinned] = useState(false);
+    const [browserUrl, setBrowserUrl] = useState('https://www.bing.com');
+    const [browserWindow, setBrowserWindow] = useState<Window | null>(null);
 
     const addQuote = (text: string) => {
         setPendingQuote(text);
@@ -41,7 +53,15 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
             addQuote,
             clearPendingQuote,
             width,
-            setWidth
+            setWidth,
+            isBrowserOpen,
+            setBrowserOpen,
+            isBrowserPinned,
+            setBrowserPinned,
+            browserUrl,
+            setBrowserUrl,
+            browserWindow,
+            setBrowserWindow
         }}>
             {children}
         </JournalContext.Provider>

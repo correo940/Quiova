@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -11,11 +11,12 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import JournalPanel from '@/components/journal/journal-panel';
 import { useJournal } from '@/context/JournalContext';
+import BrowserWidget from '@/components/journal/browser-widget';
 
 export default function FloatingDashboard() {
     const [isOpen, setIsOpen] = useState(false);
     const [activeView, setActiveView] = useState<'menu' | 'apps'>('menu');
-    const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen } = useJournal();
+    const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen, width } = useJournal();
     const [user, setUser] = useState<any>(null);
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
@@ -120,6 +121,7 @@ export default function FloatingDashboard() {
     return (
         <>
             <JournalPanel isOpen={isJournalOpen} onClose={() => setIsJournalOpen(false)} />
+            <BrowserWidget />
 
             {/* Constraints area - invisible but covers screen */}
             <div ref={constraintsRef} className="fixed inset-4 pointer-events-none z-40" />
@@ -326,9 +328,9 @@ export default function FloatingDashboard() {
 
                                         <Link href="/apps/mi-hogar/manuals" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
                                             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
-                                                <FileText className="w-4 h-4" />
+                                                <BookOpen className="w-4 h-4" />
                                             </div>
-                                            <span className="text-sm font-medium">Manuales</span>
+                                            <span className="text-sm font-medium">Manual y Mantenimiento</span>
                                         </Link>
                                     </div>
                                 )}
@@ -360,8 +362,12 @@ export default function FloatingDashboard() {
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
                     onClick={() => setIsOpen(!isOpen)}
-                    className="absolute z-50 pointer-events-auto cursor-grab active:cursor-grabbing text-foreground"
-                    style={{ bottom: 24, right: 24 }} // Initial position via CSS
+                    className="fixed z-[100] pointer-events-auto cursor-grab active:cursor-grabbing text-foreground"
+                    style={{ bottom: 24 }}
+                    animate={{
+                        right: isJournalOpen ? `calc(24px + ${width}%)` : '24px'
+                    }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 >
                     <motion.div
                         animate={{

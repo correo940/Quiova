@@ -15,8 +15,7 @@ export default function MiHogarManualsPage() {
                         Volver a Mi Hogar
                     </Button>
                 </Link>
-                <h1 className="text-3xl font-bold mt-4">Manuales de la Casa</h1>
-                <p className="text-muted-foreground">Centraliza instrucciones, garantías y guías de mantenimiento.</p>
+
             </div>
             <ManualsGallery />
         </div>
