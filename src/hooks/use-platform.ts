@@ -26,14 +26,6 @@ export function usePlatform(): PlatformInfo {
     });
 
     useEffect(() => {
-        // Debug completo
-        console.log('🔍 PLATFORM DETECTION DEBUG:');
-        console.log('- window.Capacitor exists:', typeof (window as any).Capacitor !== 'undefined');
-        console.log('- Capacitor object:', (window as any).Capacitor);
-        console.log('- Capacitor.getPlatform():', Capacitor.getPlatform());
-        console.log('- Capacitor.isNativePlatform():', Capacitor.isNativePlatform());
-        console.log('- navigator.userAgent:', navigator.userAgent);
-
         const currentPlatform = Capacitor.getPlatform();
         const isNative = Capacitor.isNativePlatform();
 
@@ -42,16 +34,13 @@ export function usePlatform(): PlatformInfo {
         const hasNativeContext = typeof (window as any).Capacitor !== 'undefined' &&
             (currentPlatform === 'ios' || currentPlatform === 'android');
 
-        const finalInfo = {
+        setPlatformInfo({
             isWeb: !hasNativeContext,
             isIOS: currentPlatform === 'ios' && hasNativeContext,
             isAndroid: currentPlatform === 'android' && hasNativeContext,
             isMobile: hasNativeContext || isNative,
             platform: currentPlatform as 'web' | 'ios' | 'android',
-        };
-
-        console.log('📊 Final Platform Info:', finalInfo);
-        setPlatformInfo(finalInfo);
+        });
     }, []);
 
     return platformInfo;
