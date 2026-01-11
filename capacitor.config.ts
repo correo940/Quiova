@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Quioba',
   webDir: 'out',
   server: {
-    // ⚠️ IMPORTANTE: Cambia esto por tu URL real (ej: https://www.quioba.com)
-    // Esta es SOLO para desarrollo. En producción, comenta esta línea.
+    // Carga desde el servidor de producción
+    // Para desarrollo local, cambia a: http://TU_IP_LOCAL:3000
     url: 'https://www.quioba.com',
     cleartext: true
   }

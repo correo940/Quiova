@@ -9,8 +9,31 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePlatform } from '@/hooks/use-platform';
+import MobileDashboard from './mobile-dashboard';
 
 export default function HomeDashboard() {
+    const platformInfo = usePlatform();
+    const { isMobile, platform } = platformInfo;
+
+    // Debug: Log platform detection
+    console.log('🔍 Platform Detection:', {
+        platform,
+        isMobile,
+        isIOS: platformInfo.isIOS,
+        isAndroid: platformInfo.isAndroid,
+        isWeb: platformInfo.isWeb,
+        fullInfo: platformInfo
+    });
+
+    // Si es móvil (iOS o Android), mostrar el dashboard móvil
+    if (isMobile) {
+        console.log('📱 Rendering MOBILE Dashboard');
+        return <MobileDashboard />;
+    }
+
+    console.log('💻 Rendering WEB Dashboard');
+    // Si es web, mostrar el dashboard original de 3 columnas
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
     return (
