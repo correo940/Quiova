@@ -112,11 +112,16 @@ export default function SystemPostIts() {
 
     const shouldShow = () => {
         if (!isVisible) return false;
+
+        // Always show Admin Post-its on public pages and dashboard
+        if (pathname === '/' || pathname === '/about' || pathname === '/contact' || pathname?.startsWith('/category/') || pathname?.startsWith('/apps/mi-hogar')) {
+            return true;
+        }
+
         if (visibilityMode === 'all') return true;
         if (!pathname) return false;
 
         return allowedPaths.some(path => {
-            if (path === '/apps/mi-hogar') return pathname === '/apps/mi-hogar';
             return pathname.startsWith(path);
         });
     };
