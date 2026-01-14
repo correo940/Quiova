@@ -199,6 +199,6 @@ export default function AdminPostItManager() {
                     </table>
                 </div>
             </div>
-        </Card >
+        </Card>
     );
 }

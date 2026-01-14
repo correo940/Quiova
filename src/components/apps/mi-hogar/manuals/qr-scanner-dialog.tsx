@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { QrCode, Camera, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { QrScanner } from '@yudiel/react-qr-scanner';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
 interface QRScannerDialogProps {
     open: boolean;
@@ -65,11 +65,10 @@ export function QRScannerDialog({ open, onOpenChange, onScan }: QRScannerDialogP
                         </div>
                     ) : (
                         <div className="relative aspect-square bg-black rounded-lg overflow-hidden">
-                            <QrScanner
-                                onDecode={handleScan}
+                            <Scanner
+                                onScan={handleScan}
                                 onError={handleError}
-                                containerStyle={{ width: '100%', height: '100%' }}
-                                videoStyle={{ objectFit: 'cover' }}
+                                styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }}
                             />
                             <div className="absolute inset-0 pointer-events-none">
                                 {/* Scanning frame overlay */}
