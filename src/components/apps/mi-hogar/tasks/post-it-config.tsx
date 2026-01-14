@@ -22,7 +22,8 @@ export default function PostItConfig() {
         snoozeDuration, setSnoozeDuration,
         position, setPosition,
         opacity, setOpacity,
-        layout, setLayout
+        layout, setLayout,
+        daysToHideAfterExpiration, setDaysToHideAfterExpiration
     } = usePostItSettings();
 
     const [isOpen, setIsOpen] = React.useState(false);
@@ -36,6 +37,7 @@ export default function PostItConfig() {
     const [localPosition, setLocalPosition] = React.useState(position);
     const [localLayout, setLocalLayout] = React.useState(layout);
     const [localColors, setLocalColors] = React.useState(colors);
+    const [localDaysToHide, setLocalDaysToHide] = React.useState(daysToHideAfterExpiration);
 
     // Sync from context when context changes (e.g. initial load)
     // Only update if the values are actually different to avoid overwriting ongoing edits (though unlikely given context flow)
@@ -48,7 +50,8 @@ export default function PostItConfig() {
         setLocalPosition(position);
         setLocalLayout(layout);
         setLocalColors(colors);
-    }, [isVisible, visibilityMode, allowedPaths, opacity, snoozeDuration, position, layout, colors]);
+        setLocalDaysToHide(daysToHideAfterExpiration);
+    }, [isVisible, visibilityMode, allowedPaths, opacity, snoozeDuration, position, layout, colors, daysToHideAfterExpiration]);
 
     const handleSave = () => {
         setIsVisible(localIsVisible);
@@ -59,6 +62,7 @@ export default function PostItConfig() {
         setPosition(localPosition);
         setLayout(localLayout);
         setColors(localColors);
+        setDaysToHideAfterExpiration(localDaysToHide);
 
         toast.success("Configuración guardada correctamente");
         setIsOpen(false);
@@ -240,6 +244,30 @@ export default function PostItConfig() {
                                     <SelectItem value="horizontal">Horizontal (Fila)</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* Expiration Configuration */}
+                        <div className="space-y-2">
+                            <Label>Ocultar caducadas tras</Label>
+                            <Select
+                                value={localDaysToHide.toString()}
+                                onValueChange={(v) => setLocalDaysToHide(parseInt(v))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona días" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="0">Inmediatamente (0 días)</SelectItem>
+                                    <SelectItem value="1">1 día</SelectItem>
+                                    <SelectItem value="3">3 días</SelectItem>
+                                    <SelectItem value="7">1 semana</SelectItem>
+                                    <SelectItem value="30">1 mes</SelectItem>
+                                    <SelectItem value="-1">Nunca (Siempre visibles)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Las tareas caducadas desaparecerán de los post-its después de este tiempo.
+                            </p>
                         </div>
 
                         {/* Colors */}

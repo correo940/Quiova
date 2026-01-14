@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
+import AdminPostItManager from "@/components/admin/post-it-manager";
 
 // ... imports
 
@@ -72,6 +73,12 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {/* Post-it Manager */}
+        <div className="bg-card rounded-lg shadow-sm">
+          <AdminPostItManager />
+        </div>
+
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -206,21 +206,34 @@ export default function FloatingDashboard() {
                                                     <div className="text-xs text-muted-foreground">Diario y notas rápidas</div>
                                                 </div>
                                             </button>
-                                            <div className="mt-0">
-                                                <Link
-                                                    href="/apps/debate"
-                                                    onClick={() => setIsOpen(false)}
-                                                    className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
-                                                >
-                                                    <div className="p-3 bg-green-500/10 rounded-full text-green-500 group-hover:scale-110 transition-transform">
-                                                        <MessageCircle className="w-6 h-6" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-semibold text-sm">El Debate</div>
-                                                        <div className="text-xs text-muted-foreground">Sala de discusión</div>
-                                                    </div>
-                                                </Link>
-                                            </div>
+
+                                            <Link
+                                                href="/apps/debate"
+                                                onClick={() => setIsOpen(false)}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-green-500/10 rounded-full text-green-500 group-hover:scale-110 transition-transform">
+                                                    <MessageCircle className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">El Debate</div>
+                                                    <div className="text-xs text-muted-foreground">Sala de discusión</div>
+                                                </div>
+                                            </Link>
+
+                                            <Link
+                                                href="/apps/mi-hogar/confessions"
+                                                onClick={() => setIsOpen(false)}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-violet-500/10 rounded-full text-violet-500 group-hover:scale-110 transition-transform">
+                                                    <span className="text-2xl leading-none">🤔</span>
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Compartir Pensamientos</div>
+                                                    <div className="text-xs text-muted-foreground">Di lo que no te atreves</div>
+                                                </div>
+                                            </Link>
                                         </div>
                                     </div>
                                 ) : (
@@ -334,7 +347,7 @@ export default function FloatingDashboard() {
                                         </Link>
                                     </div>
                                 )}
-                            </div>
+                            </div >
 
                             <div className="p-2 border-t border-white/10 bg-muted/30">
                                 <Button
@@ -347,12 +360,13 @@ export default function FloatingDashboard() {
                                     Cerrar Sesión
                                 </Button>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        </motion.div >
+                    )
+                    }
+                </AnimatePresence >
 
                 {/* Draggable Button */}
-                <motion.div
+                < motion.div
                     ref={buttonRef}
                     drag
                     dragConstraints={constraintsRef}
@@ -407,7 +421,7 @@ export default function FloatingDashboard() {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </motion.div>
+                </motion.div >
             </div >
         </>
     );

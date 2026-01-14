@@ -18,6 +18,7 @@ type PostItSettings = {
     layout: 'vertical' | 'horizontal';
     visibilityMode: 'all' | 'custom';
     allowedPaths: string[];
+    daysToHideAfterExpiration: number;
     setIsVisible: (visible: boolean) => void;
     setVisibilityMode: (mode: 'all' | 'custom') => void;
     setAllowedPaths: (paths: string[]) => void;
@@ -26,6 +27,7 @@ type PostItSettings = {
     setPosition: (position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'top-center' | 'bottom-center') => void;
     setOpacity: (opacity: number) => void;
     setLayout: (layout: 'vertical' | 'horizontal') => void;
+    setDaysToHideAfterExpiration: (days: number) => void;
 };
 
 const defaultColors: PostItColors = {
@@ -47,6 +49,8 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
     const [opacity, setOpacity] = useState(0.8);
     const [layout, setLayout] = useState<'vertical' | 'horizontal'>('vertical');
 
+    const [daysToHideAfterExpiration, setDaysToHideAfterExpiration] = useState(0);
+
     // Load from localStorage on mount
     useEffect(() => {
         const savedSettings = localStorage.getItem('postItSettings');
@@ -61,6 +65,7 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
                 if (parsed.position) setPosition(parsed.position);
                 if (parsed.opacity !== undefined) setOpacity(parsed.opacity);
                 if (parsed.layout) setLayout(parsed.layout);
+                if (parsed.daysToHideAfterExpiration !== undefined) setDaysToHideAfterExpiration(parsed.daysToHideAfterExpiration);
             } catch (e) {
                 console.error('Failed to parse post-it settings', e);
             }
@@ -69,9 +74,9 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
 
     // Save to localStorage on change
     useEffect(() => {
-        const settings = { isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout };
+        const settings = { isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration };
         localStorage.setItem('postItSettings', JSON.stringify(settings));
-    }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout]);
+    }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration]);
 
     return (
         <PostItSettingsContext.Provider value={{
@@ -90,7 +95,9 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
             setSnoozeDuration,
             setPosition,
             setOpacity,
-            setLayout
+            setLayout,
+            daysToHideAfterExpiration,
+            setDaysToHideAfterExpiration
         }}>
             {children}
         </PostItSettingsContext.Provider>

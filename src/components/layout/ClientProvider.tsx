@@ -4,6 +4,7 @@ import TasksProviderWrapper from '@/context/TasksProviderWrapper';
 import React from 'react';
 import FloatingDashboard from '@/components/dashboard/floating-dashboard';
 import TaskPostIts from '@/components/dashboard/task-post-its';
+import SystemPostIts from '@/components/dashboard/system-post-its';
 import { PostItSettingsProvider } from '@/context/PostItSettingsContext';
 import { JournalProvider } from '@/context/JournalContext';
 import MedicineAlarmManager from '@/components/apps/mi-hogar/pharmacy/medicine-alarm-manager';
@@ -32,6 +33,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
           </LayoutResizer>
           <FloatingDashboard />
           <TaskPostIts />
+          <SystemPostIts />
         </JournalProvider>
       </PostItSettingsProvider>
     </TasksProviderWrapper>

@@ -23,7 +23,11 @@ export default function TaskPostIts() {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
     const pathname = usePathname();
-    const { isVisible, colors, snoozeDuration, position, opacity, layout, visibilityMode, allowedPaths } = usePostItSettings();
+    const { isVisible, colors, snoozeDuration, position, opacity, layout, visibilityMode, allowedPaths, daysToHideAfterExpiration } = usePostItSettings();
+
+    // ... (existing code) ...
+
+
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -104,8 +108,22 @@ export default function TaskPostIts() {
 
     if (!user || tasks.length === 0 || !shouldShow()) return null;
 
-    // Filter out hidden tasks
-    const visibleTasks = tasks.filter(task => !hiddenTaskIds.has(task.id));
+    // Filter out hidden tasks and expired tasks based on setting
+    const visibleTasks = tasks.filter(task => {
+        if (hiddenTaskIds.has(task.id)) return false;
+
+        // Check expiration visibility
+        const now = new Date();
+        const dueDate = new Date(task.dueDate);
+
+        // Only check if it's actually overdue
+        if (dueDate < now && daysToHideAfterExpiration !== -1) {
+            const daysOverdue = differenceInCalendarDays(now, dueDate);
+            if (daysOverdue > daysToHideAfterExpiration) return false;
+        }
+
+        return true;
+    });
 
     if (visibleTasks.length === 0) return null;
 
