@@ -37,19 +37,25 @@ export default function SystemPostIts() {
     useEffect(() => {
         // Init Session
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
             if (session?.user) {
+                setUser(session.user);
                 checkPremiumAndFetch(session.user.id);
+            } else {
+                setUser(null);
+                setIsPremium(false);
+                fetchPostIts();
             }
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
             if (session?.user) {
+                setUser(session.user);
                 checkPremiumAndFetch(session.user.id);
             } else {
-                setPostIts([]);
+                setUser(null);
                 setIsPremium(false);
+                setDismissedIds(new Set()); // Reset dismissed items
+                fetchPostIts(); // Fetch public post-its
             }
         });
 
@@ -126,7 +132,7 @@ export default function SystemPostIts() {
         });
     };
 
-    if (!user || !shouldShow()) return null;
+    if (!shouldShow()) return null;
 
     const visiblePostIts = postIts.filter(p => {
         // Filter dismissed
