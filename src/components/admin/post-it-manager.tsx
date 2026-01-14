@@ -20,6 +20,8 @@ export default function AdminPostItManager() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [history, setHistory] = useState<any[]>([]);
 
+    const [editingId, setEditingId] = useState<string | null>(null);
+
     useEffect(() => {
         fetchHistory();
     }, []);
@@ -27,6 +29,48 @@ export default function AdminPostItManager() {
     const fetchHistory = async () => {
         const res = await fetch('/api/admin/post-its');
         if (res.ok) setHistory(await res.json());
+    };
+
+    const handleEdit = (postIt: any) => {
+        setTitle(postIt.title);
+        setContent(postIt.content);
+        setAudience(postIt.target_audience);
+        setEditingId(postIt.id);
+
+        // Calculate days remaining or set default
+        if (postIt.expires_at) {
+            const diff = Math.ceil((new Date(postIt.expires_at).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+            setDaysToExpire(diff > 0 ? diff.toString() : '7');
+        }
+
+        if (postIt.event_date) {
+            // Format for datetime-local: YYYY-MM-DDTHH:mm
+            const date = new Date(postIt.event_date);
+            const formatted = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            setEventDate(formatted);
+        } else {
+            setEventDate('');
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRepeat = (postIt: any) => {
+        setTitle(postIt.title);
+        setContent(postIt.content);
+        setAudience(postIt.target_audience);
+        setEditingId(null); // New post-it
+        setEventDate(''); // Clear event date for safety or keep it? user can set.
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.info('Datos cargados. Ajusta las fechas y publica.');
+    };
+
+    const handleCancelEdit = () => {
+        setTitle('');
+        setContent('');
+        setAudience('all');
+        setEventDate('');
+        setEditingId(null);
     };
 
     const handleDelete = async (id: string) => {
@@ -52,12 +96,16 @@ export default function AdminPostItManager() {
             if (audience === 'premium') bgColor = 'bg-amber-200 dark:bg-amber-600';
             if (audience === 'free') bgColor = 'bg-gray-200 dark:bg-gray-600';
 
-            const response = await fetch('/api/admin/post-its', {
-                method: 'POST',
+            const url = editingId ? '/api/admin/post-its' : '/api/admin/post-its';
+            const method = editingId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    id: editingId, // Only used for PUT
                     title,
                     content,
                     target_audience: audience,
@@ -72,10 +120,12 @@ export default function AdminPostItManager() {
                 throw new Error(errData.error || 'Failed to create post-it');
             }
 
-            toast.success('Post-it publicado correctamente');
+            toast.success(editingId ? 'Post-it actualizado' : 'Post-it publicado correctamente');
             setTitle('');
             setContent('');
             setAudience('all');
+            setEventDate('');
+            setEditingId(null);
             fetchHistory();
         } catch (error) {
             console.error(error);
@@ -154,10 +204,17 @@ export default function AdminPostItManager() {
                         />
                     </div>
 
-                    <Button type="submit" disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        Publicar Post-it
-                    </Button>
+                    <div className="flex gap-2">
+                        {editingId && (
+                            <Button type="button" variant="secondary" onClick={handleCancelEdit} disabled={isSubmitting} className="w-full">
+                                Cancelar
+                            </Button>
+                        )}
+                        <Button type="submit" disabled={isSubmitting} className="w-full">
+                            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            {editingId ? 'Guardar Cambios' : 'Publicar Post-it'}
+                        </Button>
+                    </div>
                 </form>
             </CardContent>
 
@@ -182,9 +239,17 @@ export default function AdminPostItManager() {
                                     <td className="py-2">{postIt.event_date ? new Date(postIt.event_date).toLocaleString() : '-'}</td>
                                     <td className="py-2">{new Date(postIt.expires_at).toLocaleDateString()}</td>
                                     <td className="py-2">
-                                        <Button variant="destructive" size="sm" onClick={() => handleDelete(postIt.id)}>
-                                            Borrar
-                                        </Button>
+                                        <div className="flex gap-1 justify-end">
+                                            <Button variant="outline" size="sm" onClick={() => handleRepeat(postIt)} title="Repetir (Crear copia)">
+                                                🔁
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => handleEdit(postIt)} title="Editar">
+                                                ✏️
+                                            </Button>
+                                            <Button variant="destructive" size="sm" onClick={() => handleDelete(postIt.id)} title="Borrar">
+                                                🗑️
+                                            </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
