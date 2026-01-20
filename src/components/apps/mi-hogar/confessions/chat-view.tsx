@@ -162,54 +162,44 @@ export function ChatView({ conversationId, userId }: Props) {
     };
 
     const handleSendMessage = async (type: 'text' | 'audio' | 'video', content: string, intonation?: string) => {
-        // We need to determine sender_type.
-        // We'll need to fetch the thought to know if we are creator.
-        // For efficiency, we should have this in state.
+        try {
+            const { data: thought } = await supabase
+                .from('shared_thoughts')
+                .select('creator_id')
+                .eq('id', conversationId)
+                .single();
 
-        // Hack for now: check if we are auth user and match creator_id,
-        // but for safety let's just use what we have.
-        // The previous code used `sender_id: userId`.
-        // The NEW schema requires `sender_type`.
+            if (!thought) {
+                console.error('Thought not found');
+                return;
+            }
 
-        // I will assume for now we use the legacy `messages` style if the migration WAS NOT run fully or if I am patching;
-        // BUT I must assume migration is intended.
-        // However, checking the tool output, the user might NOT have run the migration yet.
-        // Standard approach: use `sender_id` column if it exists (old schema) OR adapt.
+            const isCreator = thought.creator_id === userId;
+            const senderType = isCreator ? 'creator' : 'recipient';
 
-        // SAFE BET: Try to insert into `thought_messages` with `intonation` field.
-        // If the table is `messages`, and I'm updating `chat-view` which references `messages` in the old code...
-        // Wait, the OLD code references `messages`. The MIGRATION drops `messages`.
-        // If the user accepted the migration, `messages` is GONE.
-        // So I MUST update to `thought_messages` and new logic.
+            const { error } = await supabase
+                .from('thought_messages')
+                .insert({
+                    thought_id: conversationId,
+                    sender_type: senderType,
+                    sender_session_id: !isCreator ? userId : null,
+                    type,
+                    content,
+                    intonation
+                });
 
-        // But I don't have the full logic for `sender_type` easily without a DB read.
-        // I will fetch the thought first to check creator.
+            if (error) {
+                console.error('Error sending message:', error);
+                toast.error(`Error: ${error.message}`);
+                return;
+            }
 
-        const { data: thought } = await supabase
-            .from('shared_thoughts')
-            .select('creator_id')
-            .eq('id', conversationId)
-            .single();
+            // Manually refresh to ensure message appears even if Realtime is slow/disabled
+            await fetchConversationData();
 
-        if (!thought) return;
-
-        const isCreator = thought.creator_id === userId;
-        const senderType = isCreator ? 'creator' : 'recipient';
-
-        const { error } = await supabase
-            .from('thought_messages')
-            .insert({
-                thought_id: conversationId,
-                sender_type: senderType,
-                sender_session_id: !isCreator ? userId : null, // If recipient is logged in user
-                type,
-                content,
-                intonation // NEW FIELD
-            });
-
-        if (error) {
-            console.error('Error sending message:', error);
-            toast.error("Error al enviar mensaje");
+        } catch (err) {
+            console.error('Unexpected error:', err);
+            toast.error("Error inesperado al enviar");
         }
     };
 
