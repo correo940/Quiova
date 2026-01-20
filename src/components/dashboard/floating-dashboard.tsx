@@ -234,6 +234,20 @@ export default function FloatingDashboard() {
                                                     <div className="text-xs text-muted-foreground">Di lo que no te atreves</div>
                                                 </div>
                                             </Link>
+
+                                            <Link
+                                                href="/apps/organizador-vital"
+                                                onClick={() => setIsOpen(false)}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-blue-500/10 rounded-full text-blue-500 group-hover:scale-110 transition-transform">
+                                                    <span className="text-2xl leading-none">📅</span>
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Organizador Vital</div>
+                                                    <div className="text-xs text-muted-foreground">Planifica tu semana</div>
+                                                </div>
+                                            </Link>
                                         </div>
                                     </div>
                                 ) : (

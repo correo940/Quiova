@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
 import AdminPostItManager from "@/components/admin/post-it-manager";
+import SchedulerActivityManager from "@/components/admin/scheduler-activity-manager";
 
 // ... imports
 
@@ -77,6 +78,11 @@ export default function AdminPage() {
         {/* Post-it Manager */}
         <div className="bg-card rounded-lg shadow-sm">
           <AdminPostItManager />
+        </div>
+
+        {/* Scheduler Activity Manager */}
+        <div className="bg-card rounded-lg shadow-sm">
+          <SchedulerActivityManager />
         </div>
 
       </div>

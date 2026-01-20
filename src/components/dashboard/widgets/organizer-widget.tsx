@@ -5,14 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CheckCircle2, Circle, Clock, Book, FileText } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Book, FileText, Calendar as CalendarIcon, ArrowRight, Tag } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useJournal } from '@/context/JournalContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tag } from 'lucide-react';
 
 type Task = {
     id: string;
@@ -30,6 +29,16 @@ type JournalEntry = {
     tags?: string[];
 };
 
+type SmartBlock = {
+    id: string;
+    type: 'fixed' | 'generated';
+    title: string;
+    start_time: string; // HH:MM
+    end_time: string;   // HH:MM
+    date?: string;
+    description?: string;
+};
+
 interface OrganizerWidgetProps {
     selectedDate: Date | undefined;
 }
@@ -38,6 +47,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
     const [shifts, setShifts] = useState<any[]>([]);
+    const [smartBlocks, setSmartBlocks] = useState<SmartBlock[]>([]);
     const [loading, setLoading] = useState(true);
     const { setIsOpen, setSelectedDate } = useJournal();
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -47,6 +57,59 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
+
+        // --- Fetch Smart Schedule Blocks ---
+        const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+
+        // 1. Fixed Blocks for this day of week
+        // Map spanish day names to english enum if needed
+        const dayName = format(selectedDate || new Date(), 'EEEE', { locale: es }).toLowerCase();
+        const daysMap: any = { 'lunes': 'monday', 'martes': 'tuesday', 'miércoles': 'wednesday', 'jueves': 'thursday', 'viernes': 'friday', 'sábado': 'saturday', 'domingo': 'sunday' };
+        const englishDay = daysMap[dayName] || format(selectedDate || new Date(), 'EEEE').toLowerCase();
+
+        const { data: fixedData } = await supabase
+            .from('smart_scheduler_fixed_blocks')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('day_of_week', englishDay);
+
+        // 2. Generated Blocks for this specific date
+        const { data: generatedData } = await supabase
+            .from('smart_scheduler_generated_blocks')
+            .select(`
+                *,
+                activity:smart_scheduler_activities(name, description)
+            `)
+            .eq('user_id', session.user.id)
+            .eq('date', dateStr);
+
+        // Combine and sort
+        let combined: SmartBlock[] = [];
+
+        if (fixedData) {
+            combined = combined.concat(fixedData.map((b: any) => ({
+                id: b.id,
+                type: 'fixed',
+                title: b.label,
+                start_time: b.start_time.slice(0, 5),
+                end_time: b.end_time.slice(0, 5),
+                description: 'Bloque Fijo'
+            })));
+        }
+
+        if (generatedData) {
+            combined = combined.concat(generatedData.map((b: any) => ({
+                id: b.id,
+                type: 'generated',
+                title: b.activity?.name || 'Actividad',
+                start_time: b.start_time.slice(0, 5),
+                end_time: b.end_time.slice(0, 5),
+                description: b.activity?.description
+            })));
+        }
+
+        combined.sort((a, b) => a.start_time.localeCompare(b.start_time));
+        setSmartBlocks(combined);
 
         // --- Fetch Tasks ---
         let taskQuery = supabase
@@ -137,18 +200,20 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         fetchData();
     }, [selectedDate]);
 
-    // Subscribe to changes (simplified for now, re-fetch on mount/date change is main logic)
+    // Subscribe to changes
     useEffect(() => {
         const channel = supabase
             .channel('organizer_widget')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'journal_entries' }, fetchData)
+            // Listen to smart blocks changes too?
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'smart_scheduler_generated_blocks' }, fetchData)
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [selectedDate]); // Re-subscribe if date changes to keep query fresh? Actually fetch is enough.
+    }, [selectedDate]);
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         const { error } = await supabase
@@ -193,8 +258,12 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 min-h-0 p-0 sm:p-4 sm:pt-4 bg-white dark:bg-slate-950">
-                <Tabs defaultValue="tasks" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-3 mb-3 h-auto bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                <Tabs defaultValue="agenda" className="h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-4 mb-3 h-auto bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                        <TabsTrigger value="agenda" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Agenda</span>
+                        </TabsTrigger>
                         <TabsTrigger value="tasks" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Tareas</span>
@@ -211,6 +280,48 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                             <span className="sm:hidden">({journalEntries.length})</span>
                         </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="agenda" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
+                        <ScrollArea className="flex-1 pr-4">
+                            {loading ? (
+                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                            ) : smartBlocks.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <p>Agenda vacía</p>
+                                    <Button variant="link" asChild className="text-emerald-600 p-0 h-auto">
+                                        <Link href="/apps/organizador-vital">Generar ahora &rarr;</Link>
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="relative border-l-2 border-slate-200 dark:border-slate-800 ml-3 space-y-6 py-2">
+                                    {smartBlocks.map((block, idx) => {
+                                        const isFixed = block.type === 'fixed';
+                                        return (
+                                            <div key={block.id} className="relative pl-6">
+                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${isFixed ? 'bg-blue-500 border-blue-100' : 'bg-green-500 border-green-100'}`} />
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between group">
+                                                    <div>
+                                                        <div className="text-xs font-bold text-muted-foreground flex items-center gap-2 mb-0.5">
+                                                            {block.start_time} - {block.end_time}
+                                                            {isFixed && <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium">Fijo</span>}
+                                                        </div>
+                                                        <h4 className={`font-medium text-sm ${isFixed ? 'text-blue-900 dark:text-blue-300' : 'text-green-900 dark:text-green-300'}`}>
+                                                            {block.title}
+                                                        </h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </ScrollArea>
+                        <div className="mt-2 text-center pt-2 border-t text-xs">
+                            <Link href="/apps/organizador-vital" className="text-muted-foreground hover:text-primary hover:underline flex items-center justify-center gap-1">
+                                Ver Agenda Completa <ArrowRight className="w-3 h-3" />
+                            </Link>
+                        </div>
+                    </TabsContent>
 
                     <TabsContent value="shifts" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
                         <ScrollArea className="flex-1 pr-4">
