@@ -8,6 +8,7 @@ const nextConfig = {
     },
     // Solo activar exportación estática si estamos construyendo para Capacitor
     output: process.env.STATIC_EXPORT === 'true' ? 'export' : undefined,
+    distDir: process.env.STATIC_EXPORT === 'true' ? 'out' : '.next',
     images: {
         unoptimized: true,
         remotePatterns: [

@@ -1,0 +1,9 @@
+{
+    "appId": "com.quioba.app",
+    "appName": "Quioba",
+    "webDir": "out",
+    "server": {
+        "url": "https://www.quioba.com",
+        "cleartext": true
+    }
+}

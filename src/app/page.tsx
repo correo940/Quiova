@@ -39,6 +39,9 @@ function HomeContent() {
     // Default to Mobile Launcher on native or mobile web
     if (isNative || isSmallScreen) {
       setIsLauncherMode(true);
+      // On mobile, if we are in launcher mode, we don't want to show the global loading spinner
+      // for too long.
+      setLoading(false);
     }
   }, [setIsLauncherMode]);
 
