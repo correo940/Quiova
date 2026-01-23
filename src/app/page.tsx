@@ -63,7 +63,9 @@ function HomeContent() {
   useEffect(() => {
     async function loadArticles() {
       try {
-        const response = await fetch('/api/articles');
+        const isMobile = Capacitor.isNativePlatform();
+        const baseUrl = isMobile ? 'https://www.quioba.com' : '';
+        const response = await fetch(`${baseUrl}/api/articles`);
         if (response.ok) {
           const data = await response.json();
           console.log('📚 Artículos cargados desde API:', data.length);
@@ -75,10 +77,15 @@ function HomeContent() {
       } catch (error) {
         console.error('❌ Error:', error);
       } finally {
+        // Ensure we don't stay in loading state forever, especially on mobile
         setLoading(false);
       }
     }
     loadArticles();
+
+    // Safety timeout: if loading takes more than 5 seconds, force show UI
+    const timer = setTimeout(() => setLoading(false), 5000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Carrusel con gradientes temáticos
