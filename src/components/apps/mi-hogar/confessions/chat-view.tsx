@@ -6,7 +6,7 @@ import { Pause, Send, Mic, Video, Type, Clock, AlertCircle, Check, CheckCheck } 
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MessageComposer } from './message-composer';
@@ -87,10 +87,21 @@ export function ChatView({ conversationId, userId }: Props) {
 
         // Determine other user display logic
         const isCreator = thoughtData.creator_id === userId;
+
+        // Fetch creator profile if we are the guest
+        let creatorProfile = null;
+        if (!isCreator && !thoughtData.is_anonymous) {
+            const { data } = await supabase.from('profiles').select('full_name, avatar_url, custom_avatar_url').eq('id', thoughtData.creator_id).single();
+            creatorProfile = data;
+        }
+
         setOtherUser({
             name: isCreator
                 ? (thoughtData.is_anonymous ? 'Anónimo' : 'Visitante')
-                : (thoughtData.is_anonymous ? 'Anónimo' : thoughtData.creator_name || 'Creador')
+                : (thoughtData.is_anonymous ? 'Anónimo' : creatorProfile?.full_name || thoughtData.creator_name || 'Creador'),
+            avatar: isCreator
+                ? null
+                : (thoughtData.is_anonymous ? null : creatorProfile?.custom_avatar_url || creatorProfile?.avatar_url)
         });
 
         // Fetch messages
@@ -243,6 +254,7 @@ export function ChatView({ conversationId, userId }: Props) {
             <div className="p-3 px-4 flex items-center justify-between bg-white border-b shadow-sm z-10 sticky top-0">
                 <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10 ring-2 ring-violet-100">
+                        {otherUser?.avatar && <AvatarImage src={otherUser.avatar} />}
                         <AvatarFallback className="bg-violet-600 text-white font-semibold">
                             {otherUser?.name?.substring(0, 1).toUpperCase() || 'U'}
                         </AvatarFallback>

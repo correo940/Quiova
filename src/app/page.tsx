@@ -14,7 +14,10 @@ import Link from 'next/link';
 import CategoryIcon from '@/components/category-icon';
 import PostItQuotes from '@/components/post-it-quotes';
 import HomeDashboard from '@/components/dashboard/home-dashboard';
+
 import { supabase } from '@/lib/supabase';
+import MobileLauncher from '@/components/mobile/mobile-launcher';
+import { Capacitor } from '@capacitor/core';
 
 function HomeContent() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
@@ -24,6 +27,19 @@ function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get('search')?.toLowerCase() || '';
+
+  // Mobile Launcher Logic
+  const [showMobileLauncher, setShowMobileLauncher] = useState(false);
+
+  useEffect(() => {
+    // Check if running on native platform or small screen
+    const isNative = Capacitor.isNativePlatform();
+    const isSmallScreen = window.innerWidth < 768;
+    // Default to Mobile Launcher on native or mobile web
+    if (isNative || isSmallScreen) {
+      setShowMobileLauncher(true);
+    }
+  }, []);
 
   // 🆕 Verificar sesión
   useEffect(() => {
@@ -127,6 +143,10 @@ function HomeContent() {
         <p className="text-xl">Cargando artículos...</p>
       </div>
     );
+  }
+
+  if (showMobileLauncher && user) {
+    return <MobileLauncher onLaunchDesktop={() => setShowMobileLauncher(false)} />;
   }
 
   return (

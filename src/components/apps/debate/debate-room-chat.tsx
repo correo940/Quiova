@@ -113,10 +113,13 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                 // Fetch all senders at once
                 const { data: sendersData } = await supabase
                     .from('profiles')
-                    .select('id, full_name, avatar_url')
+                    .select('id, full_name, avatar_url, custom_avatar_url')
                     .in('id', senderIds);
 
-                const sendersMap = new Map(sendersData?.map(s => [s.id, s]) || []);
+                const sendersMap = new Map(sendersData?.map(s => [s.id, {
+                    ...s,
+                    avatar_url: s.custom_avatar_url || s.avatar_url
+                }]) || []);
 
                 // Add sender info to messages
                 const messagesWithSenders = messagesData.map(m => ({
@@ -154,11 +157,16 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                     // Fetch sender
                     const { data: senderData } = await supabase
                         .from('profiles')
-                        .select('id, full_name, avatar_url')
+                        .select('id, full_name, avatar_url, custom_avatar_url')
                         .eq('id', msgData.sender_id)
                         .single();
 
-                    setMessages(prev => [...prev, { ...msgData, sender: senderData }]);
+                    const finalSender = senderData ? {
+                        ...senderData,
+                        avatar_url: senderData.custom_avatar_url || senderData.avatar_url
+                    } : null;
+
+                    setMessages(prev => [...prev, { ...msgData, sender: finalSender }]);
                 }
             })
             .subscribe();

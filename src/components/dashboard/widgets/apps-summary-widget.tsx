@@ -11,6 +11,8 @@ import Link from 'next/link';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Date }) {
     const [stats, setStats] = useState({
@@ -30,6 +32,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     });
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [userProfile, setUserProfile] = useState<any>(null);
 
     // Initialize daily notifications logic
     useDailyNotifications();
@@ -40,6 +43,10 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                 setLoading(true);
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
+
+                // Fetch Profile for Avatar
+                const { data: profile } = await supabase.from('profiles').select('custom_avatar_url, nickname').eq('id', user.id).single();
+                setUserProfile({ ...user, profile });
 
                 // 1. Shopping (Global)
                 const { count: sCount } = await supabase
@@ -168,20 +175,28 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     });
 
     // Date & Greeting Logic
-    const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', fullDate: '' });
+    // Date & Greeting Logic
+    const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', fullDate: '', time: '' });
     useEffect(() => {
-        const now = new Date();
-        const hrs = now.getHours();
-        let greeting = 'Buenas noches';
-        if (hrs >= 6 && hrs < 12) greeting = 'Buenos días';
-        else if (hrs >= 12 && hrs < 21) greeting = 'Buenas tardes';
+        const updateDate = () => {
+            const now = new Date();
+            const hrs = now.getHours();
+            let greeting = 'Buenas noches';
+            if (hrs >= 6 && hrs < 12) greeting = 'Buenos días';
+            else if (hrs >= 12 && hrs < 21) greeting = 'Buenas tardes';
 
-        const formatter = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-        // Capitalize first letter
-        let fullDate = formatter.format(now);
-        fullDate = fullDate.charAt(0).toUpperCase() + fullDate.slice(1);
+            const formatter = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            let fullDate = formatter.format(now);
+            fullDate = fullDate.charAt(0).toUpperCase() + fullDate.slice(1);
 
-        setDateInfo({ greeting, fullDate });
+            const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+            setDateInfo({ greeting, fullDate, time });
+        };
+
+        updateDate();
+        const interval = setInterval(updateDate, 60000); // Update every minute
+        return () => clearInterval(interval);
     }, []);
 
     return (
@@ -192,20 +207,25 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
             <CardHeader className="pb-2 pt-3 shrink-0 relative z-10 px-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100 font-headline tracking-tight">
+                        <CardTitle className="text-xl font-bold flex items-center gap-3 text-slate-800 dark:text-slate-100 font-headline tracking-tight">
+                            <Link href="/profile">
+                                <Avatar className="w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-primary/20">
+                                    <AvatarImage src={userProfile?.profile?.custom_avatar_url || userProfile?.user_metadata?.avatar_url} className="object-cover" />
+                                    <AvatarFallback>{userProfile?.profile?.nickname?.[0] || 'U'}</AvatarFallback>
+                                </Avatar>
+                            </Link>
                             {dateInfo.greeting}
-                            <span className="text-xl animate-pulse">👋</span>
                         </CardTitle>
                         <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 hidden sm:block">
-                            {dateInfo.fullDate}
+                            {dateInfo.fullDate} • {dateInfo.time}
                         </span>
                     </div>
                     <NotificationSettingsDialog />
                 </div>
                 {/* Mobile Date fallback if needed, or just hide on mobile to save space */}
                 <div className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                    {dateInfo.fullDate}
+                    {dateInfo.fullDate} • {dateInfo.time}
                 </div>
             </CardHeader>
             <CardContent className="flex-1 min-h-0 flex flex-col gap-2">

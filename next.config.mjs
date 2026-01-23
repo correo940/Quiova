@@ -6,7 +6,9 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
+    output: 'export',
     images: {
+        unoptimized: true,
         remotePatterns: [
             {
                 protocol: 'https',
@@ -23,6 +25,24 @@ const nextConfig = {
             {
                 protocol: 'https',
                 hostname: 'picsum.photos',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.dicebear.com',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'raw.githubusercontent.com',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'avatars.githubusercontent.com',
                 port: '',
                 pathname: '/**',
             },

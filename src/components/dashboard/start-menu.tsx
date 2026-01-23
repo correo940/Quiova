@@ -54,6 +54,16 @@ export default function StartMenu() {
             setUser(session?.user ?? null);
             if (session?.user) {
                 fetchCounts(session.user.id);
+                // Fetch full profile for avatar
+                supabase.from('profiles').select('custom_avatar_url').eq('id', session.user.id).single()
+                    .then(({ data }) => {
+                        if (data) {
+                            setUser(prev => ({
+                                ...prev,
+                                profile: data
+                            }));
+                        }
+                    });
             }
         });
 
@@ -134,12 +144,18 @@ export default function StartMenu() {
                         >
                             <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/50 dark:bg-black/50">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10">
-                                        <img src={user.user_metadata?.avatar_url || "/images/logo.png"} alt="User" className="w-full h-full object-cover" />
-                                    </div>
+                                    <Link href="/profile" onClick={closeStartMenu}>
+                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 ring-2 ring-white/20 hover:scale-105 transition-transform cursor-pointer">
+                                            <img
+                                                src={user.profile?.custom_avatar_url || user.user_metadata?.avatar_url || "/images/logo.png"}
+                                                alt="User"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </Link>
                                     <div>
                                         <h3 className="font-bold text-sm">Mi Quioba</h3>
-                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{user.email}</p>
+                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{user.profile?.nickname || user.email}</p>
                                     </div>
                                 </div>
                                 {activeView === 'apps' && (
