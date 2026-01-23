@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Grid, User, Cloud } from 'lucide-react';
+import { Home, Grid, User, Cloud, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
@@ -67,12 +67,22 @@ export default function Taskbar() {
             icon: User,
             href: '/profile',
         },
+        {
+            id: 'launcher',
+            label: 'Dashboard',
+            icon: LayoutGrid,
+            href: '#launcher',
+            isLauncher: true,
+        },
     ];
 
     return (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
             <div className={cn("pointer-events-auto bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl p-2 flex items-center gap-2 transition-all duration-300 hover:bg-white/80 hover:scale-105 hover:shadow-xl ring-1 ring-black/5 dark:bg-black/60 dark:border-white/10 dark:ring-white/10 mb-4")}>
                 {apps.map((app) => {
+                    // Solo mostrar el botón de launcher en dispositivos táctiles/móviles
+                    if (app.isLauncher && typeof window !== 'undefined' && window.innerWidth >= 768) return null;
+
                     // Start button is active if menu is open
                     const isActive = app.isStart
                         ? isStartMenuOpen
@@ -108,6 +118,10 @@ export default function Taskbar() {
                                     if (app.isStart) {
                                         e.preventDefault();
                                         toggleStartMenu();
+                                    }
+                                    if (app.isLauncher) {
+                                        e.preventDefault();
+                                        setIsLauncherMode(true);
                                     }
                                 }}
                                 onMouseEnter={() => setHoveredApp(app.id)}

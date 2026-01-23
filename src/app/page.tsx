@@ -167,8 +167,8 @@ function HomeContent() {
     );
   }
 
-  // Mobile Launcher gets priority if active and user is logged in
-  if (showMobileLauncher && user) {
+  // Mobile Launcher gets priority if active
+  if (showMobileLauncher) {
     return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
   }
 
