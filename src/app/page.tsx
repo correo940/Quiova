@@ -148,76 +148,85 @@ function HomeContent() {
     });
   }, [selectedCategory, articles, searchQuery]);
 
-  // 🆕 Mostrar loading state
-  if (loading) {
+  // 🆕 Mostrar loading state - Only if we are not on mobile launcher mode and not already logged in
+  if (loading && !showMobileLauncher && !user) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <p className="text-xl">Cargando artículos...</p>
+      <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xl font-medium text-slate-600">Entrando en Quioba...</p>
+        <button
+          onClick={() => setLoading(false)}
+          className="text-xs text-slate-400 underline mt-4"
+        >
+          Saltar carga
+        </button>
       </div>
     );
   }
 
+  // Mobile Launcher gets priority if active and user is logged in
   if (showMobileLauncher && user) {
     return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
+  }
+
+  // If user is logged in but NOT in launcher mode, show HomeDashboard
+  // (This avoids showing the landing page briefly while loading articles)
+  if (user) {
+    return <HomeDashboard />;
   }
 
   return (
     <div className="w-full">
       {/* Hero Section with Auto Carousel */}
-      {/* Hero Section with Auto Carousel OR Dashboard */}
-      {user ? (
-        <HomeDashboard />
-      ) : (
-        <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
-          <div className="relative w-full h-full">
-            {/* Slide actual */}
-            <div
-              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
-            >
-              <h1 className="font-headline text-3xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
-                {slides[currentSlide].title}
-              </h1>
-              <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">
-                {slides[currentSlide].description}
-              </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-4">
-                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Link href="#latest-articles">Explorar Artículos</Link>
-                </Button>
-                <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
-                  <Link href="/apps">Portal de Apps</Link>
-                </Button>
-              </div>
+      <section className="relative w-full h-[50vh] md:h-[60vh] text-white overflow-hidden">
+        <div className="relative w-full h-full">
+          {/* Slide actual */}
+          <div
+            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${slides[currentSlide].gradient} flex flex-col items-center justify-center text-center p-4`}
+          >
+            <h1 className="font-headline text-3xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+              {slides[currentSlide].title}
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg md:text-xl text-white/90 drop-shadow-md">
+              {slides[currentSlide].description}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link href="#latest-articles">Explorar Artículos</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="text-secondary-foreground">
+                <Link href="/apps">Portal de Apps</Link>
+              </Button>
             </div>
-
-            {/* Indicadores de navegación */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-white' : 'bg-white/50'
-                    }`}
-                />
-              ))}
-            </div>
-
-            {/* Botones de navegación */}
-            <button
-              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
-            >
-              →
-            </button>
           </div>
-        </section>
-      )}
+
+          {/* Indicadores de navegación */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-white' : 'bg-white/50'
+                  }`}
+              />
+            ))}
+          </div>
+
+          {/* Botones de navegación */}
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+          >
+            ←
+          </button>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 hidden md:flex items-center justify-center w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all duration-300"
+          >
+            →
+          </button>
+        </div>
+      </section>
 
       {/* Sections removed here as they are now inside dashboard */}
 

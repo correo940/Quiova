@@ -22,13 +22,33 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
     const [currentTime, setCurrentTime] = useState('');
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                setUser(session.user);
-                supabase.from('profiles').select('*').eq('id', session.user.id).single()
-                    .then(({ data }) => setProfile(data));
+        const init = async () => {
+            console.log('📱 MobileLauncher: Initializing...');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                console.log('📱 MobileLauncher: Session received', session ? 'Logged In' : 'Guest');
+
+                if (session?.user) {
+                    setUser(session.user);
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (profileError) {
+                        console.error('📱 MobileLauncher: Profile fetch error', profileError);
+                    } else {
+                        console.log('📱 MobileLauncher: Profile received', profileData?.nickname);
+                        setProfile(profileData);
+                    }
+                }
+            } catch (err) {
+                console.error('📱 MobileLauncher: Initialization error', err);
             }
-        });
+        };
+
+        init();
 
         const timer = setInterval(() => {
             setCurrentTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));

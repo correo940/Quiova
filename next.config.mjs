@@ -6,7 +6,8 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
-    output: 'export',
+    // Solo activar exportación estática si estamos construyendo para Capacitor
+    output: process.env.STATIC_EXPORT === 'true' ? 'export' : undefined,
     images: {
         unoptimized: true,
         remotePatterns: [
