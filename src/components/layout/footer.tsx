@@ -4,13 +4,17 @@ import Link from 'next/link';
 import { Logo } from '../logo';
 import { Github, Twitter, Instagram } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 export default function Footer() {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const { isLauncherMode } = useGlobalMenu();
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
   }, []);
+
+  if (isLauncherMode) return null;
 
   return (
     <footer className="border-t bg-background">

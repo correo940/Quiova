@@ -12,7 +12,9 @@ import { useGlobalMenu } from '@/context/GlobalMenuContext';
 export default function Taskbar() {
     const pathname = usePathname();
     const [hoveredApp, setHoveredApp] = useState<string | null>(null);
-    const { toggleStartMenu, isStartMenuOpen } = useGlobalMenu();
+    const { toggleStartMenu, isStartMenuOpen, isLauncherMode } = useGlobalMenu();
+
+    if (isLauncherMode) return null;
 
     const handleNavClick = async () => {
         try {
@@ -69,7 +71,7 @@ export default function Taskbar() {
 
     return (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-            <div className="pointer-events-auto bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl p-2 flex items-center gap-2 transition-all duration-300 hover:bg-white/80 hover:scale-105 hover:shadow-xl ring-1 ring-black/5 dark:bg-black/60 dark:border-white/10 dark:ring-white/10">
+            <div className={cn("pointer-events-auto bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl p-2 flex items-center gap-2 transition-all duration-300 hover:bg-white/80 hover:scale-105 hover:shadow-xl ring-1 ring-black/5 dark:bg-black/60 dark:border-white/10 dark:ring-white/10 mb-4")}>
                 {apps.map((app) => {
                     // Start button is active if menu is open
                     const isActive = app.isStart

@@ -39,7 +39,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased flex flex-col min-h-screen pb-24" suppressHydrationWarning>
+      <body className="font-body antialiased flex flex-col min-h-screen" suppressHydrationWarning>
         <ClientProvider>
           <div className="print:hidden">
             {/* <Header /> */}

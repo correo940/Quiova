@@ -18,6 +18,7 @@ import HomeDashboard from '@/components/dashboard/home-dashboard';
 import { supabase } from '@/lib/supabase';
 import MobileLauncher from '@/components/mobile/mobile-launcher';
 import { Capacitor } from '@capacitor/core';
+import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 function HomeContent() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
@@ -29,7 +30,7 @@ function HomeContent() {
   const searchQuery = searchParams?.get('search')?.toLowerCase() || '';
 
   // Mobile Launcher Logic
-  const [showMobileLauncher, setShowMobileLauncher] = useState(false);
+  const { isLauncherMode, setIsLauncherMode } = useGlobalMenu();
 
   useEffect(() => {
     // Check if running on native platform or small screen
@@ -37,9 +38,13 @@ function HomeContent() {
     const isSmallScreen = window.innerWidth < 768;
     // Default to Mobile Launcher on native or mobile web
     if (isNative || isSmallScreen) {
-      setShowMobileLauncher(true);
+      setIsLauncherMode(true);
     }
-  }, []);
+  }, [setIsLauncherMode]);
+
+  // Use a derived state for rendering locally if needed, 
+  // but let's just use the global state for consistency.
+  const showMobileLauncher = isLauncherMode;
 
   // 🆕 Verificar sesión
   useEffect(() => {
@@ -146,7 +151,7 @@ function HomeContent() {
   }
 
   if (showMobileLauncher && user) {
-    return <MobileLauncher onLaunchDesktop={() => setShowMobileLauncher(false)} />;
+    return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
   }
 
   return (
