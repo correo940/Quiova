@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
-import Header from '@/components/layout/header';
+// import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import MobileNav from '@/components/layout/mobile-nav';
+import Taskbar from '@/components/layout/taskbar';
 import ClientProvider from '@/components/layout/ClientProvider';
 
 export const metadata: Metadata = {
@@ -39,15 +39,15 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased flex flex-col min-h-screen pb-16 md:pb-0" suppressHydrationWarning>
+      <body className="font-body antialiased flex flex-col min-h-screen pb-24" suppressHydrationWarning>
         <ClientProvider>
           <div className="print:hidden">
-            <Header />
+            {/* <Header /> */}
           </div>
           <main className="flex-grow">{children}</main>
           <div className="print:hidden">
             <Footer />
-            <MobileNav />
+            <Taskbar />
           </div>
           <Toaster />
           <SonnerToaster position="top-right" />

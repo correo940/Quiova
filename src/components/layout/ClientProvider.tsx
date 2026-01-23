@@ -2,7 +2,7 @@
 
 import TasksProviderWrapper from '@/context/TasksProviderWrapper';
 import React from 'react';
-import FloatingDashboard from '@/components/dashboard/floating-dashboard';
+import StartMenu from '@/components/dashboard/start-menu';
 import TaskPostIts from '@/components/dashboard/task-post-its';
 import SystemPostIts from '@/components/dashboard/system-post-its';
 import { PostItSettingsProvider } from '@/context/PostItSettingsContext';
@@ -12,6 +12,7 @@ import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notif
 import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicle-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
+import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
 
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
@@ -22,20 +23,22 @@ export default function ClientProvider({ children }: { children: React.ReactNode
 
   return (
     <TasksProviderWrapper>
-      <PostItSettingsProvider>
-        <JournalProvider>
-          <TextSelectionToolbar />
-          <MedicineAlarmManager />
-          <TaskNotificationManager />
-          <VehicleNotificationManager />
-          <LayoutResizer>
-            {children}
-          </LayoutResizer>
-          <FloatingDashboard />
-          <TaskPostIts />
-          <SystemPostIts />
-        </JournalProvider>
-      </PostItSettingsProvider>
+      <GlobalMenuProvider>
+        <PostItSettingsProvider>
+          <JournalProvider>
+            <TextSelectionToolbar />
+            <MedicineAlarmManager />
+            <TaskNotificationManager />
+            <VehicleNotificationManager />
+            <LayoutResizer>
+              {children}
+            </LayoutResizer>
+            <StartMenu />
+            <TaskPostIts />
+            <SystemPostIts />
+          </JournalProvider>
+        </PostItSettingsProvider>
+      </GlobalMenuProvider>
     </TasksProviderWrapper>
   );
 }
