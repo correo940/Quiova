@@ -1,22 +1,42 @@
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { getArticleContent } from "@/lib/github";
 import { parseMarkdown } from "@/lib/markdown";
 import ArticleEditor from "@/components/article-editor";
 import { allArticles } from "@/lib/data";
 
+// Required for static export with dynamic routes
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  return [{ slug: 'placeholder' }];
+}
+
 export default async function EditArticlePage({ params }: { params: { slug: string } }) {
+  // Resolver params primero para check ear placeholder
+  const resolvedParams = await Promise.resolve(params);
+  const slug = resolvedParams.slug;
+
+  // Handle placeholder for static build BEFORE ANY AUTH CHECK
+  if (slug === 'placeholder') {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <p>Placeholder for static build generation.</p>
+      </div>
+    );
+  }
+
   try {
+    // Bypass for mobile build
+    if (process.env.NEXT_PUBLIC_IS_MOBILE_BUILD === 'true') {
+      return <div className="p-8 text-center text-muted-foreground">Admin Disabled in Mobile Build</div>;
+    }
+
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       redirect("/admin/login");
     }
-
-    // Resolver params si es una Promise (Next.js 15)
-    const resolvedParams = await Promise.resolve(params);
-    const slug = resolvedParams.slug;
 
     if (!slug) {
       notFound();
@@ -24,11 +44,11 @@ export default async function EditArticlePage({ params }: { params: { slug: stri
 
     // Intentar cargar el artículo desde GitHub primero, con fallback a datos locales
     let article;
-    
+
     try {
       const markdownContent = await getArticleContent(`${slug}.md`);
       article = await parseMarkdown(markdownContent);
-      
+
       // Si el artículo parseado está vacío o no tiene título, usar fallback
       if (!article || !article.title) {
         throw new Error('Artículo parseado está vacío');
@@ -36,14 +56,14 @@ export default async function EditArticlePage({ params }: { params: { slug: stri
     } catch (githubError: any) {
       // Si no existe en GitHub o hay un error, usar datos locales como fallback
       const errorMessage = githubError?.message || '';
-      
+
       // Solo loguear si no es un error esperado (404 o token no configurado)
       if (!errorMessage.includes('not found') && !errorMessage.includes('GITHUB_TOKEN')) {
         console.warn('Error cargando desde GitHub, usando datos locales:', errorMessage);
       }
-      
+
       const localArticle = allArticles.find((a) => a.slug === slug);
-      
+
       if (!localArticle) {
         notFound();
       }
@@ -101,7 +121,7 @@ export default async function EditArticlePage({ params }: { params: { slug: stri
     return (
       <div className="container mx-auto py-6">
         <h1 className="text-3xl font-bold mb-6">Editar Artículo</h1>
-        <ArticleEditor 
+        <ArticleEditor
           initialData={initialData}
           content={article.content || ''}
           isEditing={true}

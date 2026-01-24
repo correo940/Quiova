@@ -78,6 +78,7 @@
 
   body {
     @apply bg-background text-foreground;
+    background-color: #F8FAFC !important;
   }
 }
 
@@ -96,6 +97,11 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+}
+
+/* Barcode Scanner Overlay */
+body.barcode-scanner-active {
+  visibility: hidden;
 }
 
 @layer utilities {

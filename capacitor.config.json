@@ -1,5 +1,22 @@
 {
     "appId": "com.quioba.app",
     "appName": "Quioba",
-    "webDir": "out"
+    "webDir": "out",
+    "backgroundColor": "#F8FAFC",
+    "plugins": {
+        "SplashScreen": {
+            "launchShowDuration": 2000,
+            "launchAutoHide": true,
+            "launchFadeOutDuration": 500,
+            "backgroundColor": "#F8FAFC",
+            "androidSplashResourceName": "splash",
+            "androidScaleType": "CENTER_CROP",
+            "showSpinner": false,
+            "androidSpinnerStyle": "large",
+            "iosSpinnerStyle": "small",
+            "spinnerColor": "#10B981",
+            "splashFullScreen": true,
+            "splashImmersive": true
+        }
+    }
 }

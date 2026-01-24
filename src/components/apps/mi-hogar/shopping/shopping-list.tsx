@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Webcam from 'react-webcam';
-import { identifyProductAction } from '@/app/actions/identify-product';
+// import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
 import { ChefHat } from 'lucide-react';
 
@@ -179,8 +179,18 @@ export default function ShoppingList() {
             toast.info("Analizando imagen con IA...");
 
             try {
-                // Call Server Action
-                const result = await identifyProductAction(imageSrc);
+                // Call API Route instead of Server Action
+                const isMobile = (window as any).Capacitor?.isNativePlatform();
+                const baseUrl = isMobile ? 'https://www.quioba.com' : '';
+                const response = await fetch(`${baseUrl}/api/mi-hogar/identify-product`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ base64Image: imageSrc }),
+                });
+
+                const result = await response.json();
 
                 if (result.success && result.data) {
                     const { productName, supermarket } = result.data;
@@ -199,7 +209,7 @@ export default function ShoppingList() {
                     setTimeout(() => setCapturedImage(null), 2000);
                 }
             } catch (error) {
-                console.error("Error calling Server Action:", error);
+                console.error("Error calling API:", error);
                 toast.error("Error de conexión con el servidor.");
                 setCapturedImage(null);
             } finally {
@@ -209,6 +219,7 @@ export default function ShoppingList() {
             toast.error("Error al capturar imagen.");
         }
     }, [webcamRef]);
+
 
     useEffect(() => {
         if (user) {

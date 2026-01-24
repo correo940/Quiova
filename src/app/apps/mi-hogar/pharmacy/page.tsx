@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Trash2, Edit, Camera, Loader2, Sparkles, Pill, AlertTriangle, Calendar, ArrowLeft, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Webcam from 'react-webcam';
-import { identifyMedicineAction } from '@/app/actions/identify-medicine';
+// import { identifyMedicineAction } from '@/app/actions/identify-medicine';
 import Link from 'next/link';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -172,7 +172,15 @@ export default function PharmacyPage() {
         toast.info("Analizando medicamento con IA...");
 
         try {
-            const result = await identifyMedicineAction(imageSrc);
+            // const result = await identifyMedicineAction(imageSrc);
+            const isMobile = (window as any).Capacitor?.isNativePlatform();
+            const baseUrl = isMobile ? 'https://www.quioba.com' : '';
+            const response = await fetch(`${baseUrl}/api/mi-hogar/identify-medicine`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Image: imageSrc })
+            });
+            const result = await response.json();
 
             if (result.success && result.data) {
                 setFormName(result.data.name);

@@ -50,13 +50,17 @@ function HomeContent() {
   const showMobileLauncher = isLauncherMode;
 
   // 🆕 Verificar sesión
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setIsAuthChecking(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -152,23 +156,28 @@ function HomeContent() {
   }, [selectedCategory, articles, searchQuery]);
 
   // 🆕 Mostrar loading state - Only if we are not on mobile launcher mode and not already logged in
-  if (loading && !showMobileLauncher && !user) {
+  // OR if we are in mobile mode but still checking auth
+  if ((loading && !showMobileLauncher && !user) || (showMobileLauncher && isAuthChecking)) {
+    // If mobile and not logged in, we shouldn't show global spinner forever, check auth.
     return (
       <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xl font-medium text-slate-600">Entrando en Quioba...</p>
-        <button
-          onClick={() => setLoading(false)}
-          className="text-xs text-slate-400 underline mt-4"
-        >
-          Saltar carga
-        </button>
       </div>
     );
   }
 
-  // Mobile Launcher gets priority if active
-  if (showMobileLauncher) {
+  // 🔐 MOBILE AUTH WALL: If mobile and NO user, DO NOT SHOW LAUNCHER. Show Login inline.
+  // We handle this here to avoid hydration mismatch with router.push in useEffect
+  // IMPORTANT: We must wait for auth check to finish (isAuthChecking === false)
+  if (showMobileLauncher && !user && !isAuthChecking) {
+    // Instead of redirecting (which causes flicker), render login inline
+    const LoginPage = require('@/app/login/page').default;
+    return <LoginPage />;
+  }
+
+  // Mobile Launcher gets priority if active (AND USER IS LOGGED IN or we allow Guest? USER SAID NO GUEST)
+  if (showMobileLauncher && user) {
     return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
   }
 

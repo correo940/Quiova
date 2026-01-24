@@ -8,10 +8,16 @@ const backupPath = path.join(process.cwd(), 'src/app/_api');
 console.log('🚀 Iniciando build optimizado para Móvil...');
 
 try {
-    // 1. Ocultar carpeta API para evitar errores de Next.js Static Export
+    // 1. Ocultar carpeta API y ADMIN para evitar errores de Next.js Static Export
     if (fs.existsSync(apiPath)) {
         console.log('📦 Ocultando temporalmente la carpeta API...');
         fs.renameSync(apiPath, backupPath);
+    }
+    const adminPath = path.join(process.cwd(), 'src/app/admin');
+    const adminBackupPath = path.join(process.cwd(), 'src/app/_admin');
+    if (fs.existsSync(adminPath)) {
+        console.log('📦 Ocultando temporalmente la carpeta ADMIN...');
+        fs.renameSync(adminPath, adminBackupPath);
     }
 
     // 2. Ejecutar el build de Next.js
@@ -35,6 +41,16 @@ try {
             fs.renameSync(backupPath, apiPath);
         } catch (e) {
             console.error('⚠️ No se pudo restaurar la carpeta API automáticamente. Por favor, renombra "src/app/_api" a "src/app/api" manualmente.');
+        }
+    }
+    const adminPath = path.join(process.cwd(), 'src/app/admin');
+    const adminBackupPath = path.join(process.cwd(), 'src/app/_admin');
+    if (fs.existsSync(adminBackupPath)) {
+        console.log('📂 Restaurando carpeta ADMIN...');
+        try {
+            fs.renameSync(adminBackupPath, adminPath);
+        } catch (e) {
+            console.error('⚠️ No se pudo restaurar la carpeta ADMIN automáticamente. Por favor, renombra "src/app/_admin" a "src/app/admin" manualmente.');
         }
     }
 }

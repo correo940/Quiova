@@ -12,7 +12,7 @@ import { useGlobalMenu } from '@/context/GlobalMenuContext';
 export default function Taskbar() {
     const pathname = usePathname();
     const [hoveredApp, setHoveredApp] = useState<string | null>(null);
-    const { toggleStartMenu, isStartMenuOpen, isLauncherMode } = useGlobalMenu();
+    const { toggleStartMenu, isStartMenuOpen, isLauncherMode, setIsLauncherMode } = useGlobalMenu();
 
     if (isLauncherMode) return null;
 

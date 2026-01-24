@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { createOrUpdateArticle, listArticles, deleteArticle } from "@/lib/github";
 import matter from "gray-matter";
 
@@ -29,7 +29,7 @@ export async function PUT(
     // Buscar el artículo original por el slug de la URL
     const originalArticle = articles.find((a) => a.name === `${params.slug}.md`);
     // Buscar si el nuevo slug ya existe (en caso de que se haya cambiado el slug)
-    const newSlugArticle = metadata.slug !== params.slug 
+    const newSlugArticle = metadata.slug !== params.slug
       ? articles.find((a) => a.name === `${metadata.slug}.md`)
       : null;
 
@@ -40,17 +40,17 @@ export async function PUT(
 
     const newContent = matter.stringify(content, metadata);
     const fileName = `${metadata.slug}.md`;
-    
+
     // Si el slug cambió y el artículo original existe, necesitamos eliminarlo primero
     // Por ahora, solo actualizamos/creamos con el nuevo slug
-    const articleToUpdate = originalArticle && metadata.slug === params.slug 
-      ? originalArticle 
+    const articleToUpdate = originalArticle && metadata.slug === params.slug
+      ? originalArticle
       : newSlugArticle || null;
 
-    const message = articleToUpdate 
-      ? `Update ${metadata.title}` 
+    const message = articleToUpdate
+      ? `Update ${metadata.title}`
       : `Create ${metadata.title}`;
-    
+
     console.log('Guardando artículo:', {
       fileName,
       slug: metadata.slug,
@@ -58,15 +58,15 @@ export async function PUT(
       hasSha: !!articleToUpdate?.sha,
       contentLength: newContent.length
     });
-    
+
     // Si el artículo existe, actualizarlo con SHA. Si no existe, crearlo sin SHA
     const result = await createOrUpdateArticle(
-      fileName, 
-      newContent, 
-      message, 
+      fileName,
+      newContent,
+      message,
       articleToUpdate?.sha
     );
-    
+
     console.log('Artículo guardado exitosamente en GitHub:', result);
 
     // Si el slug cambió y el archivo original existe, eliminarlo

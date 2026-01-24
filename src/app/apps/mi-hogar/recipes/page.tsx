@@ -8,8 +8,17 @@ import { Loader2, ChefHat, Sparkles, Clock, BarChart, ShoppingCart, ArrowLeft, R
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
-import { generateRecipeAction, RecipeData } from '@/app/actions/generate-recipe';
 import Link from 'next/link';
+// import { generateRecipeAction, RecipeData } from '@/app/actions/generate-recipe';
+// Moved type definition here to avoid importing the server action file
+export interface RecipeData {
+    title: string;
+    description: string;
+    ingredients: { name: string; quantity: string; has_it: boolean }[];
+    steps: string[];
+    cooking_time: string;
+    difficulty: string;
+}
 
 export default function RecipesPage() {
     const { user } = useAuth();
@@ -45,14 +54,29 @@ export default function RecipesPage() {
         setLoading(true);
         setRecipe(null);
         try {
-            const result = await generateRecipeAction(pantryItems);
+            // const result = await generateRecipeAction(pantryItems);
+            const isMobile = (window as any).Capacitor?.isNativePlatform();
+            const baseUrl = isMobile ? 'https://www.quioba.com' : '';
+            const response = await fetch(`${baseUrl}/api/mi-hogar/generate-recipe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pantryItems })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
             if (result.success && result.data) {
                 setRecipe(result.data);
                 toast.success("¡Receta creada por el Chef!");
             } else {
-                toast.error(result.error);
+                toast.error(result.error || "Error al generar receta");
             }
         } catch (error) {
+            console.error(error);
             toast.error("Error de conexión");
         } finally {
             setLoading(false);

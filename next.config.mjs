@@ -9,6 +9,14 @@ const nextConfig = {
     // Solo activar exportación estática si estamos construyendo para Capacitor
     output: process.env.STATIC_EXPORT === 'true' ? 'export' : undefined,
     distDir: process.env.STATIC_EXPORT === 'true' ? 'out' : '.next',
+    skipTrailingSlashRedirect: true,
+    // Para static export, necesitamos configurar qué rutas NO se deben pre-renderizar
+    ...(process.env.STATIC_EXPORT === 'true' && {
+        // Estas rutas dinámicas se manejarán en el cliente
+        experimental: {
+            missingSuspenseWithCSRBailout: false,
+        },
+    }),
     images: {
         unoptimized: true,
         remotePatterns: [

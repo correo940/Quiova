@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -29,34 +30,40 @@ export default function ProfilePage() {
         const getProfile = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
-                if (!session) {
+
+                // Allow mobile users to view profile (guest mode)
+                const isMobile = Capacitor.isNativePlatform();
+
+                if (!session && !isMobile) {
                     router.push('/login');
                     return;
                 }
-                setUser(session.user);
+                if (session) {
+                    setUser(session.user);
 
-                // Fetch Profile
-                const { data: profileData, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single();
+                    // Fetch Profile
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
 
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Error fetching profile:', profileError);
-                }
-                setProfile(profileData || {});
+                    if (profileError && profileError.code !== 'PGRST116') {
+                        console.error('Error fetching profile:', profileError);
+                    }
+                    setProfile(profileData || {});
 
-                // Fetch Contacts
-                const { data: contactsData, error: contactsError } = await supabase
-                    .from('contacts')
-                    .select('*, contact:profiles!contact_id(*)')
-                    .eq('user_id', session.user.id);
+                    // Fetch Contacts
+                    const { data: contactsData, error: contactsError } = await supabase
+                        .from('contacts')
+                        .select('*, contact:profiles!contact_id(*)')
+                        .eq('user_id', session.user.id);
 
-                if (contactsError) {
-                    console.error('Error fetching contacts:', contactsError);
-                } else {
-                    setContacts(contactsData || []);
+                    if (contactsError) {
+                        console.error('Error fetching contacts:', contactsError);
+                    } else {
+                        setContacts(contactsData || []);
+                    }
                 }
 
             } catch (error) {
