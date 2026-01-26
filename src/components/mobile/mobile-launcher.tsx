@@ -233,17 +233,32 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
                     onProductAdded={async (product) => {
                         // Add product to shopping list
                         try {
+                            console.log('🛒 Adding product to shopping list:', product);
                             const { data: { session } } = await supabase.auth.getSession();
+                            console.log('👤 Session:', session?.user?.id);
+
                             if (session?.user) {
-                                await supabase.from('shopping_items').insert({
+                                const { data, error } = await supabase.from('shopping_items').insert({
                                     user_id: session.user.id,
                                     name: product.name,
                                     barcode: product.barcode,
                                     checked: false
-                                });
+                                }).select();
+
+                                if (error) {
+                                    console.error('❌ Database error:', error);
+                                    alert(`Error al guardar: ${error.message}`);
+                                } else {
+                                    console.log('✅ Product saved:', data);
+                                    alert(`✅ "${product.name}" añadido a la lista`);
+                                }
+                            } else {
+                                console.error('❌ No user session');
+                                alert('Error: No hay sesión activa');
                             }
-                        } catch (err) {
-                            console.error('Error adding product:', err);
+                        } catch (err: any) {
+                            console.error('❌ Error adding product:', err);
+                            alert(`Error: ${err.message}`);
                         }
                     }}
                 />

@@ -4,16 +4,25 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 export async function POST(req: Request) {
+    // Add CORS headers
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
     if (!apiKey) {
         console.error("API Route: Gemini API Key not found");
-        return NextResponse.json({ success: false, error: "Clave API no configurada en el servidor" }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Clave API no configurada en el servidor" }, { status: 500, headers });
     }
 
     try {
-        const { base64Image } = await req.json();
+        const body = await req.json();
+        // Accept both 'image' and 'base64Image' parameter names
+        const base64Image = body.image || body.base64Image;
 
         if (!base64Image) {
-            return NextResponse.json({ success: false, error: "Imagen no proporcionada" }, { status: 400 });
+            return NextResponse.json({ success: false, error: "Imagen no proporcionada" }, { status: 400, headers });
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -59,22 +68,20 @@ export async function POST(req: Request) {
                 try {
                     const jsonResponse = JSON.parse(text);
                     if (jsonResponse.productName && jsonResponse.productName.toLowerCase().includes("desconocido")) {
-                        return NextResponse.json({ success: false, error: "No se pudo identificar el producto" });
+                        return NextResponse.json({ success: false, error: "No se pudo identificar el producto" }, { headers });
                     }
                     return NextResponse.json({
                         success: true,
-                        data: {
-                            productName: jsonResponse.productName,
-                            supermarket: jsonResponse.supermarket || undefined
-                        }
-                    });
+                        productName: jsonResponse.productName,
+                        supermarket: jsonResponse.supermarket || undefined
+                    }, { headers });
                 } catch (e) {
                     console.error("Error parsing JSON:", e);
                     // Fallback for non-JSON models or errors
                     if (text.toLowerCase().includes("desconocido")) {
-                        return NextResponse.json({ success: false, error: "No se pudo identificar el producto" });
+                        return NextResponse.json({ success: false, error: "No se pudo identificar el producto" }, { headers });
                     }
-                    return NextResponse.json({ success: true, data: { productName: text } });
+                    return NextResponse.json({ success: true, productName: text }, { headers });
                 }
 
             } catch (error: any) {
@@ -83,9 +90,9 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json({ success: false, error: `Fallo con todos los modelos. Último error: ${lastError}` }, { status: 500 });
+        return NextResponse.json({ success: false, error: `Fallo con todos los modelos. Último error: ${lastError}` }, { status: 500, headers });
 
     } catch (error: any) {
-        return NextResponse.json({ success: false, error: `Error interno: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ success: false, error: `Error interno: ${error.message}` }, { status: 500, headers });
     }
 }
