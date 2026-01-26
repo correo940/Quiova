@@ -150,13 +150,51 @@ Stack: ${apiError.stack?.substring(0, 200) || 'N/A'}`;
                 const baseUrl = isMobile ? 'https://www.quioba.com' : '';
                 const apiUrl = `${baseUrl}/api/mi-hogar/identify-product`;
 
+                // Resize image to reduce payload size (max 800px)
+                const resizeImage = async (base64Str: string): Promise<string> => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 800;
+                            const MAX_HEIGHT = 800;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > MAX_WIDTH) {
+                                    height *= MAX_WIDTH / width;
+                                    width = MAX_WIDTH;
+                                }
+                            } else {
+                                if (height > MAX_HEIGHT) {
+                                    width *= MAX_HEIGHT / height;
+                                    height = MAX_HEIGHT;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx?.drawImage(img, 0, 0, width, height);
+                            // Get resized base64 string (remove data:image/jpeg;base64, prefix if present for clean base64)
+                            const resized = canvas.toDataURL('image/jpeg', 0.7);
+                            resolve(resized.split(',')[1]);
+                        };
+                        img.src = `data:image/jpeg;base64,${base64Str}`;
+                    });
+                };
+
+                const resizedBase64 = await resizeImage(image.base64String);
+
                 console.log('📸 Sending to:', apiUrl);
-                console.log('📸 Image size:', image.base64String.length, 'chars');
+                console.log('📸 Original size:', image.base64String.length, 'chars');
+                console.log('📸 Resized size:', resizedBase64.length, 'chars');
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: `data:image/jpeg;base64,${image.base64String}` })
+                    body: JSON.stringify({ base64Image: resizedBase64 })
                 });
 
                 console.log('📡 Photo API Response:', response.status, response.statusText);
