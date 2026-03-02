@@ -335,6 +335,181 @@ function createFallbackRoster(text: string): DigitalRoster {
     };
 }
 
+// --- Smart Local Search ---
+
+export async function findUserShiftLocal(base64Image: string, targetName: string): Promise<any | null> {
+    console.log(`[Local Scanner] Starting smart analysis for: ${targetName}`);
+
+    // 1. Run Layout Analysis (Tesseract)
+    const roster = await scanRosterImage(base64Image);
+    if (!roster) return null;
+
+    const targetUpper = targetName.toUpperCase().trim();
+    let result: {
+        found: boolean;
+        date: string;
+        targetName: string;
+        shift: string;
+        service: string;
+        startTime: string;
+        endTime: string;
+        colleagues: string[];
+        rawContext: string;
+    } = {
+        found: false,
+        date: roster.date,
+        targetName: targetName,
+        shift: "",
+        service: "",
+        startTime: "",
+        endTime: "",
+        colleagues: [],
+        rawContext: "Scan Local (Inteligente)"
+    };
+
+    // 2. Try Column Match (SKIPPED - Legacy Logic was inaccurate for multi-service pages)
+    // We now rely exclusively on the Proximity Parser (Step 3) which handles vertical context and service names correctly.
+    /*
+    for (const col of roster.columns) {
+         // ... code removed to force Proximity Parse ...
+    }
+    */
+
+    // 3. Regex Fallback (If layout failed but text exists)
+    // Look for lines that contain the name and try to infer context
+    // 3. Regex Fallback (Advanced State Machine)
+    // If layout failed but text exists, parse the whole document relative to the target
+    // 3. Regex Fallback (Robust Proximity Parser - V3)
+    // Solves the "Jumbled Output" problem by finding context spatially near the target line.
+    if (roster.rawText) {
+        const textLines = roster.rawText.split('\n');
+        const targetUpperTrim = targetUpper.replace(/\s+/g, ' ');
+
+        // Find Target Line Index
+        // Improved match: check includes but ensure it's not just a substring of another word if possible, or just trust includes for now.
+        const targetLineIndex = textLines.findIndex(l => l.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(targetUpperTrim));
+
+        if (targetLineIndex !== -1) {
+            result.found = true;
+            result.targetName = textLines[targetLineIndex].trim();
+            result.rawContext = "Scan Local (Proximidad)";
+
+            // --- CONTEXT SEARCH (Look Upwards for Headers) ---
+            const serviceKeywords = ["SERVICIO", "CENTRO PENITENCIARIO", "SUBDELEGACION", "ACUARTELAMIENTO", "CONDUCCION", "MONITORES", "CURSOS", "SALIENTES", "PUERTAS", "PATRULLA", "SEGURIDAD", "PLANA MAYOR", "NUCLI", "NUCLEO", "EVENTOS", "ORDEN PUBLICO"];
+
+            let foundService = "SERVICIO GENERAL";
+            let foundSchedule = { shift: "MAÑANA", start: "06:00", end: "14:00" };
+
+            // Search UPWARDS from target line to find the NEAREST header
+            let serviceDetected = false;
+            let scheduleDetected = false;
+
+            for (let i = targetLineIndex - 1; i >= Math.max(0, targetLineIndex - 50); i--) {
+                const line = textLines[i].toUpperCase().trim();
+                if (line.length < 3) continue;
+
+                // 1. Detect Schedule (If we haven't found a closer one yet)
+                // Patterns: "DE 06 A 14", "14/22", "22 A 06"
+                if (!scheduleDetected) {
+                    const timeMatch = line.match(/(?:DE)?\s*(\d{1,2})[\.:]?\d{0,2}\s*(?:A|:|H|-)\s*(\d{1,2})[\.:]?\d{0,2}/);
+                    if (timeMatch) {
+                        const startH = parseInt(timeMatch[1]);
+                        const endH = parseInt(timeMatch[2]);
+                        if (startH >= 0 && startH <= 24 && endH >= 0 && endH <= 24) {
+                            let shift = "MAÑANA";
+                            if (startH >= 12 && startH < 21) shift = "TARDE";
+                            if (startH >= 21 || startH < 7) shift = "NOCHE";
+
+                            foundSchedule = {
+                                shift: shift,
+                                start: `${startH.toString().padStart(2, '0')}:00`,
+                                end: `${endH.toString().padStart(2, '0')}:00`
+                            };
+                            scheduleDetected = true;
+                        }
+                    }
+                }
+
+                // 2. Detect Service (First valid one found going UP is the parent)
+                if (!serviceDetected && serviceKeywords.some(k => line.includes(k)) && !line.includes("LLAMADAS")) {
+                    foundService = line.replace(/[^A-ZÑ\s]/g, '').trim(); // Clean junk chars
+                    serviceDetected = true;
+                }
+
+                if (serviceDetected && scheduleDetected) break; // Found both closest headers
+            }
+
+            // Apply Context
+            if (foundService.includes("SALIENTE")) foundSchedule.shift = "SALIENTE";
+
+            result.service = foundService;
+            result.shift = foundSchedule.shift;
+            result.startTime = foundSchedule.start;
+            result.endTime = foundSchedule.end;
+
+
+            // --- COLLEAGUES SEARCH (Look Around Target) ---
+            // Scan +/- 20 lines. A colleague is someone who shares the SAME Context (Service).
+            // But their TIME might be different (e.g. 07-14 vs 06-14).
+
+            const potentialColleagues: string[] = [];
+            const range = 25;
+
+            for (let i = Math.max(0, targetLineIndex - range); i <= Math.min(textLines.length - 1, targetLineIndex + range); i++) {
+                if (i === targetLineIndex) continue; // Skip self
+
+                const line = textLines[i].toUpperCase().trim();
+                // Heuristic for Name: "G.C." or "D./Dª." or Contains Comma, and No Numbers (to avoid headers)
+                const isName = (line.includes("G.C.") || line.includes("GUARDIA") || line.includes(",") || line.startsWith("D.") || line.startsWith("Dª")) && line.length > 8 && !line.includes("SERVICIO") && !/\d{2}/.test(line);
+
+                if (isName) {
+                    // Check THIS person's context to see if they are in the same block
+                    // We look UP from this person to see if we hit the SAME Service header before hitting a DIFFERENT Service header
+                    let personService = "UNKNOWN";
+                    let personSchedule = { ...foundSchedule }; // Default to main schedule
+
+                    // Quick scan up for this person
+                    for (let j = i - 1; j >= Math.max(0, i - 40); j--) {
+                        const l = textLines[j].toUpperCase();
+                        if (serviceKeywords.some(k => l.includes(k)) && !l.includes("LLAMADAS")) {
+                            personService = l.replace(/[^A-ZÑ\s]/g, '').trim();
+                            break; // First service header up is theirs
+                        }
+                    }
+
+                    // If matches target service, they are a colleague
+                    if (personService === foundService || (personService === "UNKNOWN" && Math.abs(i - targetLineIndex) < 10)) {
+                        // Refine Schedule for this person (they might be under a different column header in the same service)
+                        for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+                            const l = textLines[j].toUpperCase();
+                            // Stop if we hit service
+                            if (serviceKeywords.some(k => l.includes(k))) break;
+
+                            const timeMatch = l.match(/(?:DE)?\s*(\d{1,2})[\.:]?\d{0,2}\s*(?:A|:|H|-)\s*(\d{1,2})[\.:]?\d{0,2}/);
+                            if (timeMatch) {
+                                const s = parseInt(timeMatch[1]);
+                                const e = parseInt(timeMatch[2]);
+                                personSchedule.start = `${s.toString().padStart(2, '0')}:00`;
+                                personSchedule.end = `${e.toString().padStart(2, '0')}:00`;
+                                break;
+                            }
+                        }
+
+                        const cleanName = textLines[i].replace(/G\.?C\.?\s*/i, '').replace(/D\.?\s*/i, '').replace(/Dª\.?\s*/i, '').trim();
+                        potentialColleagues.push(`${cleanName}|${personSchedule.start}|${personSchedule.end}`);
+                    }
+                }
+            }
+            result.colleagues = potentialColleagues;
+
+            return result;
+        }
+    }
+
+    if (result.found) return result;
+    return null;
+}
+
 function getCenterY(bbox: Tesseract.Bbox) {
     if (!bbox) return 0;
     return bbox.y0 + (bbox.y1 - bbox.y0) / 2;

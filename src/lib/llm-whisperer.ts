@@ -5,6 +5,14 @@ export interface LLMWhispererResponse {
     STATUS: string;
 }
 
+// Helper to get API base URL for mobile
+function getApiBaseUrl(): string {
+    if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
+        return 'https://www.quioba.com';
+    }
+    return '';
+}
+
 export async function processWithLLMWhisperer(base64Image: string, apiKey: string): Promise<string | null> {
     console.log("Starting LLM Whisperer processing...");
 
@@ -18,7 +26,8 @@ export async function processWithLLMWhisperer(base64Image: string, apiKey: strin
         formData.append("mode", "layout_preserving"); // Preserves spatial layout
         formData.append("output_format", "text");
 
-        const response = await fetch("/api/whisperer", {
+        const baseUrl = getApiBaseUrl();
+        const response = await fetch(`${baseUrl}/api/whisperer`, {
             method: "POST",
             headers: {
                 "unstract-key": apiKey
@@ -49,7 +58,7 @@ export async function processWithLLMWhisperer(base64Image: string, apiKey: strin
                 console.log(`Polling LLM Whisperer (Attempt ${attempts + 1})...`);
                 await new Promise(r => setTimeout(r, 2000));
 
-                const statusRes = await fetch(`/api/whisperer?hash=${hash}`, {
+                const statusRes = await fetch(`${baseUrl}/api/whisperer?hash=${hash}`, {
                     headers: { "unstract-key": apiKey }
                 });
 

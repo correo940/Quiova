@@ -14,7 +14,8 @@ import {
     Calendar,
     Sword,
     Wallet,
-    BookOpen
+    BookOpen,
+    MessageCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +23,14 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 const modules = [
+    {
+        title: 'Asistente Quioba',
+        description: 'Pregunta sobre tus datos personales',
+        icon: MessageCircle,
+        href: '/apps/mi-hogar/asistente',
+        color: 'text-violet-500',
+        bg: 'bg-violet-500/10',
+    },
     {
         title: 'Contraseñas',
         description: 'Gestor seguro de claves WiFi y cuentas',

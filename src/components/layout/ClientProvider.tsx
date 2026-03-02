@@ -1,5 +1,8 @@
 'use client';
 
+// CRITICAL: Import first - registers share target listener before React mounts
+import '@/lib/share-target-init';
+
 import TasksProviderWrapper from '@/context/TasksProviderWrapper';
 import React from 'react';
 import StartMenu from '@/components/dashboard/start-menu';
@@ -13,6 +16,7 @@ import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicl
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
 import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
+import { ShareTargetProvider } from '@/context/ShareTargetContext';
 
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
@@ -26,16 +30,18 @@ export default function ClientProvider({ children }: { children: React.ReactNode
       <GlobalMenuProvider>
         <PostItSettingsProvider>
           <JournalProvider>
-            <TextSelectionToolbar />
-            <MedicineAlarmManager />
-            <TaskNotificationManager />
-            <VehicleNotificationManager />
-            <LayoutResizer>
-              {children}
-            </LayoutResizer>
-            <StartMenu />
-            <TaskPostIts />
-            <SystemPostIts />
+            <ShareTargetProvider>
+              <TextSelectionToolbar />
+              <MedicineAlarmManager />
+              <TaskNotificationManager />
+              <VehicleNotificationManager />
+              <LayoutResizer>
+                {children}
+              </LayoutResizer>
+              <StartMenu />
+              <TaskPostIts />
+              <SystemPostIts />
+            </ShareTargetProvider>
           </JournalProvider>
         </PostItSettingsProvider>
       </GlobalMenuProvider>

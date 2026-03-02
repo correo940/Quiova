@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useState } from "react";
 import AdminPostItManager from "@/components/admin/post-it-manager";
 import SchedulerActivityManager from "@/components/admin/scheduler-activity-manager";
+import AssistantManager from "@/components/admin/assistant-manager";
 
 // ... imports
 
@@ -83,6 +84,11 @@ export default function AdminPage() {
         {/* Scheduler Activity Manager */}
         <div className="bg-card rounded-lg shadow-sm">
           <SchedulerActivityManager />
+        </div>
+
+        {/* Assistant Manager */}
+        <div className="bg-card rounded-lg p-6 shadow-sm">
+          <AssistantManager />
         </div>
 
       </div>

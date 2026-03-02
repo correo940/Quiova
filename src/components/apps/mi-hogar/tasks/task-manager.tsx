@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2, Pencil, X, FileText, CheckSquare, Circle, Users, Lock, User as UserIcon, Filter } from 'lucide-react';
+import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2, Pencil, X, FileText, CheckSquare, Circle, Users, Lock, User as UserIcon, Filter, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -19,6 +19,7 @@ import PostItConfig from './post-it-config';
 import { usePostItSettings } from '@/context/PostItSettingsContext';
 import { TaskListSelector, TaskList } from './task-list-selector';
 import { ShareTasksDialog } from './share-tasks-dialog';
+import ScreenshotToTaskDialog from './screenshot-to-task-dialog';
 
 type Task = {
     id: string;
@@ -56,6 +57,7 @@ export default function TaskManager() {
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [currentList, setCurrentList] = useState<TaskList | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
+    const [showScanDialog, setShowScanDialog] = useState(false);
     const [members, setMembers] = useState<ListMember[]>([]);
     const [assignedTo, setAssignedTo] = useState<string>('unassigned');
     const [filterByMe, setFilterByMe] = useState(false);
@@ -506,15 +508,26 @@ export default function TaskManager() {
                     />
                 </div>
                 {currentList && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-primary hover:bg-primary/10"
-                        onClick={() => setShowShareDialog(true)}
-                    >
-                        <Users className="w-4 h-4 mr-2" />
-                        Compartir Lista
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-sm"
+                            onClick={() => setShowScanDialog(true)}
+                        >
+                            <Camera className="w-4 h-4 mr-2" />
+                            Escanear Evento
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary hover:bg-primary/10"
+                            onClick={() => setShowShareDialog(true)}
+                        >
+                            <Users className="w-4 h-4 mr-2" />
+                            Compartir Lista
+                        </Button>
+                    </div>
                 )}
             </div>
 
@@ -817,14 +830,22 @@ export default function TaskManager() {
             </div>
 
             {currentList && (
-                <ShareTasksDialog
-                    open={showShareDialog}
-                    onOpenChange={setShowShareDialog}
-                    listId={currentList.id}
-                    listName={currentList.name}
-                    isOwner={currentList.role === 'owner'}
-                    onListUpdated={() => fetchTasks()}
-                />
+                <>
+                    <ShareTasksDialog
+                        open={showShareDialog}
+                        onOpenChange={setShowShareDialog}
+                        listId={currentList.id}
+                        listName={currentList.name}
+                        isOwner={currentList.role === 'owner'}
+                        onListUpdated={() => fetchTasks()}
+                    />
+                    <ScreenshotToTaskDialog
+                        open={showScanDialog}
+                        onOpenChange={setShowScanDialog}
+                        onSuccess={() => fetchTasks()}
+                        listId={currentList.id}
+                    />
+                </>
             )}
         </div>
     );

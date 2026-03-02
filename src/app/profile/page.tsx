@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, Camera, UserPlus, Star, Crown, Shield, Users, Sparkles, Wand2, RefreshCw, Loader2, Check } from 'lucide-react';
+import { LogOut, Camera, UserPlus, Star, Crown, Shield, Users, Sparkles, Wand2, RefreshCw, Loader2, Check, Package, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,16 +15,33 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+interface Subscription {
+    id: string;
+    app_id: string;
+    app_name: string;
+    app_icon: string;
+    amount_paid: number;
+    purchased_at: string;
+    expires_at: string;
+    auto_renew: boolean;
+    status: string;
+}
+
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
     const [contacts, setContacts] = useState<any[]>([]);
+    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [avatarSeed, setAvatarSeed] = useState('');
     const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState('');
     const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+    const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false);
+    const [upgradingPremium, setUpgradingPremium] = useState(false);
     const router = useRouter();
+
+    const isPremium = profile?.subscription_tier === 'premium';
 
     useEffect(() => {
         const getProfile = async () => {
@@ -64,6 +81,9 @@ export default function ProfilePage() {
                     } else {
                         setContacts(contactsData || []);
                     }
+
+                    // Fetch Subscriptions
+                    await fetchSubscriptions(session.user.id);
                 }
 
             } catch (error) {
@@ -75,6 +95,116 @@ export default function ProfilePage() {
 
         getProfile();
     }, [router]);
+
+    const fetchSubscriptions = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('user_app_purchases')
+                .select('id, app_id, amount_paid, purchased_at, expires_at, auto_renew, status, marketplace_apps(name, icon_key)')
+                .eq('user_id', userId)
+                .eq('status', 'active');
+
+            if (error) {
+                console.error('Error fetching subscriptions:', error);
+                return;
+            }
+
+            const subs: Subscription[] = (data || []).map((s: any) => ({
+                id: s.id,
+                app_id: s.app_id,
+                app_name: s.marketplace_apps?.name || 'App',
+                app_icon: s.marketplace_apps?.icon_key || 'Package',
+                amount_paid: s.amount_paid,
+                purchased_at: s.purchased_at,
+                expires_at: s.expires_at,
+                auto_renew: s.auto_renew ?? true,
+                status: s.status,
+            }));
+
+            setSubscriptions(subs);
+        } catch (err) {
+            console.error('Subscriptions fetch error:', err);
+        }
+    };
+
+    const toggleAutoRenew = async (subId: string, currentValue: boolean) => {
+        const newValue = !currentValue;
+        const { error } = await supabase
+            .from('user_app_purchases')
+            .update({ auto_renew: newValue })
+            .eq('id', subId);
+
+        if (error) {
+            toast.error('Error al actualizar la renovación');
+            return;
+        }
+
+        setSubscriptions(prev =>
+            prev.map(s => s.id === subId ? { ...s, auto_renew: newValue } : s)
+        );
+
+        toast.success(newValue ? 'Renovación automática activada' : 'Renovación automática desactivada');
+    };
+
+    const handleUpgradePremium = async () => {
+        setUpgradingPremium(true);
+        try {
+            // Mock payment
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subscription_tier: 'premium' })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setProfile({ ...profile, subscription_tier: 'premium' });
+            toast.success('¡Bienvenido a Premium! Todas las apps desbloqueadas');
+            setIsPremiumDialogOpen(false);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al activar Premium');
+        } finally {
+            setUpgradingPremium(false);
+        }
+    };
+
+    const handleCancelPremium = async () => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ subscription_tier: 'free' })
+            .eq('id', user.id);
+
+        if (error) {
+            toast.error('Error al cancelar Premium');
+            return;
+        }
+
+        setProfile({ ...profile, subscription_tier: 'free' });
+        toast.success('Plan Premium cancelado');
+    };
+
+    const getTimeRemaining = (expiresAt: string) => {
+        const now = new Date();
+        const expiry = new Date(expiresAt);
+        const diffMs = expiry.getTime() - now.getTime();
+
+        if (diffMs <= 0) return { text: 'Caducada', color: 'text-red-500', expired: true };
+
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const months = Math.floor(days / 30);
+
+        if (months > 0) {
+            const remainingDays = days % 30;
+            return { text: `${months} mes${months > 1 ? 'es' : ''} y ${remainingDays}d`, color: 'text-emerald-600', expired: false };
+        }
+        if (days > 7) return { text: `${days} días`, color: 'text-emerald-600', expired: false };
+        if (days > 0) return { text: `${days} día${days > 1 ? 's' : ''}`, color: 'text-amber-500', expired: false };
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        return { text: `${hours}h restantes`, color: 'text-red-500', expired: false };
+    };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -240,9 +370,70 @@ export default function ProfilePage() {
                         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl mb-4">
                             <div>
                                 <p className="font-medium">Plan Actual</p>
-                                <p className="text-sm text-muted-foreground capitalize">{profile?.subscription_tier || 'Gratuito'}</p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                    {isPremium ? 'Premium — 10€/mes' : 'Gratuito'}
+                                </p>
                             </div>
-                            <Button variant="outline" size="sm">Mejorar Plan</Button>
+                            {isPremium ? (
+                                <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50" onClick={handleCancelPremium}>
+                                    Cancelar Plan
+                                </Button>
+                            ) : (
+                                <Dialog open={isPremiumDialogOpen} onOpenChange={setIsPremiumDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white gap-1">
+                                            <Crown className="w-3.5 h-3.5" />
+                                            Mejorar Plan
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2 text-xl">
+                                                <Crown className="w-5 h-5 text-amber-500" />
+                                                Quioba Premium
+                                            </DialogTitle>
+                                            <DialogDescription>
+                                                Desbloquea todas las aplicaciones por un único precio.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="py-4 space-y-4">
+                                            <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-2xl border border-amber-200 dark:border-amber-800/40">
+                                                <p className="text-3xl font-extrabold text-amber-600">10€<span className="text-base font-medium text-slate-500">/mes</span></p>
+                                                <p className="text-xs text-slate-500 mt-1">Todas las apps incluidas</p>
+                                            </div>
+                                            <ul className="space-y-2">
+                                                {[
+                                                    'Acceso a TODAS las aplicaciones',
+                                                    'Sin límites ni restricciones',
+                                                    'Actualizaciones prioritarias',
+                                                    'Soporte preferente',
+                                                    'Cancela cuando quieras',
+                                                ].map((benefit, i) => (
+                                                    <li key={i} className="flex items-center gap-2 text-sm">
+                                                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                        <span>{benefit}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <Button
+                                                onClick={handleUpgradePremium}
+                                                disabled={upgradingPremium}
+                                                className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl font-bold text-base shadow-lg"
+                                            >
+                                                {upgradingPremium ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <Crown className="w-4 h-4" />
+                                                        <span>Activar Premium</span>
+                                                    </div>
+                                                )}
+                                            </Button>
+                                            <p className="text-[10px] text-center text-slate-400">Pago seguro procesado por Quioba Pay</p>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </div>
                         <Button
                             variant="destructive"
@@ -250,8 +441,72 @@ export default function ProfilePage() {
                             onClick={handleLogout}
                         >
                             <LogOut className="w-4 h-4" />
-                            Cerrar Sesión Salir de la aplicación
+                            Cerrar Sesión
                         </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Subscriptions Management */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Package className="w-5 h-5 text-emerald-600" />
+                            Mis Suscripciones
+                        </CardTitle>
+                        <CardDescription>Gestiona tus apps activas y su renovación</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {subscriptions.length > 0 ? (
+                            <div className="space-y-3">
+                                {subscriptions.map((sub) => {
+                                    const timeInfo = getTimeRemaining(sub.expires_at);
+                                    return (
+                                        <div
+                                            key={sub.id}
+                                            className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${timeInfo.expired
+                                                ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'
+                                                : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30'
+                                                }`}
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                                                    {sub.app_name}
+                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <Clock className={`w-3 h-3 ${timeInfo.color}`} />
+                                                    <span className={`text-xs font-medium ${timeInfo.color}`}>
+                                                        {timeInfo.expired ? 'Caducada' : `Caduca en ${timeInfo.text}`}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                    {sub.amount_paid === 0 ? 'Gratuita' : `${sub.amount_paid}€/año`}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => toggleAutoRenew(sub.id, sub.auto_renew)}
+                                                className="flex items-center gap-1.5 shrink-0 ml-3"
+                                                title={sub.auto_renew ? 'Desactivar renovación' : 'Activar renovación'}
+                                            >
+                                                {sub.auto_renew ? (
+                                                    <ToggleRight className="w-8 h-8 text-emerald-500" />
+                                                ) : (
+                                                    <ToggleLeft className="w-8 h-8 text-slate-300" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                <p className="text-[10px] text-center text-slate-400 mt-2">
+                                    Activa/desactiva la renovación automática de cada app
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
+                                <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                                <p>No tienes suscripciones activas.</p>
+                                <p className="text-xs mt-1">Explora las apps desde el menú principal.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

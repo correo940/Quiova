@@ -13,6 +13,14 @@ export interface UserShiftResult {
 
 const OCR_SPACE_KEY = "K84515341388957";
 
+// Helper to get API base URL for mobile
+function getApiBaseUrl(): string {
+    if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
+        return 'https://www.quioba.com';
+    }
+    return '';
+}
+
 export async function findUserShiftOCRSpace(base64Image: string, targetName: string, shiftTypes: any[] = []): Promise<UserShiftResult | null> {
     console.log(`[OCR.space] Starting Hierarchical Analysis for: ${targetName}`);
 
@@ -27,7 +35,8 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
         formData.append("scale", "true");
         formData.append("OCREngine", "2");
 
-        const response = await fetch("/api/ocr-space", {
+        const baseUrl = getApiBaseUrl();
+        const response = await fetch(`${baseUrl}/api/ocr-space`, {
             method: "POST",
             body: formData,
         });
@@ -165,16 +174,86 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
             };
         });
 
-        // 5. Find Target User
-        const userLine = lines.find((l: any) => l.cleanText.includes(targetName.toUpperCase()));
+        // 5. Find Target User - IMPROVED MATCHING
+        // Helper: Normalize text for comparison (remove accents, special chars)
+        const normalizeText = (text: string): string => {
+            return text
+                .toUpperCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Remove accents
+                .replace(/[ÑÑ]/g, 'N')
+                .replace(/[^A-Z\s]/g, ' ') // Keep only letters and spaces
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
+
+        // Helper: Calculate similarity (simple Levenshtein-like for short strings)
+        const similarity = (a: string, b: string): number => {
+            if (a === b) return 1;
+            if (a.includes(b) || b.includes(a)) return 0.9;
+
+            // Check each word separately for partial matches
+            const aWords = a.split(' ').filter(w => w.length > 2);
+            const bWords = b.split(' ').filter(w => w.length > 2);
+
+            let matches = 0;
+            for (const aw of aWords) {
+                for (const bw of bWords) {
+                    if (aw.includes(bw) || bw.includes(aw)) {
+                        matches++;
+                        break;
+                    }
+                }
+            }
+            return matches / Math.max(aWords.length, 1);
+        };
+
+        const normalizedTarget = normalizeText(targetName);
+        const targetWords = normalizedTarget.split(' ').filter(w => w.length > 2);
+
+        console.log(`[OCR] Searching for: "${normalizedTarget}" (words: ${targetWords.join(', ')})`);
+
+        // Try exact match first
+        let userLine = lines.find((l: any) =>
+            normalizeText(l.text).includes(normalizedTarget)
+        );
+
+        // If not found, try partial word matching
+        if (!userLine && targetWords.length > 0) {
+            userLine = lines.find((l: any) => {
+                const lineNorm = normalizeText(l.text);
+                // Match if ANY word from target appears in line
+                return targetWords.some(word => lineNorm.includes(word));
+            });
+            if (userLine) {
+                console.log(`[OCR] Found via partial match: "${userLine.text}"`);
+            }
+        }
+
+        // Last resort: fuzzy similarity matching
+        if (!userLine) {
+            let bestMatch = { line: null as any, score: 0 };
+            for (const line of lines) {
+                const lineNorm = normalizeText(line.text);
+                const score = similarity(lineNorm, normalizedTarget);
+                if (score > bestMatch.score && score >= 0.5) {
+                    bestMatch = { line, score };
+                }
+            }
+            if (bestMatch.line) {
+                userLine = bestMatch.line;
+                console.log(`[OCR] Found via fuzzy match (${(bestMatch.score * 100).toFixed(0)}%): "${userLine.text}"`);
+            }
+        }
 
         if (!userLine) {
-            console.log("User not found in lines");
+            console.log("[OCR] User not found after all matching attempts");
             return {
                 found: false,
                 date: foundDate,
                 targetName: targetName,
-                shift: '', startTime: '', endTime: '', colleagues: [], rawContext: fullText
+                shift: '', startTime: '', endTime: '', colleagues: [],
+                rawContext: `No se encontró "${targetName}" en el cuadrante.\n\nNombres detectados:\n${lines.slice(0, 30).map((l: any) => l.text).join('\n')}`
             };
         }
 

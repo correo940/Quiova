@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Dialog,
     DialogContent,
@@ -32,11 +31,13 @@ import {
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { format, startOfMonth, subMonths, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Progress } from '@/components/ui/progress';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savings-notification-settings';
+import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
+import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
 
 // Types
 type BankAccount = {
@@ -61,16 +62,20 @@ type SavingsGoal = {
     icon?: string;
     linked_account_id?: string;
     interest_rate?: number;
+    linked_account_id?: string;
+    interest_rate?: number;
 };
 
-type MonthlyRecord = {
+export type RecurringItem = {
     id: string;
-    account_id: string;
-    month_date: string;
-    balance_start: number;
-    balance_end: number;
-    savings_amount?: number; // Calculated
-    notes?: string;
+    name: string;
+    amount: number;
+    type: 'income' | 'expense';
+    day_of_month?: number;
+    category?: string;
+    target_account_id?: string;
+    end_date?: string;
+    last_run_date?: string;
 };
 
 // Mock Bank Logos/Colors
@@ -95,6 +100,7 @@ export default function SavingsPage() {
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
     const [monthlyStats, setMonthlyStats] = useState({ income: 0, expense: 0 });
     const [chartData, setChartData] = useState<any[]>([]);
+    const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
     const [passwords, setPasswords] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -112,18 +118,89 @@ export default function SavingsPage() {
     const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
     const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
     const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
+    const [isAddRecurringOpen, setIsAddRecurringOpen] = useState(false);
 
     // Forms
     const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
     const [newGoal, setNewGoal] = useState({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
+    const [newRecurring, setNewRecurring] = useState({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
 
 
     useEffect(() => {
         if (user) {
-            fetchData();
+            fetchData().then(() => {
+                // Run automation after fetching data
+                processAutoDeposits();
+            });
             fetchPasswordsLite();
         }
     }, [user]);
+
+    // --- AUTOMATION LOGIC ---
+    const processAutoDeposits = async () => {
+        const today = new Date();
+        const currentDay = today.getDate(); // 1-31
+        const currentMonthStr = format(today, 'yyyy-MM'); // 2024-02
+
+        // Fetch valid items for automation directly to insure freshness
+        const { data: items } = await supabase
+            .from('savings_recurring_items')
+            .select('*')
+            .eq('user_id', user?.id)
+            .eq('type', 'income') // Only incomes are automated for now per user request
+            .not('target_account_id', 'is', null);
+
+        if (!items || items.length === 0) return;
+
+        let processedCount = 0;
+
+        for (const item of items) {
+            // Check if it should run today or if we missed it this month
+            // Condition 1: Day of month has passed or is today
+            if ((item.day_of_month || 1) > currentDay) continue;
+
+            // Condition 2: Has NOT run this month yet
+            // We check if last_run_date is in current month
+            if (item.last_run_date && item.last_run_date.startsWith(currentMonthStr)) continue;
+
+            // Condition 3: End Date not passed
+            if (item.end_date && new Date(item.end_date) < today) continue;
+
+            // EXECUTE DEPOSIT
+            console.log('Executing Auto Deposit:', item.name);
+
+            // 1. Transaction Record
+            await supabase.from('savings_account_transactions').insert({
+                user_id: user?.id,
+                account_id: item.target_account_id,
+                amount: item.amount,
+                date: format(today, 'yyyy-MM-dd'),
+                description: `Auto: ${item.name}`
+            });
+
+            // 2. Update Account Balance
+            // We need current balance first
+            const { data: acc } = await supabase.from('savings_accounts').select('current_balance').eq('id', item.target_account_id).single();
+            if (acc) {
+                await supabase.from('savings_accounts').update({
+                    current_balance: (acc.current_balance || 0) + item.amount
+                }).eq('id', item.target_account_id);
+            }
+
+            // 3. Mark as Run
+            await supabase.from('savings_recurring_items').update({
+                last_run_date: format(today, 'yyyy-MM-dd')
+            }).eq('id', item.id);
+
+            processedCount++;
+        }
+
+        if (processedCount > 0) {
+            toast.success(`Se han procesado ${processedCount} ingresos automáticos`);
+            // Refetch to update UI
+            fetchData();
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -145,8 +222,6 @@ export default function SavingsPage() {
             setGoals(gls || []);
 
             // 3. Transactions (Last 30 days for stats & chart)
-            // We fetch all transactions to reconstruct history correctly if needed, or just last 30 days if we assume current balance is correct
-            // To reconstruct history chart from current balance, we need transactions in reverse chronological order.
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -155,9 +230,17 @@ export default function SavingsPage() {
                 .select('*')
                 .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
                 .in('account_id', accs?.map(a => a.id) || [])
-                .order('date', { ascending: false }); // Newest first
+                .order('date', { ascending: false });
 
             setRecentTransactions(txs || []);
+
+            // 4. Recurring Items
+            const { data: recs } = await supabase
+                .from('savings_recurring_items')
+                .select('*')
+                .eq('user_id', user?.id)
+                .order('day_of_month', { ascending: true });
+            setRecurringItems((recs as RecurringItem[]) || []);
 
             // Calculate Monthly Stats (Current Month)
             const currentMonth = new Date().getMonth();
@@ -175,29 +258,24 @@ export default function SavingsPage() {
             setMonthlyStats({ income: mIncome, expense: mExpense });
 
             // Calculate Chart Data (Reconstruct backwards)
-            // Start with current total balance
             let currentTotal = accs?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
             const dailyBalances = [];
 
-            // Loop last 30 days
             for (let i = 0; i < 30; i++) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
 
-                // Push current state
                 dailyBalances.push({
                     date: format(d, 'd MMM', { locale: es }),
-                    fullDate: dateStr, // for comparing
-                    balance: currentTotal
+                    fullDate: dateStr,
+                    value: currentTotal // Using 'value' for Recharts compatibility
                 });
 
-                // Reverse transactions of this day to find previous day's balance
-                // If today we have balance X and transaction +100 happened today, yesterday we had X - 100
                 const daysTransactions = (txs || []).filter(t => t.date === dateStr);
                 const daysChange = daysTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-                currentTotal -= daysChange; // Go back in time
+                currentTotal -= daysChange;
             }
 
             setChartData(dailyBalances.reverse());
@@ -211,30 +289,18 @@ export default function SavingsPage() {
     };
 
     const fetchPasswordsLite = async () => {
-        const { data } = await supabase
-            .from('passwords')
-            .select('id, name')
-            .eq('user_id', user?.id)
-            .order('name');
+        const { data } = await supabase.from('passwords').select('id, name').eq('user_id', user?.id).order('name');
         setPasswords(data || []);
     };
 
     // --- GENERIC TRANSACTION FETCHERS ---
     const fetchGoalTransactions = async (goalId: string) => {
-        const { data } = await supabase
-            .from('savings_goal_transactions')
-            .select('*')
-            .eq('goal_id', goalId)
-            .order('date', { ascending: false });
+        const { data } = await supabase.from('savings_goal_transactions').select('*').eq('goal_id', goalId).order('date', { ascending: false });
         setTransactions(data || []);
     };
 
     const fetchAccountTransactions = async (accountId: string) => {
-        const { data } = await supabase
-            .from('savings_account_transactions') // Assuming new table
-            .select('*')
-            .eq('account_id', accountId)
-            .order('date', { ascending: false });
+        const { data } = await supabase.from('savings_account_transactions').select('*').eq('account_id', accountId).order('date', { ascending: false });
         setTransactions(data || []);
     };
 
@@ -243,7 +309,7 @@ export default function SavingsPage() {
         setSelectedGoal(goal);
         setTransType('deposit');
         setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-        setTransactions([]); // Clear prev
+        setTransactions([]);
         await fetchGoalTransactions(goal.id);
         setIsGoalDetailOpen(true);
     };
@@ -252,7 +318,7 @@ export default function SavingsPage() {
         setSelectedAccount(acc);
         setTransType('deposit');
         setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-        setTransactions([]); // Clear prev
+        setTransactions([]);
         await fetchAccountTransactions(acc.id);
         setIsAccountDetailOpen(true);
     };
@@ -265,7 +331,6 @@ export default function SavingsPage() {
             let bankName = newAccount.bank;
             let bankColor = newAccount.color;
             let bankLogo = null;
-
             if (newAccount.bank === 'Otro') {
                 if (!newAccount.customBankName) return toast.error('Escribe el nombre del banco');
                 bankName = newAccount.customBankName;
@@ -274,7 +339,6 @@ export default function SavingsPage() {
                 bankColor = bankInfo.color;
                 bankLogo = bankInfo.logo;
             }
-
             const payload = {
                 user_id: user?.id,
                 name: newAccount.name,
@@ -312,7 +376,7 @@ export default function SavingsPage() {
             if (error) throw error;
             toast.success('Meta creada');
             setIsAddGoalOpen(false);
-            setNewGoal({ name: '', target: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
+            setNewGoal({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
             fetchData();
         } catch (error) {
             console.error(error);
@@ -325,8 +389,6 @@ export default function SavingsPage() {
         try {
             let amount = parseFloat(newTransaction.amount);
             if (transType === 'expense') amount = -amount;
-
-            // 1. Insert into savings_goal_transactions
             const { error: txError } = await supabase.from('savings_goal_transactions').insert({
                 goal_id: selectedGoal.id,
                 amount: amount,
@@ -334,18 +396,11 @@ export default function SavingsPage() {
                 description: newTransaction.description || (transType === 'deposit' ? 'Aporte' : 'Retiro')
             });
             if (txError) throw txError;
-
-            // 2. Update Goal
             const newTotal = (selectedGoal.current_amount || 0) + amount;
-            const { error: upError } = await supabase.from('savings_goals')
-                .update({ current_amount: newTotal })
-                .eq('id', selectedGoal.id);
+            const { error: upError } = await supabase.from('savings_goals').update({ current_amount: newTotal }).eq('id', selectedGoal.id);
             if (upError) throw upError;
-
             toast.success('Movimiento registrado');
             setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-
-            // Refresh
             fetchGoalTransactions(selectedGoal.id);
             fetchData();
             setSelectedGoal({ ...selectedGoal, current_amount: newTotal });
@@ -360,8 +415,6 @@ export default function SavingsPage() {
         try {
             let amount = parseFloat(newTransaction.amount);
             if (transType === 'expense') amount = -amount;
-
-            // 1. Insert into savings_account_transactions
             const { error: txError } = await supabase.from('savings_account_transactions').insert({
                 account_id: selectedAccount.id,
                 amount: amount,
@@ -369,18 +422,11 @@ export default function SavingsPage() {
                 description: newTransaction.description || (transType === 'deposit' ? 'Ingreso' : 'Retiro')
             });
             if (txError) throw txError;
-
-            // 2. Update Account
             const newTotal = (selectedAccount.current_balance || 0) + amount;
-            const { error: upError } = await supabase.from('savings_accounts')
-                .update({ current_balance: newTotal })
-                .eq('id', selectedAccount.id);
+            const { error: upError } = await supabase.from('savings_accounts').update({ current_balance: newTotal }).eq('id', selectedAccount.id);
             if (upError) throw upError;
-
             toast.success('Movimiento registrado');
             setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-
-            // Refresh
             fetchAccountTransactions(selectedAccount.id);
             fetchData();
             setSelectedAccount({ ...selectedAccount, current_balance: newTotal });
@@ -393,7 +439,6 @@ export default function SavingsPage() {
     const handleDeleteAccount = async () => {
         if (!selectedAccount) return;
         if (!window.confirm('¿Seguro que quieres eliminar esta cuenta? Se perderá el historial y las metas asociadas.')) return;
-
         try {
             const { error } = await supabase.from('savings_accounts').delete().eq('id', selectedAccount.id);
             if (error) throw error;
@@ -407,6 +452,43 @@ export default function SavingsPage() {
         }
     };
 
+    const handleCreateRecurring = async () => {
+        if (!newRecurring.name || !newRecurring.amount) return toast.error('Rellena nombre e importe');
+        try {
+            const payload = {
+                user_id: user?.id,
+                name: newRecurring.name,
+                amount: parseFloat(newRecurring.amount),
+                type: newRecurring.type,
+                day_of_month: newRecurring.day ? parseInt(newRecurring.day) : null,
+                category: 'General',
+                target_account_id: newRecurring.targetAccountId === 'none' ? null : newRecurring.targetAccountId,
+                end_date: newRecurring.endDate || null
+            };
+            const { error } = await supabase.from('savings_recurring_items').insert(payload);
+            if (error) throw error;
+            toast.success('Fijo añadido');
+            setIsAddRecurringOpen(false);
+            setNewRecurring({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al crear fijo');
+        }
+    };
+
+    const handleDeleteRecurring = async (id: string) => {
+        if (!window.confirm('¿Eliminar este gasto/ingreso fijo?')) return;
+        try {
+            const { error } = await supabase.from('savings_recurring_items').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Eliminado');
+            fetchData();
+        } catch (error) {
+            toast.error('Error al eliminar');
+        }
+    };
+
     const navigateToPassword = (passId: string) => {
         window.open(`/apps/mi-hogar/passwords`, '_blank');
     };
@@ -414,378 +496,157 @@ export default function SavingsPage() {
     // --- CALCULATIONS ---
     const totalCurrentBalance = accounts.reduce((acc, curr) => acc + (curr.current_balance || 0), 0);
     const totalGoalSaved = goals.reduce((acc, curr) => acc + (curr.current_amount || 0), 0);
-    // Include unlinked goals in total total? Or just accounts?
-    // Usually "Accounts" is "Liquid Money". Goals can be "Virtual Partitions" OR "External Cash".
-    // For now, let's keep totalCurrentBalance as SUM(Accounts).
-
-    if (loading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>;
-    }
 
     return (
-        <div className="container mx-auto p-4 max-w-6xl space-y-8 pb-24">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <Link href="/apps/mi-hogar">
-                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-                        </Button>
-                    </Link>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded-xl text-amber-600 dark:text-amber-400">
-                            <PiggyBank className="w-8 h-8" />
-                        </div>
-                        Mis Ahorros
-                    </h1>
-                </div>
+        <div className="container mx-auto p-4 max-w-6xl space-y-6 pb-24">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <Link href="/apps/mi-hogar">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                        <ArrowLeft className="h-4 w-4" /> Volver
+                    </Button>
+                </Link>
+                <SavingsNotificationSettings />
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Balance Total</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                            {totalCurrentBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+            {/* Notification Manager (invisible) */}
+            <SavingsNotificationManager />
+
+            {/* MAIN DASHBOARD UI */}
+            <SavingsDashboardUI
+                accounts={accounts}
+                goals={goals}
+                monthlyStats={monthlyStats}
+                totalBalance={totalCurrentBalance}
+                totalGoalSaved={totalGoalSaved}
+                chartData={chartData}
+                loading={loading}
+                onAddAccount={() => setIsAddAccountOpen(true)}
+                onAddGoal={() => setIsAddGoalOpen(true)}
+                onAddTransaction={() => {
+                    if (accounts.length > 0) {
+                        handleOpenAccountDetail(accounts[0]);
+                    } else {
+                        toast.info("Añade una cuenta primero");
+                    }
+                }}
+                onViewAccount={handleOpenAccountDetail}
+                recentTransactions={recentTransactions}
+                recurringItems={recurringItems}
+                onAddRecurring={() => setIsAddRecurringOpen(true)}
+                onDeleteRecurring={handleDeleteRecurring}
+            />
+
+            {/* --- DIALOGS --- */}
+
+            <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Añadir Cuenta</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Ahorros Piso" value={newAccount.name} onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })} /></div>
+                        <div className="space-y-2">
+                            <Label>Banco</Label>
+                            <Select value={newAccount.bank} onValueChange={(v) => {
+                                const isManual = v === 'Otro';
+                                if (!isManual) {
+                                    const bankInfo = BANKS.find(b => b.name === v);
+                                    setNewAccount({ ...newAccount, bank: v, color: bankInfo?.color || '#64748b' });
+                                } else {
+                                    setNewAccount({ ...newAccount, bank: v });
+                                }
+                            }}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                    {BANKS.map(b => (
+                                        <SelectItem key={b.name} value={b.name}><div className="flex items-center gap-2">{b.logo ? <img src={b.logo} alt={b.name} className="w-5 h-5 object-contain" /> : <div className="w-4 h-4 rounded-full" style={{ backgroundColor: b.color }} />}{b.name}</div></SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">En {accounts.length} cuentas</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Ahorrado para Metas</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                            {totalGoalSaved.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                        {newAccount.bank === 'Otro' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label>Nombre Banco</Label><Input value={newAccount.customBankName || ''} onChange={(e) => setNewAccount({ ...newAccount, customBankName: e.target.value })} /></div>
+                                <div className="space-y-2"><Label>Color</Label><input type="color" className="h-9 w-12 p-1 rounded border cursor-pointer" value={newAccount.color} onChange={(e) => setNewAccount({ ...newAccount, color: e.target.value })} /></div>
+                            </div>
+                        )}
+                        <div className="space-y-2"><Label>Interés Anual (%)</Label><Input type="number" placeholder="Ej: 3.5" value={newAccount.interestRate} onChange={(e) => setNewAccount({ ...newAccount, interestRate: e.target.value })} /></div>
+                        <div className="space-y-2">
+                            <Label>Contraseña (Opcional)</Label>
+                            <Select onValueChange={(v) => setNewAccount({ ...newAccount, passId: v })}>
+                                <SelectTrigger><SelectValue placeholder="Sin vincular" /></SelectTrigger>
+                                <SelectContent><SelectItem value="none">Sin vincular</SelectItem>{passwords.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                            </Select>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{goals.length} metas activas</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Cambio este Mes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-3xl font-bold ${monthlyStats.income >= monthlyStats.expense ? 'text-green-600' : 'text-red-500'}`}>
-                            {monthlyStats.income >= monthlyStats.expense ? '+' : '-'}{Math.abs(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                    </div>
+                    <DialogFooter><Button onClick={handleCreateAccount}>Crear Cuenta</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddGoalOpen} onOpenChange={setIsAddGoalOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Nueva Meta de Ahorro</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2"><Label>Nombre</Label><Input value={newGoal.name} onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })} /></div>
+                        <div className="space-y-2">
+                            <Label>Banco Asociado</Label>
+                            <Select value={newGoal.linkedAccountId} onValueChange={(v) => setNewGoal({ ...newGoal, linkedAccountId: v })}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona un banco..." /></SelectTrigger>
+                                <SelectContent><SelectItem value="none">Sin asociar</SelectItem>{accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.bank_name})</SelectItem>)}</SelectContent>
+                            </Select>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 flex gap-2">
-                            <span className="text-green-600">+{monthlyStats.income.toFixed(0)}€</span>
-                            <span className="text-red-500">-{monthlyStats.expense.toFixed(0)}€</span>
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="overview">Resumen</TabsTrigger>
-                    <TabsTrigger value="accounts">Cuentas</TabsTrigger>
-                    <TabsTrigger value="goals">Metas</TabsTrigger>
-                </TabsList>
-
-                {/* OVERVIEW TAB */}
-                <TabsContent value="overview" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* CHART */}
-                        <Card className="col-span-1 md:col-span-2">
-                            <CardHeader>
-                                <CardTitle>Evolución 30 Días</CardTitle>
-                                <CardDescription>Reconstrucción basada en historial</CardDescription>
-                            </CardHeader>
-                            <CardContent className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData}>
-                                        <defs>
-                                            <linearGradient id="colorBal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
-                                        <XAxis dataKey="date" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} minTickGap={30} />
-                                        <YAxis hide domain={['auto', 'auto']} />
-                                        <Tooltip
-                                            formatter={(value: number) => [value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }), 'Balance']}
-                                            labelStyle={{ color: 'black' }}
-                                        />
-                                        <Area type="monotone" dataKey="balance" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorBal)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </CardContent>
-                        </Card>
-
-                        {/* ACCOUNTS BREAKDOWN */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Distribución por Banco</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {accounts.map(acc => {
-                                    const percentage = totalCurrentBalance > 0 ? ((acc.current_balance || 0) / totalCurrentBalance) * 100 : 0;
-                                    return (
-                                        <div key={acc.id} className="space-y-1">
-                                            <div className="flex justify-between text-sm">
-                                                <div className="font-medium flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: acc.color }} />
-                                                    {acc.name}
-                                                </div>
-                                                <span className="text-muted-foreground">{acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
-                                            </div>
-                                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: acc.color }} />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </CardContent>
-                        </Card>
-
-                        {/* RECENT ACTIVITY */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Actividad Reciente</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-0"> {/* Removed padding to look like a list */}
-                                {recentTransactions.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-4">Sin movimientos recientes</p>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {recentTransactions.slice(0, 5).map(tx => {
-                                            const acc = accounts.find(a => a.id === tx.account_id);
-                                            const isPositive = tx.amount > 0;
-                                            return (
-                                                <div key={tx.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`p-2 rounded-full ${isPositive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                                            {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingUp className="w-4 h-4 rotate-180" />}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium text-sm">{tx.description}</div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                {format(parseISO(tx.date), 'd MMM', { locale: es })} • {acc?.name}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {isPositive ? '+' : ''}{tx.amount} €
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Objetivo (€)</Label><Input type="number" value={newGoal.target} onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Ya tienes (€)</Label><Input type="number" value={newGoal.current} onChange={(e) => setNewGoal({ ...newGoal, current: e.target.value })} /></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Interés (%)</Label><Input type="number" value={newGoal.interestRate} onChange={(e) => setNewGoal({ ...newGoal, interestRate: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Fecha Límite</Label><Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })} /></div>
+                        </div>
                     </div>
-                </TabsContent>
+                    <DialogFooter><Button onClick={handleCreateGoal}>Crear Meta</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-                {/* ACCOUNTS TAB */}
-                <TabsContent value="accounts" className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Mis Cuentas</h2>
-                        <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
-                            <DialogTrigger asChild>
-                                <Button><Plus className="w-4 h-4 mr-2" /> Nueva Cuenta</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Añadir Cuenta</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Nombre</Label>
-                                        <Input placeholder="Ej: Ahorros Piso" value={newAccount.name} onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Banco</Label>
-                                        <Select value={newAccount.bank} onValueChange={(v) => {
-                                            const isManual = v === 'Otro';
-                                            if (!isManual) {
-                                                const bankInfo = BANKS.find(b => b.name === v);
-                                                setNewAccount({ ...newAccount, bank: v, color: bankInfo?.color || '#64748b' });
-                                            } else {
-                                                setNewAccount({ ...newAccount, bank: v });
-                                            }
-                                        }}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent className="max-h-[200px]">
-                                                {BANKS.map(b => (
-                                                    <SelectItem key={b.name} value={b.name}>
-                                                        <div className="flex items-center gap-2">
-                                                            {b.logo ? (
-                                                                <img src={b.logo} alt={b.name} className="w-5 h-5 object-contain" />
-                                                            ) : (
-                                                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: b.color }} />
-                                                            )}
-                                                            {b.name}
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    {newAccount.bank === 'Otro' && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2"><Label>Nombre Banco</Label><Input value={newAccount.customBankName || ''} onChange={(e) => setNewAccount({ ...newAccount, customBankName: e.target.value })} /></div>
-                                            <div className="space-y-2"><Label>Color</Label><input type="color" className="h-9 w-12 p-1 rounded border cursor-pointer" value={newAccount.color} onChange={(e) => setNewAccount({ ...newAccount, color: e.target.value })} /></div>
-                                        </div>
-                                    )}
-                                    <div className="space-y-2">
-                                        <Label>Interés Anual (%)</Label>
-                                        <Input type="number" placeholder="Ej: 3.5" value={newAccount.interestRate} onChange={(e) => setNewAccount({ ...newAccount, interestRate: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Contraseña (Opcional)</Label>
-                                        <Select onValueChange={(v) => setNewAccount({ ...newAccount, passId: v })}>
-                                            <SelectTrigger><SelectValue placeholder="Sin vincular" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Sin vincular</SelectItem>
-                                                {passwords.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleCreateAccount}>Crear Cuenta</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
+            <Dialog open={isAddRecurringOpen} onOpenChange={setIsAddRecurringOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Nuevo Ingreso/Gasto Fijo</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Alquiler, Nómina..." value={newRecurring.name} onChange={(e) => setNewRecurring({ ...newRecurring, name: e.target.value })} /></div>
+                        <div className="flex gap-4">
+                            <Button variant={newRecurring.type === 'income' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'income' })} className={newRecurring.type === 'income' ? 'bg-emerald-600 hover:bg-emerald-700 w-full' : 'w-full'}>Ingreso</Button>
+                            <Button variant={newRecurring.type === 'expense' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'expense' })} className={newRecurring.type === 'expense' ? 'bg-rose-600 hover:bg-rose-700 w-full' : 'w-full'}>Gasto</Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Importe (€)</Label><Input type="number" value={newRecurring.amount} onChange={(e) => setNewRecurring({ ...newRecurring, amount: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Día del mes</Label><Input type="number" min="1" max="31" placeholder="Ej: 5" value={newRecurring.day} onChange={(e) => setNewRecurring({ ...newRecurring, day: e.target.value })} /></div>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {accounts.map(acc => (
-                            <Card
-                                key={acc.id}
-                                className="border-l-4 overflow-hidden cursor-pointer hover:shadow-lg transition-all"
-                                style={{ borderLeftColor: acc.color }}
-                                onClick={() => handleOpenAccountDetail(acc)}
-                            >
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-lg">{acc.name}</CardTitle>
-                                        <CardDescription className="flex items-center gap-1">
-                                            <Landmark className="w-3 h-3" /> {acc.bank_name}
-                                        </CardDescription>
-                                    </div>
-                                    <div
-                                        className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center p-1.5 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity z-10"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const bank = BANKS.find(b => b.name === acc.bank_name);
-                                            if (bank?.url) {
-                                                window.open(bank.url, '_blank');
-                                            }
-                                        }}
-                                        title="Ir al banco"
-                                    >
-                                        {acc.logo_url ? <img src={acc.logo_url} className="w-full h-full object-contain" /> : <PiggyBank className="w-6 h-6" style={{ color: acc.color }} />}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold mb-4">
-                                        {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                        <span>
-                                            {acc.interest_rate ? <span className="text-emerald-600 font-medium bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{acc.interest_rate}% APR</span> : 'Sin interés'}
-                                        </span>
-                                        {acc.password_id && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-6 text-[10px]"
-                                                onClick={(e) => { e.stopPropagation(); navigateToPassword(acc.password_id!); }}
-                                            >
-                                                <Lock className="w-3 h-3 mr-1" />
-                                                Pass
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
+                        {newRecurring.type === 'income' && (
+                            <div className="space-y-2 p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-900">
+                                <Label className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-2">
+                                    <Landmark className="w-4 h-4" /> Ingreso Automático (Opcional)
+                                </Label>
+                                <p className="text-xs text-muted-foreground mb-2">Si seleccionas una cuenta, el dinero se sumará automáticamente el día elegido.</p>
+                                <Select value={newRecurring.targetAccountId} onValueChange={(v) => setNewRecurring({ ...newRecurring, targetAccountId: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona cuenta destino..." /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">No automatizar (Solo recordatorio)</SelectItem>
+                                        {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.bank_name})</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
-                {/* GOALS TAB */}
-                <TabsContent value="goals" className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Metas de Ahorro</h2>
-                        <Dialog open={isAddGoalOpen} onOpenChange={setIsAddGoalOpen}>
-                            <DialogTrigger asChild>
-                                <Button><Plus className="w-4 h-4 mr-2" /> Nueva Meta</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Nueva Meta de Ahorro</DialogTitle>
-                                </DialogHeader>
-                                {/* ... Goal Form ... */}
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2"><Label>Nombre</Label><Input value={newGoal.name} onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })} /></div>
-                                    <div className="space-y-2">
-                                        <Label>Banco Asociado</Label>
-                                        <Select value={newGoal.linkedAccountId} onValueChange={(v) => setNewGoal({ ...newGoal, linkedAccountId: v })}>
-                                            <SelectTrigger><SelectValue placeholder="Selecciona un banco..." /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Sin asociar</SelectItem>
-                                                {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.bank_name})</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label>Objetivo (€)</Label><Input type="number" value={newGoal.target} onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })} /></div>
-                                        <div className="space-y-2"><Label>Ya tienes (€)</Label><Input type="number" value={newGoal.current} onChange={(e) => setNewGoal({ ...newGoal, current: e.target.value })} /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label>Interés (%)</Label><Input type="number" value={newGoal.interestRate} onChange={(e) => setNewGoal({ ...newGoal, interestRate: e.target.value })} /></div>
-                                        <div className="space-y-2"><Label>Fecha Límite</Label><Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })} /></div>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleCreateGoal}>Crear Meta</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <div className="space-y-2">
+                            <Label>Fin (Opcional)</Label>
+                            <Input type="date" value={newRecurring.endDate} onChange={(e) => setNewRecurring({ ...newRecurring, endDate: e.target.value })} />
+                            <p className="text-xs text-muted-foreground">Dejar en blanco para indefinido.</p>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {goals.map(goal => {
-                            const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
-                            const linkedAcc = accounts.find(a => a.id === goal.linked_account_id);
-                            return (
-                                <Card key={goal.id} className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-all" onClick={() => handleOpenGoalDetail(goal)}>
-                                    <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: goal.color }} />
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="flex justify-between items-start text-base">
-                                            <span className="truncate pr-2">{goal.name}</span>
-                                            {goal.deadline && (
-                                                <span className="shrink-0 text-xs font-normal text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">{format(parseISO(goal.deadline), 'dd MMM')}</span>
-                                            )}
-                                        </CardTitle>
-                                        {(linkedAcc || goal.interest_rate) && (
-                                            <CardDescription className="flex items-center gap-2 text-xs pt-1">
-                                                {linkedAcc && <span className="flex items-center gap-1">{linkedAcc.logo_url ? <img src={linkedAcc.logo_url} className="w-3 h-3 object-contain" /> : <Landmark className="w-3 h-3" />}{linkedAcc.bank_name}</span>}
-                                                {linkedAcc && goal.interest_rate ? <span>•</span> : null}
-                                                {goal.interest_rate ? <span className="text-emerald-600 font-medium">{goal.interest_rate}% APR</span> : null}
-                                            </CardDescription>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="space-y-3">
-                                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Progreso</span><span className="font-bold">{progress.toFixed(0)}%</span></div>
-                                        <Progress value={progress} className="h-2" />
-                                        <div className="flex justify-between items-end"><div className="text-2xl font-bold">{goal.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div><div className="text-xs text-muted-foreground mb-1">de {goal.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div></div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                </TabsContent>
-            </Tabs>
+                    <DialogFooter><Button onClick={handleCreateRecurring}>Guardar</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            {/* GOAL DETAIL DIALOG */}
             <Dialog open={isGoalDetailOpen} onOpenChange={setIsGoalDetailOpen}>
                 <DialogContent className="max-w-md sm:max-w-lg">
                     <DialogHeader><DialogTitle>Detalle: {selectedGoal?.name}</DialogTitle></DialogHeader>
@@ -825,18 +686,12 @@ export default function SavingsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* ACCOUNT DETAIL DIALOG (NEW) */}
             <Dialog open={isAccountDetailOpen} onOpenChange={setIsAccountDetailOpen}>
                 <DialogContent className="max-w-md sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                {selectedAccount?.logo_url && <img src={selectedAccount.logo_url} className="w-6 h-6 object-contain" />}
-                                {selectedAccount?.name}
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={handleDeleteAccount} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20">
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-2">{selectedAccount?.logo_url && <img src={selectedAccount.logo_url} className="w-6 h-6 object-contain" />}{selectedAccount?.name}</div>
+                            <Button variant="ghost" size="icon" onClick={handleDeleteAccount} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /></Button>
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-6 py-2">
@@ -845,8 +700,6 @@ export default function SavingsPage() {
                             <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedAccount?.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
                             {selectedAccount?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedAccount.interest_rate}% Interés</div> : null}
                         </div>
-
-                        {/* Transaction Form (Reusing states) */}
                         <div className="space-y-3 border-t pt-4">
                             <div className="flex justify-center gap-4 mb-2">
                                 <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />Ingreso</Button>
@@ -861,7 +714,6 @@ export default function SavingsPage() {
                                 <Button size="icon" onClick={handleAddAccountTransaction}><Save className="w-4 h-4" /></Button>
                             </div>
                         </div>
-
                         <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
                             <h4 className="font-medium text-sm">Movimientos de la Cuenta</h4>
                             {transactions.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Sin movimientos recientes</p> :
@@ -876,7 +728,6 @@ export default function SavingsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 }

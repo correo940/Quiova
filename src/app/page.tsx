@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
@@ -27,6 +27,7 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const searchQuery = searchParams?.get('search')?.toLowerCase() || '';
 
   // Mobile Launcher Logic
@@ -65,6 +66,13 @@ function HomeContent() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // 🔐 Redirect to login if mobile and not logged in
+  useEffect(() => {
+    if (showMobileLauncher && !user && !isAuthChecking) {
+      router.push('/login');
+    }
+  }, [showMobileLauncher, user, isAuthChecking, router]);
 
   // 🆕 Cargar artículos desde la API
   useEffect(() => {
@@ -167,13 +175,17 @@ function HomeContent() {
     );
   }
 
-  // 🔐 MOBILE AUTH WALL: If mobile and NO user, DO NOT SHOW LAUNCHER. Show Login inline.
-  // We handle this here to avoid hydration mismatch with router.push in useEffect
+  // 🔐 MOBILE AUTH WALL: If mobile and NO user, show loading while redirecting
   // IMPORTANT: We must wait for auth check to finish (isAuthChecking === false)
+
+  // Show loading while redirecting to login
   if (showMobileLauncher && !user && !isAuthChecking) {
-    // Instead of redirecting (which causes flicker), render login inline
-    const LoginPage = require('@/app/login/page').default;
-    return <LoginPage />;
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-50 z-50">
+        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xl font-medium text-slate-600 mt-4">Redirigiendo...</p>
+      </div>
+    );
   }
 
   // Mobile Launcher gets priority if active (AND USER IS LOGGED IN or we allow Guest? USER SAID NO GUEST)

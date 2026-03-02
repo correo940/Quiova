@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,6 +13,37 @@ import JournalPanel from '@/components/journal/journal-panel';
 import { useJournal } from '@/context/JournalContext';
 import BrowserWidget from '@/components/journal/browser-widget';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
+import PurchaseDialog from '@/components/mobile/purchase-dialog';
+import { MarketplaceApp } from '@/types/marketplace';
+
+// App definition for the start menu
+interface StartMenuApp {
+    key: string;
+    name: string;
+    route: string;
+    icon: React.ReactNode;
+    color: string; // tailwind text color class
+    bgColor: string; // tailwind bg color class
+    isLocked: boolean;
+    marketplaceId?: string;
+    price?: number;
+    description?: string;
+}
+
+// All possible apps (hardcoded icons for the desktop menu)
+const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.ReactNode; color: string; bgColor: string }[] = [
+    { key: 'shopping', name: 'Compras', route: '/apps/mi-hogar/shopping', icon: <ShoppingCart className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+    { key: 'tasks', name: 'Tareas', route: '/apps/mi-hogar/tasks', icon: <Bell className="w-4 h-4" />, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { key: 'passwords', name: 'Claves', route: '/apps/mi-hogar/passwords', icon: <Shield className="w-4 h-4" />, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+    { key: 'pharmacy', name: 'Salud', route: '/apps/mi-hogar/pharmacy', icon: <Pill className="w-4 h-4" />, color: 'text-red-500', bgColor: 'bg-red-500/10' },
+    { key: 'garage', name: 'Garaje', route: '/apps/mi-hogar/garage', icon: <Car className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+    { key: 'expenses', name: 'Gastos', route: '/apps/mi-hogar/expenses', icon: <Wallet className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+    { key: 'savings', name: 'Ahorros', route: '/apps/mi-hogar/savings', icon: <PiggyBank className="w-4 h-4" />, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
+    { key: 'roster', name: 'Turnos', route: '/apps/mi-hogar/roster', icon: <Calendar className="w-4 h-4" />, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
+    { key: 'chef-ia', name: 'Chef IA', route: '/apps/mi-hogar/chef', icon: <ChefHat className="w-4 h-4" />, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
+    { key: 'assistant', name: 'Asistente', route: '/apps/mi-hogar/asistente', icon: <MessageCircle className="w-4 h-4" />, color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
+];
 
 export default function StartMenu() {
     const { isStartMenuOpen, closeStartMenu } = useGlobalMenu();
@@ -25,12 +56,18 @@ export default function StartMenu() {
     const router = useRouter();
     const menuRef = useRef<HTMLDivElement>(null);
 
+    // Marketplace state
+    const [ownedAppKeys, setOwnedAppKeys] = useState<Set<string>>(new Set());
+    const [marketplaceMap, setMarketplaceMap] = useState<Map<string, { id: string; price: number; description: string }>>(new Map());
+    const [marketplaceLoaded, setMarketplaceLoaded] = useState(false);
+    const [selectedAppForPurchase, setSelectedAppForPurchase] = useState<MarketplaceApp | null>(null);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent | TouchEvent) => {
             if (isStartMenuOpen &&
                 menuRef.current &&
                 !menuRef.current.contains(event.target as Node) &&
-                !(event.target as Element).closest('#start-button') // Ignore clicks on start button
+                !(event.target as Element).closest('#start-button')
             ) {
                 closeStartMenu();
             }
@@ -45,20 +82,89 @@ export default function StartMenu() {
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
-    }, [isStartMenuOpen, closeStartMenu]); // Added closeStartMenu dependency
+    }, [isStartMenuOpen, closeStartMenu]);
+
+    const fetchMarketplace = async (userId: string) => {
+        try {
+            const { data: marketplaceApps, error: appsError } = await supabase
+                .from('marketplace_apps')
+                .select('*')
+                .eq('is_active', true);
+
+            if (appsError || !marketplaceApps || marketplaceApps.length === 0) {
+                setOwnedAppKeys(new Set(ALL_APPS_CONFIG.map(a => a.key)));
+                setMarketplaceLoaded(true);
+                return;
+            }
+
+            // Build marketplace map
+            const mMap = new Map<string, { id: string; price: number; description: string }>();
+            marketplaceApps.forEach(app => {
+                mMap.set(app.key, { id: app.id, price: app.price, description: app.description });
+            });
+            setMarketplaceMap(mMap);
+
+            // Check if user is Premium (unlocks everything)
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('subscription_tier')
+                .eq('id', userId)
+                .single();
+
+            if (profileData?.subscription_tier === 'premium') {
+                setOwnedAppKeys(new Set(ALL_APPS_CONFIG.map(a => a.key)));
+                setMarketplaceLoaded(true);
+                return;
+            }
+
+            // Get user active subscriptions (not expired)
+            const { data: purchases } = await supabase
+                .from('user_app_purchases')
+                .select('app_id, expires_at')
+                .eq('user_id', userId)
+                .eq('status', 'active');
+
+            const ownedIds = new Set(
+                (purchases || [])
+                    .filter(p => !p.expires_at || new Date(p.expires_at) > new Date())
+                    .map(p => p.app_id)
+            );
+
+            // Determine owned keys (only by subscription, no free bypass)
+            const ownedKeys = new Set<string>();
+            marketplaceApps.forEach(app => {
+                if (ownedIds.has(app.id)) {
+                    ownedKeys.add(app.key);
+                }
+            });
+
+            // Apps not in marketplace are considered unlocked (legacy apps)
+            ALL_APPS_CONFIG.forEach(a => {
+                if (!mMap.has(a.key)) {
+                    ownedKeys.add(a.key);
+                }
+            });
+
+            setOwnedAppKeys(ownedKeys);
+        } catch (error) {
+            console.error('StartMenu marketplace error:', error);
+            setOwnedAppKeys(new Set(ALL_APPS_CONFIG.map(a => a.key)));
+        } finally {
+            setMarketplaceLoaded(true);
+        }
+    };
 
     useEffect(() => {
         setMounted(true);
-        // Check initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
             if (session?.user) {
                 fetchCounts(session.user.id);
-                // Fetch full profile for avatar
+                fetchMarketplace(session.user.id);
                 supabase.from('profiles').select('custom_avatar_url').eq('id', session.user.id).single()
                     .then(({ data }) => {
                         if (data) {
-                            setUser(prev => ({
+                            setUser((prev: any) => ({
                                 ...prev,
                                 profile: data
                             }));
@@ -67,7 +173,6 @@ export default function StartMenu() {
             }
         });
 
-        // Set up real-time subscription for immediate updates
         const channel = supabase
             .channel('dashboard_badges')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
@@ -78,11 +183,11 @@ export default function StartMenu() {
             })
             .subscribe();
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
             if (session?.user) {
                 fetchCounts(session.user.id);
+                fetchMarketplace(session.user.id);
             } else {
                 setShoppingCount(0);
                 setTaskCount(0);
@@ -96,7 +201,6 @@ export default function StartMenu() {
     }, []);
 
     const fetchCounts = async (userId: string) => {
-        // Shopping Count
         const { count: sCount } = await supabase
             .from('shopping_items')
             .select('*', { count: 'exact', head: true })
@@ -105,7 +209,6 @@ export default function StartMenu() {
 
         if (sCount !== null) setShoppingCount(sCount);
 
-        // Task Count
         const { count: tCount } = await supabase
             .from('tasks')
             .select('*', { count: 'exact', head: true })
@@ -120,6 +223,27 @@ export default function StartMenu() {
         toast.success('Sesión cerrada');
         router.refresh();
         closeStartMenu();
+    };
+
+    const handleAppClick = (appConfig: typeof ALL_APPS_CONFIG[0]) => {
+        const isOwned = ownedAppKeys.has(appConfig.key);
+        if (!isOwned && marketplaceMap.has(appConfig.key)) {
+            const mData = marketplaceMap.get(appConfig.key)!;
+            setSelectedAppForPurchase({
+                id: mData.id,
+                key: appConfig.key,
+                name: appConfig.name,
+                description: mData.description,
+                icon_key: '',
+                route: appConfig.route,
+                price: mData.price,
+                category: 'utility' as const,
+                is_active: true,
+            });
+        } else {
+            router.push(appConfig.route);
+            closeStartMenu();
+        }
     };
 
     if (!mounted || !user) return null;
@@ -261,40 +385,35 @@ export default function StartMenu() {
                                         </Button>
 
                                         <div className="grid grid-cols-2 gap-2">
-                                            <Link href="/apps/mi-hogar/shopping" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <ShoppingCart className="w-4 h-4 text-blue-500" />
-                                                <span>Compras</span>
-                                                {shoppingCount > 0 && <Badge className="ml-auto h-4 px-1">{shoppingCount}</Badge>}
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Bell className="w-4 h-4 text-green-500" />
-                                                <span>Tareas</span>
-                                                {taskCount > 0 && <Badge className="ml-auto h-4 px-1">{taskCount}</Badge>}
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/passwords" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Shield className="w-4 h-4 text-purple-500" />
-                                                <span>Claves</span>
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/pharmacy" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Pill className="w-4 h-4 text-red-500" />
-                                                <span>Salud</span>
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/garage" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Car className="w-4 h-4 text-blue-500" />
-                                                <span>Garaje</span>
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/expenses" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Wallet className="w-4 h-4 text-emerald-500" />
-                                                <span>Gastos</span>
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/savings" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <PiggyBank className="w-4 h-4 text-amber-500" />
-                                                <span>Ahorros</span>
-                                            </Link>
-                                            <Link href="/apps/mi-hogar/roster" className="flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm">
-                                                <Calendar className="w-4 h-4 text-cyan-500" />
-                                                <span>Turnos</span>
-                                            </Link>
+                                            {ALL_APPS_CONFIG.map(app => {
+                                                const isOwned = ownedAppKeys.has(app.key);
+                                                const mData = marketplaceMap.get(app.key);
+                                                const isLocked = !isOwned && !!mData;
+
+                                                return (
+                                                    <button
+                                                        key={app.key}
+                                                        onClick={() => handleAppClick(app)}
+                                                        className={`flex items-center gap-2 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-sm text-left relative ${isLocked ? 'opacity-70' : ''}`}
+                                                    >
+                                                        <span className={`${isLocked ? 'text-slate-400' : app.color}`}>
+                                                            {app.icon}
+                                                        </span>
+                                                        <span className={isLocked ? 'text-slate-400' : ''}>{app.name}</span>
+                                                        {isLocked ? (
+                                                            <Lock className="ml-auto w-3.5 h-3.5 text-slate-400" />
+                                                        ) : (
+                                                            <>
+                                                                {app.key === 'shopping' && shoppingCount > 0 && <Badge className="ml-auto h-4 px-1">{shoppingCount}</Badge>}
+                                                                {app.key === 'tasks' && taskCount > 0 && <Badge className="ml-auto h-4 px-1">{taskCount}</Badge>}
+                                                                {app.key !== 'shopping' && app.key !== 'tasks' && (
+                                                                    <LockOpen className="ml-auto w-3 h-3 text-emerald-400" />
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -315,6 +434,18 @@ export default function StartMenu() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Purchase Dialog */}
+            <PurchaseDialog
+                app={selectedAppForPurchase}
+                open={!!selectedAppForPurchase}
+                onClose={() => setSelectedAppForPurchase(null)}
+                onPurchaseComplete={() => {
+                    setSelectedAppForPurchase(null);
+                    if (user?.id) fetchMarketplace(user.id);
+                }}
+            />
         </>
     );
 }
+

@@ -6,13 +6,25 @@ import { Home, Grid, User, Cloud, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 export default function Taskbar() {
     const pathname = usePathname();
     const [hoveredApp, setHoveredApp] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const { toggleStartMenu, isStartMenuOpen, isLauncherMode, setIsLauncherMode } = useGlobalMenu();
+
+    // Prevent hydration mismatch - only check window after mount
+    useEffect(() => {
+        setMounted(true);
+        setIsMobile(window.innerWidth < 768);
+
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     if (isLauncherMode) return null;
 
@@ -81,7 +93,7 @@ export default function Taskbar() {
             <div className={cn("pointer-events-auto bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl p-2 flex items-center gap-2 transition-all duration-300 hover:bg-white/80 hover:scale-105 hover:shadow-xl ring-1 ring-black/5 dark:bg-black/60 dark:border-white/10 dark:ring-white/10 mb-4")}>
                 {apps.map((app) => {
                     // Solo mostrar el botón de launcher en dispositivos táctiles/móviles
-                    if (app.isLauncher && typeof window !== 'undefined' && window.innerWidth >= 768) return null;
+                    if (app.isLauncher && !isMobile) return null;
 
                     // Start button is active if menu is open
                     const isActive = app.isStart

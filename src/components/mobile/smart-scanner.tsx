@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap } from 'lucide-react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
@@ -14,28 +14,83 @@ interface SmartScannerProps {
     onProductAdded: (product: { name: string; barcode?: string }) => void;
 }
 
+// Local barcode cache key
+const BARCODE_CACHE_KEY = 'quioba_barcode_cache';
+
+// Helper functions for local cache
+const getBarcodeCache = (): Record<string, string> => {
+    try {
+        const cache = localStorage.getItem(BARCODE_CACHE_KEY);
+        return cache ? JSON.parse(cache) : {};
+    } catch {
+        return {};
+    }
+};
+
+const saveBarcodeToCache = (barcode: string, productName: string) => {
+    try {
+        const cache = getBarcodeCache();
+        cache[barcode] = productName;
+        localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
+        console.log('💾 Saved to local cache:', barcode, '->', productName);
+    } catch (e) {
+        console.error('Error saving to cache:', e);
+    }
+};
+
+const getFromCache = (barcode: string): string | null => {
+    const cache = getBarcodeCache();
+    return cache[barcode] || null;
+};
+
 export default function SmartScanner({ onClose, onProductAdded }: SmartScannerProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
 
-    // Helper to handle success with delay
-    const handleSuccess = (productName: string, barcode?: string) => {
-        setSuccess(productName);
+    // Continuous scanning mode
+    const [scanCount, setScanCount] = useState(0);
+    const [lastScanned, setLastScanned] = useState<string | null>(null);
+    const [continuousMode, setContinuousMode] = useState(false);
+
+    // Manual entry state
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [manualProductName, setManualProductName] = useState('');
+    const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+
+    // Helper to handle success - in continuous mode, immediately scan next
+    const handleSuccess = (productName: string, barcode?: string, startNextScan = false) => {
+        setLastScanned(productName);
+        setScanCount(prev => prev + 1);
         onProductAdded({ name: productName, barcode });
 
-        // Wait 2 seconds before closing so user sees the success message
-        setTimeout(() => {
-            onClose();
-        }, 2000);
+        // In continuous mode, start next scan after a short delay
+        if (startNextScan && continuousMode) {
+            setTimeout(() => {
+                setLastScanned(null);
+                handleBarcodeScan();
+            }, 800);
+        }
     };
 
-    // Barcode Scanning
+    // Save manual entry
+    const handleManualSave = () => {
+        if (manualProductName.trim() && pendingBarcode) {
+            saveBarcodeToCache(pendingBarcode, manualProductName.trim());
+            handleSuccess(manualProductName.trim(), pendingBarcode, continuousMode);
+            setShowManualEntry(false);
+            setManualProductName('');
+            setPendingBarcode(null);
+        }
+    };
+
+    // Barcode Scanning with continuous mode support
     const handleBarcodeScan = async () => {
         try {
             setLoading(true);
             setError(null);
+            setShowManualEntry(false);
+            setLastScanned(null);
 
             const { camera } = await BarcodeScanner.requestPermissions();
             if (camera !== 'granted') {
@@ -45,37 +100,43 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
             }
 
             document.querySelector('body')?.classList.add('barcode-scanner-active');
-            const result = await BarcodeScanner.scan();
+
+            // Scan with custom options - remove Google branding, custom colors
+            const result = await BarcodeScanner.scan({
+                formats: [],  // All formats
+            });
+
             document.querySelector('body')?.classList.remove('barcode-scanner-active');
 
             if (result.barcodes && result.barcodes.length > 0) {
                 const barcode = result.barcodes[0].rawValue;
                 console.log('🔍 Scanned Barcode:', barcode);
 
+                // 1. First check local cache
+                const cachedName = getFromCache(barcode);
+                if (cachedName) {
+                    console.log('✅ Found in local cache:', cachedName);
+                    handleSuccess(cachedName, barcode, true);
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Try Open Food Facts
                 try {
-                    // Open Food Facts requires a User-Agent or it might block requests
                     const headers = {
                         'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
                         'Accept': 'application/json'
                     };
 
-                    console.log(`🔍 Fetching: https://es.openfoodfacts.org/api/v0/product/${barcode}.json`);
                     let response = await fetch(`https://es.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
 
-                    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
-
                     if (!response.ok) {
-                        console.log('⚠️ ES endpoint failed, trying World endpoint...');
                         response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
-                        console.log(`📡 World Response: ${response.status} ${response.statusText}`);
                     }
 
                     const data = await response.json();
-                    console.log('📦 Product Data:', data);
 
-                    // Accept product if found, regardless of type (food, beauty, etc.)
                     if (data.status === 1 && data.product) {
-                        // Try multiple name fields in order of preference
                         const productName =
                             data.product.product_name_es ||
                             data.product.product_name ||
@@ -83,46 +144,22 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             data.product.generic_name ||
                             data.product.brands ||
                             'Producto detectado';
-                        handleSuccess(productName, barcode);
-                    } else if (data.status === 0) {
-                        const errorMsg = `❌ Producto no encontrado
 
-Código: ${barcode}
-Este código no existe en la base de datos.
-
-Prueba con:
-• Foto del producto
-• Dictar el nombre por voz`;
-                        setError(errorMsg);
+                        saveBarcodeToCache(barcode, productName);
+                        handleSuccess(productName, barcode, true);
                     } else {
-                        const errorMsg = `❌ Error inesperado
-
-Código: ${barcode}
-Status: ${data.status}
-Info: ${data.status_verbose || 'No disponible'}`;
-                        setError(errorMsg);
+                        // Product not found - show manual entry
+                        setPendingBarcode(barcode);
+                        setShowManualEntry(true);
                     }
                 } catch (apiError: any) {
                     console.error('❌ API Error:', apiError);
-                    const errorDetails = `❌ ERROR DE CONEXIÓN
-
-Código: ${barcode}
-Tipo: ${apiError.name || 'Unknown'}
-Mensaje: ${apiError.message || 'Sin mensaje'}
-
-Posibles causas:
-• Sin conexión a internet
-• API bloqueada por firewall
-• Problema de CORS
-• Timeout de red
-
-Stack: ${apiError.stack?.substring(0, 200) || 'N/A'}`;
-                    setError(errorDetails);
+                    setPendingBarcode(barcode);
+                    setShowManualEntry(true);
                 }
             }
         } catch (err: any) {
             console.error('Barcode scan error:', err);
-            // Don't show error if user cancelled the scan
             if (!err.message?.includes('cancelled')) {
                 setError(err.message || 'Error al escanear código');
             }
@@ -132,11 +169,19 @@ Stack: ${apiError.stack?.substring(0, 200) || 'N/A'}`;
         }
     };
 
+    // Start continuous mode
+    const startContinuousMode = () => {
+        setContinuousMode(true);
+        setScanCount(0);
+        handleBarcodeScan();
+    };
+
     // Photo Recognition
     const handlePhotoCapture = async () => {
         try {
             setLoading(true);
             setError(null);
+            setShowManualEntry(false);
 
             const image = await CapCamera.getPhoto({
                 quality: 90,
@@ -150,36 +195,25 @@ Stack: ${apiError.stack?.substring(0, 200) || 'N/A'}`;
                 const baseUrl = isMobile ? 'https://www.quioba.com' : '';
                 const apiUrl = `${baseUrl}/api/mi-hogar/identify-product`;
 
-                // Resize image to reduce payload size (max 800px)
                 const resizeImage = async (base64Str: string): Promise<string> => {
                     return new Promise((resolve) => {
                         const img = new Image();
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
-                            const MAX_WIDTH = 800;
-                            const MAX_HEIGHT = 800;
+                            const MAX_SIZE = 800;
                             let width = img.width;
                             let height = img.height;
 
                             if (width > height) {
-                                if (width > MAX_WIDTH) {
-                                    height *= MAX_WIDTH / width;
-                                    width = MAX_WIDTH;
-                                }
+                                if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
                             } else {
-                                if (height > MAX_HEIGHT) {
-                                    width *= MAX_HEIGHT / height;
-                                    height = MAX_HEIGHT;
-                                }
+                                if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
                             }
 
                             canvas.width = width;
                             canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx?.drawImage(img, 0, 0, width, height);
-                            // Get resized base64 string (remove data:image/jpeg;base64, prefix if present for clean base64)
-                            const resized = canvas.toDataURL('image/jpeg', 0.7);
-                            resolve(resized.split(',')[1]);
+                            canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
                         };
                         img.src = `data:image/jpeg;base64,${base64Str}`;
                     });
@@ -187,45 +221,24 @@ Stack: ${apiError.stack?.substring(0, 200) || 'N/A'}`;
 
                 const resizedBase64 = await resizeImage(image.base64String);
 
-                console.log('📸 Sending to:', apiUrl);
-                console.log('📸 Original size:', image.base64String.length, 'chars');
-                console.log('📸 Resized size:', resizedBase64.length, 'chars');
-
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ base64Image: resizedBase64 })
                 });
 
-                console.log('📡 Photo API Response:', response.status, response.statusText);
                 const data = await response.json();
-                console.log('📦 Photo API Data:', data);
 
                 if (data.productName) {
-                    handleSuccess(data.productName);
+                    handleSuccess(data.productName, undefined, false);
+                    setLastScanned(data.productName);
                 } else {
-                    const errorMsg = `❌ No se identificó el producto
-
-Status: ${response.status}
-Error: ${data.error || 'Desconocido'}
-
-¿API desplegada en producción?`;
-                    setError(errorMsg);
+                    setError(`No se identificó: ${data.error || 'Intenta de nuevo'}`);
                 }
             }
         } catch (err: any) {
-            console.error('❌ Photo Error:', err);
             if (!err.message?.includes('cancelled')) {
-                const errorMsg = `❌ ERROR FOTO
-
-Tipo: ${err.name}
-Mensaje: ${err.message}
-
-Verifica:
-• Conexión internet
-• API en producción
-• Permisos cámara`;
-                setError(errorMsg);
+                setError(`Error foto: ${err.message}`);
             }
         } finally {
             setLoading(false);
@@ -236,6 +249,7 @@ Verifica:
     const handleVoiceInput = async () => {
         try {
             setError(null);
+            setShowManualEntry(false);
 
             const { speechRecognition } = await SpeechRecognition.requestPermissions();
             if (speechRecognition !== 'granted') {
@@ -245,7 +259,7 @@ Verifica:
 
             const { available } = await SpeechRecognition.available();
             if (!available) {
-                setError('Voz no disponible en este dispositivo');
+                setError('Voz no disponible');
                 return;
             }
 
@@ -258,16 +272,16 @@ Verifica:
                 partialResults: false
             });
 
-            if (result && result.matches && result.matches.length > 0) {
-                handleSuccess(result.matches[0]);
+            if (result?.matches?.length) {
+                handleSuccess(result.matches[0], undefined, false);
+                setLastScanned(result.matches[0]);
             } else {
-                setError('No te he entendido. Intenta de nuevo.');
+                setError('No te entendí');
             }
             setIsListening(false);
 
         } catch (err: any) {
-            console.error('Voice input error:', err);
-            setError('Error en reconocimiento de voz');
+            setError('Error voz');
             setIsListening(false);
         }
     };
@@ -276,7 +290,7 @@ Verifica:
         try {
             await SpeechRecognition.stop();
             setIsListening(false);
-        } catch (err) { console.error(err); }
+        } catch (err) { }
     };
 
     return (
@@ -286,112 +300,142 @@ Verifica:
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
-                onClick={success ? undefined : onClose}
             >
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+                    className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden"
                     style={{ backgroundColor: '#F8FAFC' }}
                 >
-                    {/* Success Overlay */}
-                    {success && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="absolute inset-0 bg-emerald-50 z-20 flex flex-col items-center justify-center p-6 text-center"
-                        >
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                                className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-emerald-600"
-                            >
-                                <CheckCircle className="w-10 h-10" />
-                            </motion.div>
-                            <h3 className="text-2xl font-bold text-emerald-900 mb-2">¡Añadido!</h3>
-                            <p className="text-lg text-emerald-700 font-medium">{success}</p>
-                        </motion.div>
-                    )}
-
                     {/* Header */}
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-slate-900">Añadir Producto</h2>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-slate-200 rounded-full transition-colors"
-                        >
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-bold text-slate-900">Añadir Productos</h2>
+                            {scanCount > 0 && (
+                                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                                    <ShoppingCart className="w-4 h-4" /> {scanCount}
+                                </span>
+                            )}
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full">
                             <X className="w-6 h-6 text-slate-600" />
                         </button>
                     </div>
 
-                    {/* Error Message */}
-                    {error && (
+                    {/* Last scanned feedback */}
+                    {lastScanned && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2"
+                        >
+                            <CheckCircle className="w-5 h-5 text-emerald-600" />
+                            <span className="text-emerald-700 font-medium truncate">{lastScanned}</span>
+                        </motion.div>
+                    )}
+
+                    {/* Manual Entry Form */}
+                    {showManualEntry && pendingBarcode && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
-                            className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 max-h-96 overflow-y-auto"
+                            className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl"
                         >
-                            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                            <pre className="text-red-700 text-xs font-mono whitespace-pre-wrap break-words">{error}</pre>
+                            <div className="flex items-center gap-2 mb-2">
+                                <Edit3 className="w-4 h-4 text-amber-600" />
+                                <p className="text-amber-800 font-medium text-sm">Producto no encontrado</p>
+                            </div>
+                            <p className="text-xs text-amber-600 mb-2 font-mono">{pendingBarcode}</p>
+                            <input
+                                type="text"
+                                value={manualProductName}
+                                onChange={(e) => setManualProductName(e.target.value)}
+                                placeholder="Nombre del producto..."
+                                className="w-full p-2 border border-amber-300 rounded-lg mb-2 text-sm"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && handleManualSave()}
+                            />
+                            <button
+                                onClick={handleManualSave}
+                                disabled={!manualProductName.trim()}
+                                className="w-full bg-amber-500 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-50"
+                            >
+                                <Save className="w-4 h-4" /> Guardar
+                            </button>
+                        </motion.div>
+                    )}
+
+                    {/* Error Message */}
+                    {error && !showManualEntry && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2"
+                        >
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                            <span className="text-red-700 text-sm">{error}</span>
                         </motion.div>
                     )}
 
                     {/* Options */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
+                        {/* Turbo Scan Button - Primary action */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={handleBarcodeScan}
+                            onClick={startContinuousMode}
                             disabled={loading || isListening}
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                            className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all shadow-lg shadow-emerald-500/30 disabled:opacity-50"
                         >
-                            <Barcode className="w-6 h-6" />
-                            Escanear Código
+                            <Zap className="w-6 h-6" />
+                            Escaneo Rápido
                         </motion.button>
 
+                        {/* Single Scan */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={handlePhotoCapture}
+                            onClick={() => { setContinuousMode(false); handleBarcodeScan(); }}
                             disabled={loading || isListening}
-                            className="w-full bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-semibold transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors disabled:opacity-50"
                         >
-                            <Camera className="w-6 h-6" />
-                            Foto Producto
+                            <Barcode className="w-5 h-5" />
+                            Escaneo Único
                         </motion.button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={isListening ? stopListening : handleVoiceInput}
-                            disabled={loading}
-                            className={`w-full p-4 rounded-2xl flex items-center justify-center gap-3 font-semibold transition-colors shadow-lg disabled:opacity-50 ${isListening
-                                ? 'bg-red-500 text-white shadow-red-500/20'
-                                : 'bg-purple-500 text-white shadow-purple-500/20'
-                                }`}
-                        >
-                            {isListening ? (
-                                <>
-                                    <Loader2 className="w-6 h-6 animate-spin" />
-                                    Escuchando...
-                                </>
-                            ) : (
-                                <>
-                                    <Mic className="w-6 h-6" />
-                                    Dictar Voz
-                                </>
-                            )}
-                        </motion.button>
+                        <div className="flex gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handlePhotoCapture}
+                                disabled={loading || isListening}
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50"
+                            >
+                                <Camera className="w-5 h-5" />
+                                Foto
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={isListening ? stopListening : handleVoiceInput}
+                                disabled={loading}
+                                className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50 ${isListening ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'
+                                    }`}
+                            >
+                                {isListening ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
+                                {isListening ? '...' : 'Voz'}
+                            </motion.button>
+                        </div>
                     </div>
 
                     {/* Loading Overlay */}
                     {loading && (
-                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-3xl">
-                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-3" />
-                            <p className="font-medium text-slate-600">Procesando...</p>
+                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-3xl">
+                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-2" />
+                            <p className="font-medium text-slate-600">Escaneando...</p>
                         </div>
                     )}
                 </motion.div>

@@ -13,13 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload, FileImage, Check, AlertCircle, Maximize2, ZoomIn, ZoomOut, RotateCw, Trash2, Plus } from 'lucide-react';
-import { scanRosterImage, findUserShift } from '@/lib/gemini';
-import { findUserShiftOCRSpace } from '@/lib/ocr-space';
+import { Loader2, Upload, FileImage, Check, AlertCircle, Maximize2, ZoomIn, ZoomOut, RotateCw, Trash2, Plus, Camera, ImagePlus } from 'lucide-react';
+import { findUserShiftZai, scanFullRosterZai } from '@/lib/zai-ocr';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DEFAULT_SHIFT_TYPES } from './shift-settings-dialog';
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 interface ScanRosterDialogProps {
     open: boolean;
@@ -53,6 +53,9 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
     const [editedColleagueRows, setEditedColleagueRows] = useState<ColleagueRow[]>([]);
 
     const [searchResult, setSearchResult] = useState<any>(null); // Keep original result for reference
+
+    // DEBUG: Store raw API response for visual debugging
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     // Image manipulation state
     const [zoomLevel, setZoomLevel] = useState(1);
@@ -103,6 +106,28 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
         }
     };
 
+    // Capture photo with device camera (Capacitor)
+    const handleCameraCapture = async () => {
+        try {
+            const image = await CapCamera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.DataUrl,
+                source: CameraSource.Camera,
+                correctOrientation: true
+            });
+            if (image.dataUrl) {
+                setPreviewUrl(image.dataUrl);
+            }
+        } catch (error: any) {
+            console.error('Camera capture error:', error);
+            // User cancelled or permission denied - don't show error toast for cancel
+            if (error.message !== 'User cancelled photos app') {
+                toast.error('No se pudo acceder a la cámara');
+            }
+        }
+    };
+
     const handleAnalyze = async () => {
         if (!previewUrl) return;
 
@@ -114,83 +139,58 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
         try {
             // STRATEGY A: Detective Mode (Name Provided)
             if (mySearchName.length > 2) {
-                // 1. Try OCR.space (User Key) with Custom Shift Types
-                let result = await findUserShiftOCRSpace(previewUrl, mySearchName, shiftTypes);
-
-                // 2. Fallback to Local/Gemini if OCR.space misses
-                if (!result || !result.found) {
-                    console.log("OCR.space missed, trying Engine #2...");
-                    result = await findUserShift(previewUrl, mySearchName);
-                }
+                setDebugText("Analizando cuadrante con IA de Visión (Z.ai)...");
+                const result = await findUserShiftZai(previewUrl, mySearchName);
 
                 if (result && result.found) {
+                    console.log('[Z.AI] ✅ Result received:', JSON.stringify(result, null, 2));
+
+                    // DEBUG: Store raw result for visual display
+                    setDebugInfo(`📊 RESPUESTA Z.AI GLM-4.6V-Flash:
+found: ${result.found}
+shift: "${result.shift || '(vacío)'}"
+service: "${result.service || '(vacío)'}"
+startTime: "${result.startTime || '(vacío)'}"
+endTime: "${result.endTime || '(vacío)'}"
+date: "${result.date || '(vacío)'}"
+targetName: "${result.targetName || '(vacío)'}"
+colleagues: ${JSON.stringify(result.colleagues || [])}
+rawContext: "${result.rawContext || '(vacío)'}"`);
+
                     setSearchResult(result);
-                    toast.success(`¡Te encontré! Comprueba los datos.`);
-
-                    // --- PRE-FILL EDITABLE FIELDS ---
-                    setEditedShiftTitle(result.shift || '');
+                    // Pre-fill form
+                    setEditedShiftTitle(result.shift || 'TEXTO DETECTADO');
                     setEditedDate(result.date || format(new Date(), 'yyyy-MM-dd'));
-
-                    // Parse times from result or guess based on shift name
-                    let start = result.startTime !== "--:--" ? result.startTime : "";
-                    let end = result.endTime !== "--:--" ? result.endTime : "";
-
-                    if (!start && result.shift) {
-                        if (result.shift.includes("MAÑANA")) { start = "06:00"; end = "14:00"; }
-                        else if (result.shift.includes("TARDE")) { start = "14:00"; end = "22:00"; }
-                        else if (result.shift.includes("NOCHE")) { start = "22:00"; end = "06:00"; }
-                    }
-                    setEditedStartTime(start);
-                    setEditedEndTime(end);
-
-                    // Parse Colleagues into Structured Rows
-                    const rows: ColleagueRow[] = [];
-                    if (result.colleagues && result.colleagues.length > 0) {
-                        result.colleagues.forEach((colString: string) => {
-                            if (colString === "Solo/a en este horario") return;
-
-                            // Try to extract specific time from string: "Juan (08:00-15:00)"
-                            const timeMatch = colString.match(/\((\d{2}:\d{2})-(\d{2}:\d{2})\)/);
-                            let colName = colString;
-                            let colStart = "";
-                            let colEnd = "";
-
-                            if (timeMatch) {
-                                colName = colString.replace(timeMatch[0], "").trim();
-                                colStart = timeMatch[1];
-                                colEnd = timeMatch[2];
-                            } else {
-                                // Default to user's shift time if no specific time found?
-                                colStart = start;
-                                colEnd = end;
-                            }
-
-                            rows.push({
-                                name: colName,
-                                startTime: colStart,
-                                endTime: colEnd
-                            });
-                        });
-                    }
-                    setEditedColleagueRows(rows);
-
-                    // Set Service from OCR result
+                    setEditedStartTime(result.startTime || '');
+                    setEditedEndTime(result.endTime || '');
                     setEditedService(result.service || '');
 
-                } else {
-                    toast.warning(`No encontré a "${mySearchName}" en el cuadrante.`);
-                    // Fallback to full scan so they can see why
-                    const fullResult = await scanRosterImage(previewUrl);
-                    if (fullResult) {
-                        setDigitalRoster(fullResult);
+                    // Map colleagues
+                    if (result.colleagues && result.colleagues.length > 0) {
+                        setEditedColleagueRows(result.colleagues.map((c: string) => {
+                            if (c.includes('|')) {
+                                const [name, start, end] = c.split('|');
+                                return { name, startTime: start, endTime: end };
+                            }
+                            return {
+                                name: c,
+                                startTime: result.startTime || '',
+                                endTime: result.endTime || ''
+                            };
+                        }));
                     } else {
-                        setDebugText("No se encontró estructura, pero aquí está el texto detectado para que lo revises manualmente.");
+                        setEditedColleagueRows([]);
                     }
+                    toast.success('¡Turno encontrado con IA!');
+                } else {
+                    setSearchResult(null);
+                    toast.error('No se encontró tu nombre en el cuadrante');
+                    setDebugText("No se encontró el nombre. Intenta mejorar la imagen o buscar con mejor iluminación.");
                 }
             }
             // STRATEGY B: Full Scan (No Name)
             else {
-                const result = await scanRosterImage(previewUrl);
+                const result = await scanFullRosterZai(previewUrl);
                 if (result) {
                     setDebugText(result.rawText);
                     if (result.columns && result.columns.length > 0) {
@@ -434,19 +434,59 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
                             )}
                         </div>
                     ) : (
-                        // NO IMAGE STATE
-                        <div
-                            className="w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed m-4 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mb-6">
-                                <Upload className="h-10 w-10 text-muted-foreground" />
+                        // NO IMAGE STATE - New attractive dual-option UI
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+                            {/* Header */}
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <FileImage className="h-8 w-8 text-white" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Añade tu Cuadrante</h2>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                                    Elige cómo quieres añadir la imagen de tu cuadrante de turnos
+                                </p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Sube tu cuadrante</h3>
-                            <p className="text-muted-foreground text-center max-w-md">
-                                Haz clic aquí para seleccionar una imagen.
-                            </p>
+
+                            {/* Two Option Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
+                                {/* Gallery Option */}
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600"
+                                >
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-bl-[60px] -mr-4 -mt-4 group-hover:scale-125 transition-transform duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-4 shadow-md group-hover:scale-110 transition-transform duration-300">
+                                            <ImagePlus className="h-7 w-7 text-white" />
+                                        </div>
+                                        <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Subir Foto</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Selecciona una imagen de tu galería</p>
+                                    </div>
+                                </button>
+
+                                {/* Camera Option */}
+                                <button
+                                    onClick={handleCameraCapture}
+                                    className="group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600"
+                                >
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-emerald-400/20 to-green-400/20 rounded-bl-[60px] -mr-4 -mt-4 group-hover:scale-125 transition-transform duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center mb-4 shadow-md group-hover:scale-110 transition-transform duration-300">
+                                            <Camera className="h-7 w-7 text-white" />
+                                        </div>
+                                        <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Hacer Foto</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Usa la cámara para fotografiar</p>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Hidden file input */}
                             <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+                            {/* Helper text */}
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-8 text-center max-w-md">
+                                💡 Tip: Para mejores resultados, asegúrate de que la imagen esté bien iluminada y los nombres sean legibles
+                            </p>
                         </div>
                     )}
 
@@ -463,6 +503,14 @@ export default function ScanRosterDialog({ open, onOpenChange, onSuccess }: Scan
                                         <p className="text-xs text-muted-foreground mt-1">Por favor verifica los datos antes de guardar.</p>
                                     </div>
                                 </div>
+
+                                {/* DEBUG PANEL - Shows raw Gemini response */}
+                                {debugInfo && (
+                                    <details className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs">
+                                        <summary className="font-bold cursor-pointer text-blue-600 dark:text-blue-400">🔍 Ver respuesta de IA (DEBUG)</summary>
+                                        <pre className="mt-2 whitespace-pre-wrap overflow-x-auto text-[10px] leading-relaxed font-mono">{debugInfo}</pre>
+                                    </details>
+                                )}
 
                                 {/* FALLBACK WARNING & OPTIONS */}
                                 {isTimeMissing && (

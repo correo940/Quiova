@@ -4,6 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { createOrUpdateArticle, listArticles, deleteArticle } from "@/lib/github";
 import matter from "gray-matter";
 
+// Required for static export (Capacitor build)
+export function generateStaticParams() {
+  return [];
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { slug: string } }
