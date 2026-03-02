@@ -14,15 +14,18 @@ export default function OrganizadorVitalPage() {
         async function checkProfile() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
+                if (!user) {
+                    setLoading(false);
+                    return;
+                }
 
                 const { data, error } = await supabase
                     .from('smart_scheduler_profiles')
                     .select('*')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
 
-                if (data) {
+                if (data && !error) {
                     setProfile(data);
                 }
             } catch (error) {
@@ -33,7 +36,7 @@ export default function OrganizadorVitalPage() {
         }
 
         checkProfile();
-    }, [supabase]);
+    }, []);
 
     if (loading) {
         return (
@@ -49,3 +52,4 @@ export default function OrganizadorVitalPage() {
 
     return <MainDashboard profile={profile} />;
 }
+
