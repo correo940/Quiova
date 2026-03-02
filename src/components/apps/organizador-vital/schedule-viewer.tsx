@@ -166,7 +166,7 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
     };
 
     return (
-        <div className="h-full flex flex-col p-4 bg-slate-50 dark:bg-slate-950">
+        <div className="h-full w-full flex flex-col p-4 bg-slate-50 dark:bg-slate-950">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={onBack}>
@@ -190,7 +190,7 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
             </div>
 
             <div className="flex-1 overflow-auto rounded-xl border bg-white dark:bg-slate-900 shadow-sm p-4">
-                <div className="grid grid-cols-7 gap-4 min-w-[800px]">
+                <div className="grid grid-cols-7 gap-4">
                     {[0, 1, 2, 3, 4, 5, 6].map(i => {
                         const date = getDayDate(i);
                         const dateStr = date.toISOString().split('T')[0];
