@@ -1,18 +1,60 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+// Icon map for serialization
+const ICON_MAP: Record<string, any> = {
+    ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
+    Book, Key, Shield, CalendarDays, Newspaper
+};
+
+// Default item order (keys used for persistence)
+const DEFAULT_ITEMS_CONFIG = [
+    { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-blue-500', href: '/apps/mi-hogar/shopping' },
+    { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-purple-500', href: '/apps/mi-hogar/tasks' },
+    { key: 'savings', label: 'Ahorros', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
+    { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-red-500', href: '/apps/debate' },
+    { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
+    { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy' },
+    { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-orange-500', href: '/apps/mi-hogar/documents' },
+    { key: 'expenses', label: 'Gastos', iconKey: 'Receipt', color: 'bg-pink-500', href: '/apps/mi-hogar/expenses' },
+    { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties' },
+    { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: 'bg-lime-500', href: '/apps/mi-hogar/recipes' },
+    { key: 'manuals', label: 'Manual y Mantenimiento', iconKey: 'Book', color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals' },
+    { key: 'passwords', label: 'Claves', iconKey: 'Key', color: 'bg-zinc-600', href: '/apps/mi-hogar/passwords' },
+    { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-teal-600', href: '/apps/mi-hogar/insurance' },
+    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-600', href: '/apps/mi-hogar/roster' },
+    { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-violet-500', href: '/apps/resumen-diario' },
+];
+
+function getStorageKey(userId: string) {
+    return `quioba_widget_order_${userId}`;
+}
+
+function loadSavedOrder(userId: string): string[] | null {
+    try {
+        const saved = localStorage.getItem(getStorageKey(userId));
+        if (saved) return JSON.parse(saved);
+    } catch { }
+    return null;
+}
+
+function saveOrder(userId: string, keys: string[]) {
+    try {
+        localStorage.setItem(getStorageKey(userId), JSON.stringify(keys));
+    } catch { }
+}
 
 export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Date }) {
     const [stats, setStats] = useState({
@@ -33,6 +75,13 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [userProfile, setUserProfile] = useState<any>(null);
+    const [orderedKeys, setOrderedKeys] = useState<string[]>(DEFAULT_ITEMS_CONFIG.map(i => i.key));
+    const [userId, setUserId] = useState<string | null>(null);
+
+    // Drag state
+    const [draggedKey, setDraggedKey] = useState<string | null>(null);
+    const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+    const dragStartIndex = useRef<number | null>(null);
 
     // Initialize daily notifications logic
     useDailyNotifications();
@@ -43,6 +92,20 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                 setLoading(true);
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
+
+                setUserId(user.id);
+
+                // Load saved order
+                const savedOrder = loadSavedOrder(user.id);
+                if (savedOrder && savedOrder.length > 0) {
+                    // Merge: saved order first, then any new keys not in saved order
+                    const allKeys = DEFAULT_ITEMS_CONFIG.map(i => i.key);
+                    const merged = [
+                        ...savedOrder.filter(k => allKeys.includes(k)),
+                        ...allKeys.filter(k => !savedOrder.includes(k))
+                    ];
+                    setOrderedKeys(merged);
+                }
 
                 // Fetch Profile for Avatar
                 const { data: profile } = await supabase.from('profiles').select('custom_avatar_url, nickname').eq('id', user.id).single();
@@ -93,11 +156,11 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                 try { const { data } = await supabase.from('expenses').select('amount').is('folder_id', null); expCount = data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0; } catch (e) { }
                 try { const { count } = await supabase.from('warranties').select('*', { count: 'exact', head: true }).eq('user_id', user.id); wCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', user.id); rCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('instruction_manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { } // Assuming table name
+                try { const { count } = await supabase.from('instruction_manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }).eq('user_id', user.id); passCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('insurances').select('*', { count: 'exact', head: true }).eq('user_id', user.id); iCount = count || 0; } catch (e) { }
 
-                // Agenda Logic (Existing) - Simplified for brevity in this rewrite plan, identical logic
+                // Agenda Logic
                 const dailyEvents: any[] = [];
                 if (selectedDate) {
                     const startOfDay = new Date(selectedDate); startOfDay.setHours(0, 0, 0, 0);
@@ -146,35 +209,119 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
         fetchStats();
     }, [selectedDate]);
 
-    const items = [
-        { label: 'Lista Compra', value: `${stats.shoppingCount}`, count: stats.shoppingCount, icon: ShoppingCart, color: 'bg-blue-500', href: '/apps/mi-hogar/shopping', detail: 'Artículos' },
-        { label: 'Tareas', value: `${stats.taskCount}`, count: stats.taskCount, icon: CheckSquare, color: 'bg-purple-500', href: '/apps/mi-hogar/tasks', detail: 'Pendientes' },
-        { label: 'Ahorros', value: `${(stats.totalSavings / 1000).toFixed(1)}k€`, count: stats.totalSavings > 0 ? 1 : 0, icon: PiggyBank, color: 'bg-amber-500', href: '/apps/mi-hogar/savings', detail: 'Total' },
-        { label: 'Debates', value: `${stats.debateCount}`, count: stats.debateCount, icon: MessageCircle, color: 'bg-red-500', href: '/apps/debate', detail: 'Activos' },
-        { label: 'Vehículos', value: `${stats.vehicleCount}`, count: stats.vehicleCount, icon: Car, color: 'bg-slate-500', href: '/apps/mi-hogar/garage', detail: 'En garaje' },
-        { label: 'Botiquín', value: `${stats.medicineCount}`, count: stats.medicineCount, icon: Pill, color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy', detail: 'Medicinas' },
-        { label: 'Documentos', value: `${stats.documentCount}`, count: stats.documentCount, icon: FileText, color: 'bg-orange-500', href: '/apps/mi-hogar/documents', detail: 'Archivados' },
-        { label: 'Gastos', value: `${Number(stats.expenseFolderCount).toFixed(0)}€`, count: stats.expenseFolderCount, icon: Receipt, color: 'bg-pink-500', href: '/apps/mi-hogar/expenses', detail: 'Total' },
-        { label: 'Garantías', value: `${stats.warrantyCount}`, count: stats.warrantyCount, icon: ShieldCheck, color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties', detail: 'Activas' },
-        { label: 'Recetas', value: `${stats.recipeCount}`, count: stats.recipeCount, icon: Utensils, color: 'bg-lime-500', href: '/apps/mi-hogar/recipes', detail: 'Guardadas' },
-        { label: 'Manual y Mantenimiento', value: `${stats.manualCount}`, count: stats.manualCount, icon: Book, color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals', detail: 'Instrucc.' },
-        { label: 'Claves', value: `${stats.passwordCount}`, count: stats.passwordCount, icon: Key, color: 'bg-zinc-600', href: '/apps/mi-hogar/passwords', detail: 'Seguras' },
-        { label: 'Seguros', value: `${stats.insuranceCount}`, count: stats.insuranceCount, icon: Shield, color: 'bg-teal-600', href: '/apps/mi-hogar/insurance', detail: 'Pólizas' },
-        { label: 'Turnos', value: 'Ver', count: 0, icon: CalendarDays, color: 'bg-green-600', href: '/apps/mi-hogar/roster', detail: 'Cuadrante' },
-        { label: 'Resumen', value: 'Hoy', count: 0, icon: Newspaper, color: 'bg-violet-500', href: '/apps/resumen-diario', detail: 'Diario' },
-    ].sort((a, b) => {
-        // Sort by active (count > 0) first
+    // Build display value for each key
+    const getItemValue = useCallback((key: string): string => {
+        switch (key) {
+            case 'shopping': return `${stats.shoppingCount}`;
+            case 'tasks': return `${stats.taskCount}`;
+            case 'savings': return `${(stats.totalSavings / 1000).toFixed(1)}k€`;
+            case 'debates': return `${stats.debateCount}`;
+            case 'vehicles': return `${stats.vehicleCount}`;
+            case 'pharmacy': return `${stats.medicineCount}`;
+            case 'documents': return `${stats.documentCount}`;
+            case 'expenses': return `${Number(stats.expenseFolderCount).toFixed(0)}€`;
+            case 'warranties': return `${stats.warrantyCount}`;
+            case 'recipes': return `${stats.recipeCount}`;
+            case 'manuals': return `${stats.manualCount}`;
+            case 'passwords': return `${stats.passwordCount}`;
+            case 'insurance': return `${stats.insuranceCount}`;
+            case 'roster': return 'Ver';
+            case 'summary': return 'Hoy';
+            default: return '0';
+        }
+    }, [stats]);
+
+    const getItemCount = useCallback((key: string): number => {
+        switch (key) {
+            case 'shopping': return stats.shoppingCount;
+            case 'tasks': return stats.taskCount;
+            case 'savings': return stats.totalSavings > 0 ? 1 : 0;
+            case 'debates': return stats.debateCount;
+            case 'vehicles': return stats.vehicleCount;
+            case 'pharmacy': return stats.medicineCount;
+            case 'documents': return stats.documentCount;
+            case 'expenses': return stats.expenseFolderCount;
+            case 'warranties': return stats.warrantyCount;
+            case 'recipes': return stats.recipeCount;
+            case 'manuals': return stats.manualCount;
+            case 'passwords': return stats.passwordCount;
+            case 'insurance': return stats.insuranceCount;
+            default: return 0;
+        }
+    }, [stats]);
+
+    // Build ordered items for rendering
+    const orderedItems = orderedKeys.map(key => {
+        const config = DEFAULT_ITEMS_CONFIG.find(c => c.key === key);
+        if (!config) return null;
+        return {
+            ...config,
+            value: getItemValue(key),
+            count: getItemCount(key),
+            icon: ICON_MAP[config.iconKey],
+        };
+    }).filter(Boolean) as (typeof DEFAULT_ITEMS_CONFIG[0] & { value: string; count: number; icon: any })[];
+
+    // Sort: active items first (same logic as before), but respect user drag order
+    const sortedItems = [...orderedItems].sort((a, b) => {
         const aActive = a.count > 0;
         const bActive = b.count > 0;
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
-        // Then by count descending (optional, but good)
-        // return b.count - a.count; 
-        // Or keep default order for active vs active? The prompt implies "those that have something [left]"
-        return 0; // Keep original order within groups (or change to b.count - a.count to prefer higher numbers)
+        return 0;
     });
 
-    // Date & Greeting Logic
+    // Drag handlers (HTML5 Drag & Drop)
+    const handleDragStart = (e: React.DragEvent, key: string, index: number) => {
+        setDraggedKey(key);
+        dragStartIndex.current = index;
+        e.dataTransfer.effectAllowed = 'move';
+        // For Firefox compatibility
+        e.dataTransfer.setData('text/plain', key);
+    };
+
+    const handleDragOver = (e: React.DragEvent, key: string) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (key !== draggedKey) {
+            setDragOverKey(key);
+        }
+    };
+
+    const handleDragLeave = () => {
+        setDragOverKey(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetKey: string) => {
+        e.preventDefault();
+        if (!draggedKey || draggedKey === targetKey) {
+            setDraggedKey(null);
+            setDragOverKey(null);
+            return;
+        }
+
+        const newOrder = [...orderedKeys];
+        const fromIndex = newOrder.indexOf(draggedKey);
+        const toIndex = newOrder.indexOf(targetKey);
+
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        // Remove from old position and insert at new
+        newOrder.splice(fromIndex, 1);
+        newOrder.splice(toIndex, 0, draggedKey);
+
+        setOrderedKeys(newOrder);
+        if (userId) saveOrder(userId, newOrder);
+
+        setDraggedKey(null);
+        setDragOverKey(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedKey(null);
+        setDragOverKey(null);
+    };
+
     // Date & Greeting Logic
     const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', fullDate: '', time: '' });
     useEffect(() => {
@@ -195,7 +342,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
         };
 
         updateDate();
-        const interval = setInterval(updateDate, 60000); // Update every minute
+        const interval = setInterval(updateDate, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -223,7 +370,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                     </div>
                     <NotificationSettingsDialog />
                 </div>
-                {/* Mobile Date fallback if needed, or just hide on mobile to save space */}
+                {/* Mobile Date fallback */}
                 <div className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
                     {dateInfo.fullDate} • {dateInfo.time}
                 </div>
@@ -234,27 +381,58 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <ScrollArea className="w-full whitespace-nowrap pb-2">
+                    <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
                         <div className="flex w-max space-x-3 p-1">
-                            {items.map((item, index) => (
-                                <Link key={index} href={item.href} className="block group w-[130px] py-1 pl-1">
-                                    <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-[72px] flex flex-col justify-between backdrop-blur-sm">
-                                        <div className="flex justify-between items-start mb-0.5">
-                                            <div className={`p-1 rounded-lg ${item.color} text-white shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
-                                                <item.icon className="w-3 h-3" />
+                            {sortedItems.map((item) => (
+                                <div
+                                    key={item.key}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, item.key, orderedKeys.indexOf(item.key))}
+                                    onDragOver={(e) => handleDragOver(e, item.key)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, item.key)}
+                                    onDragEnd={handleDragEnd}
+                                    className={`relative w-[130px] py-1 pl-1 transition-all duration-200 ${draggedKey === item.key ? 'opacity-40 scale-95' : ''
+                                        } ${dragOverKey === item.key ? 'scale-105' : ''
+                                        }`}
+                                    style={{ cursor: 'grab' }}
+                                >
+                                    {/* Drop indicator */}
+                                    {dragOverKey === item.key && draggedKey !== item.key && (
+                                        <div className="absolute left-0 top-1 bottom-1 w-1 bg-primary rounded-full z-10 animate-pulse" />
+                                    )}
+                                    <Link
+                                        href={item.href}
+                                        className="block group"
+                                        onClick={(e) => {
+                                            // Prevent navigation when dragging
+                                            if (draggedKey) e.preventDefault();
+                                        }}
+                                        draggable={false}
+                                    >
+                                        <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-[72px] flex flex-col justify-between backdrop-blur-sm ${dragOverKey === item.key && draggedKey !== item.key
+                                                ? 'border-primary/70 shadow-lg shadow-primary/10'
+                                                : 'border-slate-100 dark:border-slate-700 hover:border-primary/50'
+                                            }`}>
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <div className={`p-1 rounded-lg ${item.color} text-white shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                                                    <item.icon className="w-3 h-3" />
+                                                </div>
+                                                <div className="flex items-center gap-0.5">
+                                                    <GripVertical className="w-2.5 h-2.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                                    <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1" />
+                                                </div>
                                             </div>
-                                            <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1" />
+                                            <div>
+                                                <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
+                                                <div className="text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
-                                            <div className="text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
-                                        </div>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                </div>
                             ))}
                         </div>
-                        <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
+                    </div>
                 )}
 
                 {/* Agenda del Día */}
@@ -275,13 +453,8 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                         </div>
                     </div>
                 )}
-                {/* {!loading && selectedDate && events.length === 0 && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
-                        <span className="text-[10px] text-muted-foreground">Sin eventos hoy</span>
-                    </div>
-                )} */}
             </CardContent>
-        </Card >
+        </Card>
     );
 }
 
