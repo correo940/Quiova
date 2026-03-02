@@ -326,7 +326,7 @@ export function FixedScheduleEditor({ onBack }: { onBack: () => void }) {
     };
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full w-full flex flex-col px-4">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={onBack}>
@@ -345,7 +345,7 @@ export function FixedScheduleEditor({ onBack }: { onBack: () => void }) {
             </div>
 
             <div className="flex-1 overflow-auto border rounded-md relative bg-white dark:bg-slate-950">
-                <div className="grid grid-cols-[50px_repeat(7,1fr)] min-w-[800px]">
+                <div className="grid grid-cols-[50px_repeat(7,1fr)]">
                     {/* Time labels column */}
                     <div className="border-r bg-slate-50 dark:bg-slate-900 z-10 sticky left-0">
                         <div className="h-[40px] border-b"></div>
