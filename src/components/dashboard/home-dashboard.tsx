@@ -26,7 +26,7 @@ export default function HomeDashboard() {
     // Si es web, mostrar el dashboard original de 3 columnas
 
     return (
-        <div className="container mx-auto px-4 py-1 max-w-7xl lg:h-[calc(100vh-100px)] flex flex-col">
+        <div className="container mx-auto px-4 py-1 pb-24 max-w-7xl lg:h-[calc(100vh-100px)] flex flex-col">
 
             <div className="flex flex-col gap-4 flex-1 min-h-0">
                 {/* Fila Superior: Resumen General */}
