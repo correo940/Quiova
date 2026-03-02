@@ -5,16 +5,30 @@ import { Logo } from '../logo';
 import { Github, Twitter, Instagram } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
+import { usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function Footer() {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const { isLauncherMode } = useGlobalMenu();
+  const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session?.user);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
+  // Hide footer on launcher mode or on dashboard (home) when logged in
   if (isLauncherMode) return null;
+  if (pathname === '/' && isLoggedIn) return null;
+
 
   return (
     <footer className="border-t bg-background">
