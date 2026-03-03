@@ -130,36 +130,61 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No se pudo extraer texto del archivo. ¿Está vacío o es un PDF de imagen?' }, { status: 400 });
         }
 
-        // Truncate if too long
-        const maxChars = 12000;
-        const textForAI = extractedText.length > maxChars
-            ? extractedText.substring(0, maxChars) + '\n\n[...texto truncado por longitud...]'
-            : extractedText;
+        // --- SPLIT INTO CHUNKS IF NEEDED ---
+        const MAX_CHUNK = 28000; // Groq supports 128K context, Z.ai ~32K
+        const chunks: string[] = [];
 
-        // --- TRY Z.AI FIRST, FALLBACK TO GROQ ---
-        let content = '';
+        if (extractedText.length <= MAX_CHUNK) {
+            chunks.push(extractedText);
+        } else {
+            // Split by lines to avoid cutting mid-transaction
+            const lines = extractedText.split('\n');
+            let currentChunk = '';
+            for (const line of lines) {
+                if ((currentChunk + '\n' + line).length > MAX_CHUNK && currentChunk.length > 0) {
+                    chunks.push(currentChunk);
+                    currentChunk = line;
+                } else {
+                    currentChunk += (currentChunk ? '\n' : '') + line;
+                }
+            }
+            if (currentChunk) chunks.push(currentChunk);
+            console.log(`[BANK-STATEMENT] Text split into ${chunks.length} chunks`);
+        }
+
+        // --- CALL AI FOR EACH CHUNK ---
+        let allContent: string[] = [];
         let provider = 'z.ai';
 
-        try {
-            console.log('[BANK-STATEMENT] Trying Z.ai...');
-            content = await callZai(textForAI);
-        } catch (zaiError: any) {
-            console.warn('[BANK-STATEMENT] Z.ai failed:', zaiError.message, '— Falling back to Groq...');
+        async function callAI(text: string): Promise<string> {
             try {
+                return await callZai(text);
+            } catch (zaiError: any) {
+                console.warn('[BANK-STATEMENT] Z.ai failed:', zaiError.message, '— Using Groq...');
                 provider = 'groq';
-                content = await callGroq(textForAI);
-            } catch (groqError: any) {
-                console.error('[BANK-STATEMENT] Groq also failed:', groqError.message);
-                return NextResponse.json(
-                    { error: 'Ambas IAs fallaron. Inténtalo de nuevo en unos segundos.' },
-                    { status: 503 }
-                );
+                return await callGroq(text);
             }
         }
 
-        if (!content) {
-            return NextResponse.json({ error: 'La IA no devolvió contenido.' }, { status: 422 });
+        for (let i = 0; i < chunks.length; i++) {
+            console.log(`[BANK-STATEMENT] Processing chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)...`);
+            try {
+                const result = await callAI(chunks[i]);
+                if (result) allContent.push(result);
+            } catch (err: any) {
+                console.error(`[BANK-STATEMENT] Chunk ${i + 1} failed:`, err.message);
+                // Continue with other chunks
+            }
         }
+
+        if (allContent.length === 0) {
+            return NextResponse.json(
+                { error: 'Ambas IAs fallaron en todos los intentos. Inténtalo de nuevo.' },
+                { status: 503 }
+            );
+        }
+
+        const content = allContent.join('\n');
 
         // --- PARSE AI RESPONSE ---
         let transactions: any[] = [];
