@@ -14,7 +14,8 @@ import {
     Trash2,
     CheckCircle2,
     ArrowUpRight,
-    ArrowDownRight
+    ArrowDownRight,
+    ClipboardPaste
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,6 +65,7 @@ type ImporterProps = {
 };
 
 type ImportStep = 'upload' | 'processing' | 'preview' | 'importing' | 'done';
+type InputMode = 'file' | 'paste';
 
 export default function BankStatementImporter({
     open,
@@ -80,6 +82,8 @@ export default function BankStatementImporter({
     const [importedCount, setImportedCount] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [dragOver, setDragOver] = useState(false);
+    const [inputMode, setInputMode] = useState<InputMode>('file');
+    const [pastedText, setPastedText] = useState('');
 
     const reset = useCallback(() => {
         setStep('upload');
@@ -88,6 +92,7 @@ export default function BankStatementImporter({
         setError('');
         setSelectedAccountId('');
         setImportedCount(0);
+        setPastedText('');
     }, []);
 
     const handleClose = () => {
@@ -141,57 +146,150 @@ export default function BankStatementImporter({
 
     const handleDragLeave = useCallback(() => setDragOver(false), []);
 
-    // --- PROCESS FILE WITH AI ---
-    const processFile = async () => {
-        if (!file || !selectedAccountId) {
-            toast.error('Selecciona un archivo y una cuenta.');
+    // --- LOCAL REGEX PARSER (no AI needed) ---
+    const parseTextLocally = (text: string): ParsedTransaction[] => {
+        const lines = text.split('\n');
+        const results: ParsedTransaction[] = [];
+        // Match: date  description  amount (with various separators)
+        // Supports: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd
+        const dateRegex = /(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}-\d{2}-\d{2})/;
+        const amountRegex = /([+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€?$/;
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.length < 10) continue;
+
+            const dateMatch = trimmed.match(dateRegex);
+            const amountMatch = trimmed.match(amountRegex);
+
+            if (dateMatch && amountMatch) {
+                // Parse date
+                let dateStr = dateMatch[1];
+                const parts = dateStr.split(/[\/.\-]/);
+                if (parts[0].length === 4) {
+                    dateStr = parts.join('-'); // already yyyy-mm-dd
+                } else {
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                    dateStr = `${year}-${month}-${day}`;
+                }
+
+                // Parse amount - handle European format (1.234,56)
+                let amountStr = amountMatch[1].replace(/\s*€?$/, '');
+                // If has both . and , → European: 1.234,56 → 1234.56
+                if (amountStr.includes('.') && amountStr.includes(',')) {
+                    amountStr = amountStr.replace(/\./g, '').replace(',', '.');
+                } else if (amountStr.includes(',')) {
+                    amountStr = amountStr.replace(',', '.');
+                }
+                const amount = parseFloat(amountStr);
+                if (isNaN(amount)) continue;
+
+                // Extract description (between date and amount)
+                let desc = trimmed
+                    .replace(dateMatch[0], '')
+                    .replace(amountMatch[0], '')
+                    .replace(/\s{2,}/g, ' ')
+                    .replace(/^\s*[|\t]+\s*/, '')
+                    .replace(/\s*[|\t]+\s*$/, '')
+                    .trim();
+
+                if (desc.length < 2) desc = 'Movimiento';
+
+                results.push({ date: dateStr, description: desc.substring(0, 200), amount, selected: true });
+            }
+        }
+        return results;
+    };
+
+    // --- PROCESS (FILE OR PASTED TEXT) ---
+    const processInput = async () => {
+        if (!selectedAccountId) {
+            toast.error('Selecciona una cuenta.');
             return;
         }
 
-        setStep('processing');
-        setError('');
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch('/api/parse-bank-statement', {
-                method: 'POST',
-                body: formData
-            });
-
-            // Handle empty responses (timeouts, server errors)
-            const text = await response.text();
-            if (!text) {
-                throw new Error('El servidor no respondió. Puede que el archivo sea muy grande o la IA esté ocupada. Inténtalo de nuevo.');
+        if (inputMode === 'paste') {
+            // --- PASTE MODE: try local parsing first ---
+            if (!pastedText.trim()) {
+                toast.error('Pega el texto del extracto.');
+                return;
             }
 
-            let data;
+            setStep('processing');
+            setError('');
+
+            // Try local regex parsing first (instant, no AI)
+            const localResults = parseTextLocally(pastedText);
+            if (localResults.length > 0) {
+                console.log(`[Importer] Local parser found ${localResults.length} transactions`);
+                setTransactions(localResults);
+                setStep('preview');
+                return;
+            }
+
+            // If local parsing failed, send to AI
+            console.log('[Importer] Local parser found nothing, sending to AI...');
             try {
-                data = JSON.parse(text);
-            } catch {
-                throw new Error('Respuesta inesperada del servidor. Inténtalo de nuevo en unos segundos.');
+                const response = await fetch('/api/parse-bank-statement', {
+                    method: 'POST',
+                    body: (() => { const fd = new FormData(); fd.append('file', new Blob([pastedText], { type: 'text/csv' }), 'pasted.csv'); return fd; })()
+                });
+
+                const text = await response.text();
+                if (!text) throw new Error('El servidor no respondió. Inténtalo de nuevo.');
+
+                const data = JSON.parse(text);
+                if (!response.ok) throw new Error(data.error || 'Error al procesar');
+
+                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
+                if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
+
+                setTransactions(parsed);
+                setStep('preview');
+            } catch (err: any) {
+                console.error('[Importer] Error:', err);
+                setError(err.message || 'Error desconocido');
+                setStep('upload');
+            }
+        } else {
+            // --- FILE MODE ---
+            if (!file) {
+                toast.error('Selecciona un archivo.');
+                return;
             }
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Error al procesar el archivo');
+            setStep('processing');
+            setError('');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/parse-bank-statement', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const text = await response.text();
+                if (!text) throw new Error('El servidor no respondió. Inténtalo de nuevo.');
+
+                let data;
+                try { data = JSON.parse(text); } catch { throw new Error('Respuesta inesperada del servidor.'); }
+
+                if (!response.ok) throw new Error(data.error || 'Error al procesar');
+
+                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
+                if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
+
+                setTransactions(parsed);
+                setStep('preview');
+            } catch (err: any) {
+                console.error('[Importer] Error:', err);
+                setError(err.message || 'Error desconocido');
+                setStep('upload');
             }
-
-            const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({
-                ...tx,
-                selected: true
-            }));
-
-            if (parsed.length === 0) {
-                throw new Error('No se encontraron movimientos en el archivo.');
-            }
-
-            setTransactions(parsed);
-            setStep('preview');
-        } catch (err: any) {
-            console.error('[Importer] Error:', err);
-            setError(err.message || 'Error desconocido');
-            setStep('upload');
         }
     };
 
@@ -273,7 +371,7 @@ export default function BankStatementImporter({
                         Importar Extracto Bancario con IA
                     </DialogTitle>
                     <DialogDescription>
-                        Sube un PDF o Excel de tu banco y la IA detectará todos los movimientos automáticamente.
+                        Sube un archivo o pega el texto de tu extracto bancario.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -308,65 +406,92 @@ export default function BankStatementImporter({
                                     </Select>
                                 </div>
 
-                                {/* Drop Zone */}
-                                <div
-                                    onDrop={handleDrop}
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragOver
-                                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 scale-[1.02]'
-                                        : file
-                                            ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
-                                            : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900/30'
-                                        }`}
-                                >
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".pdf,.xlsx,.xls,.csv"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                            const f = e.target.files?.[0];
-                                            if (f) handleFileSelect(f);
-                                        }}
-                                    />
-
-                                    {file ? (
-                                        <div className="flex flex-col items-center gap-3">
-                                            {getFileIcon(file.name)}
-                                            <div>
-                                                <p className="font-semibold text-sm">{file.name}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {(file.size / 1024).toFixed(1)} KB
-                                                </p>
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                                                className="text-red-500 hover:text-red-700"
-                                            >
-                                                <X className="w-4 h-4 mr-1" /> Quitar
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                                            <Upload className="w-10 h-10" />
-                                            <div>
-                                                <p className="font-semibold text-foreground">Arrastra tu extracto aquí</p>
-                                                <p className="text-xs">o haz clic para seleccionar</p>
-                                            </div>
-                                            <div className="flex gap-2 mt-1">
-                                                {['PDF', 'XLSX', 'XLS', 'CSV'].map(ext => (
-                                                    <span key={ext} className="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full font-mono">
-                                                        {ext}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+                                {/* Mode Toggle */}
+                                <div className="flex rounded-lg border p-1 gap-1">
+                                    <button
+                                        onClick={() => setInputMode('file')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${inputMode === 'file'
+                                                ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                                                : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        <Upload className="w-4 h-4" /> Subir archivo
+                                    </button>
+                                    <button
+                                        onClick={() => setInputMode('paste')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${inputMode === 'paste'
+                                                ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                                                : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        <ClipboardPaste className="w-4 h-4" /> Pegar texto
+                                    </button>
                                 </div>
+
+                                {inputMode === 'file' ? (
+                                    /* Drop Zone */
+                                    <div
+                                        onDrop={handleDrop}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragOver
+                                            ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 scale-[1.02]'
+                                            : file
+                                                ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
+                                                : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900/30'
+                                            }`}
+                                    >
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.xlsx,.xls,.csv"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleFileSelect(f);
+                                            }}
+                                        />
+                                        {file ? (
+                                            <div className="flex flex-col items-center gap-3">
+                                                {getFileIcon(file.name)}
+                                                <div>
+                                                    <p className="font-semibold text-sm">{file.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-red-500 hover:text-red-700">
+                                                    <X className="w-4 h-4 mr-1" /> Quitar
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                                                <Upload className="w-10 h-10" />
+                                                <div>
+                                                    <p className="font-semibold text-foreground">Arrastra tu extracto aquí</p>
+                                                    <p className="text-xs">o haz clic para seleccionar</p>
+                                                </div>
+                                                <div className="flex gap-2 mt-1">
+                                                    {['PDF', 'XLSX', 'XLS', 'CSV'].map(ext => (
+                                                        <span key={ext} className="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full font-mono">{ext}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    /* Paste Text Area */
+                                    <div className="space-y-2">
+                                        <textarea
+                                            value={pastedText}
+                                            onChange={(e) => setPastedText(e.target.value)}
+                                            placeholder={'Pega aquí el texto copiado de tu extracto bancario...\n\nEjemplo:\n01/02/2025  Nómina empresa  +1.500,00\n03/02/2025  Alquiler  -750,00\n05/02/2025  Supermercado  -85,30'}
+                                            className="w-full h-48 p-3 text-sm font-mono border rounded-xl resize-none bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-violet-400 focus:border-violet-400 outline-none"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            💡 Copia las filas desde Excel o el PDF y pégalas aquí. Primero intentará parsearlo sin IA.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {error && (
                                     <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
@@ -497,12 +622,12 @@ export default function BankStatementImporter({
                         <>
                             <Button variant="outline" onClick={handleClose}>Cancelar</Button>
                             <Button
-                                onClick={processFile}
-                                disabled={!file || !selectedAccountId}
+                                onClick={processInput}
+                                disabled={(!file && inputMode === 'file') || (!pastedText.trim() && inputMode === 'paste') || !selectedAccountId}
                                 className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
                             >
                                 <Sparkles className="w-4 h-4" />
-                                Analizar con IA
+                                {inputMode === 'paste' ? 'Analizar texto' : 'Analizar con IA'}
                             </Button>
                         </>
                     )}
