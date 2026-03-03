@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import Groq from 'groq-sdk';
 
+// --- AI PROVIDERS ---
 const ZAI_API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
 const ZAI_API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-const MODEL = "glm-4.6v-flash";
+const ZAI_MODEL = "glm-4.6v-flash";
+
+const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY || "" });
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 const PROMPT = `Eres un experto en extractos bancarios españoles y europeos. Analiza el siguiente texto extraído de un extracto bancario y extrae TODAS las transacciones/movimientos que encuentres.
 
@@ -18,6 +23,78 @@ REGLAS ESTRICTAS:
 
 Texto del extracto:
 `;
+
+// --- AI CALL FUNCTIONS ---
+
+async function callZai(textForAI: string): Promise<string> {
+    const body = {
+        model: ZAI_MODEL,
+        messages: [{ role: "user", content: PROMPT + textForAI }],
+        max_tokens: 8192,
+        temperature: 0.05,
+        stream: false
+    };
+
+    const response = await fetch(ZAI_API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ZAI_API_KEY}`
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(`Z.ai error ${response.status}: ${err.error?.message || 'API Error'}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+}
+
+async function callGroq(textForAI: string): Promise<string> {
+    const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: PROMPT + textForAI }],
+        model: GROQ_MODEL,
+        temperature: 0.05,
+        max_tokens: 8192,
+        stream: false
+    });
+
+    return chatCompletion.choices?.[0]?.message?.content || '';
+}
+
+// --- PARSE JSON FROM AI ---
+
+function parseAIResponse(content: string): any[] {
+    let cleaned = content.trim();
+
+    // Strategy 1: Remove markdown code blocks
+    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```$/i, '');
+
+    // Strategy 2: Try direct parse
+    try {
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) return parsed;
+    } catch { /* continue */ }
+
+    // Strategy 3: Find JSON array within the text using regex
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+        try { return JSON.parse(jsonMatch[0]); } catch { /* continue */ }
+    }
+
+    // Strategy 4: Find individual JSON objects with "date" key
+    const objectMatches = content.match(/\{[^{}]*"date"[^{}]*\}/g);
+    if (objectMatches && objectMatches.length > 0) {
+        try { return JSON.parse('[' + objectMatches.join(',') + ']'); } catch { /* continue */ }
+    }
+
+    throw new Error('No se encontró JSON válido en la respuesta de la IA');
+}
+
+// --- MAIN HANDLER ---
 
 export async function POST(request: NextRequest) {
     try {
@@ -36,18 +113,14 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(arrayBuffer);
 
         if (fileName.endsWith('.pdf')) {
-            // PDF: dynamic import to avoid Vercel crash on top-level require
             const pdfModule = await import('pdf-parse') as any;
             const pdfParse = pdfModule.default || pdfModule;
             const pdfData = await pdfParse(buffer);
             extractedText = pdfData.text;
         } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
-            // Excel/CSV: parse with xlsx
             const workbook = XLSX.read(buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-
-            // Convert to CSV text for AI to analyze
             extractedText = XLSX.utils.sheet_to_csv(sheet, { FS: ' | ', RS: '\n' });
         } else {
             return NextResponse.json({ error: 'Formato no soportado. Usa PDF, XLSX, XLS o CSV.' }, { status: 400 });
@@ -57,100 +130,43 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No se pudo extraer texto del archivo. ¿Está vacío o es un PDF de imagen?' }, { status: 400 });
         }
 
-        // Truncate if too long (Z.ai has token limits)
+        // Truncate if too long
         const maxChars = 12000;
         const textForAI = extractedText.length > maxChars
             ? extractedText.substring(0, maxChars) + '\n\n[...texto truncado por longitud...]'
             : extractedText;
 
-        // --- SEND TO Z.AI ---
-        const body = {
-            model: MODEL,
-            messages: [
-                {
-                    role: "user",
-                    content: PROMPT + textForAI
-                }
-            ],
-            max_tokens: 8192,
-            temperature: 0.05,
-            stream: false
-        };
+        // --- TRY Z.AI FIRST, FALLBACK TO GROQ ---
+        let content = '';
+        let provider = 'z.ai';
 
-        // --- RETRY LOGIC FOR RATE LIMITS (kept short for Vercel timeout) ---
-        const MAX_RETRIES = 1;
-        let response: Response | null = null;
-        let data: any = null;
-
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            response = await fetch(ZAI_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ZAI_API_KEY}`
-                },
-                body: JSON.stringify(body)
-            });
-
-            data = await response.json();
-
-            if (response.ok) break;
-
-            // If rate limited (429), wait briefly and retry once
-            if (response.status === 429 && attempt < MAX_RETRIES) {
-                console.log(`[BANK-STATEMENT] Rate limited (429). Retrying in 1.5s...`);
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                continue;
+        try {
+            console.log('[BANK-STATEMENT] Trying Z.ai...');
+            content = await callZai(textForAI);
+        } catch (zaiError: any) {
+            console.warn('[BANK-STATEMENT] Z.ai failed:', zaiError.message, '— Falling back to Groq...');
+            try {
+                provider = 'groq';
+                content = await callGroq(textForAI);
+            } catch (groqError: any) {
+                console.error('[BANK-STATEMENT] Groq also failed:', groqError.message);
+                return NextResponse.json(
+                    { error: 'Ambas IAs fallaron. Inténtalo de nuevo en unos segundos.' },
+                    { status: 503 }
+                );
             }
-
-            // Non-retryable error or max retries exceeded
-            console.error('[BANK-STATEMENT] Z.ai API Error:', data);
-            return NextResponse.json(
-                {
-                    error: response.status === 429
-                        ? 'La IA está sobrecargada. Espera unos segundos e inténtalo de nuevo.'
-                        : (data.error?.message || 'Error de la API de IA')
-                },
-                { status: response.status }
-            );
         }
 
-        const content = data.choices?.[0]?.message?.content || '';
+        if (!content) {
+            return NextResponse.json({ error: 'La IA no devolvió contenido.' }, { status: 422 });
+        }
 
         // --- PARSE AI RESPONSE ---
-        // Robust JSON extraction: handles markdown code blocks, surrounding text, etc.
         let transactions: any[] = [];
         try {
-            let cleaned = content.trim();
+            transactions = parseAIResponse(content);
 
-            // Strategy 1: Remove markdown code blocks
-            cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```$/i, '');
-
-            // Strategy 2: Try direct parse
-            try {
-                const parsed = JSON.parse(cleaned);
-                transactions = Array.isArray(parsed) ? parsed : [];
-            } catch {
-                // Strategy 3: Find JSON array within the text using regex
-                const jsonMatch = content.match(/\[[\s\S]*\]/);
-                if (jsonMatch) {
-                    transactions = JSON.parse(jsonMatch[0]);
-                } else {
-                    // Strategy 4: Try to find individual JSON objects and wrap them
-                    const objectMatches = content.match(/\{[^{}]*"date"[^{}]*\}/g);
-                    if (objectMatches && objectMatches.length > 0) {
-                        transactions = JSON.parse('[' + objectMatches.join(',') + ']');
-                    } else {
-                        throw new Error('No se encontró JSON válido en la respuesta');
-                    }
-                }
-            }
-
-            if (!Array.isArray(transactions)) {
-                throw new Error('La respuesta no es un array');
-            }
-
-            // Validate and clean each transaction
+            // Validate and clean
             transactions = transactions
                 .filter(tx => tx.date && tx.description && tx.amount !== undefined)
                 .map(tx => ({
@@ -160,24 +176,22 @@ export async function POST(request: NextRequest) {
                 }));
 
         } catch (parseError) {
-            console.error('[BANK-STATEMENT] JSON Parse Error:', parseError, '\nRaw content:', content);
+            console.error('[BANK-STATEMENT] JSON Parse Error:', parseError, '\nRaw:', content.substring(0, 300));
             return NextResponse.json(
-                { error: 'La IA no devolvió un formato válido. Intenta de nuevo o con otro archivo.', raw: content.substring(0, 500) },
+                { error: 'La IA no devolvió un formato válido. Intenta de nuevo o con otro archivo.' },
                 { status: 422 }
             );
         }
 
         if (transactions.length === 0) {
-            return NextResponse.json(
-                { error: 'No se detectaron movimientos en el archivo.' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'No se detectaron movimientos en el archivo.' }, { status: 400 });
         }
 
         return NextResponse.json({
             transactions,
             count: transactions.length,
-            source: fileName
+            source: fileName,
+            provider
         });
 
     } catch (error: any) {
