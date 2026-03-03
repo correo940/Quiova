@@ -26,7 +26,8 @@ import {
     ExternalLink,
     Wallet,
     Trash2,
-    Save
+    Save,
+    FileUp
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +39,7 @@ import { Progress } from '@/components/ui/progress';
 import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savings-notification-settings';
 import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
+import BankStatementImporter from '@/components/apps/mi-hogar/savings/bank-statement-importer';
 
 // Types
 type BankAccount = {
@@ -119,6 +121,7 @@ export default function SavingsPage() {
     const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
     const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
     const [isAddRecurringOpen, setIsAddRecurringOpen] = useState(false);
+    const [isImporterOpen, setIsImporterOpen] = useState(false);
 
     // Forms
     const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
@@ -506,7 +509,12 @@ export default function SavingsPage() {
                         <ArrowLeft className="h-4 w-4" /> Volver
                     </Button>
                 </Link>
-                <SavingsNotificationSettings />
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImporterOpen(true)}>
+                        <FileUp className="h-4 w-4" /> Importar Extracto
+                    </Button>
+                    <SavingsNotificationSettings />
+                </div>
             </div>
 
             {/* Notification Manager (invisible) */}
@@ -535,6 +543,15 @@ export default function SavingsPage() {
                 recurringItems={recurringItems}
                 onAddRecurring={() => setIsAddRecurringOpen(true)}
                 onDeleteRecurring={handleDeleteRecurring}
+            />
+
+            {/* --- BANK STATEMENT IMPORTER --- */}
+            <BankStatementImporter
+                open={isImporterOpen}
+                onOpenChange={setIsImporterOpen}
+                accounts={accounts}
+                userId={user?.id || ''}
+                onImportComplete={() => fetchData()}
             />
 
             {/* --- DIALOGS --- */}
