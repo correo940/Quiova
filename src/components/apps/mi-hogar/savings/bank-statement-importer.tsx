@@ -153,7 +153,7 @@ export default function BankStatementImporter({
         // Match: date  description  amount (with various separators)
         // Supports: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd
         const dateRegex = /(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}-\d{2}-\d{2})/;
-        const amountRegex = /([+-]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€?$/;
+        const amountRegex = /([+-]?\d+(?:[.,]\d{3})*[.,]\d{2})\s*€?$/;
 
         for (const line of lines) {
             const trimmed = line.trim();
@@ -411,8 +411,8 @@ export default function BankStatementImporter({
                                     <button
                                         onClick={() => setInputMode('file')}
                                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${inputMode === 'file'
-                                                ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                                                : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                                            : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
                                             }`}
                                     >
                                         <Upload className="w-4 h-4" /> Subir archivo
@@ -420,8 +420,8 @@ export default function BankStatementImporter({
                                     <button
                                         onClick={() => setInputMode('paste')}
                                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${inputMode === 'paste'
-                                                ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                                                : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
+                                            ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                                            : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800'
                                             }`}
                                     >
                                         <ClipboardPaste className="w-4 h-4" /> Pegar texto
