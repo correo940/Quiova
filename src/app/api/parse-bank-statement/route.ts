@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 
-const pdf = require('pdf-parse');
-
 const ZAI_API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
 const ZAI_API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
 const MODEL = "glm-4.6v-flash";
@@ -38,8 +36,10 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(arrayBuffer);
 
         if (fileName.endsWith('.pdf')) {
-            // PDF: extract text with pdf-parse
-            const pdfData = await pdf(buffer);
+            // PDF: dynamic import to avoid Vercel crash on top-level require
+            const pdfModule = await import('pdf-parse') as any;
+            const pdfParse = pdfModule.default || pdfModule;
+            const pdfData = await pdfParse(buffer);
             extractedText = pdfData.text;
         } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
             // Excel/CSV: parse with xlsx
