@@ -206,30 +206,40 @@ export default function BankStatementImporter({
         setStep('importing');
 
         try {
-            // Insert all transactions
-            const inserts = selected.map(tx => ({
-                account_id: selectedAccountId,
-                user_id: userId,
-                amount: tx.amount,
-                date: tx.date,
-                description: tx.description
-            }));
+            // Insert in batches of 20 to avoid timeouts
+            const BATCH_SIZE = 20;
+            for (let i = 0; i < selected.length; i += BATCH_SIZE) {
+                const batch = selected.slice(i, i + BATCH_SIZE);
+                const inserts = batch.map(tx => ({
+                    account_id: selectedAccountId,
+                    amount: tx.amount,
+                    date: tx.date,
+                    description: tx.description
+                }));
 
-            const { error: insertError } = await supabase
-                .from('savings_account_transactions')
-                .insert(inserts);
+                const { error: insertError } = await supabase
+                    .from('savings_account_transactions')
+                    .insert(inserts);
 
-            if (insertError) throw insertError;
+                if (insertError) {
+                    console.error('[Importer] Batch insert error:', insertError);
+                    throw insertError;
+                }
+            }
 
             // Update account balance
             const totalDelta = selected.reduce((sum, tx) => sum + tx.amount, 0);
             const account = accounts.find(a => a.id === selectedAccountId);
             if (account) {
                 const newBalance = (account.current_balance || 0) + totalDelta;
-                await supabase
+                const { error: updateError } = await supabase
                     .from('savings_accounts')
                     .update({ current_balance: newBalance })
                     .eq('id', selectedAccountId);
+
+                if (updateError) {
+                    console.error('[Importer] Balance update error:', updateError);
+                }
             }
 
             setImportedCount(selected.length);
