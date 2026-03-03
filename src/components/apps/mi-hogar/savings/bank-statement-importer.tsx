@@ -160,7 +160,18 @@ export default function BankStatementImporter({
                 body: formData
             });
 
-            const data = await response.json();
+            // Handle empty responses (timeouts, server errors)
+            const text = await response.text();
+            if (!text) {
+                throw new Error('El servidor no respondió. Puede que el archivo sea muy grande o la IA esté ocupada. Inténtalo de nuevo.');
+            }
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error('Respuesta inesperada del servidor. Inténtalo de nuevo en unos segundos.');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || 'Error al procesar el archivo');
@@ -294,10 +305,10 @@ export default function BankStatementImporter({
                                     onDragLeave={handleDragLeave}
                                     onClick={() => fileInputRef.current?.click()}
                                     className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragOver
-                                            ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 scale-[1.02]'
-                                            : file
-                                                ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
-                                                : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900/30'
+                                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 scale-[1.02]'
+                                        : file
+                                            ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
+                                            : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900/30'
                                         }`}
                                 >
                                     <input
@@ -409,13 +420,13 @@ export default function BankStatementImporter({
                                             key={i}
                                             onClick={() => toggleOne(i)}
                                             className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all duration-150 ${tx.selected
-                                                    ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700'
-                                                    : 'bg-transparent border-transparent opacity-40'
+                                                ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700'
+                                                : 'bg-transparent border-transparent opacity-40'
                                                 }`}
                                         >
                                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${tx.selected
-                                                    ? 'bg-violet-500 border-violet-500'
-                                                    : 'border-slate-300 dark:border-slate-600'
+                                                ? 'bg-violet-500 border-violet-500'
+                                                : 'border-slate-300 dark:border-slate-600'
                                                 }`}>
                                                 {tx.selected && <Check className="w-3.5 h-3.5 text-white" />}
                                             </div>

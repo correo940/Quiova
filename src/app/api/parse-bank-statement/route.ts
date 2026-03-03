@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
             stream: false
         };
 
-        // --- RETRY LOGIC FOR RATE LIMITS ---
-        const MAX_RETRIES = 3;
+        // --- RETRY LOGIC FOR RATE LIMITS (kept short for Vercel timeout) ---
+        const MAX_RETRIES = 1;
         let response: Response | null = null;
         let data: any = null;
 
@@ -96,11 +96,10 @@ export async function POST(request: NextRequest) {
 
             if (response.ok) break;
 
-            // If rate limited (429), wait and retry
+            // If rate limited (429), wait briefly and retry once
             if (response.status === 429 && attempt < MAX_RETRIES) {
-                const waitMs = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
-                console.log(`[BANK-STATEMENT] Rate limited (429). Retry ${attempt + 1}/${MAX_RETRIES} in ${waitMs}ms...`);
-                await new Promise(resolve => setTimeout(resolve, waitMs));
+                console.log(`[BANK-STATEMENT] Rate limited (429). Retrying in 1.5s...`);
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 continue;
             }
 
