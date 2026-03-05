@@ -14,43 +14,64 @@ import LogoLoader from '@/components/ui/logo-loader';
 function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const router = useRouter();
   const { isLauncherMode, setIsLauncherMode } = useGlobalMenu();
 
+  // Initialize display mode based on platform/screen size
   useEffect(() => {
-    const isNative = Capacitor.isNativePlatform();
-    const isSmallScreen = window.innerWidth < 768;
-    if (isNative || isSmallScreen) {
-      setIsLauncherMode(true);
-      setLoading(false);
-    }
+    const checkDisplayMode = () => {
+      const isNative = Capacitor.isNativePlatform();
+      const isSmallScreen = window.innerWidth < 768;
+
+      // If we are on mobile/small screen, we should be in launcher mode
+      if (isNative || isSmallScreen) {
+        setIsLauncherMode(true);
+      }
+    };
+
+    checkDisplayMode();
+    // Add a small delay to allow context to stabilize before finishing loading
+    const timer = setTimeout(() => setLoading(false), 100);
+    return () => clearTimeout(timer);
   }, [setIsLauncherMode]);
 
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-
+  // Handle Supabase Auth Session
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsAuthChecking(false);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted) {
+        setUser(session?.user ?? null);
+        setIsAuthChecking(false);
+      }
+    };
+
+    getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setIsAuthChecking(false);
-      setLoading(false);
+      if (mounted) {
+        setUser(session?.user ?? null);
+        setIsAuthChecking(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
+  // Redirect to login ONLY if we are sure we need it and are in launcher mode
   useEffect(() => {
-    if (!isAuthChecking && isLauncherMode && !user) {
+    if (!isAuthChecking && !loading && isLauncherMode && !user) {
       router.push('/login');
     }
-  }, [isLauncherMode, user, isAuthChecking, router]);
+  }, [isLauncherMode, user, isAuthChecking, loading, router]);
 
-  if (isAuthChecking || (loading && !isLauncherMode && !user)) {
+  // Loading state (Branded)
+  if (isAuthChecking || (loading && !isLauncherMode)) {
     return (
       <div className="container mx-auto px-4 py-20 min-h-[60vh] flex flex-col items-center justify-center gap-6">
         <LogoLoader size="lg" />
@@ -59,15 +80,17 @@ function HomeContent() {
     );
   }
 
+  // Mobile Launcher View
   if (isLauncherMode && user) {
     return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
   }
 
+  // Desktop Dashboard View
   if (user) {
     return <HomeDashboard />;
   }
 
-  // Si no hay usuario y no es launcher (web guest), mostramos el blog minimalista
+  // Guest/Web View (Blog Content)
   return <BlogContent />;
 }
 

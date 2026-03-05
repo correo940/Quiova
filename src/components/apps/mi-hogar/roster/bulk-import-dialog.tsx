@@ -12,12 +12,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Upload, Calendar as CalendarIcon, FileText, Image as ImageIcon, X, ZoomIn, ZoomOut, RotateCw, Check, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, Calendar as CalendarIcon, FileText, Image as ImageIcon, X, ZoomIn, ZoomOut, RotateCw, Check, RefreshCw, AlertTriangle, Brain, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DEFAULT_SHIFT_TYPES } from './shift-settings-dialog';
+import { scanFullRosterZai, callZaiVision } from '@/lib/zai-ocr'; // Added Z.ai import
 
 interface BulkImportDialogProps {
     open: boolean;
@@ -40,7 +41,8 @@ export default function BulkImportDialog({ open, onOpenChange, onSuccess }: Bulk
     const [previewShifts, setPreviewShifts] = useState<any[]>([]);
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [startDay, setStartDay] = useState(1); // Manual offset for day 1
+    const [startDay, setStartDay] = useState(1);
+    const [aiInstructions, setAiInstructions] = useState(''); // Added AI Instructions state
     const [showWarning, setShowWarning] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,175 +145,60 @@ export default function BulkImportDialog({ open, onOpenChange, onSuccess }: Bulk
     }, [textInput, selectedMonth]);
 
 
-    // --- PHOTO PARSER (OCR.SPACE GEOMETRIC) ---
+    // --- PHOTO PARSER (Z.AI GLM-4.6V-FLASH) ---
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsLoading(true);
         setPreviewShifts([]);
-        setImagePreview(URL.createObjectURL(file)); // Set preview
+
+        // Convert to base64 for preview and sending
+        const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        setImagePreview(base64);
         setShowWarning(true);
 
         try {
-            const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
+            // New Prompt using Z.ai and custom context
+            const prompt = `Analiza esta imagen de un cuadrante de turnos.
+            
+INSTRUCCIONES DEL USUARIO:
+${aiInstructions || "No se han proporcionado instrucciones adicionales."}
 
-            const formData = new FormData();
-            formData.append("base64Image", base64);
-            formData.append("apikey", "K84515341388957");
-            formData.append("language", "spa");
-            formData.append("isTable", "true");
-            formData.append("isOverlayRequired", "true"); // Required for Geometry
-            formData.append("scale", "true");
-            formData.append("OCREngine", "2");
+REGLAS DE EXTRACCIÓN:
+1. Identifica la secuencia de turnos para una sola persona (o la tabla completa si no se especifica).
+2. Extrae los códigos de turno (ej: M, T, N, L, V, etc.).
+3. Devuelve los turnos en una secuencia de texto separada por espacios, por ejemplo: "M M T T N N L L".
+4. Si detectas números de día (1, 2, 3...), inclúyelos antes de cada turno: "1 M 2 M 3 T...".
+5. IMPORTANTE: Los códigos que el usuario ha configurado son: ${shiftTypes.map(s => s.code).join(', ')}. Basate en estos códigos.
 
-            // Warn if file is large (> 3MB)
-            if (file.size > 3 * 1024 * 1024) {
-                toast.warning("Imagen grande detectada. Esto puede tardar 1-2 minutos.");
+RESPUESTA:
+Devuelve SOLO la secuencia de texto plana de los turnos, sin explicaciones ni markdown.`;
+
+            const { content } = await callZaiVision(base64, prompt);
+
+            if (!content) {
+                throw new Error("La IA no devolvió ningún contenido.");
             }
 
-            // Add timeout to prevent infinite spinner (Increased to 120s)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+            setTextInput(content.trim());
+            toast.success("Cuadrante analizado con Z.ai (Motor GLM-4.6V)");
 
-            const response = await fetch("/api/ocr-space", {
-                method: "POST",
-                body: formData,
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-
-            const data = await response.json();
-
-            if (data.IsErroredOnProcessing || !data.ParsedResults?.[0]) {
-                const msg = data.ErrorMessage?.[0] || 'Error desconocido del OCR';
-                throw new Error(msg);
-            }
-
-            const result = data.ParsedResults[0];
-            const overlay = result.TextOverlay;
-
-            if (!overlay || !overlay.Lines) {
-                // Fallback to raw text if no overlay
-                const rawText = result.ParsedText || "";
-                setTextInput(rawText);
-                toast.warning("Lectura simple (sin geometría). Revisa el texto.");
-            } else {
-                // --- GEOMETRIC ANALYSIS ---
-                // 1. Flatten words
-                let allWords: any[] = [];
-                overlay.Lines.forEach((line: any) => { if (line.Words) allWords.push(...line.Words); });
-
-                // 2. Group by Row (Y-Tolerance)
-                const rows: { [key: number]: any[] } = {};
-                const Y_TOLERANCE = 20;
-
-                allWords.forEach(word => {
-                    const y = word.Top;
-                    const rowKey = Object.keys(rows).find(key => Math.abs(parseInt(key) - y) < Y_TOLERANCE);
-                    if (rowKey) rows[parseInt(rowKey)].push(word);
-                    else rows[y] = [word];
-                });
-
-                // Helper to clean common OCR errors
-                const cleanOCRToken = (t: string) => {
-                    t = t.replace(/[^A-Z0-9]/g, '');
-                    // Common typo fixes
-                    if (['TL', 'TI', 'T1', '7', 'L', 'I'].includes(t)) return 'T';
-                    if (['MI', 'M1'].includes(t)) return 'M';
-                    if (['D5', '0S', 'D$', 'DS', 'OS'].includes(t)) return 'DS';
-                    if (['DE', 'OF', '0F'].includes(t)) return 'DF';
-                    if (['DA5', 'DA$'].includes(t)) return 'DAS';
-                    return t;
-                };
-
-                // 3. Find Best Shift Row
-                let bestRow: any[] = [];
-                let maxScore = 0;
-
-                Object.values(rows).forEach(rowWords => {
-                    // Sort Left to Right
-                    rowWords.sort((a, b) => a.Left - b.Left);
-
-                    // Score: +1 for Abbr, -1 for Number (heuristic)
-                    const validCount = rowWords.filter(w => {
-                        const raw = w.WordText.toUpperCase();
-                        const txt = cleanOCRToken(raw);
-                        return getShiftByCode(txt) || txt === "SALIENTE";
-                    }).length;
-                    const numberCount = rowWords.filter(w => !isNaN(Number(w.WordText))).length;
-
-                    if (validCount > maxScore && validCount > numberCount) {
-                        maxScore = validCount;
-                        bestRow = rowWords;
-                    }
-                });
-
-                if (bestRow.length > 0) {
-                    bestRow.sort((a, b) => a.Left - b.Left);
-
-                    const finalTokens = bestRow
-                        .map(w => cleanOCRToken(w.WordText.toUpperCase()))
-                        .filter(t => {
-                            // Keep days (1-31)
-                            if (!isNaN(Number(t)) && Number(t) <= 31) return true;
-                            // Keep known codes from `shiftTypes`
-                            if (getShiftByCode(t) || t === "SALIENTE") return true;
-                            return false;
-                        });
-
-                    // Validate if we caught day numbers
-                    const caughtNumbers = finalTokens.filter(t => !isNaN(Number(t))).length;
-                    const caughtShifts = finalTokens.filter(t => getShiftByCode(t)).length; // Generic check
-
-                    let finalText = "";
-
-                    // If we have very few numbers compared to shifts (e.g. < 20%), assume we missed the header row
-                    // and inject artificial day numbers 1..N to help the user.
-                    if (caughtNumbers < (caughtShifts * 0.5)) {
-                        let dayCounter = 1;
-                        finalText = finalTokens.map(t => {
-                            // If it's a known shift (or SALIENTE), prepend day
-                            if (getShiftByCode(t) || t === "SALIENTE") {
-                                return `${dayCounter++} ${t}`;
-                            }
-                            return t;
-                        }).join('  ');
-                        toast.info("Se han añadido números de día para facilitar la lectura.");
-                    } else {
-                        finalText = finalTokens.join(' ');
-                    }
-
-                    setTextInput(finalText);
-                    toast.success(`Fila detectada. Se han limpiado textos extraños.`);
-                } else {
-                    // Fallback
-                    const fullText = result.ParsedText || "";
-                    setTextInput(fullText);
-                    toast.warning("No se detectó fila clara. Revisa el texto.");
-                }
-            }
-
-            // Switch to Text Tab
+            // Switch to Text Tab to see the result
             setActiveTab('text');
 
         } catch (err: any) {
             console.error(err);
-            if (err.name === 'AbortError') {
-                toast.error("Tiempo de espera agotado. Inténtalo de nuevo.");
-            } else {
-                toast.error("Fallo al leer la imagen: " + (err.message || "Error desconocido"));
-            }
+            toast.error("Fallo al leer la imagen con Z.ai: " + (err.message || "Error desconocido"));
         } finally {
             setIsLoading(false);
-            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input to allow re-upload
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -475,14 +362,31 @@ export default function BulkImportDialog({ open, onOpenChange, onSuccess }: Bulk
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="photo" className="flex-1 border p-8 rounded-lg bg-background shadow-sm flex flex-col items-center justify-center border-dashed">
-                                    <div className="text-center cursor-pointer hover:bg-muted/50 p-8 rounded-xl transition-all" onClick={() => fileInputRef.current?.click()}>
-                                        <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
-                                            <Upload className="h-10 w-10" />
+                                <TabsContent value="photo" className="flex-1 border p-8 rounded-lg bg-background shadow-sm flex flex-col items-center justify-center border-dashed relative overflow-hidden">
+                                    <div className="text-center cursor-pointer hover:bg-muted/50 p-8 rounded-xl transition-all w-full max-w-sm" onClick={() => fileInputRef.current?.click()}>
+                                        <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
+                                            <Upload className="h-8 w-8" />
                                         </div>
                                         <h3 className="text-lg font-bold">Subir Cuadrante</h3>
-                                        <p className="text-sm text-muted-foreground mt-2">Click para seleccionar imagen</p>
+                                        <p className="text-xs text-muted-foreground mt-2">Haz una foto o selecciona un archivo</p>
                                     </div>
+
+                                    <div className="mt-8 w-full max-w-sm space-y-3">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                                            <Brain className="w-3.5 h-3.5 text-indigo-500" />
+                                            <span>Instrucciones para la IA</span>
+                                        </div>
+                                        <Textarea
+                                            placeholder="Ej: La estrella es noche, la 'L' es libre, ignora la primera fila..."
+                                            className="text-xs resize-none h-20 bg-muted/30 border-dashed hover:border-indigo-400 focus:border-indigo-500 transition-colors"
+                                            value={aiInstructions}
+                                            onChange={(e) => setAiInstructions(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                            Esto ayuda a la IA a entender mejor tus símbolos personalizados.
+                                        </p>
+                                    </div>
+
                                     <InputFile ref={fileInputRef} onChange={handlePhotoUpload} />
                                 </TabsContent>
                             </Tabs>
@@ -530,44 +434,58 @@ export default function BulkImportDialog({ open, onOpenChange, onSuccess }: Bulk
                                 {/* Shared Container for Input and Preview */}
                                 <div className="flex-1 min-h-0 flex flex-col gap-4">
                                     {/* Text Input */}
-                                    <div className="h-40 shrink-0 flex flex-col min-h-0">
-                                        <label className="text-xs font-bold mb-1 ml-1 text-muted-foreground">Texto Detectado</label>
+                                    <div className="h-44 shrink-0 flex flex-col min-h-0">
+                                        <label className="text-[11px] font-bold mb-1.5 ml-1 text-muted-foreground uppercase tracking-wide">Texto Detectado / Manual</label>
                                         <Textarea
                                             placeholder="El texto detectado aparecerá aquí..."
-                                            className="flex-1 resize-none font-mono text-xs p-3 leading-relaxed border-input"
+                                            className="flex-1 resize-none font-mono text-sm p-4 leading-relaxed border-input bg-muted/5 focus:bg-background transition-colors rounded-xl shadow-inner shadow-black/5"
                                             value={textInput}
                                             onChange={e => setTextInput(e.target.value)}
                                         />
-                                        <div className="text-[10px] text-muted-foreground mt-1 text-right">
+                                        <div className="text-[10px] text-muted-foreground mt-1.5 text-right font-medium">
                                             {textInput.length} caracteres
                                         </div>
                                     </div>
 
                                     {/* Preview Grid */}
-                                    <div className="flex-1 flex flex-col min-h-0 border rounded-lg bg-muted/10">
-                                        <div className="bg-muted/50 p-2 text-xs font-bold border-b flex justify-between shrink-0 items-center">
-                                            <span>Vista Previa ({previewShifts.length} turnos)</span>
-                                            <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={parseTextSequence}>
-                                                <RefreshCw className="h-3 w-3 mr-1" /> Actualizar
+                                    <div className="flex-1 flex flex-col min-h-0 border rounded-2xl bg-muted/5 overflow-hidden shadow-inner">
+                                        <div className="bg-muted/20 backdrop-blur-sm p-3 text-xs font-bold border-b flex justify-between shrink-0 items-center">
+                                            <span className="uppercase tracking-wider opacity-70">Vista Previa ({previewShifts.length} turnos)</span>
+                                            <Button variant="ghost" size="sm" className="h-7 text-xs px-3 bg-background/50 hover:bg-background shadow-sm transition-all rounded-full" onClick={parseTextSequence}>
+                                                <RefreshCw className="h-3 w-3 mr-2" /> Actualizar
                                             </Button>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-2">
+                                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                                             {previewShifts.length === 0 ? (
-                                                <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground text-xs p-4 opacity-70">
-                                                    <p>No se reconocen turnos.</p>
+                                                <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground text-xs p-6 opacity-70">
+                                                    <div className="p-4 bg-muted rounded-full mb-3">
+                                                        <AlertTriangle className="w-6 h-6" />
+                                                    </div>
+                                                    <p className="font-semibold text-sm">No se reconocen turnos.</p>
                                                     <p className="mt-1">Verifica que el texto contenga códigos válidos (M, T, N...).</p>
                                                 </div>
                                             ) : (
-                                                <div className="grid grid-cols-3 xl:grid-cols-4 gap-2">
+                                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                                     {previewShifts.map((s, i) => (
-                                                        <div key={i} className="text-xs border rounded p-2 flex flex-col gap-1 bg-background shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                                                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: s.color }} />
-                                                            <div className="pl-2.5 flex justify-between items-start">
-                                                                <span className="font-bold text-[10px] uppercase text-muted-foreground">{s.displayDate}</span>
-                                                                <span className="text-[9px] opacity-50 font-mono">{format(new Date(s.dateStr), 'd')}</span>
-                                                            </div>
-                                                            <div className="pl-2.5 font-bold truncate">
-                                                                {s.title.replace('Turno: ', '')}
+                                                        <div key={i} className="relative group transition-all duration-300">
+                                                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/5 dark:from-white/5 dark:to-transparent rounded-xl -z-10 transition-opacity group-hover:opacity-100 opacity-0" />
+                                                            <div className="text-xs border rounded-xl p-3 flex flex-col gap-2 bg-background shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all relative overflow-hidden ring-1 ring-black/5">
+                                                                <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: s.color }} />
+                                                                <div className="pl-2 flex justify-between items-start">
+                                                                    <span className="font-black text-[10px] uppercase text-muted-foreground/80 tracking-tighter">{s.displayDate}</span>
+                                                                    <div className="w-5 h-5 rounded-full bg-muted/30 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                                                        {format(new Date(s.dateStr), 'd')}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pl-2 flex flex-col">
+                                                                    <div className="font-bold text-sm tracking-tight text-foreground/90 truncate">
+                                                                        {s.title.replace('Turno: ', '')}
+                                                                    </div>
+                                                                    <div className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1 mt-1">
+                                                                        <Clock className="w-2.5 h-2.5" />
+                                                                        {s.start} - {s.end}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}

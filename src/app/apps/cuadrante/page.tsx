@@ -35,14 +35,25 @@ export default function CuadrantePage() {
     useEffect(() => {
         if (!Capacitor.isNativePlatform()) return;
 
+        let mounted = true;
         const handler = App.addListener('backButton', () => {
-            router.push('/');
+            if (mounted) {
+                // If we are deep in steps, go back one step instead of exiting
+                if (step === 'results') {
+                    setStep('search');
+                } else if (step === 'search') {
+                    setStep('capture');
+                } else {
+                    router.back();
+                }
+            }
         });
 
         return () => {
+            mounted = false;
             handler.then(h => h.remove());
         };
-    }, [router]);
+    }, [router, step]);
 
     // Resize image before sending
     const resizeImage = async (base64Str: string): Promise<string> => {

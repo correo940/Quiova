@@ -33,7 +33,7 @@ export interface DigitalRoster {
 /**
  * Llama directamente a la API de Z.ai (sin proxy intermedio)
  */
-async function callZaiVision(base64Image: string, prompt: string): Promise<{ content: string; tokens: number }> {
+export async function callZaiVision(base64Image: string, prompt: string): Promise<{ content: string; tokens: number }> {
     // Determine mime type
     let mimeType = 'image/jpeg';
     let pureBase64 = base64Image;
