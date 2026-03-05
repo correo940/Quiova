@@ -76,22 +76,25 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
             if (error) throw error;
 
             if (!data || data.length === 0) {
+                console.log("[ShiftSettings] No types found, seeding defaults...");
                 // Auto-seed defaults if empty
                 const inserts = DEFAULT_SHIFT_TYPES.map(d => ({ ...d, user_id: user.id }));
                 const { error: insertError } = await supabase.from('shift_types').insert(inserts);
+
                 if (insertError) {
-                    console.error("Error seeding defaults:", insertError);
-                    setShiftTypes(DEFAULT_SHIFT_TYPES); // Fallback to local state
+                    console.error("[ShiftSettings] Error seeding defaults:", insertError);
+                    toast.error("Error al cargar valores por defecto: " + insertError.message);
+                    setShiftTypes(DEFAULT_SHIFT_TYPES as any); // Fallback to local state
                 } else {
-                    // Fetch again to get IDs
+                    console.log("[ShiftSettings] Defaults seeded successfully.");
                     fetchShiftTypes();
                 }
             } else {
                 setShiftTypes(data);
             }
-        } catch (error) {
-            console.error('Error fetching types:', error);
-            // Fallback to local defaults if error? No, let's keep it robust.
+        } catch (error: any) {
+            console.error('[ShiftSettings] Error fetching types:', error);
+            toast.error("Error al cargar tipos de turno: " + error.message);
         } finally {
             setIsLoading(false);
         }
@@ -105,17 +108,19 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
             if (!user) return;
 
             // Delete current
-            await supabase.from('shift_types').delete().eq('user_id', user.id);
+            const { error: delError } = await supabase.from('shift_types').delete().eq('user_id', user.id);
+            if (delError) throw delError;
 
             // Insert defaults
             const inserts = DEFAULT_SHIFT_TYPES.map(d => ({ ...d, user_id: user.id }));
-            const { error } = await supabase.from('shift_types').insert(inserts);
+            const { error: insError } = await supabase.from('shift_types').insert(inserts);
 
-            if (error) throw error;
+            if (insError) throw insError;
 
             toast.success("Valores por defecto restaurados.");
             fetchShiftTypes();
         } catch (e: any) {
+            console.error("[ShiftSettings] Error restoring defaults:", e);
             toast.error("Error al restaurar: " + e.message);
         } finally {
             setIsLoading(false);
@@ -128,10 +133,10 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
         try {
             const { error } = await supabase.from('shift_types').delete().eq('id', id);
             if (error) throw error;
-            toast.success("Eliminado.");
+            toast.success("Eliminado correctamente.");
             fetchShiftTypes();
         } catch (e: any) {
-            toast.error(e.message);
+            toast.error("Error al eliminar: " + e.message);
         } finally {
             setIsLoading(false);
         }
@@ -139,25 +144,46 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
 
     const handleAdd = async () => {
         if (!newShift.code || !newShift.label) {
-            toast.error("Rellena Código y Nombre");
+            toast.error("Por favor, rellena el código y el nombre del turno.");
             return;
         }
+
         setIsLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("No user");
+            if (!user) throw new Error("No hay una sesión de usuario activa.");
+
+            // Defensive: ensure time has :00 if missing
+            const startTime = newShift.start_time.includes(':') && newShift.start_time.split(':').length === 2
+                ? `${newShift.start_time}:00`
+                : newShift.start_time;
+
+            const endTime = newShift.end_time.includes(':') && newShift.end_time.split(':').length === 2
+                ? `${newShift.end_time}:00`
+                : newShift.end_time;
 
             const { error } = await supabase.from('shift_types').insert({
-                ...newShift,
+                code: newShift.code.toUpperCase().trim(),
+                label: newShift.label.trim(),
+                start_time: startTime,
+                end_time: endTime,
+                color: newShift.color,
                 user_id: user.id
             });
-            if (error) throw error;
 
-            toast.success("Añadido.");
+            if (error) {
+                if (error.code === '23505') {
+                    throw new Error(`El código de turno "${newShift.code}" ya existe.`);
+                }
+                throw error;
+            }
+
+            toast.success("Tipo de turno añadido correctamente.");
             setNewShift({ code: '', label: '', start_time: '08:00', end_time: '15:00', color: '#000000' });
             fetchShiftTypes();
         } catch (e: any) {
-            toast.error(e.message);
+            console.error("[ShiftSettings] Error adding type:", e);
+            toast.error(e.message || "Error al añadir el tipo de turno.");
         } finally {
             setIsLoading(false);
         }
@@ -167,20 +193,36 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
         if (!type.id) return;
         setIsLoading(true);
         try {
+            // Defensive: ensure time has :00 if missing
+            const startTime = type.start_time.includes(':') && type.start_time.split(':').length === 2
+                ? `${type.start_time}:00`
+                : type.start_time;
+
+            const endTime = type.end_time.includes(':') && type.end_time.split(':').length === 2
+                ? `${type.end_time}:00`
+                : type.end_time;
+
             const { error } = await supabase.from('shift_types').update({
-                code: type.code,
-                label: type.label,
-                start_time: type.start_time,
-                end_time: type.end_time,
+                code: type.code.toUpperCase().trim(),
+                label: type.label.trim(),
+                start_time: startTime,
+                end_time: endTime,
                 color: type.color
             }).eq('id', type.id);
 
-            if (error) throw error;
-            toast.success("Actualizado.");
+            if (error) {
+                if (error.code === '23505') {
+                    throw new Error(`El código de turno "${type.code}" ya existe.`);
+                }
+                throw error;
+            }
+
+            toast.success("Tipo de turno actualizado correctamente.");
             setEditingId(null);
             fetchShiftTypes();
         } catch (e: any) {
-            toast.error(e.message);
+            console.error("[ShiftSettings] Error updating type:", e);
+            toast.error(e.message || "Error al actualizar el tipo de turno.");
         } finally {
             setIsLoading(false);
         }
