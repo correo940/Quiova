@@ -42,15 +42,30 @@ export function useApiUsage(endpoint: string): ApiUsageInfo & { refresh: () => v
                 return;
             }
 
-            // Get limit for this endpoint
-            const { data: limitData } = await supabase
-                .from('api_limits')
-                .select('monthly_limit, enabled')
+            // Check for custom user limit
+            const { data: customLimitData } = await supabase
+                .from('user_api_limits')
+                .select('monthly_limit')
+                .eq('user_id', user.id)
                 .eq('endpoint', endpoint)
-                .single();
+                .maybeSingle();
 
-            const monthlyLimit = limitData?.monthly_limit || 50;
-            const enabled = limitData?.enabled ?? true;
+            let monthlyLimit;
+            let enabled = true;
+
+            if (customLimitData) {
+                monthlyLimit = customLimitData.monthly_limit;
+            } else {
+                // Get global limit for this endpoint
+                const { data: limitData } = await supabase
+                    .from('api_limits')
+                    .select('monthly_limit, enabled')
+                    .eq('endpoint', endpoint)
+                    .single();
+
+                monthlyLimit = limitData?.monthly_limit || 50;
+                enabled = limitData?.enabled ?? true;
+            }
 
             if (!enabled) {
                 setInfo({ endpoint, used: 0, limit: 0, remaining: 0, isAdmin: false, loading: false });

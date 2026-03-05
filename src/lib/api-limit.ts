@@ -28,23 +28,37 @@ export async function checkApiLimit(
         return { allowed: true, used: 0, limit: Infinity, isAdmin: true };
     }
 
-    // Get limit config
-    const { data: limitConfig } = await supabaseAdmin
-        .from('api_limits')
-        .select('monthly_limit, enabled')
+    // Check for custom user limit
+    const { data: customLimitData } = await supabaseAdmin
+        .from('user_api_limits')
+        .select('monthly_limit')
+        .eq('user_id', userId)
         .eq('endpoint', endpoint)
-        .single();
+        .maybeSingle();
 
-    // If no config or disabled, allow (no limit set)
-    if (!limitConfig) {
-        return { allowed: true, used: 0, limit: 999, isAdmin: false };
+    let monthlyLimit;
+
+    if (customLimitData) {
+        monthlyLimit = customLimitData.monthly_limit;
+    } else {
+        // Get global limit config
+        const { data: limitConfig } = await supabaseAdmin
+            .from('api_limits')
+            .select('monthly_limit, enabled')
+            .eq('endpoint', endpoint)
+            .single();
+
+        // If no config or disabled, allow (no limit set)
+        if (!limitConfig) {
+            return { allowed: true, used: 0, limit: 999, isAdmin: false };
+        }
+
+        if (!limitConfig.enabled) {
+            return { allowed: false, used: 0, limit: 0, isAdmin: false };
+        }
+
+        monthlyLimit = limitConfig.monthly_limit;
     }
-
-    if (!limitConfig.enabled) {
-        return { allowed: false, used: 0, limit: 0, isAdmin: false };
-    }
-
-    const monthlyLimit = limitConfig.monthly_limit;
 
     // Count usage this month
     const now = new Date();
