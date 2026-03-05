@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // --- AI PROVIDERS ---
-const ZAI_API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
-const ZAI_API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-const ZAI_MODEL = "glm-4.6v-flash";
-
-const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY || "" });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
+const GEMINI_MODEL = "gemini-1.5-flash"; // Generous free tier, fast, and multi-modal if needed
 
 const PROMPT = `Eres un experto en extractos bancarios españoles y europeos. Analiza el siguiente texto extraído de un extracto bancario y extrae TODAS las transacciones/movimientos que encuentres.
 
@@ -26,43 +22,11 @@ Texto del extracto:
 
 // --- AI CALL FUNCTIONS ---
 
-async function callZai(textForAI: string): Promise<string> {
-    const body = {
-        model: ZAI_MODEL,
-        messages: [{ role: "user", content: PROMPT + textForAI }],
-        max_tokens: 8192,
-        temperature: 0.05,
-        stream: false
-    };
-
-    const response = await fetch(ZAI_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ZAI_API_KEY}`
-        },
-        body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(`Z.ai error ${response.status}: ${err.error?.message || 'API Error'}`);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
-}
-
-async function callGroq(textForAI: string): Promise<string> {
-    const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: PROMPT + textForAI }],
-        model: GROQ_MODEL,
-        temperature: 0.05,
-        max_tokens: 8192,
-        stream: false
-    });
-
-    return chatCompletion.choices?.[0]?.message?.content || '';
+async function callGemini(textForAI: string): Promise<string> {
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const result = await model.generateContent(PROMPT + textForAI);
+    const response = await result.response;
+    return response.text();
 }
 
 // --- PARSE JSON FROM AI ---
@@ -154,15 +118,14 @@ export async function POST(request: NextRequest) {
 
         // --- CALL AI FOR EACH CHUNK ---
         let allContent: string[] = [];
-        let provider = 'z.ai';
+        let provider = 'gemini';
 
         async function callAI(text: string): Promise<string> {
             try {
-                return await callZai(text);
-            } catch (zaiError: any) {
-                console.warn('[BANK-STATEMENT] Z.ai failed:', zaiError.message, '— Using Groq...');
-                provider = 'groq';
-                return await callGroq(text);
+                return await callGemini(text);
+            } catch (error: any) {
+                console.error('[BANK-STATEMENT] Gemini API failed:', error.message);
+                throw error;
             }
         }
 
