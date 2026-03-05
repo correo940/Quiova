@@ -11,7 +11,6 @@ export const authOptions: NextAuthOptions = {
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                username: { label: "Username", type: "text", placeholder: "admin" },
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
@@ -24,6 +23,7 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ],
+    secret: process.env.NEXTAUTH_SECRET,
     pages: {
         signIn: "/admin/login",
         error: "/admin/error",

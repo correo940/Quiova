@@ -69,8 +69,11 @@ function HomeContent() {
 
   // 🔐 Redirect to login if mobile and not logged in
   useEffect(() => {
-    if (showMobileLauncher && !user && !isAuthChecking) {
-      router.push('/login');
+    // Only redirect if auth checking is fully complete
+    if (!isAuthChecking) {
+      if (showMobileLauncher && !user) {
+        router.push('/login');
+      }
     }
   }, [showMobileLauncher, user, isAuthChecking, router]);
 
@@ -164,9 +167,9 @@ function HomeContent() {
   }, [selectedCategory, articles, searchQuery]);
 
   // 🆕 Mostrar loading state
-  // Only show if we are actually still checking auth, or if we are actively loading articles for the FIRST time
-  // Do NOT block unauthenticated desktop users forever.
-  if (isAuthChecking || (loading && user)) {
+  // Only show loading if we are still checking auth status.
+  // OR if we are on desktop, logged out, and still loading articles. 
+  if (isAuthChecking || (!showMobileLauncher && !user && loading)) {
     return (
       <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
