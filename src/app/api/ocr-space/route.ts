@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 export async function POST(req: NextRequest) {
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(req);
+        if (user) {
+            const limitCheck = await checkApiLimit(user.id, user.email || null, 'ocr-space');
+            if (!limitCheck.allowed) {
+                return NextResponse.json({ error: `Límite mensual alcanzado (${limitCheck.used}/${limitCheck.limit})` }, { status: 429 });
+            }
+        }
+
         const formData = await req.formData();
 
         // Forward to OCR.space
@@ -27,6 +37,10 @@ export async function POST(req: NextRequest) {
         }
 
         const data = await response.json();
+
+        // Record usage
+        if (user) await recordApiUsage(user.id, 'ocr-space');
+
         return NextResponse.json(data);
 
     } catch (error: any) {

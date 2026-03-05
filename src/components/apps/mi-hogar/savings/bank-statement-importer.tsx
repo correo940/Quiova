@@ -232,8 +232,13 @@ export default function BankStatementImporter({
             // If local parsing failed, send to AI
             console.log('[Importer] Local parser found nothing, sending to AI...');
             try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers: any = {};
+                if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
                 const response = await fetch('/api/parse-bank-statement', {
                     method: 'POST',
+                    headers,
                     body: (() => { const fd = new FormData(); fd.append('file', new Blob([pastedText], { type: 'text/csv' }), 'pasted.csv'); return fd; })()
                 });
 
@@ -267,8 +272,13 @@ export default function BankStatementImporter({
                 const formData = new FormData();
                 formData.append('file', file);
 
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers: any = {};
+                if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
                 const response = await fetch('/api/parse-bank-statement', {
                     method: 'POST',
+                    headers,
                     body: formData
                 });
 

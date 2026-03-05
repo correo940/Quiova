@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
@@ -29,6 +30,15 @@ export async function POST(req: Request) {
     }
 
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(req);
+        if (user) {
+            const limitCheck = await checkApiLimit(user.id, user.email || null, 'identify-product');
+            if (!limitCheck.allowed) {
+                return NextResponse.json({ success: false, error: `Límite mensual alcanzado (${limitCheck.used}/${limitCheck.limit})` }, { status: 429, headers });
+            }
+        }
+
         const body = await req.json();
         // Accept both 'image' and 'base64Image' parameter names
         const base64Image = body.image || body.base64Image;
@@ -82,6 +92,9 @@ export async function POST(req: Request) {
                     if (jsonResponse.productName && jsonResponse.productName.toLowerCase().includes("desconocido")) {
                         return NextResponse.json({ success: false, error: "No se pudo identificar el producto" }, { headers });
                     }
+                    // Record usage
+                    if (user) await recordApiUsage(user.id, 'identify-product');
+
                     return NextResponse.json({
                         success: true,
                         productName: jsonResponse.productName,

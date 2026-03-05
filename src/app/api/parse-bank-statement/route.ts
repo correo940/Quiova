@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 // --- AI PROVIDERS ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -62,6 +63,21 @@ function parseAIResponse(content: string): any[] {
 
 export async function POST(request: NextRequest) {
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(request);
+        if (!user) {
+            return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
+        }
+
+        const limitCheck = await checkApiLimit(user.id, user.email || null, 'parse-bank-statement');
+        if (!limitCheck.allowed) {
+            return NextResponse.json({
+                error: `Has alcanzado el límite mensual de ${limitCheck.limit} usos para esta función. (Usados: ${limitCheck.used}/${limitCheck.limit})`,
+                used: limitCheck.used,
+                limit: limitCheck.limit
+            }, { status: 429 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
 
@@ -174,6 +190,9 @@ export async function POST(request: NextRequest) {
         if (transactions.length === 0) {
             return NextResponse.json({ error: 'No se detectaron movimientos en el archivo.' }, { status: 400 });
         }
+
+        // Record usage after success
+        await recordApiUsage(user.id, 'parse-bank-statement');
 
         return NextResponse.json({
             transactions,

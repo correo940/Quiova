@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 const ZAI_API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
 const ZAI_API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
@@ -6,6 +7,15 @@ const MODEL = "glm-4.6v-flash";
 
 export async function POST(request: NextRequest) {
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(request);
+        if (user) {
+            const limitCheck = await checkApiLimit(user.id, user.email || null, 'zai-ocr');
+            if (!limitCheck.allowed) {
+                return NextResponse.json({ error: `Límite mensual alcanzado (${limitCheck.used}/${limitCheck.limit})` }, { status: 429 });
+            }
+        }
+
         const { base64Image, prompt } = await request.json();
 
         if (!base64Image || !prompt) {
@@ -69,6 +79,9 @@ export async function POST(request: NextRequest) {
 
         const content = data.choices?.[0]?.message?.content || '';
         const tokens = data.usage?.total_tokens || 0;
+
+        // Record usage
+        if (user) await recordApiUsage(user.id, 'zai-ocr');
 
         return NextResponse.json({ content, tokens });
 

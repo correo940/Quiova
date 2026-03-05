@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 const BASE_URL = "https://llmwhisperer-api.us-central.unstract.com/api/v2";
 
 export async function POST(req: NextRequest) {
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(req);
+        if (user) {
+            const limitCheck = await checkApiLimit(user.id, user.email || null, 'whisperer');
+            if (!limitCheck.allowed) {
+                return NextResponse.json({ error: `Límite mensual alcanzado (${limitCheck.used}/${limitCheck.limit})` }, { status: 429 });
+            }
+        }
+
         const formData = await req.formData();
         const file = formData.get('file');
         const apiKey = req.headers.get('unstract-key');
@@ -32,6 +42,10 @@ export async function POST(req: NextRequest) {
         }
 
         const data = await response.json();
+
+        // Record usage
+        if (user) await recordApiUsage(user.id, 'whisperer');
+
         return NextResponse.json(data);
 
     } catch (error: any) {

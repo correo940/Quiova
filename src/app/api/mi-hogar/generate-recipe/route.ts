@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { checkApiLimit, recordApiUsage, getAuthUser } from '@/lib/api-limit';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
@@ -18,6 +19,15 @@ export async function POST(req: Request) {
     }
 
     try {
+        // --- API USAGE LIMIT CHECK ---
+        const user = await getAuthUser(req);
+        if (user) {
+            const limitCheck = await checkApiLimit(user.id, user.email || null, 'generate-recipe');
+            if (!limitCheck.allowed) {
+                return NextResponse.json({ success: false, error: `Límite mensual alcanzado (${limitCheck.used}/${limitCheck.limit})` }, { status: 429 });
+            }
+        }
+
         const { pantryItems } = await req.json();
 
         if (!pantryItems || !Array.isArray(pantryItems) || pantryItems.length === 0) {
@@ -74,6 +84,8 @@ export async function POST(req: Request) {
 
                 try {
                     const recipe = JSON.parse(cleanedText) as RecipeData;
+                    // Record usage
+                    if (user) await recordApiUsage(user.id, 'generate-recipe');
                     return NextResponse.json({ success: true, data: recipe });
                 } catch (jsonError: any) {
                     console.error(`JSON parse error with ${modelName}:`, jsonError);
