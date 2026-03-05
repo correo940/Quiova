@@ -163,10 +163,10 @@ function HomeContent() {
     });
   }, [selectedCategory, articles, searchQuery]);
 
-  // 🆕 Mostrar loading state - Only if we are not on mobile launcher mode and not already logged in
-  // OR if we are in mobile mode but still checking auth
-  if ((loading && !showMobileLauncher && !user) || (showMobileLauncher && isAuthChecking)) {
-    // If mobile and not logged in, we shouldn't show global spinner forever, check auth.
+  // 🆕 Mostrar loading state
+  // Only show if we are actually still checking auth, or if we are actively loading articles for the FIRST time
+  // Do NOT block unauthenticated desktop users forever.
+  if (isAuthChecking || (loading && user)) {
     return (
       <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
