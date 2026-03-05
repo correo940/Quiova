@@ -165,21 +165,28 @@ export default function BulkImportDialog({ open, onOpenChange, onSuccess }: Bulk
         setShowWarning(true);
 
         try {
-            // New Prompt using Z.ai and custom context
-            const prompt = `Analiza esta imagen de un cuadrante de turnos.
+            // Updated Prompt for higher accuracy and better instruction following
+            const prompt = `Eres un experto en visión artificial especializado en la lectura de cuadrantes de turnos de trabajo complejos.
             
-INSTRUCCIONES DEL USUARIO:
-${aiInstructions || "No se han proporcionado instrucciones adicionales."}
+### CONTEXTO CRÍTICO (Prioridad Máxima - Reglas de Oro):
+Estas son las instrucciones proporcionadas por el usuario para este cuadrante específico. Debes seguirlas AL PIE DE LA LETRA:
+${aiInstructions || "No hay instrucciones específicas, usa tu lógica estándar para cuadrantes españoles."}
 
-REGLAS DE EXTRACCIÓN:
-1. Identifica la secuencia de turnos para una sola persona (o la tabla completa si no se especifica).
-2. Extrae los códigos de turno (ej: M, T, N, L, V, etc.).
-3. Devuelve los turnos en una secuencia de texto separada por espacios, por ejemplo: "M M T T N N L L".
-4. Si detectas números de día (1, 2, 3...), inclúyelos antes de cada turno: "1 M 2 M 3 T...".
-5. IMPORTANTE: Los códigos que el usuario ha configurado son: ${shiftTypes.map(s => s.code).join(', ')}. Basate en estos códigos.
+### DICCIONARIO DE TURNOS DISPONIBLES EN EL SISTEMA:
+Los códigos válidos que el sistema puede procesar son: ${shiftTypes.map(s => s.code).join(', ')}.
+Si el usuario indica que un símbolo significa algo, mapealo a uno de estos códigos o al texto exacto que pida.
 
-RESPUESTA:
-Devuelve SOLO la secuencia de texto plana de los turnos, sin explicaciones ni markdown.`;
+### TAREAS:
+1. Analiza visualmente la imagen buscando la fila de turnos del empleado (o la secuencia principal).
+2. Si ves iconos (estrellas, flechas, puntos) o colores, usa las INSTRUCCIONES DEL USUARIO arriba para traducirlos a códigos.
+3. Extrae la secuencia cronológica de turnos.
+4. Identifica los días (1, 2, 3...) y emparéjalos con su turno.
+
+### REGLA DE SALIDA:
+- Devuelve una cadena de texto plana con el formato: "Día Turno Día Turno...". 
+- Ejemplo: "1 M 2 M 3 T 4 T 5 N 6 L".
+- NO incluyas introducciones, NO incluyas markdown, NO incluyas bloques de código.
+- SOLO la secuencia de texto limpia.`;
 
             const { content } = await callZaiVision(base64, prompt);
 
