@@ -39,39 +39,27 @@ export default function Taskbar() {
     const apps = [
         {
             id: 'start',
-            label: 'Inicio',
+            label: 'Menú',
             // Quioba Logo Icon
             icon: () => (
                 <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 bg-white border border-gray-200 shadow-sm flex items-center justify-center">
                     <img src="/images/logo.png" alt="Quioba" className="w-full h-full object-contain" />
                 </div>
             ),
-            href: '#start', // Special href for handler
+            href: '#start',
             isStart: true,
         },
         {
-            id: 'apps',
-            label: 'Apps',
-            icon: Grid,
-            href: '/apps',
+            id: 'home',
+            label: 'Dashboard',
+            icon: Home,
+            href: '/',
         },
         {
-            id: 'mi-hogar',
-            label: 'Mi Hogar',
-            icon: () => <span className="text-xl">🏠</span>, // Using emoji for colorful icon feel for now
-            href: '/apps/mi-hogar',
-        },
-        {
-            id: 'journal',
-            label: 'Apuntes',
-            icon: () => <span className="text-xl">📒</span>,
-            href: '/journal',
-        },
-        {
-            id: 'debate',
-            label: 'Debate',
-            icon: () => <span className="text-xl">⚔️</span>,
-            href: '/apps/debate',
+            id: 'articles',
+            label: 'Artículos',
+            icon: () => <span className="text-xl">📰</span>,
+            href: '/articles',
         },
         {
             id: 'profile',
@@ -79,26 +67,15 @@ export default function Taskbar() {
             icon: User,
             href: '/profile',
         },
-        {
-            id: 'launcher',
-            label: 'Dashboard',
-            icon: LayoutGrid,
-            href: '#launcher',
-            isLauncher: true,
-        },
     ];
 
     return (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
             <div className={cn("pointer-events-auto bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl p-2 flex items-center gap-2 transition-all duration-300 hover:bg-white/80 hover:scale-105 hover:shadow-xl ring-1 ring-black/5 dark:bg-black/60 dark:border-white/10 dark:ring-white/10 mb-4")}>
                 {apps.map((app) => {
-                    // Solo mostrar el botón de launcher en dispositivos táctiles/móviles
-                    if (app.isLauncher && !isMobile) return null;
-
-                    // Start button is active if menu is open
                     const isActive = app.isStart
                         ? isStartMenuOpen
-                        : (pathname === app.href || (app.href && pathname?.startsWith(app.href)));
+                        : (pathname === app.href || (app.href !== '/' && pathname?.startsWith(app.href)));
 
                     const isHovered = hoveredApp === app.id;
 
@@ -130,10 +107,6 @@ export default function Taskbar() {
                                     if (app.isStart) {
                                         e.preventDefault();
                                         toggleStartMenu();
-                                    }
-                                    if (app.isLauncher) {
-                                        e.preventDefault();
-                                        setIsLauncherMode(true);
                                     }
                                 }}
                                 onMouseEnter={() => setHoveredApp(app.id)}
