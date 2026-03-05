@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
+import { useApiUsage } from '@/lib/hooks/useApiUsage';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -84,6 +85,8 @@ export default function BankStatementImporter({
     const [dragOver, setDragOver] = useState(false);
     const [inputMode, setInputMode] = useState<InputMode>('file');
     const [pastedText, setPastedText] = useState('');
+
+    const { remaining, limit, isAdmin, loading: usageLoading, refresh: refreshUsage } = useApiUsage('parse-bank-statement');
 
     const reset = useCallback(() => {
         setStep('upload');
@@ -248,6 +251,8 @@ export default function BankStatementImporter({
                 const data = JSON.parse(text);
                 if (!response.ok) throw new Error(data.error || 'Error al procesar');
 
+                refreshUsage(); // Update counter after successful AI call
+
                 const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
                 if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
 
@@ -289,6 +294,8 @@ export default function BankStatementImporter({
                 try { data = JSON.parse(text); } catch { throw new Error('Respuesta inesperada del servidor.'); }
 
                 if (!response.ok) throw new Error(data.error || 'Error al procesar');
+
+                refreshUsage(); // Update counter after successful AI call
 
                 const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
                 if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
@@ -379,6 +386,14 @@ export default function BankStatementImporter({
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-violet-500" />
                         Importar Extracto Bancario con IA
+                        {!usageLoading && (
+                            <div className={`ml-auto text-xs px-2 py-0.5 rounded-full border ${isAdmin ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30' :
+                                remaining > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30' :
+                                    'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30'
+                                }`}>
+                                {isAdmin ? '∞ Admin' : `Usos IA: ${remaining}/${limit}`}
+                            </div>
+                        )}
                     </DialogTitle>
                     <DialogDescription>
                         Sube un archivo o pega el texto de tu extracto bancario.
