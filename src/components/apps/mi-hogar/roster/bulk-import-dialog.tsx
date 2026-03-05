@@ -362,29 +362,31 @@ Devuelve SOLO la secuencia de texto plana de los turnos, sin explicaciones ni ma
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="photo" className="flex-1 border p-8 rounded-lg bg-background shadow-sm flex flex-col items-center justify-center border-dashed relative overflow-hidden">
-                                    <div className="text-center cursor-pointer hover:bg-muted/50 p-8 rounded-xl transition-all w-full max-w-sm" onClick={() => fileInputRef.current?.click()}>
-                                        <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
-                                            <Upload className="h-8 w-8" />
+                                <TabsContent value="photo" className="flex-1 border rounded-lg bg-background shadow-sm flex flex-col border-dashed relative overflow-y-auto custom-scrollbar p-0">
+                                    <div className="flex flex-col items-center justify-center min-h-full p-8 space-y-8">
+                                        <div className="text-center cursor-pointer hover:bg-muted/50 p-8 rounded-xl transition-all w-full max-w-sm border-2 border-dashed border-primary/20 hover:border-primary/50" onClick={() => fileInputRef.current?.click()}>
+                                            <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
+                                                <Upload className="h-8 w-8" />
+                                            </div>
+                                            <h3 className="text-lg font-bold">Subir Cuadrante</h3>
+                                            <p className="text-xs text-muted-foreground mt-2">Haz una foto o selecciona un archivo</p>
                                         </div>
-                                        <h3 className="text-lg font-bold">Subir Cuadrante</h3>
-                                        <p className="text-xs text-muted-foreground mt-2">Haz una foto o selecciona un archivo</p>
-                                    </div>
 
-                                    <div className="mt-8 w-full max-w-sm space-y-3">
-                                        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                                            <Brain className="w-3.5 h-3.5 text-indigo-500" />
-                                            <span>Instrucciones para la IA</span>
+                                        <div className="w-full max-w-sm space-y-3 bg-muted/20 p-6 rounded-2xl border border-muted-foreground/10">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                                <Brain className="w-3.5 h-3.5 text-indigo-500" />
+                                                <span>Instrucciones para la IA</span>
+                                            </div>
+                                            <Textarea
+                                                placeholder="Ej: La estrella es noche, la 'L' es libre, ignora la primera fila..."
+                                                className="text-xs resize-none h-24 bg-background border-dashed hover:border-indigo-400 focus:border-indigo-500 transition-colors shadow-sm"
+                                                value={aiInstructions}
+                                                onChange={(e) => setAiInstructions(e.target.value)}
+                                            />
+                                            <p className="text-[10px] text-muted-foreground italic leading-tight">
+                                                Esto ayuda a la IA a entender mejor tus símbolos personalizados. Estos datos se enviarán junto con la imagen.
+                                            </p>
                                         </div>
-                                        <Textarea
-                                            placeholder="Ej: La estrella es noche, la 'L' es libre, ignora la primera fila..."
-                                            className="text-xs resize-none h-20 bg-muted/30 border-dashed hover:border-indigo-400 focus:border-indigo-500 transition-colors"
-                                            value={aiInstructions}
-                                            onChange={(e) => setAiInstructions(e.target.value)}
-                                        />
-                                        <p className="text-[10px] text-muted-foreground italic">
-                                            Esto ayuda a la IA a entender mejor tus símbolos personalizados.
-                                        </p>
                                     </div>
 
                                     <InputFile ref={fileInputRef} onChange={handlePhotoUpload} />
