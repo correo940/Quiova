@@ -47,6 +47,7 @@ interface ShiftSettingsDialogProps {
 }
 
 export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSettingsDialogProps) {
+    const [userId, setUserId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,14 +60,29 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
     });
 
     useEffect(() => {
-        if (open) fetchShiftTypes();
+        if (open) {
+            console.log("[ShiftSettings] Dialog opened, pre-fetching user...");
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user) {
+                    console.log("[ShiftSettings] User pre-fetched:", user.id);
+                    setUserId(user.id);
+                } else {
+                    console.error("[ShiftSettings] No user found on mount");
+                }
+            });
+            fetchShiftTypes();
+        }
     }, [open]);
 
     const fetchShiftTypes = async () => {
         setIsLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                console.error("[ShiftSettings] Cannot fetch types: No user session");
+                return;
+            }
+            if (!userId) setUserId(user.id);
 
             const { data, error } = await supabase
                 .from('shift_types')
@@ -143,32 +159,32 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
     };
 
     const handleAdd = async () => {
-        console.log("[ShiftSettings] handleAdd button clicked. State:", newShift);
+        console.log("[ShiftSettings] handleAdd process started. userId:", userId);
 
         if (!newShift.code || !newShift.label) {
             toast.error("Por favor, rellena el código y el nombre del turno.");
             return;
         }
 
+        // If userId is missing, try a last-second fetch
+        let activeUserId = userId;
+        if (!activeUserId) {
+            console.log("[ShiftSettings] userId missing, attempting last-second fetch...");
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                activeUserId = user.id;
+                setUserId(user.id);
+            }
+        }
+
+        if (!activeUserId) {
+            toast.error("No se ha podido detectar tu usuario. Por favor, refresca la página.");
+            return;
+        }
+
         setIsLoading(true);
         try {
-            // Use getSession for faster client-side check
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-            if (sessionError) {
-                console.error("[ShiftSettings] Session error:", sessionError);
-                throw new Error("Error de sesión: " + sessionError.message);
-            }
-
-            const user = session?.user;
-            if (!user) {
-                console.error("[ShiftSettings] No user found in session");
-                throw new Error("No hay una sesión de usuario activa. Por favor, inicia sesión de nuevo.");
-            }
-
-            console.log("[ShiftSettings] User confirmed:", user.id);
-
-            // Defensive: ensure time has :00 if missing or is just HH:mm
+            // Defensive: ensure time format
             let startTime = newShift.start_time;
             if (startTime.length === 5) startTime += ':00';
 
@@ -181,10 +197,10 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
                 start_time: startTime,
                 end_time: endTime,
                 color: newShift.color,
-                user_id: user.id
+                user_id: activeUserId
             };
 
-            console.log("[ShiftSettings] INSERTING payload:", payload);
+            console.log("[ShiftSettings] Sending payload to Supabase:", payload);
 
             const { data, error } = await supabase
                 .from('shift_types')
@@ -193,25 +209,20 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
 
             if (error) {
                 console.error("[ShiftSettings] INSERT ERROR:", error);
-                if (error.code === '23505') {
-                    throw new Error(`El código de turno "${newShift.code}" ya existe.`);
+                if (error.code === '404') {
+                    throw new Error("La tabla 'shift_types' no se encuentra en la base de datos.");
                 }
-                if (error.code === '404' || error.message?.includes('not found')) {
-                    throw new Error("La tabla de tipos de turno no existe en la base de datos. Contacta con soporte.");
-                }
-                throw new Error(`Error de base de datos (${error.code || '?'}): ${error.message}`);
+                throw error;
             }
 
-            console.log("[ShiftSettings] INSERT SUCCESS:", data);
+            console.log("[ShiftSettings] Insert successful:", data);
+            toast.success("Turno añadido correctamente.");
 
-            toast.success("Tipo de turno añadido correctamente.");
             setNewShift({ code: '', label: '', start_time: '08:00', end_time: '15:00', color: '#000000' });
-
-            // Refresh list
             await fetchShiftTypes();
         } catch (e: any) {
-            console.error("[ShiftSettings] EXCEPTION in handleAdd:", e);
-            toast.error(e.message || "Error inesperado al añadir el tipo de turno.");
+            console.error("[ShiftSettings] Critical Exception in handleAdd:", e);
+            toast.error("Error al guardar: " + (e.message || "Error desconocido"));
         } finally {
             setIsLoading(false);
         }
