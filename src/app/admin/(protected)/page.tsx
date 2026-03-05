@@ -8,6 +8,7 @@ import { useState } from "react";
 import AdminPostItManager from "@/components/admin/post-it-manager";
 import SchedulerActivityManager from "@/components/admin/scheduler-activity-manager";
 import AssistantManager from "@/components/admin/assistant-manager";
+import ApiLimitsManager from "@/components/admin/api-limits-manager";
 
 // ... imports
 
@@ -89,6 +90,11 @@ export default function AdminPage() {
         {/* Assistant Manager */}
         <div className="bg-card rounded-lg p-6 shadow-sm">
           <AssistantManager />
+        </div>
+
+        {/* API Limits Manager */}
+        <div className="bg-card rounded-lg shadow-sm">
+          <ApiLimitsManager />
         </div>
 
       </div>
