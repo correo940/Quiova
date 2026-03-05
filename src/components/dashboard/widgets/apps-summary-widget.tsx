@@ -11,6 +11,7 @@ import Link from 'next/link';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import LogoLoader from '@/components/ui/logo-loader';
 
 // Icon map for serialization
 const ICON_MAP: Record<string, any> = {
@@ -377,8 +378,8 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
             </CardHeader>
             <CardContent className="flex-1 min-h-0 flex flex-col gap-2">
                 {loading ? (
-                    <div className="flex justify-center py-4">
-                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <div className="flex justify-center py-8">
+                        <LogoLoader size="md" />
                     </div>
                 ) : (
                     <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
@@ -411,8 +412,8 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
                                         draggable={false}
                                     >
                                         <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-[72px] flex flex-col justify-between backdrop-blur-sm ${dragOverKey === item.key && draggedKey !== item.key
-                                                ? 'border-primary/70 shadow-lg shadow-primary/10'
-                                                : 'border-slate-100 dark:border-slate-700 hover:border-primary/50'
+                                            ? 'border-primary/70 shadow-lg shadow-primary/10'
+                                            : 'border-slate-100 dark:border-slate-700 hover:border-primary/50'
                                             }`}>
                                             <div className="flex justify-between items-start mb-0.5">
                                                 <div className={`p-1 rounded-lg ${item.color} text-white shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>

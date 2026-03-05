@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import LogoLoader from '@/components/ui/logo-loader';
 
 interface Subscription {
     id: string;
@@ -292,7 +293,12 @@ export default function ProfilePage() {
     };
 
     if (loading) {
-        return <div className="flex h-screen items-center justify-center"><Sparkles className="animate-spin text-primary w-8 h-8" /></div>;
+        return (
+            <div className="flex h-screen flex-col items-center justify-center gap-4">
+                <LogoLoader size="lg" />
+                <p className="text-sm font-medium text-slate-500 animate-pulse">Cargando perfil...</p>
+            </div>
+        );
     }
 
     return (
@@ -306,7 +312,7 @@ export default function ProfilePage() {
 
                     {/* Photo Upload */}
                     <label className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform z-10" title="Subir foto real">
-                        {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                        {uploading ? <LogoLoader size="sm" className="gap-0" /> : <Camera className="w-5 h-5" />}
                         <input type="file" accept="image/*" className="hidden" onChange={handleUpdateAvatar} disabled={uploading} />
                     </label>
 
@@ -421,7 +427,7 @@ export default function ProfilePage() {
                                                 className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl font-bold text-base shadow-lg"
                                             >
                                                 {upgradingPremium ? (
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <LogoLoader size="sm" className="gap-0" />
                                                 ) : (
                                                     <div className="flex items-center gap-2">
                                                         <Crown className="w-4 h-4" />
