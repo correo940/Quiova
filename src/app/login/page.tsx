@@ -8,6 +8,8 @@ import { Lock, Mail, Loader2, Home, Eye, EyeOff } from 'lucide-react'
 import { translateAuthError } from '@/lib/utils'
 import { Capacitor } from '@capacitor/core'
 
+import LogoLoader from '@/components/ui/logo-loader'
+
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -124,7 +126,7 @@ export default function LoginPage() {
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         {loading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <LogoLoader size="sm" className="gap-0" />
                         ) : mode === 'signin' ? (
                             'Iniciar Sesión'
                         ) : (

@@ -9,6 +9,8 @@ import { Capacitor } from '@capacitor/core';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import BlogContent from '@/components/blog-content';
 
+import LogoLoader from '@/components/ui/logo-loader';
+
 function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,9 +52,9 @@ function HomeContent() {
 
   if (isAuthChecking || (loading && !isLauncherMode && !user)) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xl font-medium text-slate-600">Entrando en Quioba...</p>
+      <div className="container mx-auto px-4 py-20 min-h-[60vh] flex flex-col items-center justify-center gap-6">
+        <LogoLoader size="lg" />
+        <p className="text-xl font-medium text-slate-600 animate-pulse">Entrando en Quioba...</p>
       </div>
     );
   }

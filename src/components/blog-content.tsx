@@ -10,6 +10,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card } from '@/components/ui/card';
 import CategoryIcon from '@/components/category-icon';
 import { Capacitor } from '@capacitor/core';
+import LogoLoader from '@/components/ui/logo-loader';
 
 export default function BlogContent() {
     const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
@@ -94,9 +95,9 @@ export default function BlogContent() {
 
     if (loading && articles.length === 0) {
         return (
-            <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xl font-medium text-slate-600">Cargando contenido...</p>
+            <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center gap-6 min-h-[40vh]">
+                <LogoLoader size="md" />
+                <p className="text-xl font-medium text-slate-600 animate-pulse">Cargando contenido...</p>
             </div>
         );
     }
