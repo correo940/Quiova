@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // --- AI PROVIDERS ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const GEMINI_MODEL = "gemini-1.5-flash"; // Generous free tier, fast, and multi-modal if needed
+const GEMINI_MODEL = "gemini-2.5-flash"; // Free tier: 15 RPM, 1500 RPD
 
 const PROMPT = `Eres un experto en extractos bancarios españoles y europeos. Analiza el siguiente texto extraído de un extracto bancario y extrae TODAS las transacciones/movimientos que encuentres.
 
