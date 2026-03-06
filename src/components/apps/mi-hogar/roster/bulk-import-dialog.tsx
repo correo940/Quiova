@@ -228,8 +228,12 @@ Si el usuario indica que un símbolo significa algo, mapealo a uno de estos cód
             if (!user) throw new Error("No user");
 
             const inserts = shiftsToSave.map(s => {
-                const start = new Date(`${s.dateStr}T${s.start}:00`);
-                let end = new Date(`${s.dateStr}T${s.end}:00`);
+                // Normalize times to HH:mm (strip seconds if present)
+                const startTime = s.start.substring(0, 5); // "07:00:00" -> "07:00"
+                const endTime = s.end.substring(0, 5);
+
+                const start = new Date(`${s.dateStr}T${startTime}:00`);
+                let end = new Date(`${s.dateStr}T${endTime}:00`);
                 if (end < start) end.setDate(end.getDate() + 1);
 
                 return {
