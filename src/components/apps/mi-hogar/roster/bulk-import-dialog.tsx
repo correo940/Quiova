@@ -195,14 +195,14 @@ Si el usuario indica que un símbolo significa algo, mapealo a uno de estos cód
             }
 
             setTextInput(content.trim());
-            toast.success("Cuadrante analizado con Z.ai (Motor GLM-4.6V)");
+            toast.success("Cuadrante leído correctamente.");
 
             // Switch to Text Tab to see the result
             setActiveTab('text');
 
         } catch (err: any) {
             console.error(err);
-            toast.error("Fallo al leer la imagen con Z.ai: " + (err.message || "Error desconocido"));
+            toast.error("Ha fallado la lectura. Inténtalo de nuevo, los servidores pueden estar saturados.");
         } finally {
             setIsLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
