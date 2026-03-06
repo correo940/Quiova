@@ -158,32 +158,64 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
         }
     };
 
-    const handleAdd = async () => {
-        console.log("[ShiftSettings] handleAdd process started. userId:", userId);
+    // Helper: get user ID with timeout protection
+    const getUserIdSafe = async (): Promise<string | null> => {
+        // 1. Check cached userId state
+        if (userId) return userId;
 
-        if (!newShift.code || !newShift.label) {
-            toast.error("Por favor, rellena el código y el nombre del turno.");
-            return;
-        }
-
-        // If userId is missing, try a last-second fetch
-        let activeUserId = userId;
-        if (!activeUserId) {
-            console.log("[ShiftSettings] userId missing, attempting last-second fetch...");
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                activeUserId = user.id;
-                setUserId(user.id);
-            }
-        }
-
-        if (!activeUserId) {
-            toast.error("No se ha podido detectar tu usuario. Por favor, refresca la página.");
-            return;
-        }
-
-        setIsLoading(true);
+        // 2. Try getSession first (faster, uses local cache)
         try {
+            const sessionPromise = supabase.auth.getSession();
+            const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+            const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+            if (result && 'data' in result && result.data.session?.user) {
+                const uid = result.data.session.user.id;
+                setUserId(uid);
+                return uid;
+            }
+        } catch (e) {
+            console.warn("[ShiftSettings] getSession failed:", e);
+        }
+
+        // 3. Fall back to getUser with timeout
+        try {
+            const userPromise = supabase.auth.getUser();
+            const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+            const result = await Promise.race([userPromise, timeoutPromise]);
+
+            if (result && 'data' in result && result.data.user) {
+                const uid = result.data.user.id;
+                setUserId(uid);
+                return uid;
+            }
+        } catch (e) {
+            console.warn("[ShiftSettings] getUser failed:", e);
+        }
+
+        return null;
+    };
+
+    const handleAdd = async () => {
+        try {
+            console.log("[ShiftSettings] handleAdd started. Cached userId:", userId);
+
+            if (!newShift.code || !newShift.label) {
+                toast.error("Por favor, rellena el código y el nombre del turno.");
+                return;
+            }
+
+            // Get user ID with timeout protection
+            const activeUserId = await getUserIdSafe();
+            console.log("[ShiftSettings] Resolved userId:", activeUserId);
+
+            if (!activeUserId) {
+                toast.error("No se ha podido detectar tu usuario. Por favor, cierra sesión y vuelve a entrar.");
+                return;
+            }
+
+            setIsLoading(true);
+
             // Defensive: ensure time format
             let startTime = newShift.start_time;
             if (startTime.length === 5) startTime += ':00';
@@ -200,29 +232,34 @@ export default function ShiftSettingsDialog({ open, onOpenChange }: ShiftSetting
                 user_id: activeUserId
             };
 
-            console.log("[ShiftSettings] Sending payload to Supabase:", payload);
+            console.log("[ShiftSettings] Sending INSERT payload:", JSON.stringify(payload));
 
             const { data, error } = await supabase
                 .from('shift_types')
                 .insert([payload])
                 .select();
 
+            console.log("[ShiftSettings] Supabase response - data:", data, "error:", error);
+
             if (error) {
-                console.error("[ShiftSettings] INSERT ERROR:", error);
-                if (error.code === '404') {
-                    throw new Error("La tabla 'shift_types' no se encuentra en la base de datos.");
+                console.error("[ShiftSettings] INSERT ERROR:", JSON.stringify(error));
+                if (error.code === '42501') {
+                    throw new Error("Error de permisos. Cierra sesión e inicia de nuevo.");
                 }
-                throw error;
+                if (error.code === '23505') {
+                    throw new Error(`El código "${newShift.code}" ya existe.`);
+                }
+                throw new Error(error.message || "Error desconocido de base de datos");
             }
 
-            console.log("[ShiftSettings] Insert successful:", data);
+            console.log("[ShiftSettings] INSERT OK:", data);
             toast.success("Turno añadido correctamente.");
 
             setNewShift({ code: '', label: '', start_time: '08:00', end_time: '15:00', color: '#000000' });
             await fetchShiftTypes();
         } catch (e: any) {
-            console.error("[ShiftSettings] Critical Exception in handleAdd:", e);
-            toast.error("Error al guardar: " + (e.message || "Error desconocido"));
+            console.error("[ShiftSettings] EXCEPTION:", e);
+            toast.error(e.message || "Error inesperado al guardar.");
         } finally {
             setIsLoading(false);
         }
