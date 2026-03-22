@@ -32,73 +32,31 @@ interface ChatInterfaceProps {
     userId: string;
     userName?: string;
     compact?: boolean;
+    initialMessage?: string;
 }
 
-export default function ChatInterface({ userId, userName, compact = false }: ChatInterfaceProps) {
+export default function ChatInterface({ userId, userName, compact = false, initialMessage = '' }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
+    const [input, setInput] = useState(initialMessage);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Load conversation on mount
-    useEffect(() => {
-        const loadMessages = async () => {
-            try {
-                const savedMessages = await loadConversation(userId);
-                if (savedMessages.length > 0) {
-                    setMessages(savedMessages);
-                } else {
-                    // Add welcome message
-                    const welcomeMessage: Message = {
-                        id: crypto.randomUUID(),
-                        role: 'assistant',
-                        content: compact
-                            ? `¡Hola${userName ? `, ${userName}` : ''}! ¿En qué puedo ayudarte?`
-                            : `¡Hola${userName ? `, ${userName}` : ''}! 👋 Soy el asistente de Quioba.\n\nPuedo ayudarte a consultar información de tu cuenta. Pregúntame sobre:\n\n• 💰 Tus ahorros\n• ✅ Tus tareas pendientes\n• 🛒 Tu lista de la compra\n• 💊 Tus medicamentos\n• Y mucho más...\n\n¿En qué puedo ayudarte?`,
-                        timestamp: new Date().toISOString(),
-                    };
-                    setMessages([welcomeMessage]);
-                }
-            } catch (error) {
-                console.error('Error loading conversation:', error);
-            } finally {
-                setIsInitialLoading(false);
-            }
-        };
-
-        loadMessages();
-    }, [userId, userName, compact]);
-
-    // Auto-scroll to bottom
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages]);
-
-    // Save messages when they change
-    useEffect(() => {
-        if (messages.length > 0 && !isInitialLoading) {
-            saveConversation(userId, messages);
-        }
-    }, [messages, userId, isInitialLoading]);
-
-    const handleSend = useCallback(async () => {
-        const trimmedInput = input.trim();
-        if (!trimmedInput || isLoading) return;
+    const handleSend = useCallback(async (textToProcess?: string) => {
+        const text = (textToProcess || input).trim();
+        if (!text || isLoading) return;
 
         // Add user message
         const userMessage: Message = {
             id: crypto.randomUUID(),
             role: 'user',
-            content: trimmedInput,
+            content: text,
             timestamp: new Date().toISOString(),
         };
 
         setMessages(prev => [...prev, userMessage]);
-        setInput('');
+        if (!textToProcess) setInput('');
         setIsLoading(true);
 
         try {
@@ -107,7 +65,7 @@ export default function ChatInterface({ userId, userName, compact = false }: Cha
                 userName,
             };
 
-            const response = await processQuery(trimmedInput, ctx);
+            const response = await processQuery(text, ctx);
 
             const assistantMessage: Message = {
                 id: crypto.randomUUID(),
@@ -128,9 +86,65 @@ export default function ChatInterface({ userId, userName, compact = false }: Cha
             setMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsLoading(false);
-            inputRef.current?.focus();
+            if (!textToProcess) {
+                setTimeout(() => inputRef.current?.focus(), 100);
+            }
         }
     }, [input, isLoading, userId, userName]);
+
+    // Load conversation on mount
+    useEffect(() => {
+        const loadMessages = async () => {
+            try {
+                const savedMessages = await loadConversation(userId);
+                if (savedMessages.length > 0) {
+                    setMessages(savedMessages);
+                } else {
+                    // Add welcome message
+                    const welcomeMessage: Message = {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: compact
+                            ? `¡Hola${userName ? `, ${userName}` : ''}! ¿En qué puedo ayudarte?`
+                            : `¡Hola${userName ? `, ${userName}` : ''}! 👋 Soy el asistente de Quioba.\n\nPuedo ayudarte a consultar información de tu cuenta. Pregúntame sobre:\n\n• 💰 Tus ahorros\n• ✅ Tus tareas pendientes\n• 🛒 Tu lista de la compra\n• 💊 Tus medicamentos\n• Y mucho más...\n\n¿En qué puedo ayudarte?`,
+                        timestamp: new Date().toISOString(),
+                    };
+                    setMessages([welcomeMessage]);
+                }
+
+                // If initialMessage was passed, auto-submit it after loading
+                if (initialMessage && !isLoading) {
+                    // Slight delay to ensure UI is ready
+                    setTimeout(() => {
+                        handleSend(initialMessage);
+                        setInput('');
+                    }, 500);
+                }
+
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+            } finally {
+                setIsInitialLoading(false);
+            }
+        };
+
+        loadMessages();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId, userName, compact, initialMessage]);
+
+    // Auto-scroll to bottom
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+    // Save messages when they change
+    useEffect(() => {
+        if (messages.length > 0 && !isInitialLoading) {
+            saveConversation(userId, messages);
+        }
+    }, [messages, userId, isInitialLoading]);
 
     const handleClearConversation = async () => {
         await clearConversation(userId);
@@ -333,7 +347,7 @@ export default function ChatInterface({ userId, userName, compact = false }: Cha
                         className={`flex-1 ${compact ? 'h-9 text-sm' : ''}`}
                     />
                     <Button
-                        onClick={handleSend}
+                        onClick={() => handleSend()}
                         disabled={!input.trim() || isLoading}
                         size={compact ? "sm" : "icon"}
                     >

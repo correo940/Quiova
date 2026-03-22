@@ -5,6 +5,7 @@ import { Toaster as SonnerToaster } from 'sonner';
 // import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import Taskbar from '@/components/layout/taskbar';
+import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
 
 export const metadata: Metadata = {
@@ -48,6 +49,7 @@ export default function RootLayout({
           <div className="print:hidden">
             <Footer />
             <Taskbar />
+            <MobileNav />
           </div>
           <Toaster />
           <SonnerToaster position="top-right" />

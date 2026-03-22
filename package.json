@@ -22,6 +22,7 @@
     "@capacitor/haptics": "^7.0.2",
     "@capacitor/ios": "^7.4.4",
     "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.0",
     "@capgo/capacitor-share-target": "^8.0.16",
     "@capgo/capacitor-speech-recognition": "^8.0.4",
