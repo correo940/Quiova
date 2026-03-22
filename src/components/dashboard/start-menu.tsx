@@ -38,7 +38,7 @@ const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.R
     { key: 'pharmacy', name: 'Salud', route: '/apps/mi-hogar/pharmacy', icon: <Pill className="w-4 h-4" />, color: 'text-red-500', bgColor: 'bg-red-500/10' },
     { key: 'garage', name: 'Garaje', route: '/apps/mi-hogar/garage', icon: <Car className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
     { key: 'expenses', name: 'Gastos', route: '/apps/mi-hogar/expenses', icon: <Wallet className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-    { key: 'savings', name: 'Ahorros', route: '/apps/mi-hogar/savings', icon: <PiggyBank className="w-4 h-4" />, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
+    { key: 'savings', name: 'Mi Economía', route: '/apps/mi-hogar/savings', icon: <PiggyBank className="w-4 h-4" />, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
     { key: 'roster', name: 'Turnos', route: '/apps/mi-hogar/roster', icon: <Calendar className="w-4 h-4" />, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
     { key: 'chef-ia', name: 'Chef IA', route: '/apps/mi-hogar/chef', icon: <ChefHat className="w-4 h-4" />, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
     { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },

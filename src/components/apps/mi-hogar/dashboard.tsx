@@ -96,8 +96,8 @@ const modules = [
         bg: 'bg-emerald-500/10',
     },
     {
-        title: 'Ahorros',
-        description: 'Control de ahorro mensual y metas',
+        title: 'Mi Economía',
+        description: 'Control de tus finanzas y metas',
         icon: PiggyBank,
         href: '/apps/mi-hogar/savings',
         color: 'text-amber-500',

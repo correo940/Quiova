@@ -343,7 +343,7 @@ export default function FloatingDashboard() {
                                             <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
                                                 <PiggyBank className="w-4 h-4" />
                                             </div>
-                                            <span className="text-sm font-medium">Ahorros</span>
+                                            <span className="text-sm font-medium">Mi Economía</span>
                                         </Link>
 
                                         <Link href="/apps/mi-hogar/roster" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">

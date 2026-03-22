@@ -278,7 +278,7 @@ export default function SavingsDashboardUI({
                                             </div>
                                             Evolución Patrimonial
                                         </CardTitle>
-                                        <CardDescription>Comportamiento de tus ahorros los últimos 30 días</CardDescription>
+                                        <CardDescription>Comportamiento de tu economía los últimos 30 días</CardDescription>
                                     </CardHeader>
                                     <CardContent className="h-[300px]">
                                         <ResponsiveContainer width="100%" height="100%">

@@ -212,7 +212,7 @@ export default function NotificationSettingsDialog() {
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="cat-money" className="text-sm font-normal cursor-pointer">Ahorros (Cuentas)</Label>
+                                    <Label htmlFor="cat-money" className="text-sm font-normal cursor-pointer">Mi Economía (Cuentas)</Label>
                                     <Switch
                                         id="cat-money"
                                         checked={settings.categories?.money ?? true}

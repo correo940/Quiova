@@ -106,7 +106,7 @@ export default function ChatInterface({ userId, userName, compact = false, initi
                         role: 'assistant',
                         content: compact
                             ? `¡Hola${userName ? `, ${userName}` : ''}! ¿En qué puedo ayudarte?`
-                            : `¡Hola${userName ? `, ${userName}` : ''}! 👋 Soy el asistente de Quioba.\n\nPuedo ayudarte a consultar información de tu cuenta. Pregúntame sobre:\n\n• 💰 Tus ahorros\n• ✅ Tus tareas pendientes\n• 🛒 Tu lista de la compra\n• 💊 Tus medicamentos\n• Y mucho más...\n\n¿En qué puedo ayudarte?`,
+                            : `¡Hola${userName ? `, ${userName}` : ''}! 👋 Soy el asistente de Quioba.\n\nPuedo ayudarte a consultar información de tu cuenta. Pregúntame sobre:\n\n• 💰 Mi Economía\n• ✅ Tus tareas pendientes\n• 🛒 Tu lista de la compra\n• 💊 Tus medicamentos\n• Y mucho más...\n\n¿En qué puedo ayudarte?`,
                         timestamp: new Date().toISOString(),
                     };
                     setMessages([welcomeMessage]);
@@ -166,7 +166,7 @@ export default function ChatInterface({ userId, userName, compact = false, initi
 
     // Quick action buttons
     const quickActions = [
-        { label: '💰 Ahorros', query: '¿Cuánto dinero tengo ahorrado?' },
+        { label: '💰 Mi Economía', query: '¿Cómo está mi economía?' },
         { label: '✅ Tareas', query: '¿Qué tareas tengo pendientes?' },
         { label: '🛒 Compras', query: '¿Qué tengo que comprar?' },
         { label: '💊 Medicamentos', query: '¿Qué medicamentos tengo?' },

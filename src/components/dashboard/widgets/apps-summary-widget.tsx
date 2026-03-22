@@ -24,7 +24,7 @@ const ICON_MAP: Record<string, any> = {
 const DEFAULT_ITEMS_CONFIG = [
     { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-blue-500', href: '/apps/mi-hogar/shopping' },
     { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-purple-500', href: '/apps/mi-hogar/tasks' },
-    { key: 'savings', label: 'Ahorros', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
+    { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
     { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-red-500', href: '/apps/debate' },
     { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
     { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy' },

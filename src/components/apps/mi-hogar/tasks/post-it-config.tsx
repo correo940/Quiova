@@ -138,7 +138,7 @@ export default function PostItConfig() {
                                         { path: '/apps/mi-hogar/tasks', label: 'Tareas' },
                                         { path: '/apps/mi-hogar/roster', label: 'Turnos / Calendario' },
                                         { path: '/apps/mi-hogar/shopping', label: 'Lista de la Compra' },
-                                        { path: '/apps/mi-hogar/savings', label: 'Mis Ahorros' },
+                                        { path: '/apps/mi-hogar/savings', label: 'Mi Economía' },
                                         { path: '/apps/mi-hogar/expenses', label: 'Gastos Compartidos' },
                                         { path: '/apps/mi-hogar/garage', label: 'Garaje' },
                                         { path: '/apps/mi-hogar/pharmacy', label: 'Farmacia' },

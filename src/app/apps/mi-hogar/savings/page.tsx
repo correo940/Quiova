@@ -64,8 +64,6 @@ type SavingsGoal = {
     icon?: string;
     linked_account_id?: string;
     interest_rate?: number;
-    linked_account_id?: string;
-    interest_rate?: number;
 };
 
 export type RecurringItem = {
@@ -601,7 +599,7 @@ export default function SavingsPage() {
 
             <Dialog open={isAddGoalOpen} onOpenChange={setIsAddGoalOpen}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Nueva Meta de Ahorro</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Nueva Meta de Economía</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2"><Label>Nombre</Label><Input value={newGoal.name} onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })} /></div>
                         <div className="space-y-2">

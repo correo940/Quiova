@@ -106,7 +106,7 @@ export default function SavingsNotificationManager() {
             const summary = await getSavingsSummary();
             if (summary) {
                 toast.info(
-                    `💰 Resumen de Ahorros: ${summary.totalBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} en ${summary.accountCount} cuentas`,
+                    `💰 Resumen de Mi Economía: ${summary.totalBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} en ${summary.accountCount} cuentas`,
                     {
                         duration: 10000,
                         action: {
@@ -171,8 +171,8 @@ export default function SavingsNotificationManager() {
                 await LocalNotifications.schedule({
                     notifications: [{
                         id: SAVINGS_NOTIFICATION_BASE_ID,
-                        title: '💰 Resumen de Ahorros',
-                        body: 'Revisa el estado de tus cuentas y ahorros',
+                        title: '💰 Resumen de Mi Economía',
+                        body: 'Revisa el estado de tus cuentas y tu economía',
                         schedule: {
                             at: scheduleDate,
                             every: 'day',
@@ -192,8 +192,8 @@ export default function SavingsNotificationManager() {
                     await LocalNotifications.schedule({
                         notifications: [{
                             id: SAVINGS_NOTIFICATION_BASE_ID + i + 1,
-                            title: '💰 Resumen Semanal de Ahorros',
-                            body: 'Revisa el estado de tus cuentas y ahorros',
+                            title: '💰 Resumen Semanal de Mi Economía',
+                            body: 'Revisa el estado de tus cuentas y tu economía',
                             schedule: {
                                 at: scheduleDate,
                                 every: 'week',
@@ -211,8 +211,8 @@ export default function SavingsNotificationManager() {
                 await LocalNotifications.schedule({
                     notifications: [{
                         id: SAVINGS_NOTIFICATION_BASE_ID + 50,
-                        title: '💰 Resumen Mensual de Ahorros',
-                        body: 'Revisa el estado de tus cuentas y metas de ahorro',
+                        title: '💰 Resumen Mensual de Mi Economía',
+                        body: 'Revisa el estado de tus cuentas y tus finanzas',
                         schedule: {
                             at: scheduleDate,
                             every: 'month',

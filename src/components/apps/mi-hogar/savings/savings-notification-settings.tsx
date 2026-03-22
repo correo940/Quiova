@@ -120,7 +120,7 @@ export default function SavingsNotificationSettings() {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Bell className="h-5 w-5" />
-                        Notificaciones de Ahorros
+                        Notificaciones de Mi Economía
                     </DialogTitle>
                 </DialogHeader>
 
@@ -130,7 +130,7 @@ export default function SavingsNotificationSettings() {
                         <div className="space-y-1">
                             <Label htmlFor="savings-notifications-enabled" className="text-base">Activar Notificaciones</Label>
                             <p className="text-sm text-muted-foreground">
-                                Recibe resúmenes de tus ahorros según tu preferencia.
+                                Recibe resúmenes de tu economía según tu preferencia.
                             </p>
                         </div>
                         <Switch
