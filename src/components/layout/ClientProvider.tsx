@@ -13,6 +13,7 @@ import { JournalProvider } from '@/context/JournalContext';
 import MedicineAlarmManager from '@/components/apps/mi-hogar/pharmacy/medicine-alarm-manager';
 import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notification-manager';
 import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicle-notification-manager';
+import PlantNotificationManager from '@/components/apps/huerto/plant-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
 import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
@@ -35,6 +36,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
               <MedicineAlarmManager />
               <TaskNotificationManager />
               <VehicleNotificationManager />
+              <PlantNotificationManager />
               <LayoutResizer>
                 {children}
               </LayoutResizer>

@@ -126,6 +126,7 @@ const modules = [
         icon: Sword,
         href: '/apps/debate',
         color: 'text-red-600',
+        bg: 'bg-red-500/10',
     }
 ];
 
