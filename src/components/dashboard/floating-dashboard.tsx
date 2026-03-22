@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, Activity } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, Activity, Leaf } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -344,6 +344,13 @@ export default function FloatingDashboard() {
                                                 <PiggyBank className="w-4 h-4" />
                                             </div>
                                             <span className="text-sm font-medium">Mi Economía</span>
+                                        </Link>
+
+                                        <Link href="/apps/huerto" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">
+                                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                                                <Leaf className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium">Mi Huerto</span>
                                         </Link>
 
                                         <Link href="/apps/mi-hogar/roster" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">

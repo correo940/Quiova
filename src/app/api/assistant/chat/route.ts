@@ -8,7 +8,8 @@ import {
     fetchInsurances,
     fetchExpensesSummary,
     fetchVehicles,
-    fetchRecurringItems
+    fetchRecurringItems,
+    fetchPendingBalance
 } from '@/components/apps/asistente/data-fetchers';
 
 const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY });
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
         // Realizamos todas las consultas a la DB en paralelo para máxima velocidad
         const [
             savings, tasks, shopping, medicines,
-            insurances, expenses, vehicles, recurring
+            insurances, expenses, vehicles, recurring, pendingBalance
         ] = await Promise.all([
             fetchSavingsSummary(ctx),
             fetchPendingTasks(ctx),
@@ -35,7 +36,8 @@ export async function POST(req: Request) {
             fetchInsurances(ctx),
             fetchExpensesSummary(ctx),
             fetchVehicles(ctx),
-            fetchRecurringItems(ctx)
+            fetchRecurringItems(ctx),
+            fetchPendingBalance(ctx)
         ]);
 
         // Construir el contexto en formato comprimido para el LLM
@@ -45,7 +47,9 @@ El usuario se llama ${userName || 'Usuario'}.
 Aquí tienes el contexto COMPLETO, SECRETO y EN TIEMPO REAL del usuario. NUNCA menciones que te he pasado un JSON o "contexto", simplemente actúa con naturalidad como si lo supieras.
 
 **1. Mi Economía y Finanzas:**
-- Total Ahorrado: ${savings.totalSaved}€
+- Patrimonio Real (lo que tienes de verdad): ${(savings.totalSaved + pendingBalance.totalPending).toFixed(2)}€
+- Total en Cuentas (Balance visible): ${savings.totalSaved}€
+- Balance Pendiente (Autodeuda, dinero gastado de ahorros a reponer): ${pendingBalance.totalPending}€
 - Cuentas: ${JSON.stringify(savings.accounts.map(a => ({ n: a.name, b: a.current_balance })))}
 - Metas de Ahorro: ${JSON.stringify(savings.goals.map(g => ({ n: g.name, act: g.current_amount, obj: g.target_amount })))}
 - Gastos Compartidos de este mes: ${expenses.totalThisMonth}€ (${JSON.stringify(expenses.byCategory)})

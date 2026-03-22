@@ -27,7 +27,8 @@ import {
     Wallet,
     Trash2,
     Save,
-    FileUp
+    FileUp,
+    Settings
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -40,6 +41,7 @@ import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savi
 import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
 import BankStatementImporter from '@/components/apps/mi-hogar/savings/bank-statement-importer';
+import ResetDataDialog, { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
 
 // Types
 type BankAccount = {
@@ -51,7 +53,9 @@ type BankAccount = {
     current_balance: number;
     logo_type: 'icon' | 'url';
     logo_url?: string;
-    interest_rate?: number; // New: Interest Rate for Account
+    interest_rate?: number;
+    include_in_total?: boolean;
+    account_type?: 'libre' | 'objetivo' | 'bloqueada';
 };
 
 type SavingsGoal = {
@@ -98,10 +102,11 @@ export default function SavingsPage() {
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
     const [goals, setGoals] = useState<SavingsGoal[]>([]);
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
-    const [monthlyStats, setMonthlyStats] = useState({ income: 0, expense: 0 });
+    const [monthlyStats, setMonthlyStats] = useState({ income: 0, expense: 0, savingsRate: 0 });
     const [chartData, setChartData] = useState<any[]>([]);
     const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
     const [passwords, setPasswords] = useState<{ id: string, name: string }[]>([]);
+    const [pendingTotal, setPendingTotal] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Detail States
@@ -120,6 +125,7 @@ export default function SavingsPage() {
     const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
     const [isAddRecurringOpen, setIsAddRecurringOpen] = useState(false);
     const [isImporterOpen, setIsImporterOpen] = useState(false);
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
     // Forms
     const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
@@ -256,7 +262,9 @@ export default function SavingsPage() {
                     else mExpense += Math.abs(tx.amount);
                 }
             });
-            setMonthlyStats({ income: mIncome, expense: mExpense });
+            
+            const rate = mIncome > 0 ? ((mIncome - mExpense) / mIncome) * 100 : 0;
+            setMonthlyStats({ income: mIncome, expense: mExpense, savingsRate: rate > 0 ? rate : 0 });
 
             // Calculate Chart Data (Reconstruct backwards)
             let currentTotal = accs?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
@@ -280,6 +288,15 @@ export default function SavingsPage() {
             }
 
             setChartData(dailyBalances.reverse());
+
+            // 5. Pending Balance Total
+            const { data: pendingExps } = await supabase
+                .from('pending_balance_expenses')
+                .select('amount')
+                .eq('user_id', user?.id)
+                .eq('status', 'pending');
+            const pTotal = (pendingExps || []).reduce((s: number, e: any) => s + (e.amount || 0), 0);
+            setPendingTotal(pTotal);
 
         } catch (error) {
             console.error(error);
@@ -446,10 +463,43 @@ export default function SavingsPage() {
             toast.success('Cuenta eliminada');
             setIsAccountDetailOpen(false);
             setSelectedAccount(null);
-            fetchData();
         } catch (error) {
             console.error(error);
             toast.error('Error al eliminar cuenta');
+        }
+    };
+
+    const handleResetData = async (options: ResetOptions) => {
+        if (!user) return;
+        try {
+            const accountIds = accounts.map(a => a.id);
+            
+            if (options.accounts) {
+                if (accountIds.length > 0) {
+                    await supabase.from('savings_account_transactions').delete().in('account_id', accountIds);
+                    await supabase.from('savings_accounts').delete().eq('user_id', user.id);
+                }
+            } else if (options.transactions && accountIds.length > 0) {
+                await supabase.from('savings_account_transactions').delete().in('account_id', accountIds);
+                await supabase.from('savings_accounts').update({ current_balance: 0 }).in('id', accountIds);
+            }
+
+            if (options.goals) {
+                await supabase.from('savings_goals').delete().eq('user_id', user.id);
+            }
+            if (options.recurring) {
+                await supabase.from('savings_recurring_items').delete().eq('user_id', user.id);
+            }
+            if (options.pending) {
+                await supabase.from('pending_balance_expenses').delete().eq('user_id', user.id);
+                await supabase.from('pending_balance_projects').delete().eq('user_id', user.id);
+            }
+
+            toast.success('Datos eliminados correctamente');
+            fetchData();
+        } catch (error) {
+            console.error('Error reseteando datos', error);
+            toast.error('Error al resetear datos');
         }
     };
 
@@ -495,7 +545,7 @@ export default function SavingsPage() {
     };
 
     // --- CALCULATIONS ---
-    const totalCurrentBalance = accounts.reduce((acc, curr) => acc + (curr.current_balance || 0), 0);
+    const totalCurrentBalance = accounts.filter(a => a.include_in_total !== false).reduce((acc, curr) => acc + (curr.current_balance || 0), 0);
     const totalGoalSaved = goals.reduce((acc, curr) => acc + (curr.current_amount || 0), 0);
 
     return (
@@ -512,6 +562,15 @@ export default function SavingsPage() {
                         <FileUp className="h-4 w-4" /> Importar Extracto
                     </Button>
                     <SavingsNotificationSettings />
+                    <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-900/20 w-9 h-9 sm:w-8 sm:h-8" 
+                        onClick={() => setIsResetDialogOpen(true)}
+                        title="Purgar Datos"
+                    >
+                        <Settings className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
 
@@ -539,8 +598,11 @@ export default function SavingsPage() {
                 onViewAccount={handleOpenAccountDetail}
                 recentTransactions={recentTransactions}
                 recurringItems={recurringItems}
-                onAddRecurring={() => setIsAddRecurringOpen(true)}
                 onDeleteRecurring={handleDeleteRecurring}
+                userId={user?.id}
+                pendingTotal={pendingTotal}
+                onBalanceChange={() => fetchData()}
+                onResetData={handleResetData}
             />
 
             {/* --- BANK STATEMENT IMPORTER --- */}
@@ -550,6 +612,13 @@ export default function SavingsPage() {
                 accounts={accounts}
                 userId={user?.id || ''}
                 onImportComplete={() => fetchData()}
+            />
+
+            {/* --- RESET DATA DIALOG --- */}
+            <ResetDataDialog 
+                isOpen={isResetDialogOpen}
+                onClose={() => setIsResetDialogOpen(false)}
+                onConfirm={handleResetData}
             />
 
             {/* --- DIALOGS --- */}

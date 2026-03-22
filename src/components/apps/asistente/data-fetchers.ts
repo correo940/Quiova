@@ -202,3 +202,20 @@ export async function fetchRecurringItems(ctx: AssistantDataContext) {
         totalExpenses: expenses.reduce((sum, r) => sum + (r.amount || 0), 0),
     };
 }
+
+// Fetch pending balance (autodeudas)
+export async function fetchPendingBalance(ctx: AssistantDataContext) {
+    const { data: expenses } = await supabase
+        .from('pending_balance_expenses')
+        .select('id, amount, concept, status, project_id')
+        .eq('user_id', ctx.userId)
+        .eq('status', 'pending');
+
+    const totalPending = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+
+    return {
+        totalPending,
+        expenses: expenses || [],
+    };
+}
+

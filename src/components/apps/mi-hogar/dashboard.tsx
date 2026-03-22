@@ -15,7 +15,8 @@ import {
     Sword,
     Wallet,
     BookOpen,
-    MessageCircle
+    MessageCircle,
+    Leaf
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,6 +111,14 @@ const modules = [
         href: '/apps/mi-hogar/roster',
         color: 'text-cyan-500',
         bg: 'bg-cyan-500/10',
+    },
+    {
+        title: 'Mi Huerto',
+        description: 'Identifica plantas y automatiza riegos con IA',
+        icon: Leaf,
+        href: '/apps/huerto',
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-500/10',
     },
     {
         title: 'El Debate',

@@ -10,7 +10,7 @@ import {
     ShoppingBag, ChefHat, ListTodo, Lock,
     Wallet, CreditCard, Sparkles, Star,
     Pencil, Check, X as XIcon, CheckSquare, ArrowDown,
-    AlertTriangle, Info, Pill, ShieldAlert, Car, Send
+    AlertTriangle, Info, Pill, ShieldAlert, Car, Send, Leaf
 } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Network } from '@capacitor/network';
@@ -30,7 +30,7 @@ import { fetchPendingTasks, fetchMedicines, fetchInsurances, fetchVehicles } fro
 const IconMap: { [key: string]: any } = {
     Settings, ShoppingCart, ShoppingBag, ChefHat,
     ListTodo, Calendar, FileText, KeyRound, MessageCircle,
-    Monitor
+    Monitor, Leaf
 };
 
 // Fallback apps - used when marketplace_apps table doesn't exist yet
@@ -43,6 +43,7 @@ const FALLBACK_APPS: AppWithStatus[] = [
     { id: 'fb-6', key: 'documents', name: 'Gestor Documental', description: 'DNI, Seguros siempre a mano.', icon_key: 'FileText', route: '/apps/mi-hogar/documents', price: 4.99, category: 'utility', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-7', key: 'passwords', name: 'Gestor de Contraseñas', description: 'Almacena contraseñas seguras.', icon_key: 'KeyRound', route: '/apps/passwords', price: 5.99, category: 'utility', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-8', key: 'assistant', name: 'Asistente Quioba', description: 'Tu asistente personal con IA.', icon_key: 'MessageCircle', route: '/apps/mi-hogar/asistente', price: 9.99, category: 'productivity', is_active: true, isOwned: false, isLocked: true },
+    { id: 'fb-9', key: 'huerto', name: 'Mis Plantas/Huerto', description: 'Identifica y cuida tus plantas con IA.', icon_key: 'Leaf', route: '/apps/huerto', price: 2.99, category: 'lifestyle', is_active: true, isOwned: false, isLocked: true },
 ];
 
 // Helper: load quick app keys from localStorage
@@ -520,6 +521,7 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
             case 'documents': return { bg: 'bg-blue-50', text: 'text-blue-600', decoration: 'bg-blue-500', shadow: 'blue' };
             case 'passwords': return { bg: 'bg-amber-50', text: 'text-amber-600', decoration: 'bg-amber-500', shadow: 'amber' };
             case 'assistant': return { bg: 'bg-violet-50', text: 'text-violet-600', decoration: 'bg-violet-500', shadow: 'violet' };
+            case 'huerto': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500', shadow: 'emerald' };
             default: return { bg: 'bg-slate-50', text: 'text-slate-600', decoration: 'bg-slate-500', shadow: 'slate' };
         }
     };
