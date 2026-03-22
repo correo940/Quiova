@@ -29,7 +29,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
     { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy' },
     { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-orange-500', href: '/apps/mi-hogar/documents' },
-    { key: 'expenses', label: 'Gastos', iconKey: 'Receipt', color: 'bg-pink-500', href: '/apps/mi-hogar/expenses' },
+    { key: 'expenses', label: 'Gastos Compartidos', iconKey: 'Receipt', color: 'bg-pink-500', href: '/apps/mi-hogar/expenses' },
     { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties' },
     { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: 'bg-lime-500', href: '/apps/mi-hogar/recipes' },
     { key: 'manuals', label: 'Manual y Mantenimiento', iconKey: 'Book', color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals' },

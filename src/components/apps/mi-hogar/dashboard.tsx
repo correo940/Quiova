@@ -88,7 +88,7 @@ const modules = [
         bg: 'bg-amber-500/10',
     },
     {
-        title: 'Gastos',
+        title: 'Gastos Compartidos',
         description: 'Gastos compartidos 50/50',
         icon: Wallet,
         href: '/apps/mi-hogar/expenses',

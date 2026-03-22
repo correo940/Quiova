@@ -63,7 +63,7 @@ export function GuestExpensesAccess({ onSuccess }: { onSuccess: () => void }) {
             const { error: rpcError } = await supabase.rpc('redeem_connection_code', { p_code: code });
             if (rpcError) throw rpcError;
 
-            toast.success('¡Bienvenido a Gastos!');
+            toast.success('¡Bienvenido a Gastos Compartidos!');
             toast.info('Configurando tu entorno...');
 
             // Wait for propagation

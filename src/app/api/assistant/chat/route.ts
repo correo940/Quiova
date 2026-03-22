@@ -48,7 +48,7 @@ Aquí tienes el contexto COMPLETO, SECRETO y EN TIEMPO REAL del usuario. NUNCA m
 - Total Ahorrado: ${savings.totalSaved}€
 - Cuentas: ${JSON.stringify(savings.accounts.map(a => ({ n: a.name, b: a.current_balance })))}
 - Metas de Ahorro: ${JSON.stringify(savings.goals.map(g => ({ n: g.name, act: g.current_amount, obj: g.target_amount })))}
-- Gastos de este mes: ${expenses.totalThisMonth}€ (${JSON.stringify(expenses.byCategory)})
+- Gastos Compartidos de este mes: ${expenses.totalThisMonth}€ (${JSON.stringify(expenses.byCategory)})
 - Finanzas Fijas/Recurrentes: Ingresos ${recurring.totalIncome}€/mes, Gastos ${recurring.totalExpenses}€/mes.
 
 **2. Tareas:**

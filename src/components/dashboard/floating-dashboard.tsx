@@ -336,7 +336,7 @@ export default function FloatingDashboard() {
                                             <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
                                                 <Wallet className="w-4 h-4" />
                                             </div>
-                                            <span className="text-sm font-medium">Gastos</span>
+                                            <span className="text-sm font-medium">Gastos Compartidos</span>
                                         </Link>
 
                                         <Link href="/apps/mi-hogar/savings" className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors">

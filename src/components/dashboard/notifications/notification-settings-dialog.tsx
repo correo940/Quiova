@@ -203,7 +203,7 @@ export default function NotificationSettingsDialog() {
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="cat-expenses" className="text-sm font-normal cursor-pointer">Gastos (Deudas)</Label>
+                                    <Label htmlFor="cat-expenses" className="text-sm font-normal cursor-pointer">Gastos Compartidos (Deudas)</Label>
                                     <Switch
                                         id="cat-expenses"
                                         checked={settings.categories?.expenses ?? true}
