@@ -136,7 +136,7 @@ EJEMPLOS VÁLIDOS:
                 // Fallback a OpenRouter con modelo que soporta visión
                 if (process.env.OPENROUTER_API_KEY) {
                     try {
-                        console.log("🤖 Intentando OpenRouter (Qwen3 80B Vision)...");
+                        console.log("🤖 Intentando OpenRouter (llava-1.5)...");
                         const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                             method: 'POST',
                             headers: {
@@ -146,7 +146,7 @@ EJEMPLOS VÁLIDOS:
                                 'X-Title': 'Quioba Plant Analyzer'
                             },
                             body: JSON.stringify({
-                                model: 'qwen/qwen3-80b-vision',
+                                model: 'openai/llava-1.5-7b-hf', // Modelo de visión gratis en OpenRouter
                                 messages: [
                                     {
                                         role: "user",
@@ -169,15 +169,15 @@ EJEMPLOS VÁLIDOS:
                             const content = openrouterData.choices?.[0]?.message?.content;
                             if (content) {
                                 careData = JSON.parse(content);
-                                console.log("✅ OpenRouter (Qwen3) respondió exitosamente");
+                                console.log("✅ OpenRouter (llava-1.5) respondió exitosamente");
                             }
                         } else {
                             const err = await openrouterRes.text();
-                            console.warn(`⚠️ OpenRouter Qwen3 fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
+                            console.warn(`⚠️ OpenRouter llava fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
                             
-                            // Intentar con Llama 3.3 como último intento
-                            console.log("🤖 Intentando fallback OpenRouter (Llama 3.3 70B)...");
-                            const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                            // Fallback: intentar con Qwen (puede NO tener visión pero es capaz)
+                            console.log("🤖 Intentando fallback OpenRouter (Qwen para texto)...");
+                            const qwenRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                                 method: 'POST',
                                 headers: {
                                     'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -186,29 +186,29 @@ EJEMPLOS VÁLIDOS:
                                     'X-Title': 'Quioba Plant Analyzer'
                                 },
                                 body: JSON.stringify({
-                                    model: 'meta-llama/llama-3.3-70b-instruct',
+                                    model: 'qwen/qwen-2.5-7b-instruct',
                                     messages: [
                                         {
                                             role: "user",
-                                            content: systemPrompt + "\n[Nota: Analiza esta imagen de planta sin visión directa, basándote en patrones típicos]"
+                                            content: systemPrompt + "\n[Nota: Analiza basándote en características de plantas típicas. Eres un experto.]"
                                         }
                                     ]
                                 })
                             });
 
-                            if (llamaRes.ok) {
-                                const llamaData = await llamaRes.json();
-                                const content = llamaData.choices?.[0]?.message?.content;
+                            if (qwenRes.ok) {
+                                const qwenData = await qwenRes.json();
+                                const content = qwenData.choices?.[0]?.message?.content;
                                 if (content) {
                                     try {
                                         careData = JSON.parse(content);
-                                        console.log("✅ OpenRouter (Llama 3.3) respondió");
+                                        console.log("✅ OpenRouter (Qwen) respondió");
                                     } catch (e) {
-                                        console.log("ℹ️ Usando análisis genérico (parse error)");
+                                        console.log("ℹ️ Usando análisis genérico (Qwen parse error)");
                                     }
                                 }
                             } else {
-                                console.warn(`⚠️ OpenRouter Llama fallo (${llamaRes.status})`);
+                                console.warn(`⚠️ OpenRouter Qwen fallo (${qwenRes.status})`);
                                 console.log("ℹ️ Usando análisis genérico");
                             }
                         }
@@ -226,7 +226,7 @@ EJEMPLOS VÁLIDOS:
             
             if (process.env.OPENROUTER_API_KEY) {
                 try {
-                    console.log("🤖 Intentando OpenRouter (Qwen3 80B Vision)...");
+                    console.log("🤖 Intentando OpenRouter (llava-1.5)...");
                     const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                         method: 'POST',
                         headers: {
@@ -236,7 +236,7 @@ EJEMPLOS VÁLIDOS:
                             'X-Title': 'Quioba Plant Analyzer'
                         },
                         body: JSON.stringify({
-                            model: 'qwen/qwen3-80b-vision',
+                            model: 'openai/llava-1.5-7b-hf',
                             messages: [
                                 {
                                     role: "user",
@@ -259,7 +259,7 @@ EJEMPLOS VÁLIDOS:
                         const content = openrouterData.choices?.[0]?.message?.content;
                         if (content) {
                             careData = JSON.parse(content);
-                            console.log("✅ OpenRouter (Qwen3) respondió exitosamente");
+                            console.log("✅ OpenRouter (llava-1.5) respondió exitosamente");
                         }
                     } else {
                         const err = await openrouterRes.text();
