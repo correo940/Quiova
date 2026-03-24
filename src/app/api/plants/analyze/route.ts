@@ -62,7 +62,9 @@ export async function POST(req: Request) {
         }
 
         // 2. Vision Analysis: Intentar múltiples modelos
-        let careData = {
+        let careData: any = {
+            scientific_name: 'Por identificar',
+            common_name: 'Planta desconocida',
             health_status: 'Saludable',
             care_instructions: 'Riega cuando la tierra esté seca.',
             watering_frequency_days: 7,
