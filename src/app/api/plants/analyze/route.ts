@@ -71,23 +71,28 @@ export async function POST(req: Request) {
 
         const systemPrompt = `Eres un experto botánico agrícola con capacidad de identificación de plantas.
 
-${plantnetCommon !== "Por identificar" ? `PlantNet sugiere que es: ${plantnetCommon} (${plantnetSpecies})` : 'PlantNet no pudo identificarla, analiza la imagen tú mismo.'}
+${plantnetCommon !== "Por identificar" ? `PlantNet sugiere: ${plantnetCommon} (${plantnetSpecies})` : 'PlantNet no pudo identificarla. IDENTIFICA tú mismo basándote en las características visibles.'}
 
-Tu trabajo es:
-1. Si es necesario, identifica la planta en la foto (nombre común y científico si lo sabes).
-2. Confirma brevemente la salud o enfermedades visibles.
-3. Dar instrucciones exactas de cuidado (luz, abono, riego).
-4. Establecer la frecuencia de riego en días (número entero entre 1 y 30).
+INSTRUCCIONES CRÍTICAS:
+- SIEMPRE identifica la planta (nombre común Y científico)
+- Nunca respondas "Desconocida" 
+- Si tienes dudas, usa lo que VES en la imagen para tu mejor estimación
+- Responde ÚNICAMENTE con JSON válido (sin comentarios, sin markdown)
 
-Responde ÚNICAMENTE con JSON (sin markdown):
+FORMATO REQUERIDO:
 {
-    "common_name": "Nombre común en español",
-    "scientific_name": "Nombre científico o 'Desconocida'",
-    "health_status": "Breve estado de salud observado",
-    "care_instructions": "Instrucciones de cuidado breves y prácticas",
+    "common_name": "Nombre en español (NO PUEDE SER VACÍO)",
+    "scientific_name": "Nombre científico latino (NO PUEDE SER VACÍO O 'Desconocida')",
+    "health_status": "Saludable / Con problemas / Enfermo - descripción breve",
+    "care_instructions": "Cómo cuidar esta planta específica",
     "watering_frequency_days": 7,
-    "sunlight_needs": "Sol directo / Sombra parcial / Luz indirecta"
-}`;
+    "sunlight_needs": "Sol directo / Sombra parcial / Luz indirecta / Sombra"
+}
+
+EJEMPLOS VÁLIDOS:
+{"common_name":"Tomate","scientific_name":"Solanum lycopersicum","health_status":"Saludable","care_instructions":"Riego regular, suelo drenado","watering_frequency_days":2,"sunlight_needs":"Sol directo"}
+{"common_name":"Pothos","scientific_name":"Epipremnum aureum","health_status":"Hojas amarillas, poco riego","care_instructions":"Menos agua, mejor ventilación","watering_frequency_days":7,"sunlight_needs":"Luz indirecta"}
+{"common_name":"Helecho","scientific_name":"Nephrolepis exaltata","health_status":"Saludable","care_instructions":"Mantener tierra húmeda, humedad alta","watering_frequency_days":3,"sunlight_needs":"Sombra parcial"}`;
 
         // Intentar Groq primero
         if (process.env.GROQ_API_KEY) {
@@ -128,10 +133,10 @@ Responde ÚNICAMENTE con JSON (sin markdown):
             } catch (groqError) {
                 console.warn("⚠️ Groq Exception, intentando OpenRouter...");
                 
-                // Fallback a OpenRouter
+                // Fallback a OpenRouter con modelo que soporta visión
                 if (process.env.OPENROUTER_API_KEY) {
                     try {
-                        console.log("🤖 Intentando OpenRouter Vision...");
+                        console.log("🤖 Intentando OpenRouter (Qwen3 80B Vision)...");
                         const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                             method: 'POST',
                             headers: {
@@ -141,7 +146,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                                 'X-Title': 'Quioba Plant Analyzer'
                             },
                             body: JSON.stringify({
-                                model: 'gpt-4-vision',
+                                model: 'qwen/qwen3-80b-vision',
                                 messages: [
                                     {
                                         role: "user",
@@ -150,8 +155,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                                             { 
                                                 type: "image_url", 
                                                 image_url: { 
-                                                    url: `data:image/jpeg;base64,${base64Data}`,
-                                                    detail: "low"
+                                                    url: `data:image/jpeg;base64,${base64Data}`
                                                 } 
                                             }
                                         ]
@@ -165,12 +169,48 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                             const content = openrouterData.choices?.[0]?.message?.content;
                             if (content) {
                                 careData = JSON.parse(content);
-                                console.log("✅ OpenRouter respondió exitosamente");
+                                console.log("✅ OpenRouter (Qwen3) respondió exitosamente");
                             }
                         } else {
                             const err = await openrouterRes.text();
-                            console.warn(`⚠️ OpenRouter fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
-                            console.log("ℹ️ Usando análisis genérico");
+                            console.warn(`⚠️ OpenRouter Qwen3 fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
+                            
+                            // Intentar con Llama 3.3 como último intento
+                            console.log("🤖 Intentando fallback OpenRouter (Llama 3.3 70B)...");
+                            const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                                    'Content-Type': 'application/json',
+                                    'HTTP-Referer': 'https://quioba.com',
+                                    'X-Title': 'Quioba Plant Analyzer'
+                                },
+                                body: JSON.stringify({
+                                    model: 'meta-llama/llama-3.3-70b-instruct',
+                                    messages: [
+                                        {
+                                            role: "user",
+                                            content: systemPrompt + "\n[Nota: Analiza esta imagen de planta sin visión directa, basándote en patrones típicos]"
+                                        }
+                                    ]
+                                })
+                            });
+
+                            if (llamaRes.ok) {
+                                const llamaData = await llamaRes.json();
+                                const content = llamaData.choices?.[0]?.message?.content;
+                                if (content) {
+                                    try {
+                                        careData = JSON.parse(content);
+                                        console.log("✅ OpenRouter (Llama 3.3) respondió");
+                                    } catch (e) {
+                                        console.log("ℹ️ Usando análisis genérico (parse error)");
+                                    }
+                                }
+                            } else {
+                                console.warn(`⚠️ OpenRouter Llama fallo (${llamaRes.status})`);
+                                console.log("ℹ️ Usando análisis genérico");
+                            }
                         }
                     } catch (openrouterError) {
                         console.warn("⚠️ OpenRouter Exception:", openrouterError);
@@ -186,7 +226,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
             
             if (process.env.OPENROUTER_API_KEY) {
                 try {
-                    console.log("🤖 Intentando OpenRouter Vision...");
+                    console.log("🤖 Intentando OpenRouter (Qwen3 80B Vision)...");
                     const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                         method: 'POST',
                         headers: {
@@ -196,7 +236,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                             'X-Title': 'Quioba Plant Analyzer'
                         },
                         body: JSON.stringify({
-                            model: 'gpt-4-vision',
+                            model: 'qwen/qwen3-80b-vision',
                             messages: [
                                 {
                                     role: "user",
@@ -205,8 +245,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                                         { 
                                             type: "image_url", 
                                             image_url: { 
-                                                url: `data:image/jpeg;base64,${base64Data}`,
-                                                detail: "low"
+                                                url: `data:image/jpeg;base64,${base64Data}`
                                             } 
                                         }
                                     ]
@@ -220,7 +259,7 @@ Responde ÚNICAMENTE con JSON (sin markdown):
                         const content = openrouterData.choices?.[0]?.message?.content;
                         if (content) {
                             careData = JSON.parse(content);
-                            console.log("✅ OpenRouter respondió exitosamente");
+                            console.log("✅ OpenRouter (Qwen3) respondió exitosamente");
                         }
                     } else {
                         const err = await openrouterRes.text();
