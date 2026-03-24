@@ -29,7 +29,7 @@ type Medicine = {
 };
 
 export default function PharmacyPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [medicines, setMedicines] = useState<Medicine[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -53,10 +53,16 @@ export default function PharmacyPage() {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
     useEffect(() => {
-        if (user) {
-            fetchMedicines();
+        if (authLoading) return;
+
+        if (!user) {
+            setMedicines([]);
+            setLoading(false);
+            return;
         }
-    }, [user]);
+
+        fetchMedicines();
+    }, [user, authLoading]);
 
     const fetchMedicines = async () => {
         if (!user) return;

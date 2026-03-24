@@ -69,7 +69,7 @@ const MAINTENANCE_ITEMS = [
 ];
 
 export default function GaragePage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
     const [events, setEvents] = useState<VehicleEvent[]>([]);
@@ -84,8 +84,18 @@ export default function GaragePage() {
     const [eventForm, setEventForm] = useState<Partial<VehicleEvent>>({ type: 'maintenance', date: new Date().toISOString().split('T')[0], maintenance_items: [] });
 
     useEffect(() => {
-        if (user) fetchVehicles();
-    }, [user]);
+        if (authLoading) return;
+
+        if (!user) {
+            setVehicles([]);
+            setSelectedVehicle(null);
+            setEvents([]);
+            setLoading(false);
+            return;
+        }
+
+        fetchVehicles();
+    }, [user, authLoading]);
 
     useEffect(() => {
         if (selectedVehicle) fetchEvents(selectedVehicle.id);

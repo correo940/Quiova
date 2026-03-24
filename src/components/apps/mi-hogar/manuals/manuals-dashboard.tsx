@@ -35,23 +35,31 @@ interface Stats {
     recentReminders: { title: string; manual_title: string; next_date: string }[];
 }
 
+const EMPTY_STATS: Stats = {
+    totalManuals: 0,
+    favoritesCount: 0,
+    upcomingReminders: 0,
+    expiringWarranties: 0,
+    manualsByRoom: [],
+    recentReminders: []
+};
+
 export function ManualsDashboard() {
-    const { user } = useAuth();
-    const [stats, setStats] = useState<Stats>({
-        totalManuals: 0,
-        favoritesCount: 0,
-        upcomingReminders: 0,
-        expiringWarranties: 0,
-        manualsByRoom: [],
-        recentReminders: []
-    });
+    const { user, loading: authLoading } = useAuth();
+    const [stats, setStats] = useState<Stats>(EMPTY_STATS);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
-            fetchStats();
+        if (authLoading) return;
+
+        if (!user) {
+            setStats(EMPTY_STATS);
+            setLoading(false);
+            return;
         }
-    }, [user]);
+
+        fetchStats();
+    }, [user, authLoading]);
 
     const fetchStats = async () => {
         try {

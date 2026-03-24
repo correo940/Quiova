@@ -28,13 +28,19 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
     const [showJoinDialog, setShowJoinDialog] = useState(false);
     const [newListName, setNewListName] = useState('');
     const [joinCode, setJoinCode] = useState('');
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        if (user) {
-            fetchLists();
+        if (authLoading) return;
+
+        if (!user) {
+            setLists([]);
+            setLoading(false);
+            return;
         }
-    }, [user]);
+
+        fetchLists();
+    }, [user, authLoading]);
 
     const fetchLists = async () => {
         try {
