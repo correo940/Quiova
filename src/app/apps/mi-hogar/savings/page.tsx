@@ -42,6 +42,7 @@ import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savin
 import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
 import BankStatementImporter from '@/components/apps/mi-hogar/savings/bank-statement-importer';
 import ResetDataDialog, { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
+import AccountDetailDialog from '@/components/apps/mi-hogar/savings/account-detail-dialog';
 
 // Types
 type BankAccount = {
@@ -68,6 +69,13 @@ type SavingsGoal = {
     icon?: string;
     linked_account_id?: string;
     interest_rate?: number;
+};
+
+type SavingsTransaction = {
+    id: string;
+    amount: number;
+    date: string;
+    description: string;
 };
 
 export type RecurringItem = {
@@ -113,8 +121,9 @@ export default function SavingsPage() {
     const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
     const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
-    // Transactions State (Shared logic for Account/Goal)
-    const [transactions, setTransactions] = useState<{ id: string, amount: number, date: string, description: string }[]>([]);
+    // Transactions State
+    const [goalTransactions, setGoalTransactions] = useState<SavingsTransaction[]>([]);
+    const [accountTransactions, setAccountTransactions] = useState<SavingsTransaction[]>([]);
     const [transType, setTransType] = useState<'deposit' | 'expense'>('deposit');
     const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
 
@@ -345,12 +354,12 @@ export default function SavingsPage() {
     // --- GENERIC TRANSACTION FETCHERS ---
     const fetchGoalTransactions = async (goalId: string) => {
         const { data } = await supabase.from('savings_goal_transactions').select('*').eq('goal_id', goalId).order('date', { ascending: false });
-        setTransactions(data || []);
+        setGoalTransactions(data || []);
     };
 
     const fetchAccountTransactions = async (accountId: string) => {
         const { data } = await supabase.from('savings_account_transactions').select('*').eq('account_id', accountId).order('date', { ascending: false });
-        setTransactions(data || []);
+        setAccountTransactions(data || []);
     };
 
     // --- OPEN DETAIL HANDLERS ---
@@ -358,16 +367,14 @@ export default function SavingsPage() {
         setSelectedGoal(goal);
         setTransType('deposit');
         setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-        setTransactions([]);
+        setGoalTransactions([]);
         await fetchGoalTransactions(goal.id);
         setIsGoalDetailOpen(true);
     };
 
     const handleOpenAccountDetail = async (acc: BankAccount) => {
         setSelectedAccount(acc);
-        setTransType('deposit');
-        setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-        setTransactions([]);
+        setAccountTransactions([]);
         await fetchAccountTransactions(acc.id);
         setIsAccountDetailOpen(true);
     };
@@ -459,30 +466,124 @@ export default function SavingsPage() {
         }
     };
 
-    const handleAddAccountTransaction = async () => {
-        if (!selectedAccount || !newTransaction.amount) return toast.error('Importe obligatorio');
+    const handleSubmitAccountTransaction = async ({
+        transactionId,
+        amount,
+        date,
+        description,
+        kind
+    }: {
+        transactionId?: string;
+        amount: number;
+        date: string;
+        description: string;
+        kind: 'deposit' | 'expense';
+    }) => {
+        if (!selectedAccount) {
+            toast.error('Selecciona una cuenta');
+            return;
+        }
+
         try {
-            let amount = parseFloat(newTransaction.amount);
-            if (transType === 'expense') amount = -amount;
-            const { error: txError } = await supabase.from('savings_account_transactions').insert({
-                account_id: selectedAccount.id,
-                amount: amount,
-                date: newTransaction.date,
-                description: newTransaction.description || (transType === 'deposit' ? 'Ingreso' : 'Retiro')
-            });
-            if (txError) throw txError;
-            const newTotal = (selectedAccount.current_balance || 0) + amount;
-            const { error: upError } = await supabase.from('savings_accounts').update({ current_balance: newTotal }).eq('id', selectedAccount.id);
-            if (upError) throw upError;
-            toast.success('Movimiento registrado');
-            setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
-            fetchAccountTransactions(selectedAccount.id);
-            fetchData(user?.id);
-            setSelectedAccount({ ...selectedAccount, current_balance: newTotal });
+            const signedAmount = kind === 'expense' ? -Math.abs(amount) : Math.abs(amount);
+            const currentTransaction = transactionId
+                ? accountTransactions.find((tx) => tx.id === transactionId)
+                : null;
+
+            if (transactionId && !currentTransaction) {
+                throw new Error('Movimiento no encontrado');
+            }
+
+            if (currentTransaction) {
+                const { error: txError } = await supabase
+                    .from('savings_account_transactions')
+                    .update({
+                        amount: signedAmount,
+                        date,
+                        description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro')
+                    })
+                    .eq('id', transactionId);
+
+                if (txError) throw txError;
+
+                const recalculatedBalance = (selectedAccount.current_balance || 0) - currentTransaction.amount + signedAmount;
+                const { error: accountError } = await supabase
+                    .from('savings_accounts')
+                    .update({ current_balance: recalculatedBalance })
+                    .eq('id', selectedAccount.id);
+
+                if (accountError) throw accountError;
+
+                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+                toast.success('Movimiento actualizado');
+            } else {
+                const { error: txError } = await supabase.from('savings_account_transactions').insert({
+                    account_id: selectedAccount.id,
+                    amount: signedAmount,
+                    date,
+                    description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro')
+                });
+
+                if (txError) throw txError;
+
+                const recalculatedBalance = (selectedAccount.current_balance || 0) + signedAmount;
+                const { error: accountError } = await supabase
+                    .from('savings_accounts')
+                    .update({ current_balance: recalculatedBalance })
+                    .eq('id', selectedAccount.id);
+
+                if (accountError) throw accountError;
+
+                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+                toast.success('Movimiento registrado');
+            }
+
+            await fetchAccountTransactions(selectedAccount.id);
+            await fetchData(user?.id);
         } catch (error) {
             console.error(error);
             toast.error('Error al guardar movimiento');
         }
+    };
+
+    const handleDeleteAccountTransaction = async (transactionId: string, amount: number) => {
+        if (!selectedAccount) return;
+
+        try {
+            const { error: txError } = await supabase
+                .from('savings_account_transactions')
+                .delete()
+                .eq('id', transactionId);
+
+            if (txError) throw txError;
+
+            const recalculatedBalance = (selectedAccount.current_balance || 0) - amount;
+            const { error: accountError } = await supabase
+                .from('savings_accounts')
+                .update({ current_balance: recalculatedBalance })
+                .eq('id', selectedAccount.id);
+
+            if (accountError) throw accountError;
+
+            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+            await fetchAccountTransactions(selectedAccount.id);
+            await fetchData(user?.id);
+            toast.success('Movimiento eliminado');
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar movimiento');
+        }
+    };
+
+    const handleAddAccountTransaction = async () => {
+        if (!newTransaction.amount) return toast.error('Importe obligatorio');
+
+        await handleSubmitAccountTransaction({
+            amount: parseFloat(newTransaction.amount),
+            date: newTransaction.date,
+            description: newTransaction.description,
+            kind: transType
+        });
     };
 
     const handleDeleteAccount = async () => {
@@ -494,6 +595,8 @@ export default function SavingsPage() {
             toast.success('Cuenta eliminada');
             setIsAccountDetailOpen(false);
             setSelectedAccount(null);
+            setAccountTransactions([]);
+            fetchData(user?.id);
         } catch (error) {
             console.error(error);
             toast.error('Error al eliminar cuenta');
@@ -576,6 +679,11 @@ export default function SavingsPage() {
     };
 
     // --- CALCULATIONS ---
+    const transactions = accountTransactions;
+    const selectedAccountPasswordId = selectedAccount?.password_id;
+    const selectedAccountPasswordName = selectedAccountPasswordId
+        ? passwords.find((p) => p.id === selectedAccountPasswordId)?.name
+        : undefined;
     const totalCurrentBalance = accounts.filter(a => a.include_in_total !== false).reduce((acc, curr) => acc + (curr.current_balance || 0), 0);
     const totalGoalSaved = goals.reduce((acc, curr) => acc + (curr.current_amount || 0), 0);
 
@@ -787,8 +895,8 @@ export default function SavingsPage() {
                         </div>
                         <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
                             <h4 className="font-medium text-sm">Historial</h4>
-                            {transactions.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Sin movimientos</p> :
-                                transactions.map(tx => (
+                            {goalTransactions.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Sin movimientos</p> :
+                                goalTransactions.map(tx => (
                                     <div key={tx.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                         <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
                                         <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
@@ -800,11 +908,24 @@ export default function SavingsPage() {
                 </DialogContent>
             </Dialog>
 
+            <AccountDetailDialog
+                open={isAccountDetailOpen}
+                onOpenChange={setIsAccountDetailOpen}
+                account={selectedAccount}
+                transactions={accountTransactions}
+                linkedPasswordName={selectedAccountPasswordName}
+                onSubmitTransaction={handleSubmitAccountTransaction}
+                onDeleteTransaction={handleDeleteAccountTransaction}
+                onDeleteAccount={handleDeleteAccount}
+                onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
+            />
+
+            {selectedAccount ? (false && (
             <Dialog open={isAccountDetailOpen} onOpenChange={setIsAccountDetailOpen}>
                 <DialogContent className="max-w-md sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">{selectedAccount?.logo_url && <img src={selectedAccount.logo_url} className="w-6 h-6 object-contain" />}{selectedAccount?.name}</div>
+                            <div className="flex items-center gap-2">{selectedAccount?.logo_url && <img src={selectedAccount?.logo_url} className="w-6 h-6 object-contain" />}{selectedAccount?.name}</div>
                             <Button variant="ghost" size="icon" onClick={handleDeleteAccount} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /></Button>
                         </DialogTitle>
                     </DialogHeader>
@@ -812,7 +933,7 @@ export default function SavingsPage() {
                         <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg text-center relative">
                             <p className="text-sm text-muted-foreground">Saldo Disponible</p>
                             <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedAccount?.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
-                            {selectedAccount?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedAccount.interest_rate}% Interés</div> : null}
+                            {selectedAccount?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedAccount?.interest_rate}% Interés</div> : null}
                         </div>
                         <div className="space-y-3 border-t pt-4">
                             <div className="flex justify-center gap-4 mb-2">
@@ -841,7 +962,7 @@ export default function SavingsPage() {
                         </div>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog>)) : null}
         </div>
     );
 }
