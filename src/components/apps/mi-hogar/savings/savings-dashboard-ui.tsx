@@ -29,6 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getApiUrl } from '@/lib/api-utils';
 import PendingBalanceTab from './pending-balance-tab';
 
 // --- TYPES (Duplicated from page.tsx for decoupling) ---
@@ -170,7 +171,8 @@ export default function SavingsDashboardUI({
             setAiLoading(true);
             setAiError(false);
             try {
-                const res = await fetch('/api/financial-insights', {
+                const apiUrl = getApiUrl('api/financial-insights');
+                const res = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ monthlyStats, recentTransactions })

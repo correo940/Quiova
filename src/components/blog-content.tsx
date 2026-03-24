@@ -9,8 +9,8 @@ import ArticleCard from '@/components/article-card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
 import CategoryIcon from '@/components/category-icon';
-import { Capacitor } from '@capacitor/core';
 import LogoLoader from '@/components/ui/logo-loader';
+import { getApiUrl } from '@/lib/api-utils';
 
 export default function BlogContent() {
     const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | 'all'>('all');
@@ -23,9 +23,7 @@ export default function BlogContent() {
     useEffect(() => {
         async function loadArticles() {
             try {
-                const isMobile = Capacitor.isNativePlatform();
-                const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-                const response = await fetch(`${baseUrl}/api/articles`);
+                const response = await fetch(getApiUrl('api/articles'));
                 if (response.ok) {
                     const data = await response.json();
                     setArticles(data);

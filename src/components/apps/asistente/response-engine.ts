@@ -2,6 +2,7 @@
 // Connects to the LLM backend to process queries with full user context
 
 import { supabase } from '@/lib/supabase';
+import { getApiUrl } from '@/lib/api-utils';
 
 export interface AssistantDataContext {
     userId: string;
@@ -18,7 +19,8 @@ export interface Message {
 // Main function to process user query and generate response via Groq API
 export async function processQuery(query: string, ctx: AssistantDataContext): Promise<string> {
     try {
-        const res = await fetch('/api/assistant/chat', {
+        const apiUrl = getApiUrl('api/assistant/chat');
+        const res = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -30,15 +30,36 @@ export default function PlantNotificationManager() {
                     return;
                 }
 
-                const plantsToWater = plants?.filter(plant => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const evaluated = plants?.map(plant => {
                     const nextDate = parseISO(plant.next_watering_date);
-                    return differenceInDays(nextDate, new Date()) <= 0;
+                    nextDate.setHours(0, 0, 0, 0);
+                    return {
+                        ...plant,
+                        diffDays: differenceInDays(nextDate, today)
+                    };
                 });
 
-                if (plantsToWater && plantsToWater.length > 0) {
-                    const names = plantsToWater.map(p => p.name).join(', ');
+                // Recordar antes: vencidas (<=0) y también las que tocan en 1 día (mañana)
+                const plantsToNotify = evaluated?.filter(p => p.diffDays !== null && p.diffDays <= 1) || [];
+                const dueNow = plantsToNotify.filter(p => p.diffDays !== null && p.diffDays <= 0);
+                const dueTomorrow = plantsToNotify.filter(p => p.diffDays !== null && p.diffDays === 1);
+
+                if (plantsToNotify.length > 0) {
+                    const namesNow = dueNow.map(p => p.name).join(', ');
+                    const namesTomorrow = dueTomorrow.map(p => p.name).join(', ');
+
+                    const description =
+                        dueNow.length > 0 && dueTomorrow.length > 0
+                            ? `Hoy toca riego: ${namesNow}. Mañana: ${namesTomorrow}.`
+                            : dueNow.length > 0
+                                ? `Hoy toca riego: ${namesNow}.`
+                                : `Mañana toca riego: ${namesTomorrow}.`;
+
                     toast('🔔 Recordatorio de Riego', {
-                        description: `Tus plantas necesitan agua: ${names}`,
+                        description,
                         icon: <Droplets className="w-5 h-5 text-blue-500" />,
                         duration: 10000,
                         action: {

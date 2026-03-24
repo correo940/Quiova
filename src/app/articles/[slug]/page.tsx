@@ -18,10 +18,14 @@ type Props = {
 import { listArticles } from '@/lib/github';
 
 export async function generateStaticParams() {
+  // During mobile build, we only want a minimal set of articles to speed up and avoid 404 errors
+  if (process.env.NEXT_PUBLIC_IS_MOBILE_BUILD === 'true') {
+    return [{ slug: 'welcome' }, { slug: 'placeholder' }];
+  }
+
   try {
     const articles = await listArticles();
     if (!articles || articles.length === 0) {
-      // Return a placeholder if no articles found or error handled internally
       return [{ slug: 'placeholder' }];
     }
     return articles.map((article) => ({
@@ -29,7 +33,6 @@ export async function generateStaticParams() {
     }));
   } catch (error) {
     console.warn('Failed to list articles for static params:', error);
-    // Return placeholder to allow build to pass
     return [{ slug: 'placeholder' }];
   }
 }

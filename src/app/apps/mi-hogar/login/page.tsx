@@ -7,6 +7,8 @@ import { motion } from 'framer-motion'
 import { Lock, Mail, Loader2, Home, Eye, EyeOff } from 'lucide-react'
 import { translateAuthError } from '@/lib/utils'
 
+const AUTH_TIMEOUT_MS = 12000
+
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -30,12 +32,18 @@ export default function LoginPage() {
                 if (error) throw error
                 setError('Revisa tu email para confirmar tu cuenta.')
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                })
+                const result = await Promise.race([
+                    supabase.auth.signInWithPassword({
+                        email,
+                        password,
+                    }),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
+                    ),
+                ])
+                const { error } = result
                 if (error) throw error
-                router.push('/apps/mi-hogar')
+                router.replace('/apps/mi-hogar')
             }
         } catch (err: any) {
             setError(translateAuthError(err.message))

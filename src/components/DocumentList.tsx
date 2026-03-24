@@ -2,13 +2,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { getApiUrl } from '@/lib/api-utils';
 
 export default function DocumentList() {
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/list')
+    const apiUrl = getApiUrl('api/list');
+    fetch(apiUrl)
       .then(r => r.json())
       .then(d => { setDocs(d.docs || []); setLoading(false); })
       .catch(() => setLoading(false));

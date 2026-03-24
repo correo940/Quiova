@@ -49,3 +49,10 @@ firestore-debug.log
 *.zip
 
 tsc_error.log
+android/keystore.properties
+android/*.jks
+catch_errors.js
+catch_errors_pw.js
+playwright_logs.txt
+pw_logs_full.txt
+test-results/

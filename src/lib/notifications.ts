@@ -1,15 +1,35 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { toast } from 'sonner';
 
+let permissionPromise: Promise<boolean> | null = null;
+let isPermissionGranted: boolean | null = null;
+
 export const NotificationManager = {
     async requestPermissions() {
-        try {
-            const result = await LocalNotifications.requestPermissions();
-            return result.display === 'granted';
-        } catch (e) {
-            console.error('Error requesting notification permissions:', e);
-            return false;
-        }
+        if (isPermissionGranted !== null) return isPermissionGranted;
+        if (permissionPromise) return permissionPromise;
+
+        permissionPromise = (async () => {
+            try {
+                // Return cached status if already granted
+                const status = await LocalNotifications.checkPermissions();
+                if (status.display === 'granted') {
+                    isPermissionGranted = true;
+                    return true;
+                }
+
+                const result = await LocalNotifications.requestPermissions();
+                isPermissionGranted = result.display === 'granted';
+                return isPermissionGranted;
+            } catch (e) {
+                console.error('Error requesting notification permissions:', e);
+                return false;
+            } finally {
+                permissionPromise = null;
+            }
+        })();
+
+        return permissionPromise;
     },
 
     async schedule(options: {

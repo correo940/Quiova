@@ -7,6 +7,7 @@ import Footer from '@/components/layout/footer';
 import Taskbar from '@/components/layout/taskbar';
 import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
+import { AuthProvider } from '@/components/apps/mi-hogar/auth-context';
 
 export const metadata: Metadata = {
   title: 'Quioba',
@@ -41,19 +42,21 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen" suppressHydrationWarning>
-        <ClientProvider>
-          <div className="print:hidden">
-            {/* <Header /> */}
-          </div>
-          <main className="flex-grow">{children}</main>
-          <div className="print:hidden">
-            <Footer />
-            <Taskbar />
-            <MobileNav />
-          </div>
-          <Toaster />
-          <SonnerToaster position="top-right" />
-        </ClientProvider>
+        <AuthProvider>
+          <ClientProvider>
+            <div className="print:hidden">
+              {/* <Header /> */}
+            </div>
+            <main className="flex-grow">{children}</main>
+            <div className="print:hidden">
+              <Footer />
+              <Taskbar />
+              <MobileNav />
+            </div>
+            <Toaster />
+            <SonnerToaster position="top-right" />
+          </ClientProvider>
+        </AuthProvider>
       </body>
     </html>
   );

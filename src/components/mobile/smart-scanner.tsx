@@ -8,6 +8,7 @@ import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface SmartScannerProps {
     onClose: () => void;
@@ -191,9 +192,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
             });
 
             if (image.base64String) {
-                const isMobile = Capacitor.isNativePlatform();
-                const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-                const apiUrl = `${baseUrl}/api/mi-hogar/identify-product`;
+                const apiUrl = getApiUrl('api/mi-hogar/identify-product');
 
                 const resizeImage = async (base64Str: string): Promise<string> => {
                     return new Promise((resolve) => {

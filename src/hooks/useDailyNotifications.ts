@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { NotificationManager } from '@/lib/notifications';
 
 const NOTIFICATION_ID = 1001; // ID fijo para el resumen diario
 
@@ -16,12 +17,10 @@ export function useDailyNotifications() {
         const checkPermissions = async () => {
             const settings = getSettings();
             if (settings.enabled) {
-                const state = await LocalNotifications.checkPermissions();
-                if (state.display !== 'granted') {
-                    await LocalNotifications.requestPermissions();
-                }
+                // Use the shared NotificationManager to prevent Android native plugin freezes
+                const granted = await NotificationManager.requestPermissions();
 
-                if (Capacitor.getPlatform() !== 'web') {
+                if (Capacitor.getPlatform() !== 'web' && granted) {
                     // Create high priority channel for daily summary
                     try {
                         await LocalNotifications.createChannel({

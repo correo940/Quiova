@@ -15,6 +15,7 @@ function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false);
   const router = useRouter();
   const { isLauncherMode, setIsLauncherMode } = useGlobalMenu();
 
@@ -24,31 +25,47 @@ function HomeContent() {
       const isNative = Capacitor.isNativePlatform();
       const isSmallScreen = window.innerWidth < 768;
 
-      // If we are on mobile/small screen, we should be in launcher mode
       if (isNative || isSmallScreen) {
         setIsLauncherMode(true);
       }
     };
 
     checkDisplayMode();
-    // Add a small delay to allow context to stabilize before finishing loading
     const timer = setTimeout(() => setLoading(false), 100);
     return () => clearTimeout(timer);
   }, [setIsLauncherMode]);
 
-  // Handle Supabase Auth Session
+  // Handle Supabase Auth Session — with error handling so it never gets stuck
   useEffect(() => {
     let mounted = true;
 
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (mounted) {
-        setUser(session?.user ?? null);
-        setIsAuthChecking(false);
+    const resolveAuthSafely = async () => {
+      try {
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+        ]);
+
+        if (!mounted) return;
+
+        if (sessionResult && typeof sessionResult === 'object' && 'data' in sessionResult) {
+          setUser(sessionResult.data.session?.user ?? null);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Home: Error getting session', error);
+        if (mounted) {
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setIsAuthChecking(false);
+        }
       }
     };
 
-    getInitialSession();
+    resolveAuthSafely();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
@@ -66,7 +83,8 @@ function HomeContent() {
   // Redirect to login ONLY if we are sure we need it and are in launcher mode
   useEffect(() => {
     if (!isAuthChecking && !loading && isLauncherMode && !user) {
-      router.push('/login');
+      setIsRedirectingToLogin(true);
+      router.replace('/login');
     }
   }, [isLauncherMode, user, isAuthChecking, loading, router]);
 
@@ -80,9 +98,18 @@ function HomeContent() {
     );
   }
 
+  if (isRedirectingToLogin) {
+    return (
+      <div className="container mx-auto px-4 py-20 min-h-[60vh] flex flex-col items-center justify-center gap-6">
+        <LogoLoader size="lg" />
+        <p className="text-xl font-medium text-slate-600 animate-pulse">Abriendo acceso seguro...</p>
+      </div>
+    );
+  }
+
   // Mobile Launcher View
   if (isLauncherMode && user) {
-    return <MobileLauncher onLaunchDesktop={() => setIsLauncherMode(false)} />;
+    return <MobileLauncher user={user} onLaunchDesktop={() => setIsLauncherMode(false)} />;
   }
 
   // Desktop Dashboard View

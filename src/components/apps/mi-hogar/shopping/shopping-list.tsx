@@ -10,6 +10,7 @@ import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, Sc
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { getApiUrl } from '@/lib/api-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
@@ -180,9 +181,8 @@ export default function ShoppingList() {
 
             try {
                 // Call API Route instead of Server Action
-                const isMobile = (window as any).Capacitor?.isNativePlatform();
-                const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-                const response = await fetch(`${baseUrl}/api/mi-hogar/identify-product`, {
+                const apiUrl = getApiUrl('api/mi-hogar/identify-product');
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -11,6 +11,7 @@ import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { getApiUrl } from '@/lib/api-utils';
 
 type ShiftInfo = {
     name: string;
@@ -84,10 +85,7 @@ export default function CuadrantePage() {
     const analyzeImage = async (base64Data: string) => {
         const resizedBase64 = await resizeImage(base64Data);
 
-        const isMobile = Capacitor.isNativePlatform();
-        const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-
-        const response = await fetch(`${baseUrl}/api/cuadrante/analyze`, {
+        const response = await fetch(getApiUrl('api/cuadrante/analyze'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ base64Image: resizedBase64 })
@@ -167,10 +165,7 @@ export default function CuadrantePage() {
         setError(null);
 
         try {
-            const isMobile = Capacitor.isNativePlatform();
-            const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-
-            const response = await fetch(`${baseUrl}/api/cuadrante/search`, {
+            const response = await fetch(getApiUrl('api/cuadrante/search'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

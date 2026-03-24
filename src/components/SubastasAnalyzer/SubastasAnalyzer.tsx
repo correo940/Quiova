@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import styles from './SubastasAnalyzer.module.css';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface Analysis {
   inmueble?: {
@@ -91,7 +92,8 @@ export default function SubastasAnalyzer() {
       const formData = new FormData();
       formData.append('file', files[0]); // Analiza solo el primer archivo
 
-      const response = await fetch('/api/analyze', {
+      const apiUrl = getApiUrl('api/analyze');
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
       });

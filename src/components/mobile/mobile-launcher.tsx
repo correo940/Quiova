@@ -75,6 +75,7 @@ export interface NotificationItem {
 
 interface MobileLauncherProps {
     onLaunchDesktop: () => void;
+    user: any;
 }
 
 const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Light) => {
@@ -85,10 +86,10 @@ const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Light) => {
     }
 };
 
-export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps) {
+export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: MobileLauncherProps) {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<any>(initialUser);
     const [profile, setProfile] = useState<any>(null);
     const [currentTime, setCurrentTime] = useState('');
     const [currentDate, setCurrentDate] = useState('');
@@ -294,60 +295,62 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
     };
 
     const fetchApps = async (userId: string) => {
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('FetchApps Timeout')), 3000)
+        );
+
         try {
-            const { data: marketplaceApps, error: appsError } = await supabase
-                .from('marketplace_apps')
-                .select('*')
-                .eq('is_active', true)
-                .order('price', { ascending: true });
+            const fetchPromise = (async () => {
+                const { data: marketplaceApps, error: appsError } = await supabase
+                    .from('marketplace_apps')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('price', { ascending: true });
 
-            if (appsError || !marketplaceApps || marketplaceApps.length === 0) {
-                console.warn('📱 Marketplace: Using fallback apps', appsError?.message);
-                setApps(FALLBACK_APPS);
-                setLoadingApps(false);
-                return;
-            }
+                if (appsError || !marketplaceApps || marketplaceApps.length === 0) {
+                    console.warn('📱 Marketplace: Using fallback apps', appsError?.message);
+                    return FALLBACK_APPS;
+                }
 
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('subscription_tier')
-                .eq('id', userId)
-                .single();
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('subscription_tier')
+                    .eq('id', userId)
+                    .single();
 
-            const isPremium = profileData?.subscription_tier === 'premium';
+                const isPremium = profileData?.subscription_tier === 'premium';
 
-            if (isPremium) {
-                const allUnlocked: AppWithStatus[] = marketplaceApps.map(app => ({
+                if (isPremium) {
+                    return marketplaceApps.map(app => ({
+                        ...app,
+                        isOwned: true,
+                        isLocked: false
+                    }));
+                }
+
+                const { data: purchases } = await supabase
+                    .from('user_app_purchases')
+                    .select('app_id, expires_at')
+                    .eq('user_id', userId)
+                    .eq('status', 'active');
+
+                const ownedAppIds = new Set(
+                    (purchases || [])
+                        .filter(p => !p.expires_at || new Date(p.expires_at) > new Date())
+                        .map(p => p.app_id)
+                );
+
+                return marketplaceApps.map(app => ({
                     ...app,
-                    isOwned: true,
-                    isLocked: false
+                    isOwned: ownedAppIds.has(app.id),
+                    isLocked: !ownedAppIds.has(app.id)
                 }));
-                setApps(allUnlocked);
-                setLoadingApps(false);
-                return;
-            }
+            })();
 
-            const { data: purchases } = await supabase
-                .from('user_app_purchases')
-                .select('app_id, expires_at')
-                .eq('user_id', userId)
-                .eq('status', 'active');
-
-            const ownedAppIds = new Set(
-                (purchases || [])
-                    .filter(p => !p.expires_at || new Date(p.expires_at) > new Date())
-                    .map(p => p.app_id)
-            );
-
-            const processedApps: AppWithStatus[] = marketplaceApps.map(app => ({
-                ...app,
-                isOwned: ownedAppIds.has(app.id),
-                isLocked: !ownedAppIds.has(app.id)
-            }));
-
-            setApps(processedApps);
+            const result = await Promise.race([fetchPromise, timeoutPromise]) as AppWithStatus[];
+            setApps(result);
         } catch (error) {
-            console.error('📱 Marketplace: Error, using fallback', error);
+            console.error('📱 Marketplace: Error/Timeout, using fallback', error);
             setApps(FALLBACK_APPS);
         } finally {
             setLoadingApps(false);
@@ -374,22 +377,31 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
     useEffect(() => {
         if (!mounted) return;
 
+        let isReplaced = false;
+        const safetyTimeout = setTimeout(() => {
+            if (loadingApps && !isReplaced) {
+                console.warn('📱 MobileLauncher: Safety timeout reached');
+                setApps(FALLBACK_APPS);
+                setLoadingApps(false);
+            }
+        }, 4000);
+
         const init = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Use Initial User if available from props to avoid redundant getSession
+                const currentUser = initialUser || (await supabase.auth.getSession()).data.session?.user;
 
-                if (session?.user) {
-                    setUser(session.user);
-                    const { data: profileData } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
+                if (currentUser) {
+                    setUser(currentUser);
+                    
+                    // Fetch profile in background
+                    supabase.from('profiles').select('*').eq('id', currentUser.id).single()
+                        .then(({ data }) => { if (data) setProfile(data); });
 
-                    if (profileData) setProfile(profileData);
-                    await fetchApps(session.user.id);
-                    await loadNotifications(session.user.id);
+                    await fetchApps(currentUser.id);
+                    await loadNotifications(currentUser.id);
                 } else {
+                    console.log('📱 MobileLauncher: No user session, using fallback');
                     setApps(FALLBACK_APPS);
                     setLoadingApps(false);
                 }
@@ -397,6 +409,9 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
                 console.error('📱 MobileLauncher: Initialization error', err);
                 setApps(FALLBACK_APPS);
                 setLoadingApps(false);
+            } finally {
+                isReplaced = true;
+                clearTimeout(safetyTimeout);
             }
         };
 
@@ -404,7 +419,10 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
         updateDateTime();
 
         const timer = setInterval(updateDateTime, 1000);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            clearTimeout(safetyTimeout);
+        };
     }, [mounted]);
 
     // --- Name Editing ---
@@ -540,11 +558,11 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
     }
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (window.scrollY === 0) startY.current = e.touches[0].clientY;
+        if (typeof window !== 'undefined' && window.scrollY === 0) startY.current = e.touches[0].clientY;
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        if (startY.current > 0 && window.scrollY <= 0) {
+        if (startY.current > 0 && typeof window !== 'undefined' && window.scrollY <= 0) {
             const currentY = e.touches[0].clientY;
             const diff = currentY - startY.current;
             if (diff > 0 && diff < 150) {
@@ -845,7 +863,13 @@ export default function MobileLauncher({ onLaunchDesktop }: MobileLauncherProps)
                         ) : (
                             <div className="flex items-center gap-2">
                                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                    {profile?.nickname || user?.email?.split('@')[0] || 'Explorador'}
+                                    {user ? (
+                                        profile?.nickname || user?.email?.split('@')[0] || 'Usuario'
+                                    ) : (
+                                        <Link href="/login" className="text-emerald-600 font-bold decoration-emerald-200 underline underline-offset-4">
+                                            Iniciar Sesión
+                                        </Link>
+                                    )}
                                 </h1>
                                 <button
                                     onClick={startEditingName}

@@ -441,14 +441,24 @@ export default function ProfilePage() {
                                 </Dialog>
                             )}
                         </div>
-                        <Button
-                            variant="destructive"
-                            className="w-full gap-2"
-                            onClick={handleLogout}
-                        >
-                            <LogOut className="w-4 h-4" />
-                            Cerrar Sesión
-                        </Button>
+                        {user ? (
+                            <Button
+                                variant="destructive"
+                                className="w-full gap-2"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Cerrar Sesión
+                            </Button>
+                        ) : (
+                            <Button
+                                className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                onClick={() => router.push('/login')}
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                Iniciar Sesión / Registrarse
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
 

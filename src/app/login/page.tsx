@@ -9,6 +9,8 @@ import { translateAuthError } from '@/lib/utils'
 
 import LogoLoader from '@/components/ui/logo-loader'
 
+const AUTH_TIMEOUT_MS = 12000
+
 // Floating particle component for background ambiance (Light version)
 function FloatingParticle({ delay, duration, x, y, size }: { delay: number; duration: number; x: string; y: string; size: number }) {
     return (
@@ -61,13 +63,19 @@ export default function LoginPage() {
                 if (error) throw error
                 setError('Revisa tu email para confirmar tu cuenta.')
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                })
+                const result = await Promise.race([
+                    supabase.auth.signInWithPassword({
+                        email,
+                        password,
+                    }),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
+                    ),
+                ])
+                const { error } = result
                 if (error) throw error
 
-                router.push('/')
+                router.replace('/')
                 router.refresh()
             }
         } catch (err: any) {

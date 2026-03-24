@@ -39,6 +39,10 @@ export async function getArticlesFromGitHub(): Promise<Article[]> {
     );
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.warn('⚠️ Artículos no encontrados en GitHub (404). Continuando con lista vacía.');
+        return [];
+      }
       console.error('❌ Error al obtener artículos de GitHub', response.status, await response.text());
       return [];
     }

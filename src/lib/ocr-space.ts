@@ -1,4 +1,6 @@
 
+import { getApiUrl } from '@/lib/api-utils';
+
 export interface UserShiftResult {
     found: boolean;
     date: string;
@@ -12,14 +14,6 @@ export interface UserShiftResult {
 }
 
 const OCR_SPACE_KEY = "K84515341388957";
-
-// Helper to get API base URL for mobile
-function getApiBaseUrl(): string {
-    if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
-        return 'https://www.quioba.com';
-    }
-    return '';
-}
 
 export async function findUserShiftOCRSpace(base64Image: string, targetName: string, shiftTypes: any[] = []): Promise<UserShiftResult | null> {
     console.log(`[OCR.space] Starting Hierarchical Analysis for: ${targetName}`);
@@ -35,8 +29,7 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
         formData.append("scale", "true");
         formData.append("OCREngine", "2");
 
-        const baseUrl = getApiBaseUrl();
-        const response = await fetch(`${baseUrl}/api/ocr-space`, {
+        const response = await fetch(getApiUrl('api/ocr-space'), {
             method: "POST",
             body: formData,
         });

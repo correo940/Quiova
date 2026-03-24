@@ -16,6 +16,7 @@ import Webcam from 'react-webcam';
 import Link from 'next/link';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getApiUrl } from '@/lib/api-utils';
 
 type Medicine = {
     id: string;
@@ -173,9 +174,7 @@ export default function PharmacyPage() {
 
         try {
             // const result = await identifyMedicineAction(imageSrc);
-            const isMobile = (window as any).Capacitor?.isNativePlatform();
-            const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-            const response = await fetch(`${baseUrl}/api/mi-hogar/identify-medicine`, {
+            const response = await fetch(getApiUrl('api/mi-hogar/identify-medicine'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ base64Image: imageSrc })

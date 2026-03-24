@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import Link from 'next/link';
+import { getApiUrl } from '@/lib/api-utils';
 // import { generateRecipeAction, RecipeData } from '@/app/actions/generate-recipe';
 // Moved type definition here to avoid importing the server action file
 export interface RecipeData {
@@ -55,9 +56,7 @@ export default function RecipesPage() {
         setRecipe(null);
         try {
             // const result = await generateRecipeAction(pantryItems);
-            const isMobile = (window as any).Capacitor?.isNativePlatform();
-            const baseUrl = isMobile ? 'https://www.quioba.com' : '';
-            const response = await fetch(`${baseUrl}/api/mi-hogar/generate-recipe`, {
+            const response = await fetch(getApiUrl('api/mi-hogar/generate-recipe'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pantryItems })

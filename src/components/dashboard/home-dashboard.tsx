@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
-import PostItQuotes from '@/components/post-it-quotes';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
@@ -42,14 +41,9 @@ export default function HomeDashboard() {
                         <CalendarWidget date={selectedDate} onDateSelect={setSelectedDate} />
                     </div>
 
-                    {/* Columna 2: Organizador (Centro) */}
-                    <div className="lg:col-span-4 flex flex-col h-full min-h-0">
+                    {/* Columna 2: Organizador (Centro y Derecha) */}
+                    <div className="lg:col-span-8 flex flex-col h-full min-h-0">
                         <OrganizerWidget selectedDate={selectedDate} />
-                    </div>
-
-                    {/* Columna 3: Nevera (Derecha) */}
-                    <div className="lg:col-span-4 flex flex-col h-full min-h-0">
-                        <PostItQuotes compact={true} />
                     </div>
                 </div>
             </div>

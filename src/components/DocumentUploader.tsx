@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { getApiUrl } from '@/lib/api-utils';
 
 export default function DocumentUploader() {
   const [file, setFile] = useState<File | null>(null);
@@ -17,7 +18,8 @@ export default function DocumentUploader() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const apiUrl = getApiUrl('api/upload');
+      const res = await fetch(apiUrl, { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
       setResult(data.doc);

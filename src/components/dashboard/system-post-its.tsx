@@ -11,7 +11,7 @@ import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { LocalNotifications } from '@capacitor/local-notifications';
+import { NotificationManager } from '@/lib/notifications';
 import { toast } from 'sonner';
 
 type AdminPostIt = {
@@ -277,15 +277,12 @@ function ReminderButton({ postIt }: { postIt: AdminPostIt }) {
                 return;
             }
 
-            await LocalNotifications.requestPermissions();
-            await LocalNotifications.schedule({
-                notifications: [{
-                    title: `Aviso: ${postIt.title}`,
-                    body: postIt.content,
-                    id: new Date().getTime(), // Random ID
-                    schedule: { at: notifyTime },
-                    sound: 'beep.wav',
-                }]
+            await NotificationManager.requestPermissions();
+            await NotificationManager.schedule({
+                id: new Date().getTime(), // Random ID
+                title: `Aviso: ${postIt.title}`,
+                body: postIt.content,
+                schedule: { at: notifyTime },
             });
 
             toast.success(`Aviso programado para ${minutesBefore < 60 ? minutesBefore + ' minutos' : minutesBefore / 60 + ' horas'} antes.`);

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface PendingBalanceImageScannerProps {
     onScanSuccess: (data: { amount: string, concept: string, date: string, merchant: string }) => void;
@@ -40,7 +41,8 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
                 reader.readAsDataURL(file);
             });
 
-            const response = await fetch('/api/scan-receipt', {
+            const apiUrl = getApiUrl('api/scan-receipt');
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageBase64: base64 })

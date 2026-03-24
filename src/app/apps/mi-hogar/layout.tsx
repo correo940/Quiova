@@ -1,6 +1,6 @@
 'use client'
 
-import { AuthProvider, useAuth } from '@/components/apps/mi-hogar/auth-context'
+import { useAuth } from '@/components/apps/mi-hogar/auth-context'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Loader2, Lock, Sword } from 'lucide-react'
@@ -181,8 +181,6 @@ export default function MiHogarLayout({
     children: React.ReactNode
 }) {
     return (
-        <AuthProvider>
-            <AuthGuard>{children}</AuthGuard>
-        </AuthProvider>
+        <AuthGuard>{children}</AuthGuard>
     )
 }

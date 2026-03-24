@@ -23,17 +23,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
+        // Safety timeout — never stay loading more than 5 seconds
+        const safetyTimer = setTimeout(() => {
+            setLoading(false)
+        }, 5000)
+
         // Initial session check
         const initAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            setSession(session)
-            setUser(session?.user ?? null)
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                setSession(session)
+                setUser(session?.user ?? null)
 
-            if (session?.user) {
-                await checkPremiumStatus(session.user.id)
+                if (session?.user) {
+                    await checkPremiumStatus(session.user.id)
+                }
+            } catch (error) {
+                console.error('AuthProvider: Error initializing auth', error)
+            } finally {
+                setLoading(false)
+                clearTimeout(safetyTimer)
             }
-
-            setLoading(false)
         }
 
         initAuth()
@@ -54,7 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false)
         })
 
-        return () => subscription.unsubscribe()
+        return () => {
+            subscription.unsubscribe()
+            clearTimeout(safetyTimer)
+        }
     }, [])
 
     const checkPremiumStatus = async (userId: string) => {
