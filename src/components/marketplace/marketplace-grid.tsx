@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
     LayoutGrid, ShoppingCart, Settings, Calendar,
     FileText, KeyRound, MessageCircle, ShoppingBag,
-    ChefHat, ListTodo, Lock, Sparkles, Monitor, Leaf
+    ChefHat, ListTodo, Lock, Sparkles, Monitor, Leaf, Brain
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { AppWithStatus, MarketplaceApp } from '@/types/marketplace';
@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 const IconMap: { [key: string]: any } = {
     Settings, ShoppingCart, ShoppingBag, ChefHat,
     ListTodo, Calendar, FileText, KeyRound, MessageCircle,
-    Monitor, Leaf
+    Monitor, Leaf, Brain
 };
 
 // Fallback apps - used when marketplace_apps table doesn't exist yet
@@ -30,7 +30,30 @@ const FALLBACK_APPS: AppWithStatus[] = [
     { id: 'fb-7', key: 'passwords', name: 'Gestor de Contraseñas', description: 'Almacena contraseñas seguras.', icon_key: 'KeyRound', route: '/apps/passwords', price: 5.99, category: 'utility', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-8', key: 'assistant', name: 'Asistente Quioba', description: 'Tu asistente personal con IA.', icon_key: 'MessageCircle', route: '/apps/mi-hogar/asistente', price: 9.99, category: 'productivity', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-9', key: 'huerto', name: 'Mis Plantas/Huerto', description: 'Identifica y cuida tus plantas con IA.', icon_key: 'Leaf', route: '/apps/huerto', price: 2.99, category: 'lifestyle', is_active: true, isOwned: false, isLocked: true },
+    { id: 'fb-10', key: 'meditation', name: 'Pausa', description: 'Meditacion breve, respiracion y espacio mental.', icon_key: 'Brain', route: '/apps/mi-hogar/meditation', price: 0, category: 'lifestyle', is_active: true, isOwned: true, isLocked: false },
 ];
+
+const LOCAL_MEDITATION_APP: AppWithStatus = {
+    id: 'local-meditation',
+    key: 'meditation',
+    name: 'Pausa',
+    description: 'Meditacion breve, respiracion y espacio mental.',
+    icon_key: 'Brain',
+    route: '/apps/mi-hogar/meditation',
+    price: 0,
+    category: 'lifestyle',
+    is_active: true,
+    isOwned: true,
+    isLocked: false
+};
+
+function withLocalMeditationApp(apps: AppWithStatus[]) {
+    if (apps.some((app) => app.key === LOCAL_MEDITATION_APP.key)) {
+        return apps;
+    }
+
+    return [...apps, LOCAL_MEDITATION_APP];
+}
 
 // Color styles per app key
 const getAppStyle = (appKey: string) => {
@@ -44,6 +67,7 @@ const getAppStyle = (appKey: string) => {
         case 'passwords': return { bg: 'bg-amber-50', text: 'text-amber-600', decoration: 'bg-amber-500' };
         case 'assistant': return { bg: 'bg-violet-50', text: 'text-violet-600', decoration: 'bg-violet-500' };
         case 'huerto': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500' };
+        case 'meditation': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500' };
         default: return { bg: 'bg-slate-50', text: 'text-slate-600', decoration: 'bg-slate-500' };
     }
 };
@@ -81,7 +105,7 @@ export default function MarketplaceGrid({
 
             if (appsError || !marketplaceApps || marketplaceApps.length === 0) {
                 console.warn('📱 Marketplace: Using fallback apps');
-                setApps(FALLBACK_APPS);
+                setApps(withLocalMeditationApp(FALLBACK_APPS));
                 setLoadingApps(false);
                 return;
             }
@@ -96,7 +120,7 @@ export default function MarketplaceGrid({
             const isPremium = profileData?.subscription_tier === 'premium';
 
             if (isPremium) {
-                setApps(marketplaceApps.map(app => ({ ...app, isOwned: true, isLocked: false })));
+                setApps(withLocalMeditationApp(marketplaceApps.map(app => ({ ...app, isOwned: true, isLocked: false }))));
                 setLoadingApps(false);
                 return;
             }
@@ -113,16 +137,16 @@ export default function MarketplaceGrid({
                     .map(p => p.app_id)
             );
 
-            const processedApps: AppWithStatus[] = marketplaceApps.map(app => ({
+            const processedApps: AppWithStatus[] = withLocalMeditationApp(marketplaceApps.map(app => ({
                 ...app,
                 isOwned: ownedAppIds.has(app.id),
                 isLocked: !ownedAppIds.has(app.id)
-            }));
+            })));
 
             setApps(processedApps);
         } catch (error) {
             console.error('📱 Marketplace: Error, using fallback', error);
-            setApps(FALLBACK_APPS);
+            setApps(withLocalMeditationApp(FALLBACK_APPS));
         } finally {
             setLoadingApps(false);
         }
@@ -136,11 +160,11 @@ export default function MarketplaceGrid({
                     setUserId(session.user.id);
                     await fetchApps(session.user.id);
                 } else {
-                    setApps(FALLBACK_APPS);
+                    setApps(withLocalMeditationApp(FALLBACK_APPS));
                     setLoadingApps(false);
                 }
             } catch {
-                setApps(FALLBACK_APPS);
+                setApps(withLocalMeditationApp(FALLBACK_APPS));
                 setLoadingApps(false);
             }
         };

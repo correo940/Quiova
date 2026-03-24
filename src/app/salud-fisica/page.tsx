@@ -4,14 +4,9 @@ import ArticleCard from '@/components/article-card';
 import type { Article as SiteArticle, ArticleCategory } from '@/types';
 
 export default async function SaludFisicaPage() {
-  // 🔍 DEBUG: Ver todos los artículos
-  const allArticles = await getArticlesFromGitHub();
-  console.log('='.repeat(50));
-  console.log('📚 TOTAL ARTÍCULOS:', allArticles.length);
-  console.log('📋 CATEGORÍAS:', allArticles.map(a => `"${a.category}"`).join(', '));
-  console.log('='.repeat(50));
-
+  // 🔍 DEBUG: Obtener artículos por categoría
   const articlesFromGitHub = await getArticlesByCategory('salud física');
+  console.log('📚 TOTAL ARTÍCULOS EN CATEGORÍA:', articlesFromGitHub.length);
 
   // Mapear al tipo interno esperado por ArticleCard
   const mapped: SiteArticle[] = articlesFromGitHub.map((a) => ({
@@ -38,9 +33,6 @@ export default async function SaludFisicaPage() {
       {mapped.length === 0 ? (
         <div>
           <p className="text-red-500 font-bold">⚠️ No hay artículos en esta categoría.</p>
-          <p className="mt-2 text-sm text-gray-600">
-            Total de artículos en GitHub: {allArticles.length}
-          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

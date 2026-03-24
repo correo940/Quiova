@@ -37,6 +37,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savings-notification-settings';
 import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
@@ -137,7 +138,7 @@ export default function SavingsPage() {
     const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
     // Forms
-    const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
+    const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string, includeInTotal: boolean }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true });
     const [newGoal, setNewGoal] = useState({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
     const [newRecurring, setNewRecurring] = useState({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
 
@@ -402,16 +403,43 @@ export default function SavingsPage() {
                 color: bankColor,
                 logo_url: bankLogo,
                 password_id: newAccount.passId === 'none' ? null : newAccount.passId,
-                interest_rate: newAccount.interestRate ? parseFloat(newAccount.interestRate) : 0
+                interest_rate: newAccount.interestRate ? parseFloat(newAccount.interestRate) : 0,
+                include_in_total: newAccount.includeInTotal
             };
             const { error } = await supabase.from('savings_accounts').insert(payload);
             if (error) throw error;
             toast.success('Cuenta creada');
             setIsAddAccountOpen(false);
-            setNewAccount({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
+            setNewAccount({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true });
             fetchData(user?.id);
         } catch (error) {
             toast.error('Error al crear cuenta');
+        }
+    };
+
+    const handleToggleAccountInTotal = async (checked: boolean) => {
+        if (!selectedAccount) return;
+
+        try {
+            const { error } = await supabase
+                .from('savings_accounts')
+                .update({ include_in_total: checked })
+                .eq('id', selectedAccount.id);
+
+            if (error) throw error;
+
+            const updatedAccount = { ...selectedAccount, include_in_total: checked };
+            setSelectedAccount(updatedAccount);
+            setAccounts((prev) => prev.map((account) => (
+                account.id === updatedAccount.id
+                    ? { ...account, include_in_total: checked }
+                    : account
+            )));
+            toast.success(checked ? 'Cuenta incluida en el balance general' : 'Cuenta excluida del balance general');
+            fetchData(user?.id);
+        } catch (error) {
+            console.error(error);
+            toast.error('No se pudo actualizar el balance general');
         }
     };
 
@@ -788,6 +816,17 @@ export default function SavingsPage() {
                                 <SelectContent><SelectItem value="none">Sin vincular</SelectItem>{passwords.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
+                        <div className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="include-in-total" className="text-sm font-semibold text-slate-900">Incluir en balance general</Label>
+                                <p className="text-xs text-slate-500">Esta cuenta sumará al total principal de Mi Economía.</p>
+                            </div>
+                            <Switch
+                                id="include-in-total"
+                                checked={newAccount.includeInTotal}
+                                onCheckedChange={(checked) => setNewAccount({ ...newAccount, includeInTotal: checked })}
+                            />
+                        </div>
                     </div>
                     <DialogFooter><Button onClick={handleCreateAccount}>Crear Cuenta</Button></DialogFooter>
                 </DialogContent>
@@ -906,6 +945,7 @@ export default function SavingsPage() {
                 onSubmitTransaction={handleSubmitAccountTransaction}
                 onDeleteTransaction={handleDeleteAccountTransaction}
                 onDeleteAccount={handleDeleteAccount}
+                onToggleIncludeInTotal={handleToggleAccountInTotal}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
             />
 

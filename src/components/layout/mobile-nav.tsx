@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     LayoutGrid, ShoppingCart, MessageCircle, Settings,
-    ListTodo, Calendar, FileText, KeyRound, Monitor, ChefHat, ShoppingBag, X as XIcon, ChevronLeft
+    ListTodo, Calendar, FileText, KeyRound, Monitor, ChefHat, ShoppingBag, X as XIcon, ChevronLeft, Brain
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
@@ -28,7 +28,7 @@ function loadQuickApps(): string[] {
 const IconMap: { [key: string]: any } = {
     Settings, ShoppingCart, ShoppingBag, ChefHat,
     ListTodo, Calendar, FileText, KeyRound, MessageCircle,
-    Monitor, LayoutGrid
+    Monitor, LayoutGrid, Brain
 };
 
 export default function MobileNav() {
@@ -47,6 +47,7 @@ export default function MobileNav() {
         { key: 'documents', name: 'Documentos', icon_key: 'FileText', route: '/apps/mi-hogar/documents' },
         { key: 'passwords', name: 'Claves', icon_key: 'KeyRound', route: '/apps/passwords' },
         { key: 'assistant', name: 'Asistente', icon_key: 'MessageCircle', route: '/apps/mi-hogar/asistente' },
+        { key: 'meditation', name: 'Pausa', icon_key: 'Brain', route: '/apps/mi-hogar/meditation' },
     ]);
 
     const [showScanner, setShowScanner] = useState(false);

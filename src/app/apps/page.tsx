@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart, Calendar, Lock, Users, Home } from 'lucide-react';
+import { Home, Brain } from 'lucide-react';
 import Link from 'next/link';
 
 const apps = [
@@ -9,6 +9,12 @@ const apps = [
     href: '/apps/mi-hogar',
     icon: Home,
     description: 'Gestión integral del hogar: contraseñas, compras, manuales y más.',
+  },
+  {
+    name: 'Pausa',
+    href: '/apps/mi-hogar/meditation',
+    icon: Brain,
+    description: 'Meditacion breve, respiracion guiada y pensamiento personal con estilo Quioba.',
   },
 ];
 

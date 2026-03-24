@@ -39,6 +39,7 @@ const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.R
     { key: 'garage', name: 'Garaje', route: '/apps/mi-hogar/garage', icon: <Car className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
     { key: 'expenses', name: 'Gastos Compartidos', route: '/apps/mi-hogar/expenses', icon: <Wallet className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
     { key: 'savings', name: 'Mi Economía', route: '/apps/mi-hogar/savings', icon: <PiggyBank className="w-4 h-4" />, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
+    { key: 'meditation', name: 'Pausa', route: '/apps/mi-hogar/meditation', icon: <Brain className="w-4 h-4" />, color: 'text-emerald-600', bgColor: 'bg-emerald-500/10' },
     { key: 'roster', name: 'Turnos', route: '/apps/mi-hogar/roster', icon: <Calendar className="w-4 h-4" />, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
     { key: 'chef-ia', name: 'Chef IA', route: '/apps/mi-hogar/chef', icon: <ChefHat className="w-4 h-4" />, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
     { key: 'huerto', name: 'Mis Plantas/Huerto', route: '/apps/huerto', icon: <Leaf className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },

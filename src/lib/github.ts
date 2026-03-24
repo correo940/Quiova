@@ -4,7 +4,7 @@ import { Octokit } from 'octokit';
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const owner = process.env.GITHUB_OWNER || 'correo940';
-const repo = process.env.GITHUB_REPO || 'quioba';
+const repo = process.env.GITHUB_REPO || 'Quiova';
 const branch = process.env.GITHUB_BRANCH || 'main';
 const CONTENT_PATH = 'content/articles';
 

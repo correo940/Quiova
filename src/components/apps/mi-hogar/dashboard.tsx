@@ -16,7 +16,8 @@ import {
     Wallet,
     BookOpen,
     MessageCircle,
-    Leaf
+    Leaf,
+    Brain
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,6 +118,14 @@ const modules = [
         description: 'Identifica plantas y automatiza riegos con IA',
         icon: Leaf,
         href: '/apps/huerto',
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-500/10',
+    },
+    {
+        title: 'Pausa',
+        description: 'Meditacion breve, respiracion y espacio mental',
+        icon: Brain,
+        href: '/apps/mi-hogar/meditation',
         color: 'text-emerald-600',
         bg: 'bg-emerald-500/10',
     },

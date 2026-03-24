@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ import LogoLoader from '@/components/ui/logo-loader';
 const ICON_MAP: Record<string, any> = {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
-    Book, Key, Shield, CalendarDays, Newspaper
+    Book, Key, Shield, CalendarDays, Newspaper, Brain
 };
 
 // Default item order (keys used for persistence)
@@ -25,6 +25,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-blue-500', href: '/apps/mi-hogar/shopping' },
     { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-purple-500', href: '/apps/mi-hogar/tasks' },
     { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
+    { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: 'bg-emerald-500', href: '/apps/mi-hogar/meditation' },
     { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-red-500', href: '/apps/debate' },
     { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
     { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy' },
@@ -216,6 +217,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
             case 'shopping': return `${stats.shoppingCount}`;
             case 'tasks': return `${stats.taskCount}`;
             case 'savings': return `${(stats.totalSavings / 1000).toFixed(1)}k€`;
+            case 'meditation': return 'Respira';
             case 'debates': return `${stats.debateCount}`;
             case 'vehicles': return `${stats.vehicleCount}`;
             case 'pharmacy': return `${stats.medicineCount}`;
@@ -237,6 +239,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
             case 'shopping': return stats.shoppingCount;
             case 'tasks': return stats.taskCount;
             case 'savings': return stats.totalSavings > 0 ? 1 : 0;
+            case 'meditation': return 1;
             case 'debates': return stats.debateCount;
             case 'vehicles': return stats.vehicleCount;
             case 'pharmacy': return stats.medicineCount;

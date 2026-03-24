@@ -40,6 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -90,6 +91,7 @@ interface AccountDetailDialogProps {
     onSubmitTransaction: (payload: TransactionPayload) => Promise<void>;
     onDeleteTransaction: (transactionId: string, amount: number) => Promise<void>;
     onDeleteAccount: () => Promise<void>;
+    onToggleIncludeInTotal: (checked: boolean) => Promise<void>;
     onNavigateToPassword?: () => void;
 }
 
@@ -126,6 +128,7 @@ export default function AccountDetailDialog({
     onSubmitTransaction,
     onDeleteTransaction,
     onDeleteAccount,
+    onToggleIncludeInTotal,
     onNavigateToPassword
 }: AccountDetailDialogProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'details'>('overview');
@@ -138,6 +141,7 @@ export default function AccountDetailDialog({
     const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+    const [isUpdatingIncludeInTotal, setIsUpdatingIncludeInTotal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [movementFilter, setMovementFilter] = useState<'all' | 'income' | 'expense'>('all');
 
@@ -296,6 +300,15 @@ export default function AccountDetailDialog({
             }
         } finally {
             setDeletingTransactionId(null);
+        }
+    };
+
+    const handleIncludeInTotalChange = async (checked: boolean) => {
+        setIsUpdatingIncludeInTotal(true);
+        try {
+            await onToggleIncludeInTotal(checked);
+        } finally {
+            setIsUpdatingIncludeInTotal(false);
         }
     };
 
@@ -490,10 +503,12 @@ export default function AccountDetailDialog({
                                     </Card>
 
                                     <div className="flex flex-col gap-6">
-                                        <Card className="overflow-hidden rounded-[1.75rem] border-slate-900 bg-slate-950 text-white shadow-2xl shadow-slate-900/20">
-                                            <CardHeader className="border-b border-white/10 pb-4">
+                                        <Card className="overflow-hidden rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/70 to-white shadow-xl shadow-emerald-100/60">
+                                            <CardHeader className="border-b border-emerald-100/80 pb-4">
                                                 <CardTitle className="flex items-center gap-2 text-lg">
-                                                    <Wallet className="h-5 w-5 text-emerald-300" />
+                                                    <div className="rounded-xl bg-emerald-100 p-2 text-emerald-700">
+                                                        <Wallet className="h-4 w-4" />
+                                                    </div>
                                                     {editingTransactionId ? 'Editar movimiento' : 'Nuevo movimiento'}
                                                 </CardTitle>
                                             </CardHeader>
@@ -504,19 +519,28 @@ export default function AccountDetailDialog({
                                                         variant="outline"
                                                         onClick={() => setTransactionKind('deposit')}
                                                         className={cn(
-                                                            'h-auto rounded-2xl border px-4 py-4 text-left text-white transition-all',
+                                                            'h-auto rounded-2xl border px-4 py-4 text-left transition-all',
                                                             transactionKind === 'deposit'
-                                                                ? 'border-emerald-400/50 bg-emerald-400/15 shadow-lg shadow-emerald-500/10'
-                                                                : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                                                ? 'border-emerald-500/40 bg-emerald-500 text-white shadow-lg shadow-emerald-200'
+                                                                : 'border-emerald-100 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50/80'
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <div className="rounded-xl bg-emerald-400/15 p-2 text-emerald-300">
+                                                            <div
+                                                                className={cn(
+                                                                    'rounded-xl p-2',
+                                                                    transactionKind === 'deposit'
+                                                                        ? 'bg-white/15 text-white'
+                                                                        : 'bg-emerald-100 text-emerald-700'
+                                                                )}
+                                                            >
                                                                 <ArrowUpRight className="h-4 w-4" />
                                                             </div>
                                                             <div>
                                                                 <p className="font-semibold">Ingreso</p>
-                                                                <p className="text-xs text-white/55">Sube el saldo</p>
+                                                                <p className={cn('text-xs', transactionKind === 'deposit' ? 'text-white/75' : 'text-slate-500')}>
+                                                                    Sube el saldo
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </Button>
@@ -525,52 +549,61 @@ export default function AccountDetailDialog({
                                                         variant="outline"
                                                         onClick={() => setTransactionKind('expense')}
                                                         className={cn(
-                                                            'h-auto rounded-2xl border px-4 py-4 text-left text-white transition-all',
+                                                            'h-auto rounded-2xl border px-4 py-4 text-left transition-all',
                                                             transactionKind === 'expense'
-                                                                ? 'border-rose-400/50 bg-rose-400/15 shadow-lg shadow-rose-500/10'
-                                                                : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                                                ? 'border-rose-300 bg-rose-50 text-rose-700 shadow-lg shadow-rose-100'
+                                                                : 'border-emerald-100 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50/80'
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <div className="rounded-xl bg-rose-400/15 p-2 text-rose-300">
+                                                            <div
+                                                                className={cn(
+                                                                    'rounded-xl p-2',
+                                                                    transactionKind === 'expense'
+                                                                        ? 'bg-rose-100 text-rose-700'
+                                                                        : 'bg-slate-100 text-slate-500'
+                                                                )}
+                                                            >
                                                                 <ArrowDownRight className="h-4 w-4" />
                                                             </div>
                                                             <div>
                                                                 <p className="font-semibold">Gasto</p>
-                                                                <p className="text-xs text-white/55">Baja el saldo</p>
+                                                                <p className={cn('text-xs', transactionKind === 'expense' ? 'text-rose-500' : 'text-slate-500')}>
+                                                                    Baja el saldo
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </Button>
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label className="text-white/75">Importe</Label>
+                                                    <Label className="text-slate-700">Importe</Label>
                                                     <Input
                                                         type="number"
                                                         placeholder="Ej: 95.50"
                                                         value={form.amount}
                                                         onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                                                        className="h-12 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-white/30"
+                                                        className="h-12 rounded-2xl border-emerald-100 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
                                                     />
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label className="text-white/75">Concepto</Label>
+                                                    <Label className="text-slate-700">Concepto</Label>
                                                     <Input
                                                         placeholder={transactionKind === 'deposit' ? 'Ej: nomina, transferencia...' : 'Ej: compra, alquiler...'}
                                                         value={form.description}
                                                         onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                                        className="h-12 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-white/30"
+                                                        className="h-12 rounded-2xl border-emerald-100 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
                                                     />
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label className="text-white/75">Fecha</Label>
+                                                    <Label className="text-slate-700">Fecha</Label>
                                                     <Input
                                                         type="date"
                                                         value={form.date}
                                                         onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                                        className="h-12 rounded-2xl border-white/10 bg-white/5 text-white"
+                                                        className="h-12 rounded-2xl border-emerald-100 bg-white text-slate-900 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
                                                     />
                                                 </div>
 
@@ -580,7 +613,7 @@ export default function AccountDetailDialog({
                                                             type="button"
                                                             variant="outline"
                                                             onClick={resetTransactionForm}
-                                                            className="h-12 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                                            className="h-12 rounded-2xl border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
                                                         >
                                                             Cancelar edicion
                                                         </Button>
@@ -589,7 +622,7 @@ export default function AccountDetailDialog({
                                                         type="button"
                                                         onClick={handleSubmit}
                                                         disabled={isSubmitting}
-                                                        className="h-12 flex-1 rounded-2xl bg-white text-slate-950 hover:bg-slate-200"
+                                                        className="h-12 flex-1 rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700"
                                                     >
                                                         <Save className="mr-2 h-4 w-4" />
                                                         {editingTransactionId ? 'Guardar cambios' : 'Registrar movimiento'}
@@ -600,19 +633,42 @@ export default function AccountDetailDialog({
 
                                         <Card className="rounded-[1.75rem] border-white/70 bg-white/80 shadow-xl shadow-slate-200/50">
                                             <CardHeader className="pb-4">
-                                                <CardTitle className="text-lg">Pulso de la cuenta</CardTitle>
+                                                <CardTitle className="text-lg">Resumen operativo</CardTitle>
                                             </CardHeader>
-                                            <CardContent className="grid gap-3 sm:grid-cols-2">
+                                            <CardContent className="grid gap-3 sm:grid-cols-3">
                                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Saldo en balance global</p>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Balance general</p>
                                                     <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {account.include_in_total === false ? 'Excluida' : 'Incluida'}
+                                                        {account.include_in_total === false ? 'No incluida' : 'Incluida'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {account.include_in_total === false
+                                                            ? 'Esta cuenta no suma al total global de Mi Economia.'
+                                                            : 'Su saldo se refleja en el balance total de Mi Economia.'}
                                                     </p>
                                                 </div>
                                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Contrasena vinculada</p>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Credencial bancaria</p>
                                                     <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {linkedPasswordName || 'Sin vincular'}
+                                                        {linkedPasswordName || 'No vinculada'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {linkedPasswordName
+                                                            ? 'La cuenta esta conectada con una entrada del gestor de contrasenas.'
+                                                            : 'Todavia no hay una credencial asociada a esta cuenta.'}
+                                                    </p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Ultima actividad</p>
+                                                    <p className="mt-2 text-base font-bold text-slate-900">
+                                                        {latestTransaction
+                                                            ? format(parseISO(latestTransaction.date), 'dd MMM yyyy', { locale: es })
+                                                            : 'Sin movimientos'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {latestTransaction
+                                                            ? 'Fecha del ultimo movimiento registrado en esta cuenta.'
+                                                            : 'Aun no se han registrado ingresos ni gastos en esta cuenta.'}
                                                     </p>
                                                 </div>
                                             </CardContent>
@@ -814,6 +870,29 @@ export default function AccountDetailDialog({
                                                 <p className="mt-2 text-lg font-bold text-slate-900">
                                                     {account.include_in_total === false ? 'Oculta del balance total' : 'Visible en balance total'}
                                                 </p>
+                                            </div>
+                                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 md:col-span-2">
+                                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div>
+                                                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">Balance general</p>
+                                                        <p className="mt-2 text-lg font-bold text-slate-900">
+                                                            {account.include_in_total === false ? 'Excluida del computo global' : 'Incluida en el computo global'}
+                                                        </p>
+                                                        <p className="mt-1 text-sm text-slate-600">
+                                                            Decide si esta cuenta debe sumar o no al total principal de Mi Economia.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-sm font-medium text-slate-700">
+                                                            {account.include_in_total === false ? 'Excluida' : 'Incluida'}
+                                                        </span>
+                                                        <Switch
+                                                            checked={account.include_in_total !== false}
+                                                            onCheckedChange={handleIncludeInTotalChange}
+                                                            disabled={isUpdatingIncludeInTotal}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
