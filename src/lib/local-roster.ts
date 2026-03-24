@@ -66,6 +66,7 @@ export async function extractRosterDataLocal(base64Image: string): Promise<Digit
         const { text } = page;
         const currentYear = new Date().getFullYear();
         const headerText = text.substring(0, 500).toUpperCase();
+        let splitDate = new Date().toISOString().split('T')[0];
         const longDateMatch = headerText.match(/(\d{1,2})\s+DE\s+([A-Z]+)/);
         if (longDateMatch) {
             const day = parseInt(longDateMatch[1]);

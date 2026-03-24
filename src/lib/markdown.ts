@@ -29,7 +29,7 @@ export async function parseMarkdown(markdown: string): Promise<Article> {
     let contentHtml = '';
     try {
       const processedContent = await remark()
-        .use(html, { sanitize: false }) // No sanitizar para permitir HTML embebido
+        .use(html, { sanitize: true })
         .process(content || '');
 
       contentHtml = processedContent.toString();

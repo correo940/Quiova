@@ -130,7 +130,6 @@ export default function GaragePage() {
         try {
             if (vehicleForm.id) {
                 // Update - Sanitize payload
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { id, user_id, created_at, ...updates } = vehicleForm as any;
 
                 console.log('UPDATING VEHICLE:', vehicleForm.id);
@@ -626,7 +625,7 @@ export default function GaragePage() {
             <VehicleDialog
                 open={isVehicleDialogOpen}
                 onOpenChange={setIsVehicleDialogOpen}
-                form={vehicleForm}
+                form={vehicleForm as any}
                 setForm={(f) => setVehicleForm(f as any)}
                 onSave={saveVehicle}
             />

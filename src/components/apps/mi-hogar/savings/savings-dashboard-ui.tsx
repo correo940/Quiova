@@ -114,6 +114,7 @@ interface SavingsDashboardUIProps {
     userId?: string;
     onBalanceChange?: () => void;
     pendingTotal?: number;
+    onResetData?: () => Promise<void>;
 }
 
 export default function SavingsDashboardUI({

@@ -21,9 +21,10 @@ interface ArticleEditorProps {
   initialData?: ArticleMetadata;
   content?: string;
   isEditing?: boolean;
+  onSave?: (metadata: ArticleMetadata, content: string) => Promise<void>;
 }
 
-export default function ArticleEditor({ initialData, content: initialContent, isEditing }: ArticleEditorProps) {
+export default function ArticleEditor({ initialData, content: initialContent, isEditing, onSave }: ArticleEditorProps) {
   const router = useRouter();
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -41,6 +42,19 @@ export default function ArticleEditor({ initialData, content: initialContent, is
         month: 'long',
         day: 'numeric'
       });
+      const metadata = {
+        title,
+        description,
+        category,
+        date: initialData?.date || date,
+        slug: initialData?.slug || slugify(title),
+        image: image || undefined
+      };
+
+      if (onSave) {
+        await onSave(metadata, content);
+        return;
+      }
       
       const response = await fetch(`/api/articles${isEditing ? `/${initialData?.slug}` : ''}`, {
         method: isEditing ? 'PUT' : 'POST',
@@ -48,14 +62,7 @@ export default function ArticleEditor({ initialData, content: initialContent, is
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          metadata: {
-            title,
-            description,
-            category,
-            date: initialData?.date || date,
-            slug: initialData?.slug || slugify(title),
-            image: image || undefined
-          },
+          metadata,
           content
         }),
       });

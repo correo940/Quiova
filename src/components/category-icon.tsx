@@ -8,11 +8,11 @@ type CategoryIconProps = LucideProps & {
 
 export default function CategoryIcon({ category, ...props }: CategoryIconProps) {
   switch (category) {
-    case 'physical health':
+    case 'salud física':
       return <HeartPulse {...props} />;
-    case 'mental health':
+    case 'salud mental':
       return <BrainCircuit {...props} />;
-    case 'family finance':
+    case 'finanzas familiares':
       return <Landmark {...props} />;
     default:
       return null;

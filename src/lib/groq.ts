@@ -1,8 +1,5 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY || "gsk_..." });
-// Note: We'll ask user for the key. Providing a placeholder.
-
 export interface UserShiftResult {
     found: boolean;
     date: string;
@@ -18,6 +15,13 @@ export async function findUserShiftGroq(base64Image: string, targetName: string)
     console.log(`[Groq] Starting Detective Mode for: ${targetName}`);
 
     try {
+        const apiKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        if (!apiKey) {
+            console.warn("[Groq] Missing GROQ_API_KEY");
+            return null;
+        }
+
+        const groq = new Groq({ apiKey });
         const chatCompletion = await groq.chat.completions.create({
             "messages": [
                 {

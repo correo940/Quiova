@@ -3,7 +3,7 @@ import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
-import pdf from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 export const config = {
@@ -32,12 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const buffer = await fs.promises.readFile(file.filepath ?? file.path);
 
       // extraer pdf
-      const pdfData = await pdf(buffer);
+      const parser = new PDFParse({ data: buffer });
+      const [pdfInfo, pdfText] = await Promise.all([
+        parser.getInfo(),
+        parser.getText()
+      ]);
+      await parser.destroy();
       const metadata = {
-        title: (pdfData.info && pdfData.info.Title) || fields.title || file.originalFilename || 'Sin título',
-        author: (pdfData.info && pdfData.info.Author) || fields.author || '',
-        pages: pdfData.numpages ?? null,
-        text: pdfData.text || '',
+        title: pdfInfo.info?.Title || fields.title || file.originalFilename || 'Sin título',
+        author: pdfInfo.info?.Author || fields.author || '',
+        pages: pdfInfo.total ?? null,
+        text: pdfText.text || '',
         fileName: file.originalFilename || `doc-${Date.now()}.pdf`,
         uploadDate: new Date().toISOString()
       };

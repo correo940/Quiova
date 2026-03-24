@@ -2,35 +2,18 @@
 
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import AdminArticleList from "@/components/admin/article-list";
 import AdminPostItManager from "@/components/admin/post-it-manager";
 import SchedulerActivityManager from "@/components/admin/scheduler-activity-manager";
 import AssistantManager from "@/components/admin/assistant-manager";
 import ApiLimitsManager from "@/components/admin/api-limits-manager";
 
-// ... imports
-
 export default function AdminPage() {
-  const [articles, setArticles] = useState<any[]>([]);
-  const [deleting, setDeleting] = useState<string | null>(null);
-
-  const handleDelete = (slug: string) => {
-    console.log("Delete", slug);
-  };
-
-  // ... existing state
-
-  // ... existing useEffect
-
-  // ... existing handleDelete
-
-  // ... existing loading check
-
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Panel de Administración</h1>
         <div className="flex gap-2">
           <Button asChild>
@@ -41,62 +24,27 @@ export default function AdminPage() {
           </Button>
         </div>
       </div>
-      {/* ... rest of the component */}
+
       <div className="grid gap-6">
-        <div className="bg-card rounded-lg p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">Artículos</h2>
-          <div className="divide-y">
-            {articles.map((article) => (
-              <div key={article.id} className="py-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">{article.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {/* Formatea la fecha para que sea legible */}
-                    {new Date(article.date).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    {/* El link "Ver" debe ir al artículo público */}
-                    <Link href={`/articles/${article.slug}`}>Ver</Link>
-                  </Button>
-                  <Button asChild size="sm">
-                    <Link href={`/admin/articles/${article.slug}/edit`}>Editar</Link>
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={deleting === article.slug}
-                    onClick={() => handleDelete(article.slug)}
-                  >
-                    {deleting === article.slug ? "Eliminando..." : "Eliminar"}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="rounded-lg bg-card p-6 shadow-sm">
+          <AdminArticleList />
         </div>
 
-        {/* Post-it Manager */}
-        <div className="bg-card rounded-lg shadow-sm">
+        <div className="rounded-lg bg-card shadow-sm">
           <AdminPostItManager />
         </div>
 
-        {/* Scheduler Activity Manager */}
-        <div className="bg-card rounded-lg shadow-sm">
+        <div className="rounded-lg bg-card shadow-sm">
           <SchedulerActivityManager />
         </div>
 
-        {/* Assistant Manager */}
-        <div className="bg-card rounded-lg p-6 shadow-sm">
+        <div className="rounded-lg bg-card p-6 shadow-sm">
           <AssistantManager />
         </div>
 
-        {/* API Limits Manager */}
-        <div className="bg-card rounded-lg shadow-sm">
+        <div className="rounded-lg bg-card shadow-sm">
           <ApiLimitsManager />
         </div>
-
       </div>
     </div>
   );

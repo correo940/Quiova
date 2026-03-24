@@ -110,7 +110,11 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
             document.querySelector('body')?.classList.remove('barcode-scanner-active');
 
             if (result.barcodes && result.barcodes.length > 0) {
-                const barcode = result.barcodes[0].rawValue;
+                const barcode = result.barcodes[0]?.rawValue;
+                if (!barcode) {
+                    setError('No se pudo leer el código escaneado');
+                    return;
+                }
                 console.log('🔍 Scanned Barcode:', barcode);
 
                 // 1. First check local cache

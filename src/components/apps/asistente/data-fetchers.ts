@@ -16,7 +16,7 @@ export async function fetchSavingsSummary(ctx: AssistantDataContext) {
         .eq('user_id', ctx.userId);
 
     const { data: accounts } = await supabase
-        .from('savings_bank_accounts')
+        .from('savings_accounts')
         .select('id, name, current_balance, bank_name')
         .eq('user_id', ctx.userId);
 

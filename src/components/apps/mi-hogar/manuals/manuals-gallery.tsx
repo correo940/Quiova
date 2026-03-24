@@ -53,6 +53,7 @@ export type Manual = {
     spare_parts_url?: string;
     warranty_expires?: string;
     is_favorite?: boolean;
+    room?: Room | null;
 };
 
 type Room = {
@@ -208,7 +209,8 @@ export default function ManualsGallery() {
                 date: new Date(item.created_at).toLocaleDateString(),
                 room_id: item.room_id,
                 updated_at: item.updated_at,
-                tags: item.manual_tags?.map((t: any) => t.tag) || []
+                tags: item.manual_tags?.map((t: any) => t.tag) || [],
+                room: rooms.find((room) => room.id === item.room_id) || null
             }));
 
             setManuals(mappedManuals);
@@ -1367,7 +1369,7 @@ export default function ManualsGallery() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={(e) => startEdit(manual, e)}
+                                                    onClick={(e) => handleEdit(manual, e)}
                                                 >
                                                     <Pencil className="h-4 w-4 text-blue-600" />
                                                 </Button>

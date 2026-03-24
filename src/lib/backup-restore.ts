@@ -18,10 +18,10 @@ export async function exportBackup(): Promise<void> {
         // Fetch all data
         const [manualsRes, roomsRes, tagsRes, notesRes, remindersRes] = await Promise.all([
             supabase.from('manuals').select('*'),
-            supabase.from('rooms').select('*').catch(() => ({ data: [], error: null })),
-            supabase.from('manual_tags').select('*').catch(() => ({ data: [], error: null })),
-            supabase.from('manual_notes').select('*').catch(() => ({ data: [], error: null })),
-            supabase.from('manual_reminders').select('*').catch(() => ({ data: [], error: null }))
+            safeQuery(() => supabase.from('rooms').select('*')),
+            safeQuery(() => supabase.from('manual_tags').select('*')),
+            safeQuery(() => supabase.from('manual_notes').select('*')),
+            safeQuery(() => supabase.from('manual_reminders').select('*'))
         ]);
 
         const backup: BackupData = {
@@ -87,7 +87,7 @@ export async function importBackup(file: File): Promise<boolean> {
                         manual_id: newManual.id,
                         tag: t.tag
                     }));
-                    await supabase.from('manual_tags').insert(tagsToInsert).catch(() => { });
+                    await safeMutation(() => supabase.from('manual_tags').insert(tagsToInsert));
                 }
 
                 // Import notes for this manual
@@ -97,7 +97,7 @@ export async function importBackup(file: File): Promise<boolean> {
                         const { id: noteId, manual_id, created_at, updated_at, ...noteData } = n;
                         return { ...noteData, manual_id: newManual.id };
                     });
-                    await supabase.from('manual_notes').insert(notesToInsert).catch(() => { });
+                    await safeMutation(() => supabase.from('manual_notes').insert(notesToInsert));
                 }
 
                 // Import reminders for this manual
@@ -107,7 +107,7 @@ export async function importBackup(file: File): Promise<boolean> {
                         const { id: reminderId, manual_id, created_at, updated_at, ...reminderData } = r;
                         return { ...reminderData, manual_id: newManual.id };
                     });
-                    await supabase.from('manual_reminders').insert(remindersToInsert).catch(() => { });
+                    await safeMutation(() => supabase.from('manual_reminders').insert(remindersToInsert));
                 }
 
                 imported++;
@@ -176,5 +176,21 @@ export async function exportManualsCsv(): Promise<void> {
     } catch (error) {
         console.error('Error exporting CSV:', error);
         toast.error('Error al exportar CSV');
+    }
+}
+
+async function safeQuery<T>(queryFactory: () => PromiseLike<{ data: T[] | null; error: unknown }>) {
+    try {
+        return await queryFactory();
+    } catch {
+        return { data: [], error: null };
+    }
+}
+
+async function safeMutation(queryFactory: () => PromiseLike<unknown>) {
+    try {
+        await queryFactory();
+    } catch {
+        // Best effort import for optional related tables.
     }
 }

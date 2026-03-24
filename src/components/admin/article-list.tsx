@@ -15,7 +15,7 @@ export default function AdminArticleList() {
       try {
         const response = await fetch('/api/articles');
         const data = await response.json();
-        setArticles(data);
+        setArticles(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error cargando artículos:', error);
       } finally {
@@ -63,10 +63,18 @@ export default function AdminArticleList() {
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => {
-                    if (confirm('¿Estás seguro de eliminar este artículo?')) {
-                      // Implementar eliminación
+                  onClick={async () => {
+                    if (!confirm('¿Estás seguro de eliminar este artículo?')) {
+                      return;
                     }
+
+                    const response = await fetch(`/api/articles/${article.slug}`, { method: 'DELETE' });
+                    if (!response.ok) {
+                      alert('No se pudo eliminar el artículo');
+                      return;
+                    }
+
+                    setArticles((current) => current.filter((item) => item.slug !== article.slug));
                   }}
                 >
                   Eliminar

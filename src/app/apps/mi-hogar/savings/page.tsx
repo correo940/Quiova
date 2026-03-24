@@ -602,7 +602,6 @@ export default function SavingsPage() {
                 userId={user?.id}
                 pendingTotal={pendingTotal}
                 onBalanceChange={() => fetchData()}
-                onResetData={handleResetData}
             />
 
             {/* --- BANK STATEMENT IMPORTER --- */}

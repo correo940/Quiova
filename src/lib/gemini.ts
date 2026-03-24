@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { scanRosterImage as scanRosterLocal } from './roster-scanner';
 import { processWithLLMWhisperer } from './llm-whisperer';
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyDv6zaUBFR-vsV8vtRtEzOUwEzOfu3Cfvc";
+const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 
 // Helper to wait between retries
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -32,7 +32,22 @@ export async function identifyProduct(base64Image: string): Promise<string | nul
 }
 
 export async function extractReceiptData(base64Image: string): Promise<any | null> {
-    return null;
+    try {
+        const response = await fetch('/api/scan-receipt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64Image.includes(',') ? base64Image.split(',')[1] : base64Image })
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('extractReceiptData failed:', error);
+        return null;
+    }
 }
 
 export async function scanRosterImage(base64Image: string): Promise<DigitalRoster | null> {
@@ -193,7 +208,6 @@ export async function findUserShift(base64Image: string, targetName: string): Pr
 
     // 1. Try Gemini Cloud (Best for Context)
     if (apiKey) {
-        console.log(`[GEMINI] API Key: ${apiKey.substring(0, 10)}...`);
         const genAI = new GoogleGenerativeAI(apiKey);
         const base64Data = base64Image.split(',')[1] || base64Image;
         // Use ONLY the stable flash model to avoid 404s on experimental/pro models
@@ -280,7 +294,7 @@ Si NO encuentras a la persona:
             }
         }
     } else {
-        lastGeminiError = "NO API KEY - process.env.NEXT_PUBLIC_GEMINI_API_KEY is undefined";
+        lastGeminiError = "NO API KEY - process.env.GEMINI_API_KEY is undefined";
         console.error("[GEMINI] ❌", lastGeminiError);
     }
 

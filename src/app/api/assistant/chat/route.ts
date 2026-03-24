@@ -10,18 +10,29 @@ import {
     fetchVehicles,
     fetchRecurringItems,
     fetchPendingBalance
-} from '@/components/apps/asistente/data-fetchers';
+} from '@/lib/server/assistant-data';
+import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
 
 export async function POST(req: Request) {
-    const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY });
     try {
-        const { message, userId, userName } = await req.json();
-
-        if (!userId || !message) {
-            return NextResponse.json({ error: 'Falta userId o mensaje' }, { status: 400 });
+        const groqKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        if (!groqKey) {
+            return NextResponse.json({ error: 'Falta configurar GROQ_API_KEY' }, { status: 500 });
         }
 
-        const ctx = { userId, userName };
+        const user = await getAuthenticatedSupabaseUser(req);
+        if (!user) {
+            return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+        }
+
+        const groq = new Groq({ apiKey: groqKey });
+        const { message, userName } = await req.json();
+
+        if (!message) {
+            return NextResponse.json({ error: 'Falta mensaje' }, { status: 400 });
+        }
+
+        const ctx = { userId: user.id, userName: userName || user.user_metadata?.full_name || user.email || 'Usuario' };
 
         // Realizamos todas las consultas a la DB en paralelo para máxima velocidad
         const [

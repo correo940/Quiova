@@ -23,7 +23,7 @@ type Expense = {
     id: string;
     title: string;
     amount: number;
-    paid_by: 'Mi' | 'Partner';
+    paid_by: string;
     category: string;
     date: string;
     user_id?: string;
@@ -130,25 +130,32 @@ export default function ExpensesPage() {
     const fetchExpenses = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUser(user);
-
-                // Fetch Partner Count
-                const { count } = await supabase
-                    .from('expense_partners')
-                    .select('*', { count: 'exact', head: true })
-                    .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`);
-
-                if (count !== null) setPartnerCount(count);
-
-                // Fetch Folders
-                const { data: foldersData } = await supabase
-                    .from('expense_folders')
-                    .select('*')
-                    .order('start_date', { ascending: false });
-                setFolders(foldersData || []);
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (!authUser) {
+                setUser(null);
+                setExpenses([]);
+                setSettlements([]);
+                setPotentialPayers([]);
+                setPartnerCount(0);
+                return;
             }
+
+            setUser(authUser);
+
+            // Fetch Partner Count
+            const { count } = await supabase
+                .from('expense_partners')
+                .select('*', { count: 'exact', head: true })
+                .or(`user_id_1.eq.${authUser.id},user_id_2.eq.${authUser.id}`);
+
+            if (count !== null) setPartnerCount(count);
+
+            // Fetch Folders
+            const { data: foldersData } = await supabase
+                .from('expense_folders')
+                .select('*')
+                .order('start_date', { ascending: false });
+            setFolders(foldersData || []);
 
             // Fetch Expenses (Filtered by Folder)
             let query = supabase
@@ -187,13 +194,13 @@ export default function ExpensesPage() {
             const { data: partnersData } = await supabase
                 .from('expense_partners')
                 .select('user_id_1, user_id_2')
-                .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`);
+                .or(`user_id_1.eq.${authUser.id},user_id_2.eq.${authUser.id}`);
 
             // Extract distinct Partner IDs
             const partnerIds = new Set<string>();
             if (partnersData) {
                 partnersData.forEach(p => {
-                    const pid = p.user_id_1 === user.id ? p.user_id_2 : p.user_id_1;
+                    const pid = p.user_id_1 === authUser.id ? p.user_id_2 : p.user_id_1;
                     if (pid) partnerIds.add(pid);
                 });
             }
@@ -201,14 +208,14 @@ export default function ExpensesPage() {
             // Also include IDs from existing expenses (in case of legacy/unlinked but present data)
             if (data) {
                 data.forEach(e => {
-                    if (e.user_id && e.user_id !== user.id) partnerIds.add(e.user_id);
+                    if (e.user_id && e.user_id !== authUser.id) partnerIds.add(e.user_id);
                 });
             }
 
             // Fetch Profiles for everyone involved
             const allInvolvedIds = Array.from(partnerIds);
             // Always include myself
-            if (!allInvolvedIds.includes(user.id)) allInvolvedIds.push(user.id);
+            if (!allInvolvedIds.includes(authUser.id)) allInvolvedIds.push(authUser.id);
 
             if (allInvolvedIds.length > 0) {
                 const { data: profiles } = await supabase
@@ -225,17 +232,17 @@ export default function ExpensesPage() {
 
                     const payers = profiles.map(p => ({
                         id: p.id,
-                        name: p.id === user.id ? (p.nickname || 'Yo') : (p.nickname || 'Usuario')
+                        name: p.id === authUser.id ? (p.nickname || 'Yo') : (p.nickname || 'Usuario')
                     }));
 
                     // Ensure "Yo" is always first/identifiable or just use the mapped list
                     // Sort so "Yo" isn't buried
-                    payers.sort((a, b) => (a.id === user.id ? -1 : b.id === user.id ? 1 : 0));
+                    payers.sort((a, b) => (a.id === authUser.id ? -1 : b.id === authUser.id ? 1 : 0));
 
                     setPotentialPayers(payers);
                 }
             } else {
-                setPotentialPayers([{ id: user.id, name: 'Yo' }]);
+                setPotentialPayers([{ id: authUser.id, name: 'Yo' }]);
             }
 
         } catch (error) {
@@ -455,6 +462,7 @@ export default function ExpensesPage() {
     // 1. Calculate how much everyone owes everyone else based on expenses
     const debtMatrix: Record<string, Record<string, number>> = {};
     const allUsers = potentialPayers.map(p => p.id);
+    const currentUserId = user?.id ?? '';
 
     // Init matrix
     allUsers.forEach(u1 => {
@@ -466,13 +474,13 @@ export default function ExpensesPage() {
 
     expenses.forEach(e => {
         // Resolve Payer
-        let payerId = e.user_id; // Default to creator
-        if (e.paid_by === user?.id) payerId = user.id;
-        else if (e.paid_by === 'Mi') payerId = e.user_id;
-        else if (e.paid_by === 'Partner') payerId = e.user_id === user?.id ? (potentialPayers.find(p => p.id !== user.id)?.id || '') : user?.id; // Guesswork for legacy
+        let payerId = e.user_id || ''; // Default to creator
+        if (e.paid_by === currentUserId) payerId = currentUserId;
+        else if (e.paid_by === 'Mi') payerId = e.user_id || '';
+        else if (e.paid_by === 'Partner') payerId = e.user_id === currentUserId ? (potentialPayers.find(p => p.id !== currentUserId)?.id || '') : currentUserId; // Guesswork for legacy
         else if (e.paid_by && e.paid_by.length > 10) payerId = e.paid_by; // UUID
 
-        if (!allUsers.includes(payerId)) return; // Unknown payer
+        if (!payerId || !allUsers.includes(payerId)) return; // Unknown payer
 
         const amount = e.amount;
         // Using allUsers.length is safer than partnerCount because it maps to actual known users in the JS context
@@ -499,10 +507,10 @@ export default function ExpensesPage() {
     let totalOwedToMe = 0;
 
     const mySpecificDebts = potentialPayers
-        .filter(p => p.id !== user?.id)
+        .filter(p => p.id !== currentUserId)
         .map(p => {
-            const iOweThem = debtMatrix[user?.id]?.[p.id] || 0;
-            const theyOweMe = debtMatrix[p.id]?.[user?.id] || 0;
+            const iOweThem = debtMatrix[currentUserId]?.[p.id] || 0;
+            const theyOweMe = debtMatrix[p.id]?.[currentUserId] || 0;
 
             // Net for this specific relationship
             const net = iOweThem - theyOweMe;
@@ -684,10 +692,10 @@ export default function ExpensesPage() {
                                     // Calculate total for this specific payer
                                     const amount = expenses.reduce((sum, e) => {
                                         // Resolve payer for expense 'e'
-                                        let payerId = e.user_id;
-                                        if (e.paid_by === user?.id) payerId = user.id;
-                                        else if (e.paid_by === 'Mi') payerId = e.user_id;
-                                        else if (e.paid_by === 'Partner') payerId = e.user_id === user?.id ? (potentialPayers.find(pi => pi.id !== user.id)?.id || '') : user?.id;
+                                        let payerId = e.user_id || '';
+                                        if (e.paid_by === currentUserId) payerId = currentUserId;
+                                        else if (e.paid_by === 'Mi') payerId = e.user_id || '';
+                                        else if (e.paid_by === 'Partner') payerId = e.user_id === currentUserId ? (potentialPayers.find(pi => pi.id !== currentUserId)?.id || '') : currentUserId;
                                         else if (e.paid_by && e.paid_by.length > 10) payerId = e.paid_by;
 
                                         return payerId === p.id ? sum + e.amount : sum;

@@ -19,13 +19,16 @@ export interface Message {
 // Main function to process user query and generate response via Groq API
 export async function processQuery(query: string, ctx: AssistantDataContext): Promise<string> {
     try {
+        const { data: { session } } = await supabase.auth.getSession();
         const apiUrl = getApiUrl('api/assistant/chat');
         const res = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
+            },
             body: JSON.stringify({
                 message: query,
-                userId: ctx.userId,
                 userName: ctx.userName
             })
         });

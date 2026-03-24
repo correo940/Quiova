@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getApiUrl } from '@/lib/api-utils';
 
 interface ApiUsageInfo {
     endpoint: string;
@@ -26,18 +27,31 @@ export function useApiUsage(endpoint: string): ApiUsageInfo & { refresh: () => v
         loading: true
     });
 
-    const ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'todojuntomirar@gmail.com';
-
     const fetchUsage = useCallback(async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
+            const [{ data: { user } }, { data: { session } }] = await Promise.all([
+                supabase.auth.getUser(),
+                supabase.auth.getSession()
+            ]);
             if (!user) {
                 setInfo(prev => ({ ...prev, loading: false }));
                 return;
             }
 
-            // Admin bypass
-            if (user.email === ADMIN_EMAIL) {
+            let isAdmin = false;
+            if (session?.access_token) {
+                try {
+                    const adminRes = await fetch(getApiUrl('api/super-admin'), {
+                        headers: { Authorization: `Bearer ${session.access_token}` }
+                    });
+                    const adminData = await adminRes.json();
+                    isAdmin = Boolean(adminData?.isSuperAdmin);
+                } catch (error) {
+                    console.warn('[useApiUsage] Super admin check failed:', error);
+                }
+            }
+
+            if (isAdmin) {
                 setInfo({ endpoint, used: 0, limit: Infinity, remaining: Infinity, isAdmin: true, loading: false });
                 return;
             }
@@ -90,14 +104,14 @@ export function useApiUsage(endpoint: string): ApiUsageInfo & { refresh: () => v
                 used,
                 limit: monthlyLimit,
                 remaining: Math.max(0, monthlyLimit - used),
-                isAdmin: false,
+                isAdmin,
                 loading: false
             });
         } catch (err) {
             console.error('[useApiUsage] Error:', err);
             setInfo(prev => ({ ...prev, loading: false }));
         }
-    }, [endpoint, ADMIN_EMAIL]);
+    }, [endpoint]);
 
     useEffect(() => {
         fetchUsage();

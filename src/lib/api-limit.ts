@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { isSuperAdminEmail } from './server-request-auth';
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
-
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'todojuntomirar@gmail.com';
 
 interface ApiLimitResult {
     allowed: boolean;
@@ -24,7 +23,7 @@ export async function checkApiLimit(
     endpoint: string
 ): Promise<ApiLimitResult> {
     // Admin bypass
-    if (userEmail === ADMIN_EMAIL) {
+    if (isSuperAdminEmail(userEmail)) {
         return { allowed: true, used: 0, limit: Infinity, isAdmin: true };
     }
 

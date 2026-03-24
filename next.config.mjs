@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     typescript: {
-        ignoreBuildErrors: true,
+        ignoreBuildErrors: false,
     },
     eslint: {
-        ignoreDuringBuilds: true,
+        ignoreDuringBuilds: false,
     },
     // Solo activar exportación estática si estamos construyendo para Capacitor
     output: process.env.STATIC_EXPORT === 'true' ? 'export' : undefined,
