@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, FileText, Upload, Lock } from 'lucide-react';
+import { Loader2, Save, FileText, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type DocumentForm = {
@@ -28,7 +28,7 @@ interface DocumentDialogProps {
     uploading?: boolean;
 }
 
-const CATEGORIES = ['Identidad', 'Vehículo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
+const CATEGORIES = ['Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
 
 export function DocumentDialog({ open, onOpenChange, form, setForm, onSave, uploading }: DocumentDialogProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -41,7 +41,7 @@ export function DocumentDialog({ open, onOpenChange, form, setForm, onSave, uplo
 
     const handleSave = () => {
         if (!form.title || !form.category) {
-            toast.warning('Título y Categoría son obligatorios');
+            toast.warning('Titulo y categoria son obligatorios');
             return;
         }
         if (!form.id && !selectedFile) {
@@ -57,32 +57,32 @@ export function DocumentDialog({ open, onOpenChange, form, setForm, onSave, uplo
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Lock className="w-5 h-5 text-amber-500" />
-                        {form.id ? 'Editar Documento' : 'Nuevo Documento Seguro'}
+                        {form.id ? 'Editar documento' : 'Nuevo documento seguro'}
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="title">Título</Label>
+                        <Label htmlFor="title">Titulo</Label>
                         <Input
                             id="title"
-                            placeholder="Ej. DNI, Póliza Coche, Contrato..."
+                            placeholder="Ej. DNI, poliza del coche o contrato"
                             value={form.title}
                             onChange={(e) => setForm({ ...form, title: e.target.value })}
                         />
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="category">Categoría</Label>
+                        <Label htmlFor="category">Categoria</Label>
                         <Select
                             value={form.category}
-                            onValueChange={(val) => setForm({ ...form, category: val })}
+                            onValueChange={(value) => setForm({ ...form, category: value })}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Selecciona..." />
+                                <SelectValue placeholder="Selecciona una categoria" />
                             </SelectTrigger>
                             <SelectContent>
-                                {CATEGORIES.map(cat => (
+                                {CATEGORIES.map((cat) => (
                                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -91,24 +91,22 @@ export function DocumentDialog({ open, onOpenChange, form, setForm, onSave, uplo
 
                     <div className="grid gap-2">
                         <Label>Archivo</Label>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="file"
-                                id="file"
-                                className="cursor-pointer file:cursor-pointer file:text-primary"
-                                onChange={handleFileChange}
-                                accept="image/*,.pdf,.doc,.docx"
-                            />
-                        </div>
-                        {form.file_url && !selectedFile && (
+                        <Input
+                            type="file"
+                            id="file"
+                            className="cursor-pointer file:cursor-pointer file:text-primary"
+                            onChange={handleFileChange}
+                            accept="image/*,.pdf,.doc,.docx"
+                        />
+                        {form.file_url && !selectedFile ? (
                             <div className="text-xs text-green-600 flex items-center gap-1">
                                 <FileText className="w-3 h-3" /> Archivo actual guardado
                             </div>
-                        )}
+                        ) : null}
                     </div>
 
                     <div className="grid gap-2">
-                        <Label>Fecha de Caducidad (Opcional)</Label>
+                        <Label>Fecha de caducidad (opcional)</Label>
                         <Input
                             type="date"
                             value={form.expiration_date || ''}
@@ -123,7 +121,7 @@ export function DocumentDialog({ open, onOpenChange, form, setForm, onSave, uplo
                     </Button>
                     <Button onClick={handleSave} disabled={uploading}>
                         {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        {uploading ? 'Encriptando y Subiendo...' : 'Guardar en Caja Fuerte'}
+                        {uploading ? 'Subiendo...' : 'Guardar documento'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
