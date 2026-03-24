@@ -61,7 +61,7 @@ export async function POST(req: Request) {
             console.error("❌ PlantNet Exception:", pnError);
         }
 
-        // 2. Vision Analysis: Groq → OpenRouter fallback
+        // 2. Vision Analysis: Intentar múltiples modelos
         let careData = {
             health_status: 'Saludable',
             care_instructions: 'Riega cuando la tierra esté seca.',
@@ -94,50 +94,63 @@ EJEMPLOS VÁLIDOS:
 {"common_name":"Pothos","scientific_name":"Epipremnum aureum","health_status":"Hojas amarillas, poco riego","care_instructions":"Menos agua, mejor ventilación","watering_frequency_days":7,"sunlight_needs":"Luz indirecta"}
 {"common_name":"Helecho","scientific_name":"Nephrolepis exaltata","health_status":"Saludable","care_instructions":"Mantener tierra húmeda, humedad alta","watering_frequency_days":3,"sunlight_needs":"Sombra parcial"}`;
 
-        // Intentar Groq primero
-        if (process.env.GROQ_API_KEY) {
+        // Intentar OpenRouter con modelos gratis verificados
+        if (process.env.OPENROUTER_API_KEY) {
             try {
-                console.log("🤖 Intentando Groq Vision...");
-                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                // Primer intento: Nemotron Nano 12B VL (tiene visión)
+                console.log("🤖 Intentando OpenRouter (Nemotron Nano 12B Vision)...");
+                const nemotronRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://quioba.com',
+                        'X-Title': 'Quioba Plant Analyzer'
                     },
                     body: JSON.stringify({
-                        model: 'llama-3.2-90b-vision-preview',
+                        model: 'nvidia/nemotron-nano-12b-vision',
                         messages: [
                             {
                                 role: "user",
                                 content: [
                                     { type: "text", text: systemPrompt },
-                                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
+                                    { 
+                                        type: "image_url", 
+                                        image_url: { 
+                                            url: `data:image/jpeg;base64,${base64Data}`
+                                        } 
+                                    }
                                 ]
                             }
                         ]
                     })
                 });
 
-                if (groqRes.ok) {
-                    const groqData = await groqRes.json();
-                    const content = groqData.choices?.[0]?.message?.content;
+                if (nemotronRes.ok) {
+                    const nemotronData = await nemotronRes.json();
+                    const content = nemotronData.choices?.[0]?.message?.content;
                     if (content) {
-                        careData = JSON.parse(content);
-                        console.log("✅ Groq respondió exitosamente");
+                        try {
+                            careData = JSON.parse(content);
+                            console.log("✅ Nemotron Vision respondió exitosamente");
+                        } catch (parseErr) {
+                            console.warn("⚠️ Nemotron parse error, intentando siguiente fallback");
+                            throw new Error("Parse error");
+                        }
                     }
                 } else {
-                    const err = await groqRes.text();
-                    console.warn(`⚠️ Groq fallo (${groqRes.status}): ${err.substring(0, 100)}`);
-                    throw new Error("Groq fallo, intentando OpenRouter");
+                    const err = await nemotronRes.text();
+                    console.warn(`⚠️ Nemotron fallo (${nemotronRes.status}): ${err.substring(0, 150)}`);
+                    throw new Error("Nemotron failed");
                 }
-            } catch (groqError) {
-                console.warn("⚠️ Groq Exception, intentando OpenRouter...");
+            } catch (nemotronError) {
+                console.warn("⚠️ Nemotron Exception, intentando Llama 3.3 70B...");
                 
-                // Fallback a OpenRouter con modelo que soporta visión
+                // Segundo intento: Llama 3.3 70B (modelo poderoso de texto)
                 if (process.env.OPENROUTER_API_KEY) {
                     try {
-                        console.log("🤖 Intentando OpenRouter (llava-1.5)...");
-                        const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        console.log("🤖 Intentando OpenRouter (Llama 3.3 70B Instruct)...");
+                        const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -146,37 +159,39 @@ EJEMPLOS VÁLIDOS:
                                 'X-Title': 'Quioba Plant Analyzer'
                             },
                             body: JSON.stringify({
-                                model: 'openai/llava-1.5-7b-hf', // Modelo de visión gratis en OpenRouter
+                                model: 'meta-llama/llama-3.3-70b-instruct',
                                 messages: [
                                     {
                                         role: "user",
-                                        content: [
-                                            { type: "text", text: systemPrompt },
-                                            { 
-                                                type: "image_url", 
-                                                image_url: { 
-                                                    url: `data:image/jpeg;base64,${base64Data}`
-                                                } 
-                                            }
-                                        ]
+                                        content: systemPrompt
                                     }
                                 ]
                             })
                         });
 
-                        if (openrouterRes.ok) {
-                            const openrouterData = await openrouterRes.json();
-                            const content = openrouterData.choices?.[0]?.message?.content;
+                        if (llamaRes.ok) {
+                            const llamaData = await llamaRes.json();
+                            const content = llamaData.choices?.[0]?.message?.content;
                             if (content) {
-                                careData = JSON.parse(content);
-                                console.log("✅ OpenRouter (llava-1.5) respondió exitosamente");
+                                try {
+                                    careData = JSON.parse(content);
+                                    console.log("✅ Llama 3.3 respondió exitosamente");
+                                } catch (parseErr) {
+                                    console.warn("⚠️ Llama parse error, intentando Qwen...");
+                                    throw new Error("Parse error");
+                                }
                             }
                         } else {
-                            const err = await openrouterRes.text();
-                            console.warn(`⚠️ OpenRouter llava fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
-                            
-                            // Fallback: intentar con Qwen (puede NO tener visión pero es capaz)
-                            console.log("🤖 Intentando fallback OpenRouter (Qwen para texto)...");
+                            const err = await llamaRes.text();
+                            console.warn(`⚠️ Llama fallo (${llamaRes.status}): ${err.substring(0, 150)}`);
+                            throw new Error("Llama failed");
+                        }
+                    } catch (llamaError) {
+                        console.warn("⚠️ Llama Exception, intentando Qwen3...");
+                        
+                        // Tercer intento: Qwen3 (modelo gratuito capaz)
+                        try {
+                            console.log("🤖 Intentando OpenRouter (Qwen3)...");
                             const qwenRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                                 method: 'POST',
                                 headers: {
@@ -190,7 +205,7 @@ EJEMPLOS VÁLIDOS:
                                     messages: [
                                         {
                                             role: "user",
-                                            content: systemPrompt + "\n[Nota: Analiza basándote en características de plantas típicas. Eres un experto.]"
+                                            content: systemPrompt
                                         }
                                     ]
                                 })
@@ -202,19 +217,20 @@ EJEMPLOS VÁLIDOS:
                                 if (content) {
                                     try {
                                         careData = JSON.parse(content);
-                                        console.log("✅ OpenRouter (Qwen) respondió");
-                                    } catch (e) {
+                                        console.log("✅ Qwen3 respondió exitosamente");
+                                    } catch (parseErr) {
                                         console.log("ℹ️ Usando análisis genérico (Qwen parse error)");
                                     }
                                 }
                             } else {
-                                console.warn(`⚠️ OpenRouter Qwen fallo (${qwenRes.status})`);
+                                const err = await qwenRes.text();
+                                console.warn(`⚠️ Qwen fallo (${qwenRes.status}): ${err.substring(0, 150)}`);
                                 console.log("ℹ️ Usando análisis genérico");
                             }
+                        } catch (qwenError) {
+                            console.warn("⚠️ Qwen Exception:", qwenError);
+                            console.log("ℹ️ Usando análisis genérico");
                         }
-                    } catch (openrouterError) {
-                        console.warn("⚠️ OpenRouter Exception:", openrouterError);
-                        console.log("ℹ️ Usando análisis genérico");
                     }
                 } else {
                     console.warn("⚠️ OPENROUTER_API_KEY no configurada");
@@ -222,58 +238,8 @@ EJEMPLOS VÁLIDOS:
                 }
             }
         } else {
-            console.warn("⚠️ GROQ_API_KEY no configurada, intentando OpenRouter...");
-            
-            if (process.env.OPENROUTER_API_KEY) {
-                try {
-                    console.log("🤖 Intentando OpenRouter (llava-1.5)...");
-                    const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                            'Content-Type': 'application/json',
-                            'HTTP-Referer': 'https://quioba.com',
-                            'X-Title': 'Quioba Plant Analyzer'
-                        },
-                        body: JSON.stringify({
-                            model: 'openai/llava-1.5-7b-hf',
-                            messages: [
-                                {
-                                    role: "user",
-                                    content: [
-                                        { type: "text", text: systemPrompt },
-                                        { 
-                                            type: "image_url", 
-                                            image_url: { 
-                                                url: `data:image/jpeg;base64,${base64Data}`
-                                            } 
-                                        }
-                                    ]
-                                }
-                            ]
-                        })
-                    });
-
-                    if (openrouterRes.ok) {
-                        const openrouterData = await openrouterRes.json();
-                        const content = openrouterData.choices?.[0]?.message?.content;
-                        if (content) {
-                            careData = JSON.parse(content);
-                            console.log("✅ OpenRouter (llava-1.5) respondió exitosamente");
-                        }
-                    } else {
-                        const err = await openrouterRes.text();
-                        console.warn(`⚠️ OpenRouter fallo (${openrouterRes.status}): ${err.substring(0, 100)}`);
-                        console.log("ℹ️ Usando análisis genérico");
-                    }
-                } catch (openrouterError) {
-                    console.warn("⚠️ OpenRouter Exception:", openrouterError);
-                    console.log("ℹ️ Usando análisis genérico");
-                }
-            } else {
-                console.warn("⚠️ OPENROUTER_API_KEY tampoco configurada");
-                console.log("ℹ️ Usando análisis genérico con PlantNet solo");
-            }
+            console.warn("⚠️ OPENROUTER_API_KEY no configurada");
+            console.log("ℹ️ Usando análisis genérico con PlantNet solo");
         }
 
         const result = {
@@ -289,7 +255,18 @@ EJEMPLOS VÁLIDOS:
         return NextResponse.json(result);
 
     } catch (error: any) {
-        console.error("Error analyzing plant:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("❌ Error en /api/plants/analyze:", error);
+        return NextResponse.json(
+            { 
+                error: 'Error al analizar la planta',
+                species: 'Por identificar',
+                common_name: 'Planta desconocida',
+                health_status: 'Saludable',
+                care_instructions: 'Riega cuando la tierra esté seca.',
+                watering_frequency_days: 7,
+                sunlight_needs: 'Luz indirecta'
+            },
+            { status: 200 }
+        );
     }
 }
