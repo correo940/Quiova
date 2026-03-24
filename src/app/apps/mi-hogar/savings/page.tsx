@@ -98,7 +98,7 @@ const BANKS = [
 ];
 
 export default function SavingsPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
     const [goals, setGoals] = useState<SavingsGoal[]>([]);
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
@@ -132,19 +132,40 @@ export default function SavingsPage() {
     const [newGoal, setNewGoal] = useState({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
     const [newRecurring, setNewRecurring] = useState({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
 
+    const resetSavingsState = () => {
+        setAccounts([]);
+        setGoals([]);
+        setRecentTransactions([]);
+        setMonthlyStats({ income: 0, expense: 0, savingsRate: 0 });
+        setChartData([]);
+        setRecurringItems([]);
+        setPasswords([]);
+        setPendingTotal(0);
+        setLoading(false);
+    };
+
 
     useEffect(() => {
-        if (user) {
-            fetchData().then(() => {
-                // Run automation after fetching data
-                processAutoDeposits();
-            });
-            fetchPasswordsLite();
+        if (authLoading) return;
+
+        if (!user) {
+            resetSavingsState();
+            return;
         }
-    }, [user]);
+
+        const userId = user.id;
+
+        fetchData(userId).then(() => {
+            // Run automation after fetching data
+            processAutoDeposits(userId);
+        });
+        fetchPasswordsLite(userId);
+    }, [user, authLoading]);
 
     // --- AUTOMATION LOGIC ---
-    const processAutoDeposits = async () => {
+    const processAutoDeposits = async (userId?: string) => {
+        if (!userId) return;
+
         const today = new Date();
         const currentDay = today.getDate(); // 1-31
         const currentMonthStr = format(today, 'yyyy-MM'); // 2024-02
@@ -153,7 +174,7 @@ export default function SavingsPage() {
         const { data: items } = await supabase
             .from('savings_recurring_items')
             .select('*')
-            .eq('user_id', user?.id)
+            .eq('user_id', userId)
             .eq('type', 'income') // Only incomes are automated for now per user request
             .not('target_account_id', 'is', null);
 
@@ -178,7 +199,7 @@ export default function SavingsPage() {
 
             // 1. Transaction Record
             await supabase.from('savings_account_transactions').insert({
-                user_id: user?.id,
+                user_id: userId,
                 account_id: item.target_account_id,
                 amount: item.amount,
                 date: format(today, 'yyyy-MM-dd'),
@@ -205,18 +226,23 @@ export default function SavingsPage() {
         if (processedCount > 0) {
             toast.success(`Se han procesado ${processedCount} ingresos automáticos`);
             // Refetch to update UI
-            fetchData();
+            fetchData(userId);
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (userId?: string) => {
+        if (!userId) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             // 1. Accounts
             const { data: accs } = await supabase
                 .from('savings_accounts')
                 .select('*')
-                .eq('user_id', user?.id)
+                .eq('user_id', userId)
                 .order('name');
             setAccounts(accs || []);
 
@@ -224,7 +250,7 @@ export default function SavingsPage() {
             const { data: gls } = await supabase
                 .from('savings_goals')
                 .select('*')
-                .eq('user_id', user?.id)
+                .eq('user_id', userId)
                 .order('deadline', { ascending: true });
             setGoals(gls || []);
 
@@ -245,7 +271,7 @@ export default function SavingsPage() {
             const { data: recs } = await supabase
                 .from('savings_recurring_items')
                 .select('*')
-                .eq('user_id', user?.id)
+                .eq('user_id', userId)
                 .order('day_of_month', { ascending: true });
             setRecurringItems((recs as RecurringItem[]) || []);
 
@@ -293,7 +319,7 @@ export default function SavingsPage() {
             const { data: pendingExps } = await supabase
                 .from('pending_balance_expenses')
                 .select('amount')
-                .eq('user_id', user?.id)
+                .eq('user_id', userId)
                 .eq('status', 'pending');
             const pTotal = (pendingExps || []).reduce((s: number, e: any) => s + (e.amount || 0), 0);
             setPendingTotal(pTotal);
@@ -306,8 +332,13 @@ export default function SavingsPage() {
         }
     };
 
-    const fetchPasswordsLite = async () => {
-        const { data } = await supabase.from('passwords').select('id, name').eq('user_id', user?.id).order('name');
+    const fetchPasswordsLite = async (userId?: string) => {
+        if (!userId) {
+            setPasswords([]);
+            return;
+        }
+
+        const { data } = await supabase.from('passwords').select('id, name').eq('user_id', userId).order('name');
         setPasswords(data || []);
     };
 
@@ -371,7 +402,7 @@ export default function SavingsPage() {
             toast.success('Cuenta creada');
             setIsAddAccountOpen(false);
             setNewAccount({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '' });
-            fetchData();
+            fetchData(user?.id);
         } catch (error) {
             toast.error('Error al crear cuenta');
         }
@@ -395,7 +426,7 @@ export default function SavingsPage() {
             toast.success('Meta creada');
             setIsAddGoalOpen(false);
             setNewGoal({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
-            fetchData();
+            fetchData(user?.id);
         } catch (error) {
             console.error(error);
             toast.error('Error al crear meta');
@@ -420,7 +451,7 @@ export default function SavingsPage() {
             toast.success('Movimiento registrado');
             setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
             fetchGoalTransactions(selectedGoal.id);
-            fetchData();
+            fetchData(user?.id);
             setSelectedGoal({ ...selectedGoal, current_amount: newTotal });
         } catch (error) {
             console.error(error);
@@ -446,7 +477,7 @@ export default function SavingsPage() {
             toast.success('Movimiento registrado');
             setNewTransaction({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
             fetchAccountTransactions(selectedAccount.id);
-            fetchData();
+            fetchData(user?.id);
             setSelectedAccount({ ...selectedAccount, current_balance: newTotal });
         } catch (error) {
             console.error(error);
@@ -496,7 +527,7 @@ export default function SavingsPage() {
             }
 
             toast.success('Datos eliminados correctamente');
-            fetchData();
+            fetchData(user?.id);
         } catch (error) {
             console.error('Error reseteando datos', error);
             toast.error('Error al resetear datos');
@@ -521,7 +552,7 @@ export default function SavingsPage() {
             toast.success('Fijo añadido');
             setIsAddRecurringOpen(false);
             setNewRecurring({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
-            fetchData();
+            fetchData(user?.id);
         } catch (error) {
             console.error(error);
             toast.error('Error al crear fijo');
@@ -534,7 +565,7 @@ export default function SavingsPage() {
             const { error } = await supabase.from('savings_recurring_items').delete().eq('id', id);
             if (error) throw error;
             toast.success('Eliminado');
-            fetchData();
+            fetchData(user?.id);
         } catch (error) {
             toast.error('Error al eliminar');
         }
@@ -601,7 +632,7 @@ export default function SavingsPage() {
                 onDeleteRecurring={handleDeleteRecurring}
                 userId={user?.id}
                 pendingTotal={pendingTotal}
-                onBalanceChange={() => fetchData()}
+                onBalanceChange={() => fetchData(user?.id)}
             />
 
             {/* --- BANK STATEMENT IMPORTER --- */}
@@ -610,7 +641,7 @@ export default function SavingsPage() {
                 onOpenChange={setIsImporterOpen}
                 accounts={accounts}
                 userId={user?.id || ''}
-                onImportComplete={() => fetchData()}
+                onImportComplete={() => fetchData(user?.id)}
             />
 
             {/* --- RESET DATA DIALOG --- */}
