@@ -99,9 +99,9 @@ EJEMPLOS VÁLIDOS:
         // Intentar OpenRouter con modelos gratis verificados
         if (process.env.OPENROUTER_API_KEY) {
             try {
-                // Primer intento: Nemotron Nano 12B VL (tiene visión)
-                console.log("🤖 Intentando OpenRouter (Nemotron Nano 12B Vision)...");
-                const nemotronRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                // Primer intento: Llama 3.3 70B (modelo muy capaz)
+                console.log("🤖 Intentando OpenRouter (Llama 3.3 70B Instruct)...");
+                const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -110,49 +110,41 @@ EJEMPLOS VÁLIDOS:
                         'X-Title': 'Quioba Plant Analyzer'
                     },
                     body: JSON.stringify({
-                        model: 'nvidia/nemotron-nano-12b-vision',
+                        model: 'meta-llama/llama-3.3-70b-instruct',
                         messages: [
                             {
                                 role: "user",
-                                content: [
-                                    { type: "text", text: systemPrompt },
-                                    { 
-                                        type: "image_url", 
-                                        image_url: { 
-                                            url: `data:image/jpeg;base64,${base64Data}`
-                                        } 
-                                    }
-                                ]
+                                content: systemPrompt
                             }
                         ]
                     })
                 });
 
-                if (nemotronRes.ok) {
-                    const nemotronData = await nemotronRes.json();
-                    const content = nemotronData.choices?.[0]?.message?.content;
+                if (llamaRes.ok) {
+                    const llamaData = await llamaRes.json();
+                    const content = llamaData.choices?.[0]?.message?.content;
                     if (content) {
                         try {
                             careData = JSON.parse(content);
-                            console.log("✅ Nemotron Vision respondió exitosamente");
+                            console.log("✅ Llama 3.3 respondió exitosamente");
                         } catch (parseErr) {
-                            console.warn("⚠️ Nemotron parse error, intentando siguiente fallback");
+                            console.warn("⚠️ Llama parse error, intentando Qwen...");
                             throw new Error("Parse error");
                         }
                     }
                 } else {
-                    const err = await nemotronRes.text();
-                    console.warn(`⚠️ Nemotron fallo (${nemotronRes.status}): ${err.substring(0, 150)}`);
-                    throw new Error("Nemotron failed");
+                    const err = await llamaRes.text();
+                    console.warn(`⚠️ Llama fallo (${llamaRes.status}): ${err.substring(0, 150)}`);
+                    throw new Error("Llama failed");
                 }
-            } catch (nemotronError) {
-                console.warn("⚠️ Nemotron Exception, intentando Llama 3.3 70B...");
+            } catch (llamaError) {
+                console.warn("⚠️ Llama Exception, intentando Qwen3...");
                 
-                // Segundo intento: Llama 3.3 70B (modelo poderoso de texto)
+                // Segundo intento: Qwen3 (modelo gratuito capaz)
                 if (process.env.OPENROUTER_API_KEY) {
                     try {
-                        console.log("🤖 Intentando OpenRouter (Llama 3.3 70B Instruct)...");
-                        const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        console.log("🤖 Intentando OpenRouter (Qwen3)...");
+                        const qwenRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -161,7 +153,7 @@ EJEMPLOS VÁLIDOS:
                                 'X-Title': 'Quioba Plant Analyzer'
                             },
                             body: JSON.stringify({
-                                model: 'meta-llama/llama-3.3-70b-instruct',
+                                model: 'qwen/qwen-2.5-7b-instruct',
                                 messages: [
                                     {
                                         role: "user",
@@ -171,68 +163,25 @@ EJEMPLOS VÁLIDOS:
                             })
                         });
 
-                        if (llamaRes.ok) {
-                            const llamaData = await llamaRes.json();
-                            const content = llamaData.choices?.[0]?.message?.content;
+                        if (qwenRes.ok) {
+                            const qwenData = await qwenRes.json();
+                            const content = qwenData.choices?.[0]?.message?.content;
                             if (content) {
                                 try {
                                     careData = JSON.parse(content);
-                                    console.log("✅ Llama 3.3 respondió exitosamente");
+                                    console.log("✅ Qwen3 respondió exitosamente");
                                 } catch (parseErr) {
-                                    console.warn("⚠️ Llama parse error, intentando Qwen...");
-                                    throw new Error("Parse error");
+                                    console.log("ℹ️ Usando análisis genérico (Qwen parse error)");
                                 }
                             }
                         } else {
-                            const err = await llamaRes.text();
-                            console.warn(`⚠️ Llama fallo (${llamaRes.status}): ${err.substring(0, 150)}`);
-                            throw new Error("Llama failed");
-                        }
-                    } catch (llamaError) {
-                        console.warn("⚠️ Llama Exception, intentando Qwen3...");
-                        
-                        // Tercer intento: Qwen3 (modelo gratuito capaz)
-                        try {
-                            console.log("🤖 Intentando OpenRouter (Qwen3)...");
-                            const qwenRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                                    'Content-Type': 'application/json',
-                                    'HTTP-Referer': 'https://quioba.com',
-                                    'X-Title': 'Quioba Plant Analyzer'
-                                },
-                                body: JSON.stringify({
-                                    model: 'qwen/qwen-2.5-7b-instruct',
-                                    messages: [
-                                        {
-                                            role: "user",
-                                            content: systemPrompt
-                                        }
-                                    ]
-                                })
-                            });
-
-                            if (qwenRes.ok) {
-                                const qwenData = await qwenRes.json();
-                                const content = qwenData.choices?.[0]?.message?.content;
-                                if (content) {
-                                    try {
-                                        careData = JSON.parse(content);
-                                        console.log("✅ Qwen3 respondió exitosamente");
-                                    } catch (parseErr) {
-                                        console.log("ℹ️ Usando análisis genérico (Qwen parse error)");
-                                    }
-                                }
-                            } else {
-                                const err = await qwenRes.text();
-                                console.warn(`⚠️ Qwen fallo (${qwenRes.status}): ${err.substring(0, 150)}`);
-                                console.log("ℹ️ Usando análisis genérico");
-                            }
-                        } catch (qwenError) {
-                            console.warn("⚠️ Qwen Exception:", qwenError);
+                            const err = await qwenRes.text();
+                            console.warn(`⚠️ Qwen fallo (${qwenRes.status}): ${err.substring(0, 150)}`);
                             console.log("ℹ️ Usando análisis genérico");
                         }
+                    } catch (qwenError) {
+                        console.warn("⚠️ Qwen Exception:", qwenError);
+                        console.log("ℹ️ Usando análisis genérico");
                     }
                 } else {
                     console.warn("⚠️ OPENROUTER_API_KEY no configurada");
