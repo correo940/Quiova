@@ -575,16 +575,6 @@ export default function SavingsPage() {
         }
     };
 
-    const handleAddAccountTransaction = async () => {
-        if (!newTransaction.amount) return toast.error('Importe obligatorio');
-
-        await handleSubmitAccountTransaction({
-            amount: parseFloat(newTransaction.amount),
-            date: newTransaction.date,
-            description: newTransaction.description,
-            kind: transType
-        });
-    };
 
     const handleDeleteAccount = async () => {
         if (!selectedAccount) return;
@@ -679,7 +669,6 @@ export default function SavingsPage() {
     };
 
     // --- CALCULATIONS ---
-    const transactions = accountTransactions;
     const selectedAccountPasswordId = selectedAccount?.password_id;
     const selectedAccountPasswordName = selectedAccountPasswordId
         ? passwords.find((p) => p.id === selectedAccountPasswordId)?.name
@@ -920,49 +909,6 @@ export default function SavingsPage() {
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
             />
 
-            {selectedAccount ? (false && (
-            <Dialog open={isAccountDetailOpen} onOpenChange={setIsAccountDetailOpen}>
-                <DialogContent className="max-w-md sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">{selectedAccount?.logo_url && <img src={selectedAccount?.logo_url} className="w-6 h-6 object-contain" />}{selectedAccount?.name}</div>
-                            <Button variant="ghost" size="icon" onClick={handleDeleteAccount} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /></Button>
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-6 py-2">
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg text-center relative">
-                            <p className="text-sm text-muted-foreground">Saldo Disponible</p>
-                            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedAccount?.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
-                            {selectedAccount?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedAccount?.interest_rate}% Interés</div> : null}
-                        </div>
-                        <div className="space-y-3 border-t pt-4">
-                            <div className="flex justify-center gap-4 mb-2">
-                                <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />Ingreso</Button>
-                                <Button variant={transType === 'expense' ? 'default' : 'outline'} onClick={() => setTransType('expense')} className={transType === 'expense' ? 'bg-red-600 hover:bg-red-700 text-white' : ''} size="sm"><Wallet className="w-4 h-4 mr-2" />Retiro</Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Input placeholder="Importe (Ej: 100)" type="number" value={newTransaction.amount} onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })} />
-                                <Input type="date" value={newTransaction.date} onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })} />
-                            </div>
-                            <div className="flex gap-3">
-                                <Input placeholder={transType === 'deposit' ? 'Ej: Nómina' : 'Ej: Transferencia'} value={newTransaction.description} onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })} />
-                                <Button size="icon" onClick={handleAddAccountTransaction}><Save className="w-4 h-4" /></Button>
-                            </div>
-                        </div>
-                        <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
-                            <h4 className="font-medium text-sm">Movimientos de la Cuenta</h4>
-                            {transactions.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Sin movimientos recientes</p> :
-                                transactions.map(tx => (
-                                    <div key={tx.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                                        <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
-                                        <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
-                                    </div>
-                                ))
-                            }
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>)) : null}
         </div>
     );
 }
