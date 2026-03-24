@@ -8,6 +8,7 @@ import MobileLauncher from '@/components/mobile/mobile-launcher';
 import { Capacitor } from '@capacitor/core';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import BlogContent from '@/components/blog-content';
+import { getValidatedSession } from '@/lib/supabase-session';
 
 import LogoLoader from '@/components/ui/logo-loader';
 
@@ -42,14 +43,14 @@ function HomeContent() {
     const resolveAuthSafely = async () => {
       try {
         const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
+          getValidatedSession(),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
         ]);
 
         if (!mounted) return;
 
-        if (sessionResult && typeof sessionResult === 'object' && 'data' in sessionResult) {
-          setUser(sessionResult.data.session?.user ?? null);
+        if (sessionResult && typeof sessionResult === 'object' && 'user' in sessionResult) {
+          setUser(sessionResult.user ?? null);
         } else {
           setUser(null);
         }

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getValidatedSession } from '@/lib/supabase-session'
 
 type AuthContextType = {
     session: Session | null
@@ -31,12 +32,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Initial session check
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                const { session, user } = await getValidatedSession()
                 setSession(session)
-                setUser(session?.user ?? null)
+                setUser(user ?? null)
 
-                if (session?.user) {
-                    await checkPremiumStatus(session.user.id)
+                if (user) {
+                    await checkPremiumStatus(user.id)
                 }
             } catch (error) {
                 console.error('AuthProvider: Error initializing auth', error)
