@@ -1,8 +1,13 @@
-{
+﻿{
     "appId": "com.quioba.app",
     "appName": "Quioba",
     "webDir": "out",
     "backgroundColor": "#F8FAFC",
+    "server": {
+        "url": "https://quioba.com",
+        "cleartext": false,
+        "androidScheme": "https"
+    },
     "plugins": {
         "SplashScreen": {
             "launchShowDuration": 2000,
