@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -64,6 +64,8 @@ type SecureDocument = {
 
 type SortOption = 'recent' | 'title' | 'expiry';
 type DocumentStateTone = 'muted' | 'active' | 'warning' | 'expired';
+const DOCUMENTS_BUCKET = 'secure-docs';
+const STORAGE_UPLOAD_TIMEOUT_MS = 45000;
 
 const DEFAULT_FORM: DocumentForm = {
     title: '',
@@ -133,6 +135,33 @@ function buildManualTitle(file: File) {
     const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
     if (!rawTitle) return 'Documento manual';
     return rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string) {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+        promise
+            .then((value) => {
+                clearTimeout(timer);
+                resolve(value);
+            })
+            .catch((error) => {
+                clearTimeout(timer);
+                reject(error);
+            });
+    });
+}
+
+function normalizeSupabaseError(error: any) {
+    const message = typeof error?.message === 'string' ? error.message : '';
+    const statusCode = error?.statusCode ?? error?.status ?? null;
+    const errorText = typeof error?.error === 'string' ? error.error : '';
+    return {
+        message,
+        statusCode,
+        errorText,
+        fullText: `${message} ${errorText}`.trim().toLowerCase(),
+    };
 }
 
 export default function DocumentsPage() {
@@ -233,7 +262,11 @@ export default function DocumentsPage() {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}.${fileExt}`;
                 const filePath = `${user.id}/${fileName}`;
-                const { error: uploadError } = await supabase.storage.from('secure-docs').upload(filePath, file);
+                const { error: uploadError } = await withTimeout(
+                    supabase.storage.from(DOCUMENTS_BUCKET).upload(filePath, file),
+                    STORAGE_UPLOAD_TIMEOUT_MS,
+                    'La subida del archivo ha tardado demasiado. Revisa tu conexion e intentalo de nuevo.'
+                );
                 if (uploadError) throw uploadError;
                 finalFilePath = filePath;
             }
@@ -264,16 +297,20 @@ export default function DocumentsPage() {
             setFormData(DEFAULT_FORM);
             setAnalysisPreview(null);
             setAnalysisError(null);
-            fetchDocuments();
+            await fetchDocuments();
         } catch (error: any) {
             console.error('Save error:', error);
-            const message = typeof error?.message === 'string' ? error.message : '';
-            if (message.toLowerCase().includes('row-level security')) {
+            const { message, statusCode, fullText } = normalizeSupabaseError(error);
+            if (fullText.includes('row-level security')) {
                 toast.error('Supabase esta bloqueando la subida al bucket secure-docs. Ejecuta la migracion create_secure_docs_storage.sql.');
-            } else if (message.toLowerCase().includes('column')) {
+            } else if (statusCode === 404 || fullText.includes('bucket not found') || fullText.includes('not found')) {
+                toast.error('El bucket secure-docs no existe o no esta accesible en produccion. Ejecuta create_secure_docs_storage.sql en ese proyecto de Supabase.');
+            } else if (fullText.includes('column')) {
                 toast.error('Faltan columnas en documents. Ejecuta alter_documents_add_smart_fields.sql en Supabase.');
+            } else if (message.includes('ha tardado demasiado')) {
+                toast.error(message);
             } else {
-                toast.error('Error al guardar. Verifica el bucket secure-docs y las migraciones SQL.');
+                toast.error(message || 'Error al guardar. Verifica el bucket secure-docs y las migraciones SQL.');
             }
         } finally {
             setUploading(false);
@@ -282,7 +319,7 @@ export default function DocumentsPage() {
     const handleViewFile = async (doc: SecureDocument) => {
         try {
             toast.info('Generando acceso temporal...');
-            const { data, error } = await supabase.storage.from('secure-docs').createSignedUrl(doc.file_url, 60);
+            const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(doc.file_url, 60);
             if (error) throw error;
             if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
@@ -299,7 +336,7 @@ export default function DocumentsPage() {
     const handleDownload = async (doc: SecureDocument) => {
         try {
             toast.info('Preparando descarga...');
-            const { data, error } = await supabase.storage.from('secure-docs').createSignedUrl(doc.file_url, 60);
+            const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(doc.file_url, 60);
             if (error) throw error;
             if (!data?.signedUrl) throw new Error('No se pudo generar la descarga');
             const response = await fetch(data.signedUrl);
@@ -323,7 +360,7 @@ export default function DocumentsPage() {
     const handleDelete = async (id: string, filePath: string) => {
         if (!confirm('Estas seguro de eliminar este documento?')) return;
         try {
-            const { error: storageError } = await supabase.storage.from('secure-docs').remove([filePath]);
+            const { error: storageError } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([filePath]);
             if (storageError) console.error('Storage delete error', storageError);
             const { error } = await supabase.from('documents').delete().eq('id', id);
             if (error) throw error;
@@ -643,4 +680,3 @@ export default function DocumentsPage() {
         </>
     );
 }
-
