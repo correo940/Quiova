@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +66,7 @@ type SortOption = 'recent' | 'title' | 'expiry';
 type DocumentStateTone = 'muted' | 'active' | 'warning' | 'expired';
 const DOCUMENTS_BUCKET = 'secure-docs';
 const STORAGE_UPLOAD_TIMEOUT_MS = 45000;
+const STORAGE_NOT_FOUND_MARKERS = ['not found', 'bucket not found', 'object not found'];
 
 const DEFAULT_FORM: DocumentForm = {
     title: '',
@@ -179,8 +180,11 @@ export default function DocumentsPage() {
     const [analysisPreview, setAnalysisPreview] = useState<DocumentAnalysisResult | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [analyzingDocument, setAnalyzingDocument] = useState(false);
+    const initialLoadRef = useRef(false);
 
     useEffect(() => {
+        if (initialLoadRef.current) return;
+        initialLoadRef.current = true;
         fetchDocuments();
     }, []);
 
@@ -360,18 +364,41 @@ export default function DocumentsPage() {
     const handleDelete = async (id: string, filePath: string) => {
         if (!confirm('Estas seguro de eliminar este documento?')) return;
         try {
-            const { error: storageError } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([filePath]);
-            if (storageError) console.error('Storage delete error', storageError);
-            const { error } = await supabase.from('documents').delete().eq('id', id);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user');
+
+            const { data: deletedRow, error } = await supabase
+                .from('documents')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id)
+                .select('id, file_url')
+                .maybeSingle();
+
             if (error) throw error;
-            toast.success('Documento eliminado');
+            if (!deletedRow) throw new Error('No se encontro el documento o no tienes permisos para borrarlo.');
+
+            const storagePath = deletedRow.file_url || filePath;
+            if (storagePath) {
+                const { error: storageError } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
+                if (storageError) {
+                    const storageMessage = ``.toLowerCase();
+                    const isMissingObject = STORAGE_NOT_FOUND_MARKERS.some((marker) => storageMessage.includes(marker));
+                    if (!isMissingObject) {
+                        console.error('Storage delete error:', storageError);
+                    }
+                }
+            }
+
             setDocuments((current) => current.filter((item) => item.id !== id));
             if (selectedDocument?.id === id) {
                 setSelectedDocument(null);
                 setIsDetailOpen(false);
             }
-        } catch {
-            toast.error('Error al eliminar');
+            toast.success('Documento eliminado');
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.error(error instanceof Error ? error.message : 'Error al eliminar');
         }
     };
 
@@ -680,3 +707,7 @@ export default function DocumentsPage() {
         </>
     );
 }
+
+
+
+
