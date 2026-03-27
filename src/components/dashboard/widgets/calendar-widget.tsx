@@ -31,7 +31,7 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
     const { setSelectedDate } = useJournal();
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchCalendarData = async () => {
             const {
                 data: { session },
             } = await supabase.auth.getSession();
@@ -41,7 +41,8 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
                 .from('tasks')
                 .select('due_date')
                 .eq('user_id', session.user.id)
-                .eq('is_completed', false);
+                .eq('is_completed', false)
+                .not('due_date', 'is', null);
             if (tasks) setTaskDates(tasks.map((task: any) => new Date(task.due_date)));
 
             const { data: entries } = await supabase
@@ -57,7 +58,30 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
             if (shifts) setShiftDates(shifts.map((shift: any) => new Date(shift.start_time)));
         };
 
-        fetchData();
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void fetchCalendarData();
+            }
+        };
+
+        const handleWindowFocus = () => {
+            void fetchCalendarData();
+        };
+
+        const handleExternalRefresh = () => {
+            void fetchCalendarData();
+        };
+
+        void fetchCalendarData();
+        window.addEventListener('focus', handleWindowFocus);
+        window.addEventListener('quioba-calendar-refresh', handleExternalRefresh);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('focus', handleWindowFocus);
+            window.removeEventListener('quioba-calendar-refresh', handleExternalRefresh);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {

@@ -266,14 +266,23 @@ function buildAlerts(documents: SecureDocument[], reminders: DocumentReminder[],
     });
 
     if (settings.reminder) {
-      reminders.forEach((reminder) => {
-          if (!reminder.is_active) return;
-          const document = reminderDocs.get(reminder.document_id);
-          if (!document) return;
-          const daysUntil = differenceInDays(parseISO(reminder.next_date), new Date());
-          if (daysUntil > 30) return;
-          alerts.push({ id: `reminder-${reminder.id}`, documentId: document.id, documentTitle: document.title, title: reminder.title, description: reminder.description || `Aviso programado para ${document.title}.`, severity: daysUntil <= 7 ? 'medium' : 'low', dueDate: reminder.next_date, category: document.category, type: 'reminder' });
-      });
+        reminders.forEach((reminder) => {
+            if (!reminder.is_active) return;
+            const document = reminderDocs.get(reminder.document_id);
+            if (!document) return;
+            const daysUntil = differenceInDays(parseISO(reminder.next_date), new Date());
+            alerts.push({
+                id: `reminder-${reminder.id}`,
+                documentId: document.id,
+                documentTitle: document.title,
+                title: reminder.title,
+                description: reminder.description || `Aviso programado para ${document.title}.`,
+                severity: daysUntil <= 7 ? 'high' : daysUntil <= 30 ? 'medium' : 'low',
+                dueDate: reminder.next_date,
+                category: document.category,
+                type: 'reminder',
+            });
+        });
     }
 
     return alerts.sort((a, b) => {
@@ -351,6 +360,11 @@ export default function DocumentsPage() {
         saveAlertSettings(alertSettings);
     }, [alertSettings]);
 
+    useEffect(() => {
+        if (loading || !initialLoadRef.current) return;
+        void syncDocumentTasks(documents, reminders, alertSettings);
+    }, [documents, reminders, alertSettings, loading]);
+
     const fetchDocuments = async () => {
         const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
         if (error) {
@@ -420,7 +434,7 @@ export default function DocumentsPage() {
     const syncDocumentTasks = async (allDocuments: SecureDocument[], allReminders: DocumentReminder[], settings: DocumentAlertSettings) => {
         const taskMarkerPrefix = '[QUIOBA_DOCUMENT]';
         const alerts = buildAlerts(allDocuments, allReminders, settings);
-        const actionableAlerts = settings.sync_to_tasks ? alerts.filter((alert) => ['expiring', 'expired', 'lifecycle', 'reminder'].includes(alert.type)) : [];
+        const actionableAlerts = settings.sync_to_tasks ? alerts.filter((alert) => ['expired', 'lifecycle', 'reminder'].includes(alert.type)) : [];
         const { data: userData } = await supabase.auth.getUser();
         const user = userData.user;
         if (!user) return;
@@ -444,8 +458,11 @@ export default function DocumentsPage() {
         });
 
         const desiredMarkers = new Set<string>();
+        let shouldRefreshCalendar = false;
         for (const alert of actionableAlerts) {
-            const marker = `${taskMarkerPrefix}:${alert.type}:${alert.documentId}`;
+            const marker = alert.type === 'reminder'
+                ? `${taskMarkerPrefix}:${alert.type}:${alert.id}`
+                : `${taskMarkerPrefix}:${alert.type}:${alert.documentId}`;
             desiredMarkers.add(marker);
             const dueDateIso = alert.dueDate ? `${alert.dueDate}T09:00:00.000Z` : null;
             const title = `Documento: ${alert.title} · ${alert.documentTitle}`;
@@ -463,7 +480,11 @@ export default function DocumentsPage() {
                         is_completed: false,
                     })
                     .eq('id', existing.id);
-                if (error) console.error('Error updating document task:', error);
+                if (error) {
+                    console.error('Error updating document task:', error);
+                } else {
+                    shouldRefreshCalendar = true;
+                }
             } else {
                 const { error } = await supabase
                     .from('tasks')
@@ -477,7 +498,11 @@ export default function DocumentsPage() {
                         is_completed: false,
                         priority: alert.severity === 'high' ? 'high' : alert.severity === 'medium' ? 'medium' : 'low',
                     }]);
-                if (error) console.error('Error inserting document task:', error);
+                if (error) {
+                    console.error('Error inserting document task:', error);
+                } else {
+                    shouldRefreshCalendar = true;
+                }
             }
         }
 
@@ -486,8 +511,16 @@ export default function DocumentsPage() {
             const markerLine = (description.split('\n')[0] || '').trim();
             if (markerLine.startsWith(taskMarkerPrefix) && !desiredMarkers.has(markerLine)) {
                 const { error } = await supabase.from('tasks').delete().eq('id', task.id);
-                if (error) console.error('Error deleting stale document task:', error);
+                if (error) {
+                    console.error('Error deleting stale document task:', error);
+                } else {
+                    shouldRefreshCalendar = true;
+                }
             }
+        }
+
+        if (typeof window !== 'undefined' && shouldRefreshCalendar) {
+            window.dispatchEvent(new Event('quioba-calendar-refresh'));
         }
     };
 
@@ -827,7 +860,7 @@ export default function DocumentsPage() {
                 </div>
 
                 <DocumentDialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setFormData(DEFAULT_FORM); } }} form={formData} setForm={setFormData} onSave={handleSave} onAnalyze={async (file) => { setSelectedUploadFile(file); return handleAnalyzeDocument(file); }} selectedFile={selectedUploadFile} setSelectedFile={setSelectedUploadFile} analysis={analysisPreview} analysisError={analysisError} analyzing={analyzingDocument} uploading={uploading} />
-                <DocumentAlertSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} settings={alertSettings} onChange={async (settings) => { setAlertSettings(settings); await syncDocumentTasks(documents, reminders, settings); }} />
+                <DocumentAlertSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} settings={alertSettings} onChange={(settings) => { setAlertSettings(settings); }} />
             </div>
 
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -865,4 +898,5 @@ export default function DocumentsPage() {
         setIsDetailOpen(true);
     }
 }
+
 
