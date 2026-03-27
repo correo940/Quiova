@@ -1,14 +1,22 @@
 ﻿'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { addMonths, format, setMonth, setYear } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { es } from 'date-fns/locale';
-import { format } from 'date-fns';
-import { supabase } from '@/lib/supabase';
-import { CalendarDays } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useJournal } from '@/context/JournalContext';
+import { supabase } from '@/lib/supabase';
 
 interface CalendarWidgetProps {
     date: Date | undefined;
@@ -19,11 +27,14 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
     const [taskDates, setTaskDates] = useState<Date[]>([]);
     const [journalDates, setJournalDates] = useState<Date[]>([]);
     const [shiftDates, setShiftDates] = useState<Date[]>([]);
+    const [visibleMonth, setVisibleMonth] = useState<Date>(date ?? new Date());
     const { setSelectedDate } = useJournal();
 
     useEffect(() => {
         const fetchData = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
             if (!session?.user) return;
 
             const { data: tasks } = await supabase
@@ -49,6 +60,27 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (date) {
+            setVisibleMonth(date);
+        }
+    }, [date]);
+
+    const monthOptions = useMemo(
+        () =>
+            Array.from({ length: 12 }, (_, index) => ({
+                value: index.toString(),
+                label: format(new Date(2026, index, 1), 'MMMM', { locale: es }),
+            })),
+        []
+    );
+
+    const currentYear = new Date().getFullYear();
+    const yearOptions = useMemo(
+        () => Array.from({ length: 41 }, (_, index) => currentYear - 20 + index),
+        [currentYear]
+    );
+
     const handleDateSelect = (nextDate: Date | undefined) => {
         onDateSelect(nextDate);
         setSelectedDate(nextDate);
@@ -56,39 +88,100 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
 
     const handleToday = () => {
         const today = new Date();
+        setVisibleMonth(today);
         handleDateSelect(today);
     };
 
-    const currentYear = new Date().getFullYear();
+    const handleMonthSelect = (monthValue: string) => {
+        setVisibleMonth((current) => setMonth(current, Number(monthValue)));
+    };
+
+    const handleYearSelect = (yearValue: string) => {
+        setVisibleMonth((current) => setYear(current, Number(yearValue)));
+    };
 
     return (
         <Card className="h-full flex flex-col overflow-hidden border-none shadow-md">
-            <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
+            <CardHeader className="space-y-0 py-3 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
                 <div className="flex items-center justify-between gap-3">
-                    <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">Calendario</CardTitle>
-                    <Button size="sm" variant="outline" onClick={handleToday}>Hoy</Button>
+                    <div>
+                        <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">
+                            Calendario
+                        </CardTitle>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 pt-1">
+                            <CalendarDays className="w-3.5 h-3.5" />
+                            {date ? `Fecha seleccionada: ${format(date, 'PPP', { locale: es })}` : 'Selecciona una fecha'}
+                        </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleToday}>
+                        Hoy
+                    </Button>
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2 pt-1">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    {date ? `Fecha seleccionada: ${format(date, 'PPP', { locale: es })}` : 'Selecciona una fecha'}
+
+                <div className="grid grid-cols-[40px_minmax(0,1fr)_116px_40px] gap-2 pt-3">
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-10 w-10"
+                        onClick={() => setVisibleMonth((current) => addMonths(current, -1))}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+
+                    <Select value={visibleMonth.getMonth().toString()} onValueChange={handleMonthSelect}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950 capitalize">
+                            <SelectValue placeholder="Mes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {monthOptions.map((month) => (
+                                <SelectItem key={month.value} value={month.value} className="capitalize">
+                                    {month.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={visibleMonth.getFullYear().toString()} onValueChange={handleYearSelect}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                            <SelectValue placeholder="Año" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                            {yearOptions.map((year) => (
+                                <SelectItem key={year} value={year.toString()}>
+                                    {year}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-10 w-10"
+                        onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
                 </div>
             </CardHeader>
+
             <CardContent className="flex justify-center p-2 flex-1 min-h-0 items-start bg-white dark:bg-slate-950">
                 <Calendar
                     mode="single"
                     selected={date}
                     onSelect={handleDateSelect}
+                    month={visibleMonth}
+                    onMonthChange={setVisibleMonth}
                     locale={es}
                     initialFocus
-                    captionLayout="dropdown-buttons"
-                    fromYear={currentYear - 15}
-                    toYear={currentYear + 15}
                     className="rounded-lg"
                     classNames={{
-                        caption_dropdowns: 'flex items-center gap-2',
-                        dropdown: 'h-8 rounded-md border border-input bg-background px-2 text-sm',
+                        caption: 'hidden',
                         head_cell: 'text-emerald-600 dark:text-emerald-500 rounded-md w-9 font-bold text-[0.8rem]',
-                        day_selected: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:bg-emerald-700 shadow-lg transition-transform z-10 font-bold rounded-lg',
+                        day_selected:
+                            'bg-emerald-600 text-white hover:bg-emerald-700 focus:bg-emerald-700 shadow-lg transition-transform z-10 font-bold rounded-lg',
                         day_today: 'bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-500/50 rounded-lg',
                     }}
                     modifiers={{
@@ -97,12 +190,23 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
                         hasShift: shiftDates,
                     }}
                     modifiersStyles={{
-                        hasTask: { textDecoration: 'underline', textDecorationColor: '#9333ea', textDecorationThickness: '3px', fontWeight: 'bold' },
+                        hasTask: {
+                            textDecoration: 'underline',
+                            textDecorationColor: '#9333ea',
+                            textDecorationThickness: '3px',
+                            fontWeight: 'bold',
+                        },
                         hasJournal: { color: '#ea580c', fontWeight: '600', fontStyle: 'italic' },
-                        hasShift: { backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '6px', fontWeight: 'bold' },
+                        hasShift: {
+                            backgroundColor: '#d1fae5',
+                            color: '#065f46',
+                            borderRadius: '6px',
+                            fontWeight: 'bold',
+                        },
                     }}
                 />
             </CardContent>
+
             <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-slate-100 dark:border-slate-800 flex justify-around text-[10px] text-muted-foreground shrink-0">
                 <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-purple-500"></div><span>Tarea</span></div>
                 <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-200 border border-emerald-600"></div><span>Turno</span></div>
