@@ -1,36 +1,44 @@
 ﻿'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ArrowLeft,
-    Lock,
-    FileText,
-    Search,
+    ArrowUpDown,
+    AlertTriangle,
+    Bell,
+    Building2,
+    CalendarClock,
+    Clock3,
+    Download,
     ExternalLink,
-    Trash2,
-    Shield,
     Eye,
+    FileBadge2,
+    FileText,
+    Files,
+    Flag,
+    History,
+    Lock,
+    NotebookPen,
+    RefreshCcw,
+    ScrollText,
+    Search,
+    Shield,
     ShieldCheck,
     Star,
-    Clock3,
-    AlertTriangle,
-    Files,
-    ArrowUpDown,
     Tags,
-    NotebookPen,
-    Download,
-    Building2,
-    FileBadge2,
-    CalendarClock,
-    ScrollText,
+    Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { differenceInDays, format, parseISO } from 'date-fns';
+import { differenceInDays, format, isSameDay, parseISO, startOfDay, subDays } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 import { DocumentAnalysisResult, DocumentDialog, DocumentForm, DocumentMetadata } from '@/components/apps/mi-hogar/documents/document-dialog';
+import { DocumentReminder, DocumentReminderDialog } from '@/components/apps/mi-hogar/documents/reminder-dialog';
+import { DocumentVersionHistoryDialog } from '@/components/apps/mi-hogar/documents/version-history-dialog';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -49,24 +57,50 @@ type SecureDocument = {
     id: string;
     title: string;
     category: string;
-    expiration_date?: string;
+    expiration_date?: string | null;
     file_url: string;
-    file_type?: string;
+    file_type?: string | null;
     is_favorite: boolean;
     created_at: string;
+    updated_at?: string;
     tags?: string[];
     notes?: string | null;
     issuer?: string | null;
     summary?: string | null;
     document_type?: string | null;
     metadata?: DocumentMetadata | null;
+    lifecycle_status: string;
+    renewal_of?: string | null;
 };
 
 type SortOption = 'recent' | 'title' | 'expiry';
 type DocumentStateTone = 'muted' | 'active' | 'warning' | 'expired';
+type AlertSeverity = 'high' | 'medium' | 'low';
+
+type DocumentAlert = {
+    id: string;
+    documentId: string;
+    documentTitle: string;
+    title: string;
+    description: string;
+    severity: AlertSeverity;
+    dueDate?: string | null;
+    category: string;
+    type: string;
+};
+
 const DOCUMENTS_BUCKET = 'secure-docs';
 const STORAGE_UPLOAD_TIMEOUT_MS = 45000;
 const STORAGE_NOT_FOUND_MARKERS = ['not found', 'bucket not found', 'object not found'];
+const CATEGORIES = ['Todos', 'Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas'];
+const SMART_VIEWS = ['Todos', 'Urgentes', 'Caducados', 'Favoritos', 'Pendientes'];
+const LIFECYCLE_LABELS: Record<string, string> = {
+    activo: 'Activo',
+    pendiente_revision: 'Pendiente de revision',
+    pendiente_renovacion: 'Pendiente de renovacion',
+    archivado: 'Archivado',
+};
+const AUTO_REMINDER_OFFSETS = [90, 30, 7, 1];
 
 const DEFAULT_FORM: DocumentForm = {
     title: '',
@@ -77,12 +111,20 @@ const DEFAULT_FORM: DocumentForm = {
     summary: '',
     document_type: '',
     metadata: {},
+    lifecycle_status: 'activo',
+    renewal_of: null,
 };
 
-const CATEGORIES = ['Todos', 'Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas'];
-const SMART_VIEWS = ['Todos', 'Urgentes', 'Caducados', 'Favoritos'];
-
 function getDocumentState(doc: SecureDocument): { label: string; tone: DocumentStateTone; daysUntilExpiration: number | null } {
+    if (doc.lifecycle_status === 'archivado') {
+        return { label: 'Archivado', tone: 'muted', daysUntilExpiration: null };
+    }
+    if (doc.lifecycle_status === 'pendiente_renovacion') {
+        return { label: 'Pendiente de renovacion', tone: 'warning', daysUntilExpiration: null };
+    }
+    if (doc.lifecycle_status === 'pendiente_revision') {
+        return { label: 'Pendiente de revision', tone: 'warning', daysUntilExpiration: null };
+    }
     if (!doc.expiration_date) return { label: 'Sin vencimiento', tone: 'muted', daysUntilExpiration: null };
     const daysUntilExpiration = differenceInDays(parseISO(doc.expiration_date), new Date());
     if (daysUntilExpiration < 0) return { label: 'Caducado', tone: 'expired', daysUntilExpiration };
@@ -90,7 +132,7 @@ function getDocumentState(doc: SecureDocument): { label: string; tone: DocumentS
     return { label: 'Vigente', tone: 'active', daysUntilExpiration };
 }
 
-function getFileLabel(fileType?: string) {
+function getFileLabel(fileType?: string | null) {
     if (!fileType) return 'Archivo';
     if (fileType.includes('pdf')) return 'PDF';
     if (fileType.includes('image')) return 'Imagen';
@@ -119,9 +161,9 @@ function createFormFromDocument(doc: SecureDocument): DocumentForm {
         id: doc.id,
         title: doc.title,
         category: doc.category,
-        expiration_date: doc.expiration_date,
+        expiration_date: doc.expiration_date || undefined,
         file_url: doc.file_url,
-        file_type: doc.file_type,
+        file_type: doc.file_type || undefined,
         is_favorite: doc.is_favorite,
         tags: doc.tags || [],
         notes: doc.notes || '',
@@ -129,6 +171,8 @@ function createFormFromDocument(doc: SecureDocument): DocumentForm {
         summary: doc.summary || '',
         document_type: doc.document_type || '',
         metadata: doc.metadata || {},
+        lifecycle_status: doc.lifecycle_status || 'activo',
+        renewal_of: doc.renewal_of || null,
     };
 }
 
@@ -141,15 +185,13 @@ function buildManualTitle(file: File) {
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string) {
     return new Promise<T>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-        promise
-            .then((value) => {
-                clearTimeout(timer);
-                resolve(value);
-            })
-            .catch((error) => {
-                clearTimeout(timer);
-                reject(error);
-            });
+        promise.then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+        }).catch((error) => {
+            clearTimeout(timer);
+            reject(error);
+        });
     });
 }
 
@@ -164,13 +206,137 @@ function normalizeSupabaseError(error: any) {
         fullText: `${message} ${errorText}`.trim().toLowerCase(),
     };
 }
+function needsExpiration(doc: SecureDocument) {
+    return ['Identidad', 'Vehiculo', 'Seguro', 'Salud'].includes(doc.category);
+}
+
+function buildSystemTags(doc: SecureDocument) {
+    const state = getDocumentState(doc);
+    const tags: string[] = [];
+    if (state.tone === 'expired') tags.push('Critico');
+    if (state.daysUntilExpiration !== null && state.daysUntilExpiration >= 0 && state.daysUntilExpiration <= 30) tags.push('Este mes');
+    if (doc.lifecycle_status === 'pendiente_revision' || doc.lifecycle_status === 'pendiente_renovacion') tags.push('Pendiente');
+    if (doc.metadata?.requiere_doble_cara === true) tags.push('Falta reverso');
+    if (needsExpiration(doc) && !doc.expiration_date) tags.push('Falta fecha');
+    return tags;
+}
+
+function buildAlerts(documents: SecureDocument[], reminders: DocumentReminder[]) {
+    const alerts: DocumentAlert[] = [];
+    const reminderDocs = new Map(documents.map((doc) => [doc.id, doc]));
+
+    documents.forEach((doc) => {
+        const state = getDocumentState(doc);
+        if (state.tone === 'expired') {
+            alerts.push({
+                id: `expired-${doc.id}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                title: 'Documento caducado',
+                description: `${doc.title} necesita renovacion inmediata.`,
+                severity: 'high',
+                dueDate: doc.expiration_date || null,
+                category: doc.category,
+                type: 'expired',
+            });
+        } else if (state.daysUntilExpiration !== null && state.daysUntilExpiration >= 0 && state.daysUntilExpiration <= 30) {
+            alerts.push({
+                id: `soon-${doc.id}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                title: state.daysUntilExpiration <= 7 ? 'Caduca esta semana' : 'Caduca este mes',
+                description: `${doc.title} vence en ${state.daysUntilExpiration} dias.`,
+                severity: state.daysUntilExpiration <= 7 ? 'high' : 'medium',
+                dueDate: doc.expiration_date || null,
+                category: doc.category,
+                type: 'expiring',
+            });
+        }
+
+        if (needsExpiration(doc) && !doc.expiration_date) {
+            alerts.push({
+                id: `missing-expiry-${doc.id}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                title: 'Falta fecha de validez',
+                description: `${doc.title} deberia tener una fecha de caducidad o revision.`,
+                severity: 'medium',
+                dueDate: null,
+                category: doc.category,
+                type: 'missing_expiration',
+            });
+        }
+
+        if (doc.metadata?.requiere_doble_cara === true) {
+            alerts.push({
+                id: `missing-back-${doc.id}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                title: 'Falta la parte trasera',
+                description: `${doc.title} parece necesitar anverso y reverso para quedar completo.`,
+                severity: 'medium',
+                dueDate: null,
+                category: doc.category,
+                type: 'missing_back',
+            });
+        }
+
+        if (doc.lifecycle_status === 'pendiente_revision' || doc.lifecycle_status === 'pendiente_renovacion') {
+            alerts.push({
+                id: `lifecycle-${doc.id}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                title: LIFECYCLE_LABELS[doc.lifecycle_status] || 'Pendiente',
+                description: `${doc.title} esta marcado para seguimiento manual.`,
+                severity: 'low',
+                dueDate: doc.expiration_date || null,
+                category: doc.category,
+                type: 'lifecycle',
+            });
+        }
+    });
+
+    reminders.forEach((reminder) => {
+        if (!reminder.is_active) return;
+        const document = reminderDocs.get(reminder.document_id);
+        if (!document) return;
+        const daysUntil = differenceInDays(parseISO(reminder.next_date), new Date());
+        if (daysUntil > 30) return;
+        alerts.push({
+            id: `reminder-${reminder.id}`,
+            documentId: document.id,
+            documentTitle: document.title,
+            title: reminder.title,
+            description: reminder.description || `Aviso programado para ${document.title}.`,
+            severity: daysUntil <= 7 ? 'medium' : 'low',
+            dueDate: reminder.next_date,
+            category: document.category,
+            type: 'reminder',
+        });
+    });
+
+    return alerts.sort((a, b) => {
+        const severityWeight = { high: 0, medium: 1, low: 2 };
+        if (severityWeight[a.severity] !== severityWeight[b.severity]) {
+            return severityWeight[a.severity] - severityWeight[b.severity];
+        }
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime();
+    });
+}
 
 export default function DocumentsPage() {
     const [documents, setDocuments] = useState<SecureDocument[]>([]);
+    const [reminders, setReminders] = useState<DocumentReminder[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<SecureDocument | null>(null);
+    const [reminderTarget, setReminderTarget] = useState<SecureDocument | null>(null);
+    const [versionTarget, setVersionTarget] = useState<SecureDocument | null>(null);
+    const [calendarDate, setCalendarDate] = useState<Date>(new Date());
     const [formData, setFormData] = useState<DocumentForm>(DEFAULT_FORM);
     const [uploading, setUploading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -186,22 +352,71 @@ export default function DocumentsPage() {
     useEffect(() => {
         if (initialLoadRef.current) return;
         initialLoadRef.current = true;
-        fetchDocuments();
+        void Promise.all([fetchDocuments(), fetchReminders()]).finally(() => setLoading(false));
     }, []);
 
     const fetchDocuments = async () => {
-        try {
-            const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
-            if (error) throw error;
-            setDocuments((data || []) as SecureDocument[]);
-        } catch (error) {
+        const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+        if (error) {
             console.error('Error fetching documents:', error);
             toast.error('Error al cargar el centro de documentos');
-        } finally {
-            setLoading(false);
+            return;
         }
+        setDocuments((data || []) as SecureDocument[]);
     };
 
+    const fetchReminders = async () => {
+        const { data, error } = await supabase.from('document_reminders').select('*').order('next_date');
+        if (error) {
+            console.error('Error fetching document reminders:', error);
+            setReminders([]);
+            return;
+        }
+        setReminders((data || []) as DocumentReminder[]);
+    };
+
+    const syncAutomaticReminders = async (documentId: string, title: string, expirationDate?: string | null) => {
+        const deleteResponse = await supabase
+            .from('document_reminders')
+            .delete()
+            .eq('document_id', documentId)
+            .eq('kind', 'expiry');
+
+        if (deleteResponse.error) {
+            console.error('Error clearing automatic reminders:', deleteResponse.error);
+        }
+
+        if (!expirationDate) return;
+
+        const expiryDate = parseISO(expirationDate);
+        const today = startOfDay(new Date());
+        if (expiryDate < today) return;
+
+        const automaticRows = AUTO_REMINDER_OFFSETS
+            .map((offset) => {
+                const reminderDate = subDays(expiryDate, offset);
+                if (reminderDate < subDays(today, 1)) return null;
+                return {
+                    document_id: documentId,
+                    title: `${title} · aviso ${offset} dias antes`,
+                    description: `Recordatorio automatico para revisar ${title} antes de su vencimiento.`,
+                    kind: 'expiry',
+                    offset_days: offset,
+                    interval_months: null,
+                    next_date: format(reminderDate, 'yyyy-MM-dd'),
+                    channel: 'in_app',
+                    is_active: true,
+                };
+            })
+            .filter(Boolean);
+
+        if (automaticRows.length === 0) return;
+
+        const { error } = await supabase.from('document_reminders').insert(automaticRows as any[]);
+        if (error) {
+            console.error('Error creating automatic reminders:', error);
+        }
+    };
     const handleAnalyzeDocument = async (file: File) => {
         setAnalyzingDocument(true);
         setAnalysisPreview(null);
@@ -275,6 +490,7 @@ export default function DocumentsPage() {
                 if (uploadError) throw uploadError;
                 finalFilePath = filePath;
             }
+
             const payload = {
                 user_id: user.id,
                 title: formData.title,
@@ -288,22 +504,42 @@ export default function DocumentsPage() {
                 summary: formData.summary?.trim() || null,
                 document_type: formData.document_type?.trim() || null,
                 metadata: formData.metadata || {},
+                lifecycle_status: formData.lifecycle_status || 'activo',
+                renewal_of: formData.renewal_of || null,
             };
+
+            let savedDocument: SecureDocument | null = null;
             if (formData.id) {
-                const { error } = await supabase.from('documents').update(payload).eq('id', formData.id);
+                const { data, error } = await supabase
+                    .from('documents')
+                    .update(payload)
+                    .eq('id', formData.id)
+                    .select('*')
+                    .single();
                 if (error) throw error;
+                savedDocument = data as SecureDocument;
                 toast.success('Documento actualizado');
             } else {
-                const { error } = await supabase.from('documents').insert([payload]);
+                const { data, error } = await supabase
+                    .from('documents')
+                    .insert([payload])
+                    .select('*')
+                    .single();
                 if (error) throw error;
+                savedDocument = data as SecureDocument;
                 toast.success('Documento guardado');
             }
+
+            if (savedDocument) {
+                await syncAutomaticReminders(savedDocument.id, savedDocument.title, savedDocument.expiration_date || null);
+            }
+
             setIsDialogOpen(false);
             setFormData(DEFAULT_FORM);
             setSelectedUploadFile(null);
             setAnalysisPreview(null);
             setAnalysisError(null);
-            await fetchDocuments();
+            await Promise.all([fetchDocuments(), fetchReminders()]);
         } catch (error: any) {
             console.error('Save error:', error);
             const { message, statusCode, fullText } = normalizeSupabaseError(error);
@@ -311,8 +547,8 @@ export default function DocumentsPage() {
                 toast.error('Supabase esta bloqueando la subida al bucket secure-docs. Ejecuta la migracion create_secure_docs_storage.sql.');
             } else if (statusCode === 404 || fullText.includes('bucket not found') || fullText.includes('not found')) {
                 toast.error('El bucket secure-docs no existe o no esta accesible en produccion. Ejecuta create_secure_docs_storage.sql en ese proyecto de Supabase.');
-            } else if (fullText.includes('column')) {
-                toast.error('Faltan columnas en documents. Ejecuta alter_documents_add_smart_fields.sql en Supabase.');
+            } else if (fullText.includes('column') || fullText.includes('document_reminders') || fullText.includes('document_versions')) {
+                toast.error('Falta la migracion avanzada de documentos. Ejecuta alter_documents_add_tracking.sql y alter_documents_add_smart_fields.sql en Supabase.');
             } else if (message.includes('ha tardado demasiado')) {
                 toast.error(message);
             } else {
@@ -322,9 +558,9 @@ export default function DocumentsPage() {
             setUploading(false);
         }
     };
+
     const handleViewFile = async (doc: SecureDocument) => {
         try {
-            toast.info('Generando acceso temporal...');
             const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(doc.file_url, 60);
             if (error) throw error;
             if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
@@ -334,14 +570,8 @@ export default function DocumentsPage() {
         }
     };
 
-    const handleOpenDetail = (doc: SecureDocument) => {
-        setSelectedDocument(doc);
-        setIsDetailOpen(true);
-    };
-
     const handleDownload = async (doc: SecureDocument) => {
         try {
-            toast.info('Preparando descarga...');
             const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(doc.file_url, 60);
             if (error) throw error;
             if (!data?.signedUrl) throw new Error('No se pudo generar la descarga');
@@ -362,7 +592,6 @@ export default function DocumentsPage() {
             toast.error('No se pudo descargar el archivo');
         }
     };
-
     const handleDelete = async (id: string, filePath: string) => {
         if (!confirm('Estas seguro de eliminar este documento?')) return;
         try {
@@ -384,7 +613,7 @@ export default function DocumentsPage() {
             if (storagePath) {
                 const { error: storageError } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
                 if (storageError) {
-                    const storageMessage = ``.toLowerCase();
+                    const storageMessage = String(storageError.message || '').toLowerCase();
                     const isMissingObject = STORAGE_NOT_FOUND_MARKERS.some((marker) => storageMessage.includes(marker));
                     if (!isMissingObject) {
                         console.error('Storage delete error:', storageError);
@@ -393,6 +622,7 @@ export default function DocumentsPage() {
             }
 
             setDocuments((current) => current.filter((item) => item.id !== id));
+            setReminders((current) => current.filter((item) => item.document_id !== id));
             if (selectedDocument?.id === id) {
                 setSelectedDocument(null);
                 setIsDetailOpen(false);
@@ -416,6 +646,18 @@ export default function DocumentsPage() {
         toast.success(nextValue ? 'Anadido a favoritos' : 'Quitado de favoritos');
     };
 
+    const handleRenewDocument = (doc: SecureDocument) => {
+        setFormData({
+            ...createFormFromDocument(doc),
+            lifecycle_status: 'pendiente_renovacion',
+        });
+        setSelectedUploadFile(null);
+        setAnalysisPreview(null);
+        setAnalysisError(null);
+        setIsDetailOpen(false);
+        setIsDialogOpen(true);
+    };
+
     const filteredDocs = documents
         .filter((doc) => {
             const state = getDocumentState(doc);
@@ -429,13 +671,15 @@ export default function DocumentsPage() {
                 (doc.summary || '').toLowerCase().includes(normalizedSearch) ||
                 (doc.notes || '').toLowerCase().includes(normalizedSearch) ||
                 (doc.tags || []).join(' ').toLowerCase().includes(normalizedSearch) ||
+                buildSystemTags(doc).join(' ').toLowerCase().includes(normalizedSearch) ||
                 metadataToSearchText(doc.metadata).includes(normalizedSearch);
             const matchesCategory = activeTab === 'Todos' || doc.category === activeTab;
             const matchesSmartView =
                 smartView === 'Todos' ||
                 (smartView === 'Urgentes' && state.daysUntilExpiration !== null && state.daysUntilExpiration >= 0 && state.daysUntilExpiration <= 30) ||
                 (smartView === 'Caducados' && state.tone === 'expired') ||
-                (smartView === 'Favoritos' && doc.is_favorite);
+                (smartView === 'Favoritos' && doc.is_favorite) ||
+                (smartView === 'Pendientes' && (doc.lifecycle_status === 'pendiente_revision' || doc.lifecycle_status === 'pendiente_renovacion'));
             return matchesSearch && matchesCategory && matchesSmartView;
         })
         .sort((a, b) => {
@@ -449,6 +693,16 @@ export default function DocumentsPage() {
             return parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime();
         });
 
+    const alerts = useMemo(() => buildAlerts(documents, reminders), [documents, reminders]);
+    const selectedDateAlerts = useMemo(
+        () => alerts.filter((alert) => alert.dueDate && isSameDay(parseISO(alert.dueDate), calendarDate)),
+        [alerts, calendarDate]
+    );
+    const dueDates = useMemo(
+        () => alerts.filter((alert) => alert.dueDate).map((alert) => parseISO(alert.dueDate as string)),
+        [alerts]
+    );
+
     const totalDocuments = documents.length;
     const favoritesCount = documents.filter((doc) => doc.is_favorite).length;
     const expiredCount = documents.filter((doc) => getDocumentState(doc).tone === 'expired').length;
@@ -456,23 +710,28 @@ export default function DocumentsPage() {
         const state = getDocumentState(doc);
         return state.daysUntilExpiration !== null && state.daysUntilExpiration >= 0 && state.daysUntilExpiration <= 30;
     }).length;
+    const pendingCount = documents.filter((doc) => doc.lifecycle_status === 'pendiente_revision' || doc.lifecycle_status === 'pendiente_renovacion').length;
+    const weeklyAlerts = alerts.filter((alert) => {
+        if (!alert.dueDate) return false;
+        const diff = differenceInDays(parseISO(alert.dueDate), new Date());
+        return diff >= 0 && diff <= 7;
+    });
 
     const summaryCards = [
         { label: 'Total', value: totalDocuments, description: 'Documentos guardados', icon: Files, accent: 'text-slate-700 bg-slate-100 dark:text-slate-200 dark:bg-slate-800' },
         { label: 'Urgentes', value: urgentCount, description: 'Vencen en 30 dias o menos', icon: Clock3, accent: 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40' },
-        { label: 'Caducados', value: expiredCount, description: 'Necesitan revision', icon: AlertTriangle, accent: 'text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40' },
-        { label: 'Favoritos', value: favoritesCount, description: 'Siempre a mano', icon: Star, accent: 'text-indigo-700 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-950/40' },
+        { label: 'Caducados', value: expiredCount, description: 'Necesitan renovacion', icon: AlertTriangle, accent: 'text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40' },
+        { label: 'Pendientes', value: pendingCount, description: 'Revision o renovacion en curso', icon: Flag, accent: 'text-indigo-700 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-950/40' },
     ];
 
     const selectedMetadataEntries = useMemo(
         () => Object.entries(selectedDocument?.metadata || {}).filter(([, value]) => value !== null && value !== ''),
         [selectedDocument]
     );
-
     return (
         <>
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <Link href="/apps/mi-hogar">
@@ -486,7 +745,7 @@ export default function DocumentsPage() {
                                 </span>
                                 Centro de Documentos
                             </h1>
-                            <p className="text-muted-foreground mt-1">Organiza, localiza y vigila tus documentos importantes desde un mismo sitio.</p>
+                            <p className="text-muted-foreground mt-1">Organiza, localiza, vigila y renueva tus documentos desde un mismo sitio.</p>
                         </div>
                     </div>
 
@@ -507,15 +766,83 @@ export default function DocumentsPage() {
                         ))}
                     </div>
 
+                    <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+                        <Card className="border-amber-100/80 dark:border-amber-900/20 bg-white/90 dark:bg-slate-900/90">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Bell className="w-5 h-5 text-amber-600" /> Centro de alertas</CardTitle>
+                                <CardDescription>Caducidades, documentos incompletos y recordatorios proximos.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm">
+                                    <div className="font-medium">Resumen semanal</div>
+                                    <p className="text-muted-foreground mt-1">
+                                        {weeklyAlerts.length > 0
+                                            ? `Tienes ${weeklyAlerts.length} alertas durante los proximos 7 dias.`
+                                            : 'No hay alertas documentales para los proximos 7 dias.'}
+                                    </p>
+                                </div>
+                                {alerts.slice(0, 8).map((alert) => (
+                                    <div key={alert.id} className="rounded-xl border p-3 flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="font-medium">{alert.title}</div>
+                                                <Badge variant={alert.severity === 'high' ? 'destructive' : 'outline'}>
+                                                    {alert.severity === 'high' ? 'Alta' : alert.severity === 'medium' ? 'Media' : 'Baja'}
+                                                </Badge>
+                                                <Badge variant="secondary">{alert.category}</Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
+                                            {alert.dueDate ? <div className="text-xs text-muted-foreground mt-2">{format(parseISO(alert.dueDate), 'PPP', { locale: es })}</div> : null}
+                                        </div>
+                                        <Button size="sm" variant="outline" onClick={() => {
+                                            const target = documents.find((doc) => doc.id === alert.documentId);
+                                            if (target) handleOpenDetail(target);
+                                        }}>
+                                            Ver
+                                        </Button>
+                                    </div>
+                                ))}
+                                {alerts.length === 0 ? <div className="text-sm text-muted-foreground">No hay alertas activas.</div> : null}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-amber-100/80 dark:border-amber-900/20 bg-white/90 dark:bg-slate-900/90">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><CalendarClock className="w-5 h-5 text-amber-600" /> Calendario documental</CardTitle>
+                                <CardDescription>Vencimientos y recordatorios programados.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <Calendar
+                                    mode="single"
+                                    selected={calendarDate}
+                                    onSelect={(date) => setCalendarDate(date || new Date())}
+                                    modifiers={{ highlighted: dueDates }}
+                                    modifiersClassNames={{ highlighted: 'bg-amber-100 text-amber-900 rounded-md font-semibold' }}
+                                    className="rounded-md border"
+                                />
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium">Agenda de {format(calendarDate, 'PPP', { locale: es })}</div>
+                                    {selectedDateAlerts.length > 0 ? selectedDateAlerts.map((alert) => (
+                                        <div key={alert.id} className="rounded-lg border p-3 text-sm">
+                                            <div className="font-medium">{alert.title}</div>
+                                            <div className="text-muted-foreground mt-1">{alert.documentTitle}</div>
+                                        </div>
+                                    )) : <div className="text-sm text-muted-foreground">Sin eventos para la fecha seleccionada.</div>}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
                         <div className="relative flex-1 w-full lg:max-w-md">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Buscar por titulo, categoria, tipo, emisor, etiqueta, nota o metadato..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            <Input placeholder="Buscar por titulo, categoria, tipo, emisor, etiqueta, nota o metadato..." className="pl-9" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
                         </div>
                         <Button onClick={() => { setFormData(DEFAULT_FORM); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700 text-white w-full lg:w-auto">
                             <Lock className="w-4 h-4 mr-2" /> Nuevo Documento
                         </Button>
                     </div>
+
                     <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4 items-start">
                         <Tabs defaultValue="Todos" value={activeTab} onValueChange={setActiveTab} className="w-full overflow-x-auto pb-2">
                             <TabsList className="bg-white dark:bg-slate-900 border">
@@ -554,6 +881,8 @@ export default function DocumentsPage() {
                             const state = getDocumentState(doc);
                             const isExpired = state.tone === 'expired';
                             const metadataEntries = Object.entries(doc.metadata || {}).filter(([, value]) => value !== null && value !== '');
+                            const reminderCount = reminders.filter((reminder) => reminder.document_id === doc.id && reminder.is_active).length;
+                            const systemTags = buildSystemTags(doc);
                             return (
                                 <Card key={doc.id} className="group hover:shadow-lg transition-all border-amber-100 dark:border-amber-900/20 bg-white dark:bg-slate-900">
                                     <CardContent className="p-5 space-y-4">
@@ -562,7 +891,7 @@ export default function DocumentsPage() {
                                             <button
                                                 type="button"
                                                 className={cn('rounded-full p-2 transition-colors', doc.is_favorite ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-slate-100 text-slate-400 hover:text-amber-500 dark:bg-slate-800')}
-                                                onClick={() => toggleFavorite(doc)}
+                                                onClick={() => void toggleFavorite(doc)}
                                                 title={doc.is_favorite ? 'Quitar de favoritos' : 'Anadir a favoritos'}
                                             >
                                                 <Star className={cn('w-4 h-4', doc.is_favorite ? 'fill-current' : '')} />
@@ -578,10 +907,12 @@ export default function DocumentsPage() {
                                                 <Badge variant={isExpired ? 'destructive' : 'outline'} className={cn(state.tone === 'warning' && 'text-amber-600 border-amber-200 dark:border-amber-800', state.tone === 'active' && 'text-emerald-600 border-emerald-200 dark:border-emerald-800', state.tone === 'muted' && 'text-slate-500 border-slate-200 dark:border-slate-700')}>
                                                     {state.label}
                                                 </Badge>
+                                                <Badge variant="secondary">{LIFECYCLE_LABELS[doc.lifecycle_status] || 'Activo'}</Badge>
                                             </div>
-                                            {doc.tags && doc.tags.length > 0 ? (
+                                            {(doc.tags && doc.tags.length > 0) || systemTags.length > 0 ? (
                                                 <div className="flex flex-wrap gap-2 mt-3">
-                                                    {doc.tags.slice(0, 4).map((tag) => <Badge key={tag} variant="secondary" className="gap-1"><Tags className="w-3 h-3" /> {tag}</Badge>)}
+                                                    {(doc.tags || []).slice(0, 4).map((tag) => <Badge key={tag} variant="secondary" className="gap-1"><Tags className="w-3 h-3" /> {tag}</Badge>)}
+                                                    {systemTags.slice(0, 3).map((tag) => <Badge key={tag} variant="outline">{tag}</Badge>)}
                                                 </div>
                                             ) : null}
                                         </div>
@@ -590,6 +921,7 @@ export default function DocumentsPage() {
                                             {doc.issuer ? <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> Emisor</span><span className="font-medium text-right line-clamp-1">{doc.issuer}</span></div> : null}
                                             <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground">Subido</span><span className="font-medium">{format(parseISO(doc.created_at), 'dd/MM/yyyy')}</span></div>
                                             <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> Vencimiento</span><span className="font-medium">{doc.expiration_date ? format(parseISO(doc.expiration_date), 'dd/MM/yyyy') : 'No aplica'}</span></div>
+                                            <div className="flex items-center justify-between gap-3"><span className="text-muted-foreground flex items-center gap-1"><Bell className="w-3.5 h-3.5" /> Recordatorios</span><span className="font-medium">{reminderCount}</span></div>
                                             {state.daysUntilExpiration !== null && state.daysUntilExpiration >= 0 ? <div className="text-xs text-muted-foreground pt-1">Faltan {state.daysUntilExpiration} dias para revisar este documento.</div> : null}
                                         </div>
 
@@ -606,13 +938,16 @@ export default function DocumentsPage() {
 
                                         {doc.notes ? <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm text-slate-600 dark:text-slate-300"><div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2"><NotebookPen className="w-3.5 h-3.5" /> Notas</div><p className="line-clamp-3 whitespace-pre-wrap">{doc.notes}</p></div> : null}
 
-                                        <div className="pt-4 border-t border-dashed flex gap-2">
+                                        <div className="pt-4 border-t border-dashed flex flex-wrap gap-2">
                                             <Button variant="outline" size="sm" className="flex-1 border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400" onClick={() => handleOpenDetail(doc)}>
                                                 <Eye className="w-4 h-4 mr-2" /> Ver
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Descargar"><Download className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setReminderTarget(doc)} title="Recordatorios"><Bell className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setVersionTarget(doc)} title="Historial"><History className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRenewDocument(doc)} title="Renovar"><RefreshCcw className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => void handleDownload(doc)} title="Descargar"><Download className="w-4 h-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => { setFormData(createFormFromDocument(doc)); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} title="Editar"><ExternalLink className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDelete(doc.id, doc.file_url)} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-500 hover:bg-red-50" onClick={() => void handleDelete(doc.id, doc.file_url)} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -634,7 +969,15 @@ export default function DocumentsPage() {
 
                 <DocumentDialog
                     open={isDialogOpen}
-                    onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); } }}
+                    onOpenChange={(open) => {
+                        setIsDialogOpen(open);
+                        if (!open) {
+                            setSelectedUploadFile(null);
+                            setAnalysisPreview(null);
+                            setAnalysisError(null);
+                            setFormData(DEFAULT_FORM);
+                        }
+                    }}
                     form={formData}
                     setForm={setFormData}
                     onSave={handleSave}
@@ -649,12 +992,12 @@ export default function DocumentsPage() {
             </div>
 
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto">
                     {selectedDocument ? (
                         <>
                             <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-amber-600" />{selectedDocument.title}</DialogTitle>
-                                <DialogDescription>Vista detallada del documento, con metadatos detectados y acciones de acceso.</DialogDescription>
+                                <DialogDescription>Vista detallada del documento, con alertas, metadatos y acciones de seguimiento.</DialogDescription>
                             </DialogHeader>
 
                             <div className="space-y-4">
@@ -663,6 +1006,7 @@ export default function DocumentsPage() {
                                     {selectedDocument.document_type ? <Badge variant="outline">{selectedDocument.document_type}</Badge> : null}
                                     <Badge variant="outline">{getFileLabel(selectedDocument.file_type)}</Badge>
                                     <Badge variant="outline">{getDocumentState(selectedDocument).label}</Badge>
+                                    <Badge variant="secondary">{LIFECYCLE_LABELS[selectedDocument.lifecycle_status] || 'Activo'}</Badge>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -676,10 +1020,12 @@ export default function DocumentsPage() {
                                     </Card>
 
                                     <Card>
-                                        <CardHeader className="pb-3"><CardTitle className="text-base">Etiquetas</CardTitle></CardHeader>
+                                        <CardHeader className="pb-3"><CardTitle className="text-base">Etiquetas y alertas</CardTitle></CardHeader>
                                         <CardContent>
                                             <div className="flex flex-wrap gap-2">
-                                                {(selectedDocument.tags || []).length > 0 ? (selectedDocument.tags || []).map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>) : <span className="text-sm text-muted-foreground">Sin etiquetas</span>}
+                                                {(selectedDocument.tags || []).map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                                {buildSystemTags(selectedDocument).map((tag) => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                                                {(selectedDocument.tags || []).length === 0 && buildSystemTags(selectedDocument).length === 0 ? <span className="text-sm text-muted-foreground">Sin etiquetas</span> : null}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -697,23 +1043,58 @@ export default function DocumentsPage() {
                                 ) : null}
 
                                 {selectedDocument.notes ? <Card><CardHeader className="pb-3"><CardTitle className="text-base">Notas manuales</CardTitle></CardHeader><CardContent><p className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{selectedDocument.notes}</p></CardContent></Card> : null}
+
+                                <Card>
+                                    <CardHeader className="pb-3"><CardTitle className="text-base">Seguimiento</CardTitle></CardHeader>
+                                    <CardContent className="flex flex-wrap gap-2">
+                                        <Button variant="outline" onClick={() => setReminderTarget(selectedDocument)}><Bell className="w-4 h-4 mr-2" /> Recordatorios</Button>
+                                        <Button variant="outline" onClick={() => setVersionTarget(selectedDocument)}><History className="w-4 h-4 mr-2" /> Historial</Button>
+                                        <Button variant="outline" onClick={() => handleRenewDocument(selectedDocument)}><RefreshCcw className="w-4 h-4 mr-2" /> Renovar</Button>
+                                    </CardContent>
+                                </Card>
                             </div>
 
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => handleViewFile(selectedDocument)}><Eye className="w-4 h-4 mr-2" /> Abrir archivo</Button>
-                                <Button variant="outline" onClick={() => handleDownload(selectedDocument)}><Download className="w-4 h-4 mr-2" /> Descargar</Button>
+                                <Button variant="outline" onClick={() => void handleViewFile(selectedDocument)}><Eye className="w-4 h-4 mr-2" /> Abrir archivo</Button>
+                                <Button variant="outline" onClick={() => void handleDownload(selectedDocument)}><Download className="w-4 h-4 mr-2" /> Descargar</Button>
                                 <Button onClick={() => { setFormData(createFormFromDocument(selectedDocument)); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDetailOpen(false); setIsDialogOpen(true); }}><ExternalLink className="w-4 h-4 mr-2" /> Editar</Button>
                             </DialogFooter>
                         </>
                     ) : null}
                 </DialogContent>
             </Dialog>
+
+            {reminderTarget ? (
+                <DocumentReminderDialog
+                    documentId={reminderTarget.id}
+                    documentTitle={reminderTarget.title}
+                    open={Boolean(reminderTarget)}
+                    onOpenChange={(open) => { if (!open) setReminderTarget(null); }}
+                    onRemindersChange={fetchReminders}
+                />
+            ) : null}
+
+            {versionTarget ? (
+                <DocumentVersionHistoryDialog
+                    documentId={versionTarget.id}
+                    documentTitle={versionTarget.title}
+                    open={Boolean(versionTarget)}
+                    onOpenChange={(open) => { if (!open) setVersionTarget(null); }}
+                    onRestore={async () => {
+                        await fetchDocuments();
+                        const refreshed = documents.find((doc) => doc.id === versionTarget.id);
+                        if (refreshed) setSelectedDocument(refreshed);
+                    }}
+                />
+            ) : null}
         </>
     );
+
+    function handleOpenDetail(doc: SecureDocument) {
+        setSelectedDocument(doc);
+        setIsDetailOpen(true);
+    }
 }
-
-
-
 
 
 

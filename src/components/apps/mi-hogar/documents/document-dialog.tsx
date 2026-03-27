@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, FileText, Lock, Sparkles, Tags, NotebookPen, Building2, FileBadge2, ScrollText } from 'lucide-react';
+import { Loader2, Save, FileText, Lock, Sparkles, Tags, NotebookPen, Building2, FileBadge2, ScrollText, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,8 @@ export type DocumentForm = {
     summary: string;
     document_type: string;
     metadata: DocumentMetadata;
+    lifecycle_status: string;
+    renewal_of?: string | null;
 };
 
 export type DocumentAnalysisResult = {
@@ -58,6 +60,12 @@ interface DocumentDialogProps {
 }
 
 const CATEGORIES = ['Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
+const LIFECYCLE_OPTIONS = [
+    { value: 'activo', label: 'Activo' },
+    { value: 'pendiente_revision', label: 'Pendiente de revision' },
+    { value: 'pendiente_renovacion', label: 'Pendiente de renovacion' },
+    { value: 'archivado', label: 'Archivado' },
+];
 const IDENTITY_TAGS = ['dni', 'nie', 'pasaporte', 'carnet'];
 
 function normalizeTags(value: string) {
@@ -86,13 +94,14 @@ export function DocumentDialog({
     analysisError,
     analyzing,
     uploading,
-}: DocumentDialogProps) {    const [tagsInput, setTagsInput] = useState('');
+}: DocumentDialogProps) {
+    const [tagsInput, setTagsInput] = useState('');
 
     useEffect(() => {
         if (!open) {
             setSelectedFile(null);
         }
-    }, [open]);
+    }, [open, setSelectedFile]);
 
     useEffect(() => {
         setTagsInput((form.tags || []).join(', '));
@@ -110,8 +119,8 @@ export function DocumentDialog({
         [form.metadata]
     );
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
         setSelectedFile(file);
 
         if (file && onAnalyze) {
@@ -133,7 +142,7 @@ export function DocumentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Lock className="w-5 h-5 text-amber-500" />
@@ -211,7 +220,7 @@ export function DocumentDialog({
                                 id="title"
                                 placeholder="Ej. DNI, poliza del coche o contrato"
                                 value={form.title}
-                                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                onChange={(event) => setForm({ ...form, title: event.target.value })}
                             />
                         </div>
 
@@ -240,7 +249,7 @@ export function DocumentDialog({
                                     className="pl-9"
                                     placeholder="Ej. DNI, ITV, Poliza, Factura"
                                     value={form.document_type}
-                                    onChange={(e) => setForm({ ...form, document_type: e.target.value })}
+                                    onChange={(event) => setForm({ ...form, document_type: event.target.value })}
                                 />
                             </div>
                         </div>
@@ -253,9 +262,24 @@ export function DocumentDialog({
                                     className="pl-9"
                                     placeholder="Ej. Direccion General de la Policia"
                                     value={form.issuer}
-                                    onChange={(e) => setForm({ ...form, issuer: e.target.value })}
+                                    onChange={(event) => setForm({ ...form, issuer: event.target.value })}
                                 />
                             </div>
+                        </div>
+
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label>Estado documental</Label>
+                            <Select value={form.lifecycle_status} onValueChange={(value) => setForm({ ...form, lifecycle_status: value })}>
+                                <SelectTrigger>
+                                    <Flag className="mr-2 h-4 w-4 text-muted-foreground" />
+                                    <SelectValue placeholder="Estado documental" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {LIFECYCLE_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
@@ -267,7 +291,7 @@ export function DocumentDialog({
                                 className="min-h-[110px] pl-9"
                                 placeholder="Resumen del documento y datos clave detectados"
                                 value={form.summary}
-                                onChange={(e) => setForm({ ...form, summary: e.target.value })}
+                                onChange={(event) => setForm({ ...form, summary: event.target.value })}
                             />
                         </div>
                     </div>
@@ -291,9 +315,9 @@ export function DocumentDialog({
                         <Input
                             placeholder="Ej. dni, coche, seguro, fiscal"
                             value={tagsInput}
-                            onChange={(e) => {
-                                setTagsInput(e.target.value);
-                                setForm({ ...form, tags: normalizeTags(e.target.value) });
+                            onChange={(event) => {
+                                setTagsInput(event.target.value);
+                                setForm({ ...form, tags: normalizeTags(event.target.value) });
                             }}
                         />
                         {tagPreview.length > 0 ? (
@@ -310,7 +334,7 @@ export function DocumentDialog({
                         <Textarea
                             placeholder="Anotaciones manuales, renovacion, ubicacion del original, observaciones..."
                             value={form.notes}
-                            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                            onChange={(event) => setForm({ ...form, notes: event.target.value })}
                             className="min-h-[110px]"
                         />
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -323,7 +347,7 @@ export function DocumentDialog({
                         <Input
                             type="date"
                             value={form.expiration_date || ''}
-                            onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
+                            onChange={(event) => setForm({ ...form, expiration_date: event.target.value })}
                         />
                     </div>
                 </div>
@@ -341,6 +365,4 @@ export function DocumentDialog({
         </Dialog>
     );
 }
-
-
 
