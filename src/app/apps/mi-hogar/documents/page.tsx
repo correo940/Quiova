@@ -595,11 +595,16 @@ export default function DocumentsPage() {
                 finalFilePath = filePath;
             }
 
+            const inferredExpirationDate = formData.expiration_date
+                || (typeof formData.metadata?.fecha_validez === 'string' ? formData.metadata.fecha_validez : null)
+                || analysisPreview?.expiration_date
+                || null;
+
             const payload = {
                 user_id: user.id,
                 title: formData.title,
                 category: formData.category,
-                expiration_date: formData.expiration_date || null,
+                expiration_date: inferredExpirationDate,
                 file_url: finalFilePath,
                 file_type: file ? file.type : formData.file_type,
                 tags: formData.tags || [],
@@ -898,5 +903,6 @@ export default function DocumentsPage() {
         setIsDetailOpen(true);
     }
 }
+
 
 
