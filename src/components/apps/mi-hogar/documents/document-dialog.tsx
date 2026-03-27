@@ -49,6 +49,8 @@ interface DocumentDialogProps {
     setForm: (form: DocumentForm) => void;
     onSave: (file?: File) => void;
     onAnalyze?: (file: File) => Promise<DocumentAnalysisResult | null>;
+    selectedFile: File | null;
+    setSelectedFile: (file: File | null) => void;
     analysis?: DocumentAnalysisResult | null;
     analysisError?: string | null;
     analyzing?: boolean;
@@ -78,13 +80,13 @@ export function DocumentDialog({
     setForm,
     onSave,
     onAnalyze,
+    selectedFile,
+    setSelectedFile,
     analysis,
     analysisError,
     analyzing,
     uploading,
-}: DocumentDialogProps) {
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [tagsInput, setTagsInput] = useState('');
+}: DocumentDialogProps) {    const [tagsInput, setTagsInput] = useState('');
 
     useEffect(() => {
         if (!open) {
@@ -339,3 +341,6 @@ export function DocumentDialog({
         </Dialog>
     );
 }
+
+
+

@@ -180,6 +180,7 @@ export default function DocumentsPage() {
     const [analysisPreview, setAnalysisPreview] = useState<DocumentAnalysisResult | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [analyzingDocument, setAnalyzingDocument] = useState(false);
+    const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
     const initialLoadRef = useRef(false);
 
     useEffect(() => {
@@ -299,6 +300,7 @@ export default function DocumentsPage() {
             }
             setIsDialogOpen(false);
             setFormData(DEFAULT_FORM);
+            setSelectedUploadFile(null);
             setAnalysisPreview(null);
             setAnalysisError(null);
             await fetchDocuments();
@@ -510,7 +512,7 @@ export default function DocumentsPage() {
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input placeholder="Buscar por titulo, categoria, tipo, emisor, etiqueta, nota o metadato..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
-                        <Button onClick={() => { setFormData(DEFAULT_FORM); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700 text-white w-full lg:w-auto">
+                        <Button onClick={() => { setFormData(DEFAULT_FORM); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700 text-white w-full lg:w-auto">
                             <Lock className="w-4 h-4 mr-2" /> Nuevo Documento
                         </Button>
                     </div>
@@ -609,7 +611,7 @@ export default function DocumentsPage() {
                                                 <Eye className="w-4 h-4 mr-2" /> Ver
                                             </Button>
                                             <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Descargar"><Download className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => { setFormData(createFormFromDocument(doc)); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} title="Editar"><ExternalLink className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => { setFormData(createFormFromDocument(doc)); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} title="Editar"><ExternalLink className="w-4 h-4" /></Button>
                                             <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDelete(doc.id, doc.file_url)} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
                                         </div>
                                     </CardContent>
@@ -623,7 +625,7 @@ export default function DocumentsPage() {
                             <Shield className="w-16 h-16 mx-auto text-amber-300 dark:text-amber-800 mb-4" />
                             <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200">No hay documentos para esta vista</h3>
                             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">Prueba otra categoria, ajusta la busqueda o guarda tu primer documento importante.</p>
-                            <Button onClick={() => { setFormData(DEFAULT_FORM); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700">
+                            <Button onClick={() => { setFormData(DEFAULT_FORM); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700">
                                 <Lock className="w-4 h-4 mr-2" /> Guardar Documento
                             </Button>
                         </div>
@@ -632,11 +634,13 @@ export default function DocumentsPage() {
 
                 <DocumentDialog
                     open={isDialogOpen}
-                    onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setAnalysisPreview(null); setAnalysisError(null); } }}
+                    onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); } }}
                     form={formData}
                     setForm={setFormData}
                     onSave={handleSave}
-                    onAnalyze={handleAnalyzeDocument}
+                    onAnalyze={async (file) => { setSelectedUploadFile(file); return handleAnalyzeDocument(file); }}
+                    selectedFile={selectedUploadFile}
+                    setSelectedFile={setSelectedUploadFile}
                     analysis={analysisPreview}
                     analysisError={analysisError}
                     analyzing={analyzingDocument}
@@ -698,7 +702,7 @@ export default function DocumentsPage() {
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => handleViewFile(selectedDocument)}><Eye className="w-4 h-4 mr-2" /> Abrir archivo</Button>
                                 <Button variant="outline" onClick={() => handleDownload(selectedDocument)}><Download className="w-4 h-4 mr-2" /> Descargar</Button>
-                                <Button onClick={() => { setFormData(createFormFromDocument(selectedDocument)); setAnalysisPreview(null); setAnalysisError(null); setIsDetailOpen(false); setIsDialogOpen(true); }}><ExternalLink className="w-4 h-4 mr-2" /> Editar</Button>
+                                <Button onClick={() => { setFormData(createFormFromDocument(selectedDocument)); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDetailOpen(false); setIsDialogOpen(true); }}><ExternalLink className="w-4 h-4 mr-2" /> Editar</Button>
                             </DialogFooter>
                         </>
                     ) : null}
@@ -707,6 +711,8 @@ export default function DocumentsPage() {
         </>
     );
 }
+
+
 
 
 

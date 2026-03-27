@@ -1,10 +1,11 @@
-'use client'
+﻿'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getValidatedSession } from '@/lib/supabase-session'
+import { ensureCompatibleBrowserStorage } from '@/lib/browser-storage-version'
 
 type AuthContextType = {
     session: Session | null
@@ -24,13 +25,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
-        // Safety timeout — never stay loading more than 5 seconds
+        // Safety timeout â€” never stay loading more than 5 seconds
         const safetyTimer = setTimeout(() => {
             setLoading(false)
         }, 5000)
 
         // Initial session check
         const initAuth = async () => {
+            ensureCompatibleBrowserStorage()
             try {
                 const { session, user } = await getValidatedSession()
                 setSession(session)
@@ -106,3 +108,4 @@ export const useAuth = () => {
     }
     return context
 }
+

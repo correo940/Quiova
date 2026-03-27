@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import BlogContent from '@/components/blog-content';
 import { getValidatedSession } from '@/lib/supabase-session';
+import { ensureCompatibleBrowserStorage } from '@/lib/browser-storage-version';
 
 import LogoLoader from '@/components/ui/logo-loader';
 
@@ -36,11 +37,12 @@ function HomeContent() {
     return () => clearTimeout(timer);
   }, [setIsLauncherMode]);
 
-  // Handle Supabase Auth Session — with error handling so it never gets stuck
+  // Handle Supabase Auth Session â€” with error handling so it never gets stuck
   useEffect(() => {
     let mounted = true;
 
     const resolveAuthSafely = async () => {
+      ensureCompatibleBrowserStorage();
       try {
         const sessionResult = await Promise.race([
           getValidatedSession(),
@@ -129,3 +131,4 @@ export default function Home() {
     </Suspense>
   );
 }
+
