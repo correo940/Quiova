@@ -59,6 +59,8 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
         handleDateSelect(today);
     };
 
+    const currentYear = new Date().getFullYear();
+
     return (
         <Card className="h-full flex flex-col overflow-hidden border-none shadow-md">
             <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
@@ -78,8 +80,13 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
                     onSelect={handleDateSelect}
                     locale={es}
                     initialFocus
+                    captionLayout="dropdown-buttons"
+                    fromYear={currentYear - 15}
+                    toYear={currentYear + 15}
                     className="rounded-lg"
                     classNames={{
+                        caption_dropdowns: 'flex items-center gap-2',
+                        dropdown: 'h-8 rounded-md border border-input bg-background px-2 text-sm',
                         head_cell: 'text-emerald-600 dark:text-emerald-500 rounded-md w-9 font-bold text-[0.8rem]',
                         day_selected: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:bg-emerald-700 shadow-lg transition-transform z-10 font-bold rounded-lg',
                         day_today: 'bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-500/50 rounded-lg',
