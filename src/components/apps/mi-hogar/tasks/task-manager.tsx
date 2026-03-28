@@ -595,10 +595,46 @@ export default function TaskManager() {
     }, [tasks, visibleTasks, showCompletedSection, taskFilter]);
 
     const summaryCards = [
-        { label: 'Pendientes', value: sectionData.counts.pending, accent: colors.future },
-        { label: 'Hoy', value: sectionData.counts.today, accent: colors.upcoming },
-        { label: 'Vencidas', value: sectionData.counts.overdue, accent: colors.overdue },
-        { label: 'Alarmas', value: sectionData.counts.withAlarm, accent: colors.tomorrow },
+        {
+            label: 'Pendientes',
+            value: sectionData.counts.pending,
+            accent: colors.future,
+            active: taskFilter === 'pending' && taskView === 'all',
+            onClick: () => {
+                setTaskView('all');
+                setTaskFilter('pending');
+            },
+        },
+        {
+            label: 'Hoy',
+            value: sectionData.counts.today,
+            accent: colors.upcoming,
+            active: taskFilter === 'pending' && taskView === 'today',
+            onClick: () => {
+                setTaskView('today');
+                setTaskFilter('pending');
+            },
+        },
+        {
+            label: 'Vencidas',
+            value: sectionData.counts.overdue,
+            accent: colors.overdue,
+            active: taskFilter === 'overdue',
+            onClick: () => {
+                setTaskView('all');
+                setTaskFilter('overdue');
+            },
+        },
+        {
+            label: 'Alarmas',
+            value: sectionData.counts.withAlarm,
+            accent: colors.tomorrow,
+            active: taskFilter === 'alarm',
+            onClick: () => {
+                setTaskView('all');
+                setTaskFilter('alarm');
+            },
+        },
     ];
 
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -644,7 +680,11 @@ export default function TaskManager() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {summaryCards.map((item) => (
-                    <Card key={item.label}>
+                    <Card
+                        key={item.label}
+                        className={`cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${item.active ? 'ring-2 ring-primary/30 border-primary/40 shadow-sm' : ''}`}
+                        onClick={item.onClick}
+                    >
                         <CardContent className="flex items-center justify-between p-5">
                             <div>
                                 <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -995,5 +1035,6 @@ export default function TaskManager() {
         </div>
     );
 }
+
 
 
