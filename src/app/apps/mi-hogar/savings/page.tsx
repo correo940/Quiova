@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -234,7 +234,7 @@ export default function SavingsPage() {
         }
 
         if (processedCount > 0) {
-            toast.success(`Se han procesado ${processedCount} ingresos automáticos`);
+            toast.success(`Se han procesado ${processedCount} ingresos automÃ¡ticos`);
             // Refetch to update UI
             fetchData(userId);
         }
@@ -606,7 +606,7 @@ export default function SavingsPage() {
 
     const handleDeleteAccount = async () => {
         if (!selectedAccount) return;
-        if (!window.confirm('¿Seguro que quieres eliminar esta cuenta? Se perderá el historial y las metas asociadas.')) return;
+        if (!window.confirm('Â¿Seguro que quieres eliminar esta cuenta? Se perderÃ¡ el historial y las metas asociadas.')) return;
         try {
             const { error } = await supabase.from('savings_accounts').delete().eq('id', selectedAccount.id);
             if (error) throw error;
@@ -620,20 +620,24 @@ export default function SavingsPage() {
             toast.error('Error al eliminar cuenta');
         }
     };
-
     const handleResetData = async (options: ResetOptions) => {
         if (!user) return;
         try {
-            const accountIds = accounts.map(a => a.id);
-            
+            const allAccountIds = accounts.map((account) => account.id);
+            const targetAccountIds = options.accounts
+                ? options.accountDeletionMode === 'single' && options.selectedAccountId
+                    ? [options.selectedAccountId]
+                    : allAccountIds
+                : allAccountIds;
+
             if (options.accounts) {
-                if (accountIds.length > 0) {
-                    await supabase.from('savings_account_transactions').delete().in('account_id', accountIds);
-                    await supabase.from('savings_accounts').delete().eq('user_id', user.id);
+                if (targetAccountIds.length > 0) {
+                    await supabase.from('savings_account_transactions').delete().in('account_id', targetAccountIds);
+                    await supabase.from('savings_accounts').delete().in('id', targetAccountIds);
                 }
-            } else if (options.transactions && accountIds.length > 0) {
-                await supabase.from('savings_account_transactions').delete().in('account_id', accountIds);
-                await supabase.from('savings_accounts').update({ current_balance: 0 }).in('id', accountIds);
+            } else if (options.transactions && targetAccountIds.length > 0) {
+                await supabase.from('savings_account_transactions').delete().in('account_id', targetAccountIds);
+                await supabase.from('savings_accounts').update({ current_balance: 0 }).in('id', targetAccountIds);
             }
 
             if (options.goals) {
@@ -647,14 +651,14 @@ export default function SavingsPage() {
                 await supabase.from('pending_balance_projects').delete().eq('user_id', user.id);
             }
 
-            toast.success('Datos eliminados correctamente');
-            fetchData(user?.id);
+            toast.success(options.accounts && options.accountDeletionMode === 'single' ? 'Cuenta eliminada correctamente' : 'Datos eliminados correctamente');
+            setIsResetDialogOpen(false);
+            fetchData(user.id);
         } catch (error) {
-            console.error('Error reseteando datos', error);
+            console.error(error);
             toast.error('Error al resetear datos');
         }
     };
-
     const handleCreateRecurring = async () => {
         if (!newRecurring.name || !newRecurring.amount) return toast.error('Rellena nombre e importe');
         try {
@@ -670,7 +674,7 @@ export default function SavingsPage() {
             };
             const { error } = await supabase.from('savings_recurring_items').insert(payload);
             if (error) throw error;
-            toast.success('Fijo añadido');
+            toast.success('Fijo aÃ±adido');
             setIsAddRecurringOpen(false);
             setNewRecurring({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
             fetchData(user?.id);
@@ -681,7 +685,7 @@ export default function SavingsPage() {
     };
 
     const handleDeleteRecurring = async (id: string) => {
-        if (!window.confirm('¿Eliminar este gasto/ingreso fijo?')) return;
+        if (!window.confirm('Â¿Eliminar este gasto/ingreso fijo?')) return;
         try {
             const { error } = await supabase.from('savings_recurring_items').delete().eq('id', id);
             if (error) throw error;
@@ -748,7 +752,7 @@ export default function SavingsPage() {
                     if (accounts.length > 0) {
                         handleOpenAccountDetail(accounts[0]);
                     } else {
-                        toast.info("Añade una cuenta primero");
+                        toast.info("AÃ±ade una cuenta primero");
                     }
                 }}
                 onViewAccount={handleOpenAccountDetail}
@@ -774,13 +778,18 @@ export default function SavingsPage() {
                 isOpen={isResetDialogOpen}
                 onClose={() => setIsResetDialogOpen(false)}
                 onConfirm={handleResetData}
+                accounts={accounts.map((account) => ({
+                    id: account.id,
+                    name: account.name,
+                    bank_name: account.bank_name,
+                }))}
             />
 
             {/* --- DIALOGS --- */}
 
             <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Añadir Cuenta</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>AÃ±adir Cuenta</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Ahorros Piso" value={newAccount.name} onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })} /></div>
                         <div className="space-y-2">
@@ -808,9 +817,9 @@ export default function SavingsPage() {
                                 <div className="space-y-2"><Label>Color</Label><input type="color" className="h-9 w-12 p-1 rounded border cursor-pointer" value={newAccount.color} onChange={(e) => setNewAccount({ ...newAccount, color: e.target.value })} /></div>
                             </div>
                         )}
-                        <div className="space-y-2"><Label>Interés Anual (%)</Label><Input type="number" placeholder="Ej: 3.5" value={newAccount.interestRate} onChange={(e) => setNewAccount({ ...newAccount, interestRate: e.target.value })} /></div>
+                        <div className="space-y-2"><Label>InterÃ©s Anual (%)</Label><Input type="number" placeholder="Ej: 3.5" value={newAccount.interestRate} onChange={(e) => setNewAccount({ ...newAccount, interestRate: e.target.value })} /></div>
                         <div className="space-y-2">
-                            <Label>Contraseña (Opcional)</Label>
+                            <Label>ContraseÃ±a (Opcional)</Label>
                             <Select onValueChange={(v) => setNewAccount({ ...newAccount, passId: v })}>
                                 <SelectTrigger><SelectValue placeholder="Sin vincular" /></SelectTrigger>
                                 <SelectContent><SelectItem value="none">Sin vincular</SelectItem>{passwords.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
@@ -819,7 +828,7 @@ export default function SavingsPage() {
                         <div className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
                             <div className="space-y-1">
                                 <Label htmlFor="include-in-total" className="text-sm font-semibold text-slate-900">Incluir en balance general</Label>
-                                <p className="text-xs text-slate-500">Esta cuenta sumará al total principal de Mi Economía.</p>
+                                <p className="text-xs text-slate-500">Esta cuenta sumarÃ¡ al total principal de Mi EconomÃ­a.</p>
                             </div>
                             <Switch
                                 id="include-in-total"
@@ -834,7 +843,7 @@ export default function SavingsPage() {
 
             <Dialog open={isAddGoalOpen} onOpenChange={setIsAddGoalOpen}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Nueva Meta de Economía</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Nueva Meta de EconomÃ­a</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2"><Label>Nombre</Label><Input value={newGoal.name} onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })} /></div>
                         <div className="space-y-2">
@@ -845,12 +854,12 @@ export default function SavingsPage() {
                             </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Objetivo (€)</Label><Input type="number" value={newGoal.target} onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Ya tienes (€)</Label><Input type="number" value={newGoal.current} onChange={(e) => setNewGoal({ ...newGoal, current: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Objetivo (â‚¬)</Label><Input type="number" value={newGoal.target} onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Ya tienes (â‚¬)</Label><Input type="number" value={newGoal.current} onChange={(e) => setNewGoal({ ...newGoal, current: e.target.value })} /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Interés (%)</Label><Input type="number" value={newGoal.interestRate} onChange={(e) => setNewGoal({ ...newGoal, interestRate: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Fecha Límite</Label><Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>InterÃ©s (%)</Label><Input type="number" value={newGoal.interestRate} onChange={(e) => setNewGoal({ ...newGoal, interestRate: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Fecha LÃ­mite</Label><Input type="date" value={newGoal.deadline} onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })} /></div>
                         </div>
                     </div>
                     <DialogFooter><Button onClick={handleCreateGoal}>Crear Meta</Button></DialogFooter>
@@ -861,22 +870,22 @@ export default function SavingsPage() {
                 <DialogContent>
                     <DialogHeader><DialogTitle>Nuevo Ingreso/Gasto Fijo</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Alquiler, Nómina..." value={newRecurring.name} onChange={(e) => setNewRecurring({ ...newRecurring, name: e.target.value })} /></div>
+                        <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Alquiler, NÃ³mina..." value={newRecurring.name} onChange={(e) => setNewRecurring({ ...newRecurring, name: e.target.value })} /></div>
                         <div className="flex gap-4">
                             <Button variant={newRecurring.type === 'income' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'income' })} className={newRecurring.type === 'income' ? 'bg-emerald-600 hover:bg-emerald-700 w-full' : 'w-full'}>Ingreso</Button>
                             <Button variant={newRecurring.type === 'expense' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'expense' })} className={newRecurring.type === 'expense' ? 'bg-rose-600 hover:bg-rose-700 w-full' : 'w-full'}>Gasto</Button>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Importe (€)</Label><Input type="number" value={newRecurring.amount} onChange={(e) => setNewRecurring({ ...newRecurring, amount: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Día del mes</Label><Input type="number" min="1" max="31" placeholder="Ej: 5" value={newRecurring.day} onChange={(e) => setNewRecurring({ ...newRecurring, day: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Importe (â‚¬)</Label><Input type="number" value={newRecurring.amount} onChange={(e) => setNewRecurring({ ...newRecurring, amount: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>DÃ­a del mes</Label><Input type="number" min="1" max="31" placeholder="Ej: 5" value={newRecurring.day} onChange={(e) => setNewRecurring({ ...newRecurring, day: e.target.value })} /></div>
                         </div>
 
                         {newRecurring.type === 'income' && (
                             <div className="space-y-2 p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-900">
                                 <Label className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-2">
-                                    <Landmark className="w-4 h-4" /> Ingreso Automático (Opcional)
+                                    <Landmark className="w-4 h-4" /> Ingreso AutomÃ¡tico (Opcional)
                                 </Label>
-                                <p className="text-xs text-muted-foreground mb-2">Si seleccionas una cuenta, el dinero se sumará automáticamente el día elegido.</p>
+                                <p className="text-xs text-muted-foreground mb-2">Si seleccionas una cuenta, el dinero se sumarÃ¡ automÃ¡ticamente el dÃ­a elegido.</p>
                                 <Select value={newRecurring.targetAccountId} onValueChange={(v) => setNewRecurring({ ...newRecurring, targetAccountId: v })}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona cuenta destino..." /></SelectTrigger>
                                     <SelectContent>
@@ -905,11 +914,11 @@ export default function SavingsPage() {
                             <p className="text-sm text-muted-foreground">Saldo Actual</p>
                             <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedGoal?.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
                             <p className="text-xs text-muted-foreground mt-1">Meta: {selectedGoal?.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
-                            {selectedGoal?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedGoal.interest_rate}% Interés</div> : null}
+                            {selectedGoal?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedGoal.interest_rate}% InterÃ©s</div> : null}
                         </div>
                         <div className="space-y-3 border-t pt-4">
                             <div className="flex justify-center gap-4 mb-2">
-                                <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />Aportación</Button>
+                                <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />AportaciÃ³n</Button>
                                 <Button variant={transType === 'expense' ? 'default' : 'outline'} onClick={() => setTransType('expense')} className={transType === 'expense' ? 'bg-red-600 hover:bg-red-700 text-white' : ''} size="sm"><Wallet className="w-4 h-4 mr-2" />Gasto</Button>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -927,7 +936,7 @@ export default function SavingsPage() {
                                 goalTransactions.map(tx => (
                                     <div key={tx.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                         <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
-                                        <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
+                                        <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}â‚¬</span>
                                     </div>
                                 ))
                             }
@@ -952,3 +961,5 @@ export default function SavingsPage() {
         </div>
     );
 }
+
+
