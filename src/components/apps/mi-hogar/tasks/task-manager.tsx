@@ -909,8 +909,9 @@ export default function TaskManager() {
                                                 : 'border-slate-200 dark:border-slate-800';
 
                                         return (
-                                            <div key={task.id} className={`rounded-2xl border bg-card p-4 ${borderClass} ${isCompleted ? 'opacity-70' : ''}`}>
-                                                <div className="flex items-start justify-between gap-4">
+                                            <div key={task.id} className={`relative overflow-hidden rounded-2xl border bg-card p-4 ${borderClass} ${isCompleted ? 'opacity-70' : ''}`}>
+                                                <div className={`pointer-events-none absolute inset-0 opacity-20 ${toneColor}`} />
+                                                <div className="relative z-10 flex items-start justify-between gap-4">
                                                     <div className="flex min-w-0 flex-1 items-start gap-3">
                                                         <button type="button" className="mt-0.5 shrink-0" onClick={() => void toggleComplete(task.id)}>
                                                             {isCompleted ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
@@ -994,4 +995,5 @@ export default function TaskManager() {
         </div>
     );
 }
+
 
