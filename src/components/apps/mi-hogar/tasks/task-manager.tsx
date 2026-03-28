@@ -46,6 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { supabase } from '@/lib/supabase';
+import { usePostItSettings } from '@/context/PostItSettingsContext';
 import PostItConfig from './post-it-config';
 import ScreenshotToTaskDialog from './screenshot-to-task-dialog';
 import { ShareTasksDialog } from './share-tasks-dialog';
@@ -188,6 +189,7 @@ export default function TaskManager() {
     const [taskFilter, setTaskFilter] = useState<TaskFilter>('pending');
     const [showCompletedSection, setShowCompletedSection] = useState(false);
     const { user, isPremium } = useAuth();
+    const { colors } = usePostItSettings();
 
     useEffect(() => {
         if (user && currentList) {
@@ -593,10 +595,10 @@ export default function TaskManager() {
     }, [tasks, visibleTasks, showCompletedSection, taskFilter]);
 
     const summaryCards = [
-        { label: 'Pendientes', value: sectionData.counts.pending },
-        { label: 'Hoy', value: sectionData.counts.today },
-        { label: 'Vencidas', value: sectionData.counts.overdue },
-        { label: 'Alarmas', value: sectionData.counts.withAlarm },
+        { label: 'Pendientes', value: sectionData.counts.pending, accent: colors.future },
+        { label: 'Hoy', value: sectionData.counts.today, accent: colors.upcoming },
+        { label: 'Vencidas', value: sectionData.counts.overdue, accent: colors.overdue },
+        { label: 'Alarmas', value: sectionData.counts.withAlarm, accent: colors.tomorrow },
     ];
 
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -648,7 +650,7 @@ export default function TaskManager() {
                                 <p className="text-sm text-muted-foreground">{item.label}</p>
                                 <p className="mt-1 text-3xl font-semibold">{item.value}</p>
                             </div>
-                            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                            <div className={`rounded-2xl border p-3 text-primary ${item.accent}`}>
                                 <Filter className="h-5 w-5" />
                             </div>
                         </CardContent>
@@ -847,6 +849,25 @@ export default function TaskManager() {
                         </CardContent>
                     </Card>
 
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-secondary/20 px-4 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full border ${colors.overdue}`} />
+                            <span>Caducada</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full border ${colors.tomorrow}`} />
+                            <span>Manana</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full border ${colors.upcoming}`} />
+                            <span>Hoy / esta semana</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full border ${colors.future}`} />
+                            <span>Mas adelante</span>
+                        </div>
+                    </div>
+
                     {sectionData.sections.length === 0 ? (
                         <Card>
                             <CardContent className="flex min-h-[280px] flex-col items-center justify-center p-8 text-center">
@@ -874,6 +895,13 @@ export default function TaskManager() {
                                         const tone = getTaskTone(task);
                                         const isCompleted = task.completed;
                                         const isDocTask = isDocumentTask(task);
+                                        const toneColor = tone === 'overdue'
+                                            ? colors.overdue
+                                            : tone === 'tomorrow'
+                                                ? colors.tomorrow
+                                                : tone === 'today' || tone === 'upcoming'
+                                                    ? colors.upcoming
+                                                    : colors.future;
                                         const borderClass = tone === 'overdue'
                                             ? 'border-rose-200 dark:border-rose-900/40'
                                             : tone === 'today'
@@ -889,6 +917,7 @@ export default function TaskManager() {
                                                         </button>
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex flex-wrap items-center gap-2">
+                                                                <div className={`h-3 w-3 rounded-full border ${toneColor}`} />
                                                                 <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>{task.title}</h3>
                                                                 <Badge className={getPriorityClasses(task.priority)} variant="outline">{getPriorityLabel(task.priority)}</Badge>
                                                                 {isDocTask ? <Badge variant="secondary">Documento</Badge> : null}
@@ -965,3 +994,4 @@ export default function TaskManager() {
         </div>
     );
 }
+
