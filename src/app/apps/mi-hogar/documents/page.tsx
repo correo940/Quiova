@@ -536,6 +536,16 @@ export default function DocumentsPage() {
         return { nextDocuments, nextReminders };
     };
 
+    const finalizeDocumentSave = async (documentId: string, title: string, expirationDate: string | null, nextSettings = alertSettings) => {
+        try {
+            await syncAutomaticReminders(documentId, title, expirationDate);
+            await refreshDataAndSync(nextSettings);
+        } catch (error) {
+            console.error('Post-save sync error:', error);
+            toast.error('El documento se ha guardado, pero no se pudieron actualizar recordatorios o calendario al momento.');
+        }
+    };
+
     const handleAnalyzeDocument = async (file: File) => {
         setAnalyzingDocument(true);
         setAnalysisPreview(null);
@@ -617,22 +627,27 @@ export default function DocumentsPage() {
                 renewal_of: formData.renewal_of || null,
             };
 
+            let savedDocumentId: string | null = formData.id || null;
+
             if (formData.id) {
-                const { error } = await supabase.from('documents').update(payload).eq('id', formData.id);
+                const { data: updatedDocument, error } = await supabase
+                    .from('documents')
+                    .update(payload)
+                    .eq('id', formData.id)
+                    .select('id')
+                    .single();
                 if (error) throw error;
+                savedDocumentId = updatedDocument?.id || formData.id;
                 toast.success('Documento actualizado');
             } else {
-                const { error } = await supabase.from('documents').insert([payload]);
+                const { data: insertedDocument, error } = await supabase
+                    .from('documents')
+                    .insert([payload])
+                    .select('id')
+                    .single();
                 if (error) throw error;
+                savedDocumentId = insertedDocument?.id || null;
                 toast.success('Documento guardado');
-            }
-
-            const targetId = formData.id || null;
-            if (targetId) {
-                await syncAutomaticReminders(targetId, payload.title, payload.expiration_date);
-            } else {
-                const { data: lastDoc } = await supabase.from('documents').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-                if (lastDoc?.id) await syncAutomaticReminders(lastDoc.id, payload.title, payload.expiration_date);
             }
 
             setIsDialogOpen(false);
@@ -640,7 +655,12 @@ export default function DocumentsPage() {
             setSelectedUploadFile(null);
             setAnalysisPreview(null);
             setAnalysisError(null);
-            await refreshDataAndSync();
+
+            if (savedDocumentId) {
+                void finalizeDocumentSave(savedDocumentId, payload.title, payload.expiration_date, alertSettings);
+            } else {
+                void refreshDataAndSync(alertSettings);
+            }
         } catch (error: any) {
             console.error('Save error:', error);
             const { message, statusCode, fullText } = normalizeSupabaseError(error);
@@ -903,6 +923,7 @@ export default function DocumentsPage() {
         setIsDetailOpen(true);
     }
 }
+
 
 
 
