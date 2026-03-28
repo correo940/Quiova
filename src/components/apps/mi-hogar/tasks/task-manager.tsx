@@ -1,39 +1,75 @@
+﻿
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    addDays,
+    endOfWeek,
+    format,
+    isBefore,
+    isToday,
+    isTomorrow,
+    isWithinInterval,
+    startOfDay,
+} from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
+    Bell,
+    BellOff,
+    Calendar as CalendarIcon,
+    Camera,
+    CheckCircle2,
+    ChevronDown,
+    ChevronRight,
+    Circle,
+    Clock,
+    FileText,
+    Filter,
+    Loader2,
+    Lock,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, BellOff, Calendar as CalendarIcon, Clock, Trash2, Plus, CheckCircle2, Loader2, Pencil, X, FileText, CheckSquare, Circle, Users, Lock, User as UserIcon, Filter, Camera } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
-import { format, isSameDay, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { supabase } from '@/lib/supabase';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { supabase } from '@/lib/supabase';
 import PostItConfig from './post-it-config';
-import { usePostItSettings } from '@/context/PostItSettingsContext';
-import { TaskListSelector, TaskList } from './task-list-selector';
-import { ShareTasksDialog } from './share-tasks-dialog';
 import ScreenshotToTaskDialog from './screenshot-to-task-dialog';
+import { ShareTasksDialog } from './share-tasks-dialog';
+import { TaskList, TaskListSelector } from './task-list-selector';
+
+type TaskPriority = 'high' | 'medium' | 'low';
+type TaskView = 'today' | 'upcoming' | 'week' | 'all';
+type TaskFilter = 'all' | 'pending' | 'completed' | 'overdue' | 'alarm' | 'unassigned';
 
 type Task = {
     id: string;
     title: string;
     notes?: string;
-    date: string; // YYYY-MM-DD
-    time: string; // HH:MM
+    description?: string;
+    date: string;
+    time: string;
     hasAlarm: boolean;
     completed: boolean;
-    assignedTo?: string; // User ID
+    assignedTo?: string | null;
+    priority: TaskPriority;
     assignee?: {
         full_name: string;
         avatar_url: string;
-    }
+    } | null;
 };
 
 type ListMember = {
@@ -42,8 +78,93 @@ type ListMember = {
     profile: {
         full_name: string;
         avatar_url: string;
-    }
+    };
 };
+
+type TaskSection = {
+    key: string;
+    title: string;
+    description: string;
+    tasks: Task[];
+};
+
+const DEFAULT_PRIORITY: TaskPriority = 'medium';
+const DOCUMENT_TASK_PREFIX = '[QUIOBA_DOCUMENT]';
+
+function sortTasks(items: Task[]) {
+    return [...items].sort((a, b) => {
+        const dateCompare = new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        const priorityWeight: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 };
+        return priorityWeight[a.priority] - priorityWeight[b.priority];
+    });
+}
+
+function parseTaskDescription(notes?: string) {
+    const lines = (notes || '').split('\n');
+    const noteLines: string[] = [];
+    const subtaskLines: string[] = [];
+
+    lines.forEach((line) => {
+        if (line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]')) {
+            subtaskLines.push(line.replace(/^- \[[ x]\] /, ''));
+        } else if (line.trim()) {
+            noteLines.push(line);
+        }
+    });
+
+    return { notes: noteLines.join('\n').trim(), subtasks: subtaskLines };
+}
+
+function buildTaskDescription(notes: string, subtasks: string[]) {
+    const subtasksString = subtasks.filter((item) => item.trim() !== '').map((item) => `- [ ] ${item}`).join('\n');
+    return [notes.trim(), subtasksString].filter(Boolean).join('\n\n');
+}
+
+function isDocumentTask(task: Task) {
+    return String(task.description || task.notes || '').startsWith(DOCUMENT_TASK_PREFIX);
+}
+
+function getTaskDate(task: Task) {
+    return new Date(`${task.date}T${task.time}`);
+}
+
+function getTaskDay(task: Task) {
+    return startOfDay(getTaskDate(task));
+}
+
+function getTaskTone(task: Task) {
+    if (task.completed) return 'completed';
+    if (isBefore(getTaskDay(task), startOfDay(new Date()))) return 'overdue';
+    if (isToday(getTaskDate(task))) return 'today';
+    if (isTomorrow(getTaskDate(task))) return 'tomorrow';
+    return 'upcoming';
+}
+
+function getPriorityLabel(priority: TaskPriority) {
+    if (priority === 'high') return 'Alta';
+    if (priority === 'low') return 'Baja';
+    return 'Media';
+}
+
+function getPriorityClasses(priority: TaskPriority) {
+    if (priority === 'high') return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300';
+    if (priority === 'low') return 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300';
+}
+
+function formatTaskMoment(task: Task) {
+    return format(getTaskDate(task), "EEE d MMM, HH:mm", { locale: es });
+}
+
+function getSectionEmptyMessage(taskView: TaskView, taskFilter: TaskFilter) {
+    if (taskFilter === 'completed') return 'No hay tareas completadas para esta vista.';
+    if (taskFilter === 'overdue') return 'No hay tareas vencidas.';
+    if (taskView === 'today') return 'No hay tareas para hoy.';
+    if (taskView === 'upcoming') return 'No hay tareas proximas.';
+    if (taskView === 'week') return 'No hay tareas para esta semana.';
+    return 'No hay tareas para estos filtros.';
+}
 
 export default function TaskManager() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -52,6 +173,7 @@ export default function TaskManager() {
     const [subtasks, setSubtasks] = useState<string[]>([]);
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
+    const [priority, setPriority] = useState<TaskPriority>(DEFAULT_PRIORITY);
     const [hasAlarm, setHasAlarm] = useState(true);
     const [loading, setLoading] = useState(true);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -61,36 +183,66 @@ export default function TaskManager() {
     const [members, setMembers] = useState<ListMember[]>([]);
     const [assignedTo, setAssignedTo] = useState<string>('unassigned');
     const [filterByMe, setFilterByMe] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [taskView, setTaskView] = useState<TaskView>('today');
+    const [taskFilter, setTaskFilter] = useState<TaskFilter>('pending');
+    const [showCompletedSection, setShowCompletedSection] = useState(false);
     const { user, isPremium } = useAuth();
-    const { colors } = usePostItSettings();
 
     useEffect(() => {
-        if (user) {
-            fetchTasks();
-        } else {
+        if (user && currentList) {
+            void fetchTasks();
+        } else if (!user) {
             setTasks([]);
+            setLoading(false);
+        } else if (!currentList) {
             setLoading(false);
         }
 
-        // Request notification permission
         if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
+            void Notification.requestPermission();
         }
-    }, [user]);
+    }, [user, currentList]);
 
     useEffect(() => {
         if (currentList) {
-            fetchTasks();
-            fetchMembers();
+            void fetchMembers();
         } else {
-            setTasks([]);
             setMembers([]);
-            setLoading(false); // Fix: Reset loading when no list is selected
         }
     }, [currentList]);
 
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const currentTime = format(now, 'HH:mm');
+            const currentDate = format(now, 'yyyy-MM-dd');
+
+            tasks.forEach((task) => {
+                if (!task.completed && task.hasAlarm && task.date === currentDate && task.time === currentTime) {
+                    playAlarmSound();
+                    showNotification(task.title);
+                    toast.info(`ALARMA: ${task.title}`, {
+                        duration: 10000,
+                        action: {
+                            label: 'Completar',
+                            onClick: () => { void toggleComplete(task.id); },
+                        },
+                    });
+                }
+            });
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [tasks]);
+
+    const canEditCurrentList = isPremium && !!currentList && currentList.role !== 'viewer';
+    const currentUserMember = members.find((member) => member.user_id === user?.id);
+    const canShareCurrentList = !!currentList && (currentList.owner_id === user?.id || currentUserMember?.role === 'editor');
+
     const fetchMembers = async () => {
         if (!currentList) return;
+
         try {
             const { data, error } = await supabase
                 .from('task_list_members')
@@ -102,7 +254,7 @@ export default function TaskManager() {
                 .eq('list_id', currentList.id);
 
             if (error) throw error;
-            setMembers(data as any); // Type assertion for joined data
+            setMembers((data as any) || []);
         } catch (error) {
             console.error('Error fetching members:', error);
         }
@@ -110,6 +262,7 @@ export default function TaskManager() {
 
     const fetchTasks = async () => {
         if (!currentList) return;
+
         try {
             setLoading(true);
             const { data, error } = await supabase
@@ -123,26 +276,24 @@ export default function TaskManager() {
 
             if (error) throw error;
 
-            const mappedTasks: Task[] = data.map((item: any) => {
+            const mappedTasks: Task[] = (data || []).map((item: any) => {
                 const dueDate = new Date(item.due_date);
-
                 return {
                     id: item.id,
                     title: item.title,
                     notes: item.description,
+                    description: item.description,
                     date: format(dueDate, 'yyyy-MM-dd'),
                     time: format(dueDate, 'HH:mm'),
                     hasAlarm: item.has_alarm,
                     completed: item.is_completed,
                     assignedTo: item.assigned_to,
-                    assignee: item.assignee
+                    priority: (item.priority as TaskPriority) || DEFAULT_PRIORITY,
+                    assignee: item.assignee,
                 };
             });
 
-            // If we have selected "My Tasks", filter here or in render.
-            // Let's filter in render for smoother toggle.
-
-            setTasks(mappedTasks);
+            setTasks(sortTasks(mappedTasks));
         } catch (error) {
             console.error('Error fetching tasks:', error);
             toast.error('Error al cargar las tareas');
@@ -151,147 +302,85 @@ export default function TaskManager() {
         }
     };
 
-    // Alarm Checker
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = new Date();
-            const currentTime = format(now, 'HH:mm');
-            const currentDate = format(now, 'yyyy-MM-dd');
-
-            tasks.forEach(task => {
-                if (!task.completed && task.hasAlarm && task.date === currentDate && task.time === currentTime) {
-                    // Trigger alarm
-                    playAlarmSound();
-                    showNotification(task.title);
-                    toast.info(`⏰ ALARMA: ${task.title}`, {
-                        duration: 10000,
-                        action: {
-                            label: 'Completar',
-                            onClick: () => toggleComplete(task.id)
-                        }
-                    });
-                }
-            });
-        }, 60000); // Check every minute
-
-        return () => clearInterval(interval);
-    }, [tasks]);
+    const resetForm = () => {
+        setEditingTask(null);
+        setTitle('');
+        setNotes('');
+        setSubtasks([]);
+        setDate('');
+        setTime('');
+        setHasAlarm(true);
+        setAssignedTo('unassigned');
+        setPriority(DEFAULT_PRIORITY);
+    };
 
     const playAlarmSound = () => {
         try {
             const audio = new Audio('/alarm-sound.mp3');
-            audio.play().catch(e => console.log('Audio play failed', e));
-        } catch (e) {
-            console.error('Audio play failed', e);
+            void audio.play().catch((error) => console.log('Audio play failed', error));
+        } catch (error) {
+            console.error('Audio play failed', error);
         }
     };
 
-    const showNotification = (title: string) => {
+    const showNotification = (taskTitle: string) => {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Mi Hogar - Alarma', {
-                body: title,
-                icon: '/icons/icon-192x192.png'
+                body: taskTitle,
+                icon: '/icons/icon-192x192.png',
             });
         }
     };
-
     const handleSaveTask = async () => {
         if (!isPremium) {
             toast.error('Solo los usuarios Premium pueden crear nuevas tareas.');
             return;
         }
 
+        if (!canEditCurrentList) {
+            toast.error('No puedes editar esta lista.');
+            return;
+        }
+
         if (!title || !date || !time || !user || !currentList) {
-            toast.error('Completa todos los campos y selecciona una lista');
+            toast.error('Completa titulo, fecha, hora y lista.');
             return;
         }
 
         const dueDate = new Date(`${date}T${time}`);
-
-        // Format subtasks
-        const subtasksString = subtasks
-            .filter(t => t.trim() !== '')
-            .map(t => `- [ ] ${t}`)
-            .join('\n');
-
-        // Combine notes and subtasks
-        const description = [notes.trim(), subtasksString].filter(Boolean).join('\n\n');
+        const description = buildTaskDescription(notes, subtasks);
+        const payload = {
+            title,
+            description,
+            due_date: dueDate.toISOString(),
+            has_alarm: hasAlarm,
+            assigned_to: assignedTo === 'unassigned' ? null : assignedTo,
+            priority,
+        };
 
         try {
             if (editingTask) {
-                // Update existing task
-                const { error } = await supabase
-                    .from('tasks')
-                    .update({
-                        title,
-                        description: description,
-                        due_date: dueDate.toISOString(),
-                        has_alarm: hasAlarm,
-                        assigned_to: assignedTo === 'unassigned' ? null : assignedTo,
-                    })
-                    .eq('id', editingTask.id);
-
+                const { error } = await supabase.from('tasks').update(payload).eq('id', editingTask.id);
                 if (error) throw error;
-
-                setTasks(tasks.map(t => t.id === editingTask.id ? {
-                    ...t,
-                    title,
-                    notes,
-                    date,
-                    time,
-                    hasAlarm
-                } : t).sort((a, b) => {
-                    return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
-                }));
-
                 toast.success('Tarea actualizada');
-                cancelEditing();
             } else {
-                // Create new task
-                const { data, error } = await supabase
-                    .from('tasks')
-                    .insert([
-                        {
-                            user_id: user.id,
-                            list_id: currentList.id,
-                            title,
-                            description: description,
-                            due_date: dueDate.toISOString(),
-                            has_alarm: hasAlarm,
-                            is_completed: false,
-                            assigned_to: assignedTo === 'unassigned' ? null : assignedTo,
-                        },
-                    ])
-                    .select()
-                    .single();
-
+                const { error } = await supabase.from('tasks').insert([
+                    {
+                        user_id: user.id,
+                        list_id: currentList.id,
+                        is_completed: false,
+                        ...payload,
+                    },
+                ]);
                 if (error) throw error;
-
-                const newTask: Task = {
-                    id: data.id,
-                    title: data.title,
-                    notes: data.description,
-                    date: format(new Date(data.due_date), 'yyyy-MM-dd'),
-                    time: format(new Date(data.due_date), 'HH:mm'),
-                    hasAlarm: data.has_alarm,
-                    completed: data.is_completed,
-                    assignedTo: data.assigned_to,
-                    assignee: members.find(m => m.user_id === data.assigned_to)?.profile
-                };
-
-                setTasks([...tasks, newTask].sort((a, b) => {
-                    return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
-                }));
-
-                setTitle('');
-                setNotes('');
-                setSubtasks([]);
-                setAssignedTo('unassigned');
-                toast.success('Tarea programada');
+                toast.success('Tarea creada');
             }
+
+            resetForm();
+            await fetchTasks();
         } catch (error) {
             console.error('Error saving task:', error);
-            toast.error(editingTask ? 'Error al actualizar la tarea' : 'Error al programar la tarea');
+            toast.error(editingTask ? 'Error al actualizar la tarea' : 'Error al crear la tarea');
         }
     };
 
@@ -301,61 +390,32 @@ export default function TaskManager() {
             return;
         }
 
-        setEditingTask(task);
-        setTitle(task.title);
-
-        // Parse notes and subtasks
-        if (task.notes) {
-            const lines = task.notes.split('\n');
-            const noteLines: string[] = [];
-            const subtaskLines: string[] = [];
-
-            lines.forEach(line => {
-                if (line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]')) {
-                    subtaskLines.push(line.replace(/^- \[[ x]\] /, ''));
-                } else {
-                    noteLines.push(line);
-                }
-            });
-
-            setNotes(noteLines.join('\n').trim());
-            setSubtasks(subtaskLines);
-        } else {
-            setNotes('');
-            setSubtasks([]);
+        if (!canEditCurrentList) {
+            toast.error('No puedes editar esta lista.');
+            return;
         }
 
+        const parsed = parseTaskDescription(task.notes);
+        setEditingTask(task);
+        setTitle(task.title);
+        setNotes(parsed.notes);
+        setSubtasks(parsed.subtasks);
         setDate(task.date);
         setTime(task.time);
         setHasAlarm(task.hasAlarm);
         setAssignedTo(task.assignedTo || 'unassigned');
+        setPriority(task.priority || DEFAULT_PRIORITY);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const cancelEditing = () => {
-        setEditingTask(null);
-        setTitle('');
-        setNotes('');
-        setSubtasks([]);
-        setDate('');
-        setTime('');
-        setHasAlarm(true);
-        setAssignedTo('unassigned');
-    };
-
     const toggleComplete = async (id: string) => {
-        const task = tasks.find(t => t.id === id);
+        const task = tasks.find((item) => item.id === id);
         if (!task) return;
 
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .update({ is_completed: !task.completed })
-                .eq('id', id);
-
+            const { error } = await supabase.from('tasks').update({ is_completed: !task.completed }).eq('id', id);
             if (error) throw error;
-
-            setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+            setTasks((current) => sortTasks(current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item)));
         } catch (error) {
             console.error('Error updating task:', error);
             toast.error('Error al actualizar la tarea');
@@ -364,52 +424,65 @@ export default function TaskManager() {
 
     const deleteTask = async (id: string) => {
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .delete()
-                .eq('id', id);
-
+            const { error } = await supabase.from('tasks').delete().eq('id', id);
             if (error) throw error;
-
-            setTasks(tasks.filter(t => t.id !== id));
+            setTasks((current) => current.filter((item) => item.id !== id));
+            if (editingTask?.id === id) resetForm();
             toast.success('Tarea eliminada');
-            if (editingTask?.id === id) cancelEditing();
         } catch (error) {
             console.error('Error deleting task:', error);
             toast.error('Error al eliminar la tarea');
         }
     };
 
+    const postponeTask = async (task: Task, days: number) => {
+        const nextDate = addDays(getTaskDate(task), days);
+        try {
+            const { error } = await supabase.from('tasks').update({ due_date: nextDate.toISOString() }).eq('id', task.id);
+            if (error) throw error;
+            setTasks((current) => sortTasks(current.map((item) => item.id === task.id ? { ...item, date: format(nextDate, 'yyyy-MM-dd'), time: format(nextDate, 'HH:mm') } : item)));
+            toast.success(days === 1 ? 'Tarea pospuesta 1 dia' : 'Tarea pospuesta 1 semana');
+        } catch (error) {
+            console.error('Error postponing task:', error);
+            toast.error('No se pudo posponer la tarea');
+        }
+    };
+
     const toggleNoteSubtask = async (taskId: string, lineIndex: number, currentChecked: boolean) => {
-        const task = tasks.find(t => t.id === taskId);
+        const task = tasks.find((item) => item.id === taskId);
         if (!task || !task.notes) return;
 
         const lines = task.notes.split('\n');
         if (lineIndex >= lines.length) return;
-
-        const line = lines[lineIndex];
-        const newLine = currentChecked
-            ? line.replace('- [x]', '- [ ]')
-            : line.replace('- [ ]', '- [x]');
-
-        lines[lineIndex] = newLine;
+        lines[lineIndex] = currentChecked ? lines[lineIndex].replace('- [x]', '- [ ]') : lines[lineIndex].replace('- [ ]', '- [x]');
         const newNotes = lines.join('\n');
-
-        // Optimistic update
-        setTasks(tasks.map(t => t.id === taskId ? { ...t, notes: newNotes } : t));
+        setTasks((current) => current.map((item) => item.id === taskId ? { ...item, notes: newNotes, description: newNotes } : item));
 
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .update({ description: newNotes })
-                .eq('id', taskId);
-
+            const { error } = await supabase.from('tasks').update({ description: newNotes }).eq('id', taskId);
             if (error) throw error;
         } catch (error) {
             console.error('Error updating subtask:', error);
             toast.error('Error al actualizar la subtarea');
-            // Revert on error
-            setTasks(tasks.map(t => t.id === taskId ? { ...t, notes: task.notes } : t));
+            setTasks((current) => current.map((item) => item.id === taskId ? { ...item, notes: task.notes, description: task.notes } : item));
+        }
+    };
+
+    const handleAddSubtask = () => setSubtasks((current) => [...current, '']);
+    const handleSubtaskChange = (index: number, value: string) => setSubtasks((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+    const removeDraftSubtask = (index: number) => setSubtasks((current) => current.filter((_, itemIndex) => itemIndex !== index));
+
+    const handleSubtaskKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            setSubtasks((current) => {
+                const next = [...current];
+                next.splice(index + 1, 0, '');
+                return next;
+            });
+        } else if (event.key === 'Backspace' && subtasks[index] === '' && subtasks.length > 0) {
+            event.preventDefault();
+            removeDraftSubtask(index);
         }
     };
 
@@ -417,436 +490,478 @@ export default function TaskManager() {
         if (!task.notes) return null;
 
         return (
-            <div className="mt-3 ml-12 p-3 bg-secondary/50 rounded-md text-sm text-muted-foreground flex flex-col gap-1">
-                <div className="flex items-start gap-2 mb-1">
-                    <FileText className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span className="text-xs font-semibold uppercase tracking-wider opacity-70">Notas</span>
+            <div className="mt-3 rounded-xl bg-secondary/50 p-3 text-sm text-muted-foreground">
+                <div className="mb-2 flex items-start gap-2">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="text-xs font-semibold uppercase tracking-wider opacity-70">Notas y checklist</span>
                 </div>
-                <div className="pl-6 space-y-1">
+                <div className="space-y-1 pl-6">
                     {task.notes.split('\n').map((line, index) => {
                         const isCheckbox = line.trim().startsWith('- [ ]') || line.trim().startsWith('- [x]');
-
                         if (isCheckbox) {
                             const isChecked = line.trim().startsWith('- [x]');
                             const text = line.replace(/- \[[ x]\]/, '').trim();
-
                             return (
-                                <div key={index} className="flex items-start gap-2 group/item">
+                                <div key={index} className="flex items-start gap-2">
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleNoteSubtask(task.id, index, isChecked);
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            void toggleNoteSubtask(task.id, index, isChecked);
                                         }}
-                                        className={`mt-0.5 shrink-0 transition-colors ${isChecked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                                        className={isChecked ? 'mt-0.5 text-primary' : 'mt-0.5 text-muted-foreground hover:text-primary'}
                                     >
-                                        {isChecked ? (
-                                            <CheckCircle2 className="h-4 w-4" />
-                                        ) : (
-                                            <Circle className="h-4 w-4" />
-                                        )}
+                                        {isChecked ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
                                     </button>
-                                    <span className={`${isChecked ? 'line-through opacity-70' : ''} transition-all`}>
-                                        {text}
-                                    </span>
+                                    <span className={isChecked ? 'line-through opacity-70' : ''}>{text}</span>
                                 </div>
                             );
                         }
 
-                        return (
-                            <p key={index} className="whitespace-pre-wrap min-h-[1.25rem]">
-                                {line}
-                            </p>
-                        );
+                        return <p key={index} className="min-h-[1.25rem] whitespace-pre-wrap">{line}</p>;
                     })}
                 </div>
             </div>
         );
     };
 
+    const visibleTasks = useMemo(() => {
+        const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+        const nextSevenDays = addDays(startOfDay(new Date()), 7);
+
+        return tasks.filter((task) => {
+            const taskDate = getTaskDate(task);
+            const taskDay = getTaskDay(task);
+            const normalizedSearch = searchQuery.trim().toLowerCase();
+            const matchesSearch = !normalizedSearch
+                || task.title.toLowerCase().includes(normalizedSearch)
+                || String(task.notes || '').toLowerCase().includes(normalizedSearch)
+                || String(task.assignee?.full_name || '').toLowerCase().includes(normalizedSearch);
+            const matchesMine = !filterByMe || task.assignedTo === user?.id;
+            const matchesView = taskView === 'all'
+                || (taskView === 'today' && (task.completed || isBefore(taskDay, startOfDay(new Date())) || isToday(taskDate)))
+                || (taskView === 'upcoming' && (task.completed || isTomorrow(taskDate) || taskDate > startOfDay(new Date())))
+                || (taskView === 'week' && (task.completed || isWithinInterval(taskDate, { start: startOfDay(new Date()), end: nextSevenDays })));
+            const matchesFilter = taskFilter === 'all'
+                || (taskFilter === 'pending' && !task.completed)
+                || (taskFilter === 'completed' && task.completed)
+                || (taskFilter === 'overdue' && !task.completed && isBefore(taskDay, startOfDay(new Date())))
+                || (taskFilter === 'alarm' && task.hasAlarm)
+                || (taskFilter === 'unassigned' && !task.assignedTo);
+            const withinWeekFilter = taskView !== 'week' || task.completed || isWithinInterval(taskDate, { start: startOfDay(new Date()), end: weekEnd }) || taskDate > weekEnd;
+
+            return matchesSearch && matchesMine && matchesView && matchesFilter && withinWeekFilter;
+        });
+    }, [tasks, searchQuery, filterByMe, taskView, taskFilter, user?.id]);
+
+    const sectionData = useMemo(() => {
+        const completedTasks = visibleTasks.filter((task) => task.completed);
+        const pendingTasks = visibleTasks.filter((task) => !task.completed);
+        const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+        const todayStart = startOfDay(new Date());
+
+        const overdue = pendingTasks.filter((task) => isBefore(getTaskDay(task), todayStart));
+        const todayTasks = pendingTasks.filter((task) => isToday(getTaskDate(task)));
+        const tomorrowTasks = pendingTasks.filter((task) => isTomorrow(getTaskDate(task)));
+        const weekTasks = pendingTasks.filter((task) => {
+            const taskDate = getTaskDate(task);
+            return !isToday(taskDate) && !isTomorrow(taskDate) && isWithinInterval(taskDate, { start: todayStart, end: weekEnd });
+        });
+        const laterTasks = pendingTasks.filter((task) => getTaskDate(task) > weekEnd);
+
+        const sections: TaskSection[] = [];
+        if (overdue.length > 0) sections.push({ key: 'overdue', title: 'Vencidas', description: 'Pendientes fuera de fecha.', tasks: sortTasks(overdue) });
+        if (todayTasks.length > 0) sections.push({ key: 'today', title: 'Hoy', description: 'Trabajo operativo del dia.', tasks: sortTasks(todayTasks) });
+        if (tomorrowTasks.length > 0) sections.push({ key: 'tomorrow', title: 'Manana', description: 'Lo siguiente en la cola.', tasks: sortTasks(tomorrowTasks) });
+        if (weekTasks.length > 0) sections.push({ key: 'week', title: 'Esta semana', description: 'Pendiente para los proximos dias.', tasks: sortTasks(weekTasks) });
+        if (laterTasks.length > 0) sections.push({ key: 'later', title: 'Mas adelante', description: 'Sin urgencia inmediata.', tasks: sortTasks(laterTasks) });
+        if ((showCompletedSection || taskFilter === 'completed') && completedTasks.length > 0) {
+            sections.push({ key: 'completed', title: 'Completadas', description: 'Historial reciente.', tasks: sortTasks(completedTasks) });
+        }
+
+        return {
+            sections,
+            counts: {
+                total: tasks.length,
+                pending: tasks.filter((task) => !task.completed).length,
+                completed: tasks.filter((task) => task.completed).length,
+                overdue: tasks.filter((task) => !task.completed && isBefore(getTaskDay(task), todayStart)).length,
+                today: tasks.filter((task) => !task.completed && isToday(getTaskDate(task))).length,
+                withAlarm: tasks.filter((task) => task.hasAlarm && !task.completed).length,
+            },
+        };
+    }, [tasks, visibleTasks, showCompletedSection, taskFilter]);
+
+    const summaryCards = [
+        { label: 'Pendientes', value: sectionData.counts.pending },
+        { label: 'Hoy', value: sectionData.counts.today },
+        { label: 'Vencidas', value: sectionData.counts.overdue },
+        { label: 'Alarmas', value: sectionData.counts.withAlarm },
+    ];
+
     const today = format(new Date(), 'yyyy-MM-dd');
 
     if (loading) {
-        return (
-            <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
+        return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
-
-    const handleAddSubtask = () => {
-        setSubtasks([...subtasks, '']);
-    };
-
-    const handleSubtaskChange = (index: number, value: string) => {
-        const newSubtasks = [...subtasks];
-        newSubtasks[index] = value;
-        setSubtasks(newSubtasks);
-    };
-
-    const handleSubtaskKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const newSubtasks = [...subtasks];
-            newSubtasks.splice(index + 1, 0, '');
-            setSubtasks(newSubtasks);
-            // Focus next input logic would go here ideally
-        } else if (e.key === 'Backspace' && subtasks[index] === '' && subtasks.length > 0) {
-            e.preventDefault();
-            const newSubtasks = subtasks.filter((_, i) => i !== index);
-            setSubtasks(newSubtasks);
-        }
-    };
 
     return (
         <div className="space-y-6">
-            {/* List Selector Bar */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
-                <div className="w-full md:w-1/2">
-                    <TaskListSelector
-                        currentListId={currentList?.id || null}
-                        onListChange={(list) => setCurrentList(list)}
-                    />
-                </div>
-                {currentList && (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-sm"
-                            onClick={() => setShowScanDialog(true)}
-                        >
-                            <Camera className="w-4 h-4 mr-2" />
-                            Escanear Evento
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary hover:bg-primary/10"
-                            onClick={() => setShowShareDialog(true)}
-                        >
-                            <Users className="w-4 h-4 mr-2" />
-                            Compartir Lista
-                        </Button>
+            <Card>
+                <CardHeader className="pb-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2 text-2xl">
+                                <CheckCircle2 className="h-6 w-6 text-primary" />
+                                Gestor de tareas
+                            </CardTitle>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Organiza pendientes por horizonte temporal, prioridad y responsable.
+                            </p>
+                        </div>
+                        <div className="flex w-full flex-col gap-2 lg:w-auto lg:min-w-[420px]">
+                            <TaskListSelector
+                                currentListId={currentList?.id || null}
+                                onListChange={(list) => {
+                                    setCurrentList(list);
+                                    resetForm();
+                                }}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                                <Button variant="outline" onClick={() => setShowScanDialog(true)} disabled={!currentList}>
+                                    <Camera className="mr-2 h-4 w-4" /> Escanear
+                                </Button>
+                                <Button variant="outline" onClick={() => setShowShareDialog(true)} disabled={!currentList || !canShareCurrentList}>
+                                    <Users className="mr-2 h-4 w-4" /> Compartir
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                )}
+                </CardHeader>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {summaryCards.map((item) => (
+                    <Card key={item.label}>
+                        <CardContent className="flex items-center justify-between p-5">
+                            <div>
+                                <p className="text-sm text-muted-foreground">{item.label}</p>
+                                <p className="mt-1 text-3xl font-semibold">{item.value}</p>
+                            </div>
+                            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                                <Filter className="h-5 w-5" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
-            {!isPremium && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg flex items-center gap-3 text-amber-800 dark:text-amber-200 text-sm">
-                    <Lock className="w-4 h-4 shrink-0" />
-                    <span>Estás en modo invitado. Puedes ver y completar tareas, pero necesitas Premium para crear nuevas.</span>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form Section */}
-                <div className="lg:col-span-1 space-y-6 opacity-100">
-                    <Card className={`h-fit transition-all ${editingTask ? 'border-primary/50 bg-primary/5' : ''} ${!isPremium ? 'opacity-60 pointer-events-none grayscale-[0.5]' : ''}`}>
-                        <CardHeader>
-                            <CardTitle className="flex justify-between items-center">
-                                {editingTask ? 'Editar Tarea' : 'Nueva Tarea'}
-                                {!isPremium && <Lock className="w-4 h-4 text-muted-foreground" />}
-                                {editingTask && (
-                                    <Button variant="ghost" size="sm" onClick={cancelEditing} className="h-8 w-8 p-0">
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                )}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader className="pb-4">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                {editingTask ? <Pencil className="h-5 w-5 text-primary" /> : <Plus className="h-5 w-5 text-primary" />}
+                                {editingTask ? 'Editar tarea' : 'Nueva tarea'}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {!isPremium ? (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                                    Solo Premium puede crear y editar tareas.
+                                </div>
+                            ) : null}
+                            {currentList?.role === 'viewer' ? (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                                    Esta lista esta en modo lectura para tu usuario.
+                                </div>
+                            ) : null}
+
                             <div className="space-y-2">
-                                <Label>Tarea</Label>
-                                <Input
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Ej. Poner lavadora..."
-                                    disabled={!isPremium}
-                                />
+                                <Label>Titulo</Label>
+                                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Renovar seguro del coche" />
                             </div>
+
                             <div className="space-y-2">
-                                <Label>Notas (Opcional)</Label>
-                                <Textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Detalles adicionales..."
-                                    className="resize-none h-20 font-mono text-sm"
-                                />
+                                <Label>Notas</Label>
+                                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Contexto, pasos, referencias o enlaces." className="min-h-[110px]" />
                             </div>
+
                             <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <Label>Subtareas (Opcional)</Label>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
-                                        onClick={handleAddSubtask}
-                                        title="Añadir subtarea"
-                                    >
-                                        <Plus className="w-3 h-3 mr-1" />
-                                        Añadir
+                                <div className="flex items-center justify-between">
+                                    <Label>Checklist</Label>
+                                    <Button type="button" variant="ghost" size="sm" onClick={handleAddSubtask} disabled={!canEditCurrentList}>
+                                        <Plus className="mr-1 h-4 w-4" /> Anadir paso
                                     </Button>
                                 </div>
                                 <div className="space-y-2">
-                                    {subtasks.length === 0 && (
-                                        <div
-                                            className="text-sm text-muted-foreground italic cursor-pointer hover:text-primary border border-dashed rounded-md p-2 text-center"
-                                            onClick={handleAddSubtask}
-                                        >
-                                            Click para añadir subtareas...
-                                        </div>
-                                    )}
                                     {subtasks.map((subtask, index) => (
                                         <div key={index} className="flex items-center gap-2">
-                                            <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                                            <Circle className="h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 value={subtask}
                                                 onChange={(e) => handleSubtaskChange(index, e.target.value)}
-                                                onKeyDown={(e) => handleSubtaskKeyDown(index, e)}
-                                                placeholder={`Subtarea ${index + 1}`}
-                                                className="h-8"
-                                                autoFocus={subtasks[index] === ''}
+                                                onKeyDown={(event) => handleSubtaskKeyDown(index, event)}
+                                                placeholder={`Paso ${index + 1}`}
                                             />
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                onClick={() => {
-                                                    const newSubtasks = subtasks.filter((_, i) => i !== index);
-                                                    setSubtasks(newSubtasks);
-                                                }}
-                                            >
-                                                <X className="w-3 h-3" />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeDraftSubtask(index)}>
+                                                <X className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     ))}
+                                    {subtasks.length === 0 ? <p className="text-sm text-muted-foreground">Sin pasos todavia.</p> : null}
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Asignar a</Label>
-                                <Select value={assignedTo} onValueChange={setAssignedTo} disabled={!currentList || !isPremium}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sin asignar" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="unassigned">Sin asignar</SelectItem>
-                                        {members.map((member) => (
-                                            <SelectItem key={member.user_id} value={member.user_id}>
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-5 w-5">
-                                                        <AvatarImage src={member.profile?.avatar_url} />
-                                                        <AvatarFallback>{member.profile?.full_name?.charAt(0) || '?'}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span>{member.profile?.full_name} {member.user_id === user?.id ? '(Tú)' : ''}</span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label>Fecha</Label>
-                                    <Input
-                                        type="date"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                        min={today}
-                                    />
+                                    <Input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Hora</Label>
-                                    <Input
-                                        type="time"
-                                        value={time}
-                                        onChange={(e) => setTime(e.target.value)}
-                                    />
+                                    <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2 pt-2">
-                                <Checkbox
-                                    id="alarm"
-                                    checked={hasAlarm}
-                                    onCheckedChange={(c) => setHasAlarm(c as boolean)}
-                                />
-                                <Label htmlFor="alarm" className="cursor-pointer flex items-center">
-                                    {hasAlarm ? <Bell className="w-4 h-4 mr-2 text-primary" /> : <BellOff className="w-4 h-4 mr-2 text-muted-foreground" />}
-                                    Activar Alarma
-                                </Label>
+
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label>Prioridad</Label>
+                                    <Select value={priority} onValueChange={(value: TaskPriority) => setPriority(value)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="high">Alta</SelectItem>
+                                            <SelectItem value="medium">Media</SelectItem>
+                                            <SelectItem value="low">Baja</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Asignada a</Label>
+                                    <Select value={assignedTo} onValueChange={setAssignedTo}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">Sin asignar</SelectItem>
+                                            {members.map((member) => (
+                                                <SelectItem key={member.user_id} value={member.user_id}>
+                                                    {member.profile?.full_name || 'Usuario'}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button className="w-full" onClick={handleSaveTask}>
-                                    {editingTask ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                                    {editingTask ? 'Actualizar' : 'Programar'}
+
+                            <div className="flex items-center justify-between rounded-xl border p-3">
+                                <div>
+                                    <p className="font-medium">Aviso</p>
+                                    <p className="text-sm text-muted-foreground">Genera alarma local en la fecha y hora fijadas.</p>
+                                </div>
+                                <Button type="button" variant={hasAlarm ? 'default' : 'outline'} onClick={() => setHasAlarm((current) => !current)}>
+                                    {hasAlarm ? <Bell className="mr-2 h-4 w-4" /> : <BellOff className="mr-2 h-4 w-4" />}
+                                    {hasAlarm ? 'Activada' : 'Desactivada'}
                                 </Button>
-                                {editingTask && (
-                                    <Button variant="outline" onClick={cancelEditing}>
-                                        Cancelar
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                <Button onClick={() => void handleSaveTask()} disabled={!canEditCurrentList || !title || !date || !time}>
+                                    <Lock className="mr-2 h-4 w-4" />
+                                    {editingTask ? 'Guardar cambios' : 'Crear tarea'}
+                                </Button>
+                                {editingTask ? (
+                                    <Button variant="outline" onClick={resetForm}>
+                                        Cancelar edicion
                                     </Button>
-                                )}
+                                ) : null}
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Post-it Configuration */}
                     <PostItConfig />
                 </div>
 
-                {/* List Section */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6">
                     <Card>
-                        <CardHeader>
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <CardTitle className="flex items-center">
-                                    <CalendarIcon className="mr-2 h-5 w-5 text-primary" />
-                                    Próximas Tareas
-                                </CardTitle>
-
-                                {/* Filter Toggle */}
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant={filterByMe ? "secondary" : "ghost"}
-                                        size="sm"
-                                        onClick={() => setFilterByMe(!filterByMe)}
-                                        className={filterByMe ? "bg-primary/10 text-primary" : ""}
-                                    >
-                                        <Filter className="w-4 h-4 mr-2" />
-                                        {filterByMe ? "Mis Tareas" : "Todas"}
-                                    </Button>
+                        <CardContent className="space-y-4 p-5">
+                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_repeat(3,minmax(0,0.9fr))]">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        className="pl-9"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Buscar por titulo, notas o persona asignada"
+                                    />
                                 </div>
-
-                                {/* Legend */}
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground bg-secondary/30 p-2 rounded-lg">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-3 h-3 rounded-full border ${colors.overdue}`} />
-                                        <span>Caducada</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-3 h-3 rounded-full border ${colors.tomorrow}`} />
-                                        <span>Mañana</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-3 h-3 rounded-full border ${colors.upcoming}`} />
-                                        <span>&lt; 1 sem</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-3 h-3 rounded-full border ${colors.future}`} />
-                                        <span>&gt; 1 sem</span>
-                                    </div>
-                                </div>
+                                <Select value={taskView} onValueChange={(value: TaskView) => setTaskView(value)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Vista" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="today">Hoy</SelectItem>
+                                        <SelectItem value="upcoming">Proximas</SelectItem>
+                                        <SelectItem value="week">Semana</SelectItem>
+                                        <SelectItem value="all">Todas</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={taskFilter} onValueChange={(value: TaskFilter) => setTaskFilter(value)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Filtro" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="pending">Pendientes</SelectItem>
+                                        <SelectItem value="all">Todas</SelectItem>
+                                        <SelectItem value="completed">Completadas</SelectItem>
+                                        <SelectItem value="overdue">Vencidas</SelectItem>
+                                        <SelectItem value="alarm">Con alarma</SelectItem>
+                                        <SelectItem value="unassigned">Sin asignar</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Button variant={filterByMe ? 'default' : 'outline'} onClick={() => setFilterByMe((current) => !current)}>
+                                    <Users className="mr-2 h-4 w-4" /> Solo mias
+                                </Button>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            {tasks.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    <p>No hay tareas pendientes.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {tasks
-                                        .filter(task => !filterByMe || task.assignedTo === user?.id)
-                                        .map(task => {
-                                            const taskDateTime = new Date(`${task.date}T${task.time}`);
-                                            const isOverdue = !task.completed && taskDateTime < new Date();
-
-                                            return (
-                                                <div
-                                                    key={task.id}
-                                                    className={`flex flex-col p-4 rounded-lg border transition-all ${task.completed
-                                                        ? 'bg-secondary/50 opacity-60'
-                                                        : isOverdue
-                                                            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                                                            : 'bg-card hover:shadow-sm'
-                                                        } ${editingTask?.id === task.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className={`rounded-full ${task.completed ? 'text-green-500' : 'text-muted-foreground'}`}
-                                                                onClick={() => toggleComplete(task.id)}
-                                                            >
-                                                                <CheckCircle2 className={`h-6 w-6 ${task.completed ? 'fill-current' : ''}`} />
-                                                            </Button>
-                                                            <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className={`font-medium ${task.completed ? 'line-through' : ''}`}>{task.title}</p>
-                                                                    {isOverdue && (
-                                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800">
-                                                                            Caducada
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center text-sm text-muted-foreground gap-3">
-                                                                    <span className={`flex items-center ${isOverdue ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                                                        <CalendarIcon className="h-3 w-3 mr-1" />
-                                                                        {format(parseISO(task.date), 'd MMM yyyy', { locale: es })}
-                                                                    </span>
-                                                                    <span className={`flex items-center ${isOverdue ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                                                        <Clock className="h-3 w-3 mr-1" />
-                                                                        {task.time}
-                                                                    </span>
-                                                                    {task.assignee && (
-                                                                        <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-0.5 rounded-full" title={`Asignado a: ${task.assignee.full_name}`}>
-                                                                            <Avatar className="h-4 w-4">
-                                                                                <AvatarImage src={task.assignee.avatar_url} />
-                                                                                <AvatarFallback className="text-[9px]">{task.assignee.full_name.charAt(0)}</AvatarFallback>
-                                                                            </Avatar>
-                                                                            <span className="text-xs max-w-[80px] truncate">{task.assignee.full_name.split(' ')[0]}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {task.hasAlarm && !task.completed && (
-                                                                        <span className="flex items-center text-primary text-xs bg-primary/10 px-2 py-0.5 rounded-full">
-                                                                            <Bell className="h-3 w-3 mr-1" />
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => startEditing(task)}
-                                                                className="text-muted-foreground hover:text-primary"
-                                                                disabled={task.completed}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="text-destructive hover:bg-destructive/10">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    {renderNotes(task)}
-                                                </div>
-                                            )
-                                        })}
-                                </div>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                                <Button variant={showCompletedSection ? 'default' : 'outline'} onClick={() => setShowCompletedSection((current) => !current)}>
+                                    {showCompletedSection ? <ChevronDown className="mr-2 h-4 w-4" /> : <ChevronRight className="mr-2 h-4 w-4" />}
+                                    Completadas
+                                </Button>
+                                {(searchQuery || filterByMe || taskView !== 'today' || taskFilter !== 'pending') ? (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setFilterByMe(false);
+                                            setTaskView('today');
+                                            setTaskFilter('pending');
+                                        }}
+                                    >
+                                        Limpiar filtros
+                                    </Button>
+                                ) : null}
+                            </div>
                         </CardContent>
                     </Card>
+
+                    {sectionData.sections.length === 0 ? (
+                        <Card>
+                            <CardContent className="flex min-h-[280px] flex-col items-center justify-center p-8 text-center">
+                                <CalendarIcon className="mb-4 h-10 w-10 text-muted-foreground" />
+                                <h3 className="text-lg font-semibold">Nada que mostrar</h3>
+                                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                                    {getSectionEmptyMessage(taskView, taskFilter)}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        sectionData.sections.map((section) => (
+                            <Card key={section.key}>
+                                <CardHeader className="pb-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <CardTitle className="text-lg">{section.title}</CardTitle>
+                                            <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
+                                        </div>
+                                        <Badge variant="outline">{section.tasks.length}</Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {section.tasks.map((task) => {
+                                        const tone = getTaskTone(task);
+                                        const isCompleted = task.completed;
+                                        const isDocTask = isDocumentTask(task);
+                                        const borderClass = tone === 'overdue'
+                                            ? 'border-rose-200 dark:border-rose-900/40'
+                                            : tone === 'today'
+                                                ? 'border-amber-200 dark:border-amber-900/40'
+                                                : 'border-slate-200 dark:border-slate-800';
+
+                                        return (
+                                            <div key={task.id} className={`rounded-2xl border bg-card p-4 ${borderClass} ${isCompleted ? 'opacity-70' : ''}`}>
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                                                        <button type="button" className="mt-0.5 shrink-0" onClick={() => void toggleComplete(task.id)}>
+                                                            {isCompleted ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
+                                                        </button>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>{task.title}</h3>
+                                                                <Badge className={getPriorityClasses(task.priority)} variant="outline">{getPriorityLabel(task.priority)}</Badge>
+                                                                {isDocTask ? <Badge variant="secondary">Documento</Badge> : null}
+                                                                {task.hasAlarm ? <Badge variant="outline"><Bell className="mr-1 h-3 w-3" /> Alarma</Badge> : null}
+                                                            </div>
+                                                            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                                <span className="inline-flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {formatTaskMoment(task)}</span>
+                                                                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {tone === 'overdue' ? 'Vencida' : tone === 'today' ? 'Hoy' : tone === 'tomorrow' ? 'Manana' : 'Proxima'}</span>
+                                                                {task.assignee ? (
+                                                                    <span className="inline-flex items-center gap-2">
+                                                                        <Avatar className="h-5 w-5">
+                                                                            <AvatarImage src={task.assignee.avatar_url} alt={task.assignee.full_name} />
+                                                                            <AvatarFallback>{task.assignee.full_name?.slice(0, 1)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                                        </Avatar>
+                                                                        {task.assignee.full_name}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span>Sin asignar</span>
+                                                                )}
+                                                            </div>
+                                                            {renderNotes(task)}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                                        {!isCompleted ? (
+                                                            <>
+                                                                <Button variant="outline" size="sm" onClick={() => void postponeTask(task, 1)}>
+                                                                    +1 dia
+                                                                </Button>
+                                                                <Button variant="outline" size="sm" onClick={() => void postponeTask(task, 7)}>
+                                                                    +1 sem
+                                                                </Button>
+                                                            </>
+                                                        ) : null}
+                                                        <Button variant="ghost" size="icon" onClick={() => startEditing(task)} disabled={!canEditCurrentList}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => void deleteTask(task.id)} disabled={!canEditCurrentList}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
                 </div>
             </div>
 
-            {currentList && (
-                <>
-                    <ShareTasksDialog
-                        open={showShareDialog}
-                        onOpenChange={setShowShareDialog}
-                        listId={currentList.id}
-                        listName={currentList.name}
-                        isOwner={currentList.role === 'owner'}
-                        onListUpdated={() => fetchTasks()}
-                    />
-                    <ScreenshotToTaskDialog
-                        open={showScanDialog}
-                        onOpenChange={setShowScanDialog}
-                        onSuccess={() => fetchTasks()}
-                        listId={currentList.id}
-                    />
-                </>
-            )}
+            {currentList ? (
+                <ShareTasksDialog
+                    open={showShareDialog}
+                    onOpenChange={setShowShareDialog}
+                    listId={currentList.id}
+                    listName={currentList.name}
+                    isOwner={currentList.owner_id === user?.id}
+                    onListUpdated={() => {
+                        void fetchMembers();
+                        void fetchTasks();
+                    }}
+                />
+            ) : null}
+
+            <ScreenshotToTaskDialog
+                open={showScanDialog}
+                onOpenChange={setShowScanDialog}
+                onSuccess={() => void fetchTasks()}
+                listId={currentList?.id}
+            />
         </div>
     );
 }
