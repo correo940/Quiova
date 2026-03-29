@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
@@ -77,12 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('is_premium')
+                .select('is_premium, subscription_tier')
                 .eq('id', userId)
                 .single()
 
             if (data && !error) {
-                setIsPremium(data.is_premium || false)
+                setIsPremium(data.is_premium || data.subscription_tier === 'premium')
             }
         } catch (error) {
             console.error('Error fetching premium status:', error)

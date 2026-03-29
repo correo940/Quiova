@@ -45,6 +45,11 @@ export default function ProfilePage() {
     const isPremium = profile?.subscription_tier === 'premium';
 
     useEffect(() => {
+        // Safety timeout — never stay loading more than 5 seconds
+        const safetyTimer = setTimeout(() => {
+            setLoading(false);
+        }, 5000);
+
         const getProfile = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -91,10 +96,13 @@ export default function ProfilePage() {
                 console.error(error);
             } finally {
                 setLoading(false);
+                clearTimeout(safetyTimer);
             }
         };
 
         getProfile();
+
+        return () => clearTimeout(safetyTimer);
     }, [router]);
 
     const fetchSubscriptions = async (userId: string) => {

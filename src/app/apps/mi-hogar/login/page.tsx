@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 import { Lock, Mail, Loader2, Home, Eye, EyeOff } from 'lucide-react'
 import { translateAuthError } from '@/lib/utils'
 
-const AUTH_TIMEOUT_MS = 12000
+const AUTH_TIMEOUT_MS = 20000
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -38,7 +38,7 @@ export default function LoginPage() {
                         password,
                     }),
                     new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
+                        setTimeout(() => reject(new Error('La conexión está tardando más de lo normal. Inténtalo de nuevo.')), AUTH_TIMEOUT_MS)
                     ),
                 ])
                 const { error } = result
