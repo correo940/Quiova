@@ -106,6 +106,16 @@ const BANKS = [
     { name: 'Otro', color: '#64748b', logo: null, url: null },
 ];
 
+const QUERY_TIMEOUT_MS = 12000;
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
+    return Promise.race([
+        Promise.resolve(promise),
+        new Promise<T>((_, reject) => {
+            setTimeout(() => reject(new Error(label + ' timed out after ' + timeoutMs + 'ms')), timeoutMs);
+        })
+    ]);
+}
+
 export default function SavingsPage() {
     const { user, loading: authLoading } = useAuth();
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
@@ -154,22 +164,38 @@ export default function SavingsPage() {
         setLoading(false);
     };
 
+    useEffect(() => {
+        if (!loading) return;
+
+        const timer = window.setTimeout(() => {
+            console.error('SavingsPage: forcing loading state to stop after timeout');
+            setLoading(false);
+            toast.error('Mi Econom?a tard? demasiado en cargar. Se ha mostrado la vista sin esperar m?s.');
+        }, QUERY_TIMEOUT_MS);
+
+        return () => window.clearTimeout(timer);
+    }, [loading]);
+
 
     useEffect(() => {
         if (authLoading) return;
-
         if (!user) {
             resetSavingsState();
             return;
         }
-
         const userId = user.id;
-
-        fetchData(userId).then(() => {
-            // Run automation after fetching data
-            processAutoDeposits(userId);
-        });
+        let cancelled = false;
+        const loadSavingsPage = async () => {
+            await fetchData(userId);
+            if (!cancelled) {
+                await processAutoDeposits(userId);
+            }
+        };
+        loadSavingsPage();
         fetchPasswordsLite(userId);
+        return () => {
+            cancelled = true;
+        };
     }, [user, authLoading]);
 
     // --- AUTOMATION LOGIC ---
@@ -181,12 +207,16 @@ export default function SavingsPage() {
         const currentMonthStr = format(today, 'yyyy-MM'); // 2024-02
 
         // Fetch valid items for automation directly to insure freshness
-        const { data: items } = await supabase
-            .from('savings_recurring_items')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('type', 'income') // Only incomes are automated for now per user request
-            .not('target_account_id', 'is', null);
+        const { data: items } = await withTimeout<any>(
+            supabase
+                .from('savings_recurring_items')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('type', 'income') // Only incomes are automated for now per user request
+                .not('target_account_id', 'is', null),
+            QUERY_TIMEOUT_MS,
+            'savings_recurring_items'
+        );
 
         if (!items || items.length === 0) return;
 
@@ -236,7 +266,7 @@ export default function SavingsPage() {
         if (processedCount > 0) {
             toast.success(`Se han procesado ${processedCount} ingresos automÃ¡ticos`);
             // Refetch to update UI
-            fetchData(userId);
+            await fetchData(userId);
         }
     };
 
@@ -961,5 +991,10 @@ export default function SavingsPage() {
         </div>
     );
 }
+
+
+
+
+
 
 
