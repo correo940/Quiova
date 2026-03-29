@@ -114,3 +114,10 @@ body.barcode-scanner-active {
     scrollbar-width: none;
   }
 }
+
+/* Skeleton loading animation */
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}

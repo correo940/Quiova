@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import LogoLoader from '@/components/ui/logo-loader';
+import { ProfileSkeleton } from '@/components/ui/skeleton-loaders';
 
 interface Subscription {
     id: string;
@@ -301,12 +302,7 @@ export default function ProfilePage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex h-screen flex-col items-center justify-center gap-4">
-                <LogoLoader size="lg" />
-                <p className="text-sm font-medium text-slate-500 animate-pulse">Cargando perfil...</p>
-            </div>
-        );
+        return <ProfileSkeleton />;
     }
 
     return (

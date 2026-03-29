@@ -3,11 +3,13 @@
 import { useAuth } from '@/components/apps/mi-hogar/auth-context'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Loader2, Lock, Sword } from 'lucide-react'
+import { Lock, Sword } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { GuestExpensesAccess } from '@/components/apps/mi-hogar/expenses/guest-access'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { AuthGuardSkeleton } from '@/components/ui/skeleton-loaders'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, loading, isPremium } = useAuth()
@@ -80,11 +82,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [user, loading, checkingAccess, pathname, router])
 
     if (loading || checkingAccess) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-            </div>
-        )
+        return <AuthGuardSkeleton />
     }
 
     if (!user && pathname !== '/apps/mi-hogar/login') {
@@ -180,7 +178,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    return <>{children}</>
+    return <ErrorBoundary>{children}</ErrorBoundary>
 }
 
 export default function MiHogarLayout({

@@ -10,6 +10,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card } from '@/components/ui/card';
 import CategoryIcon from '@/components/category-icon';
 import LogoLoader from '@/components/ui/logo-loader';
+import { ArticlesSkeleton } from '@/components/ui/skeleton-loaders';
 import { getApiUrl } from '@/lib/api-utils';
 
 export default function BlogContent() {
@@ -92,12 +93,7 @@ export default function BlogContent() {
     }, [selectedCategory, articles, searchQuery]);
 
     if (loading && articles.length === 0) {
-        return (
-            <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center gap-6 min-h-[40vh]">
-                <LogoLoader size="md" />
-                <p className="text-xl font-medium text-slate-600 animate-pulse">Cargando contenido...</p>
-            </div>
-        );
+        return <ArticlesSkeleton />;
     }
 
     return (
