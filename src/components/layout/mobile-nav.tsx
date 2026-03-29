@@ -74,8 +74,9 @@ export default function MobileNav() {
         return () => window.removeEventListener('quioba_quick_apps_changed', updateKeys);
     }, []);
 
-    // Only render on mobile (isLauncherMode) and NEVER on the login page
-    if (!isLauncherMode || pathname === '/login') return null;
+    // Only render on mobile (isLauncherMode) and NEVER on auth pages
+    const isAuthPage = pathname === '/login' || pathname?.includes('/login') || pathname?.includes('/register');
+    if (!isLauncherMode || isAuthPage) return null;
 
     // Build the rendered quick apps array
     const quickApps = coreApps.filter(app => quickAppKeys.includes(app.key));
