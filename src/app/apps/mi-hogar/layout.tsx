@@ -19,6 +19,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const [hasTaskInvite, setHasTaskInvite] = useState(false)
 
     useEffect(() => {
+        // Safety timeout — never stay checking more than 5 seconds
+        const safetyTimer = setTimeout(() => {
+            setCheckingAccess(false)
+        }, 5000)
+
         const checkAccess = async () => {
             if (!user) {
                 setCheckingAccess(false)
@@ -46,12 +51,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
                 console.error("Access check error:", error)
             } finally {
                 setCheckingAccess(false)
+                clearTimeout(safetyTimer)
             }
         }
 
         if (!loading) {
             checkAccess()
         }
+
+        return () => clearTimeout(safetyTimer)
     }, [user, loading]) // isPremium is already loaded in context
 
     useEffect(() => {
