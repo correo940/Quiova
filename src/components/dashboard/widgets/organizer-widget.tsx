@@ -284,7 +284,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                     <TabsContent value="agenda" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
                         <ScrollArea className="flex-1 pr-4">
                             {loading ? (
-                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                                <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : smartBlocks.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>Agenda vacía</p>
@@ -326,7 +326,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                     <TabsContent value="shifts" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
                         <ScrollArea className="flex-1 pr-4">
                             {loading ? (
-                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                                <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : shifts.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>Sin turnos</p>
@@ -362,7 +362,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                     <TabsContent value="tasks" className="flex-1 h-0 min-h-0 data-[state=active]:flex flex-col">
                         <ScrollArea className="flex-1 pr-4">
                             {loading ? (
-                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                                <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : tasks.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>¡Todo al día!</p>
@@ -414,7 +414,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                         </div>
                         <ScrollArea className="flex-1 pr-4">
                             {loading ? (
-                                <p className="text-center text-muted-foreground py-4">Cargando...</p>
+                                <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : journalEntries.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>Sin apuntes</p>

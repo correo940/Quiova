@@ -222,12 +222,18 @@ export default function ShoppingList() {
 
 
     useEffect(() => {
+        // Safety timeout — never stay loading more than 10 seconds
+        const safetyTimer = window.setTimeout(() => {
+            setLoading(false);
+        }, 10000);
         if (user) {
-            fetchItems();
+            fetchItems().finally(() => clearTimeout(safetyTimer));
         } else {
             setItems([]);
             setLoading(false);
+            clearTimeout(safetyTimer);
         }
+        return () => clearTimeout(safetyTimer);
     }, [user]);
 
     const fetchItems = async () => {

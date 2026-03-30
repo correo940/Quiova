@@ -78,7 +78,11 @@
 
   body {
     @apply bg-background text-foreground;
-    background-color: #F8FAFC !important;
+  }
+
+  /* Dark mode body */
+  .dark body {
+    background-color: #0a0a0e !important;
   }
 }
 

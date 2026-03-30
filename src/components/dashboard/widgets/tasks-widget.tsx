@@ -131,7 +131,17 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
             <CardContent className="flex-1 min-h-0">
                 <ScrollArea className="h-[300px] pr-4">
                     {loading ? (
-                        <p className="text-center text-muted-foreground py-4">Cargando tareas...</p>
+                        <div className="space-y-3 py-2">
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="flex items-start gap-3 p-2">
+                                    <div className="w-5 h-5 rounded-full bg-slate-200/60 animate-pulse mt-1 shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-4 bg-slate-200/60 rounded-lg animate-pulse w-3/4" />
+                                        <div className="h-3 bg-slate-200/40 rounded animate-pulse w-1/2" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     ) : tasks.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             <p>¡Todo al día!</p>

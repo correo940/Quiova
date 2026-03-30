@@ -1,4 +1,4 @@
-﻿
+
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -192,18 +192,10 @@ export default function TaskManager() {
     const { colors } = usePostItSettings();
 
     useEffect(() => {
-        if (user && currentList) {
-            void fetchTasks();
-        } else if (!user) {
-            setTasks([]);
-            setLoading(false);
-        } else if (!currentList) {
-            setLoading(false);
-        }
-
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            void Notification.requestPermission();
-        }
+        const safetyTimer = window.setTimeout(() => setLoading(false), 10000);
+        if (user && currentList) { fetchTasks().finally(() => clearTimeout(safetyTimer)); } else if (!user) { setTasks([]); setLoading(false); clearTimeout(safetyTimer); } else if (!currentList) { setLoading(false); clearTimeout(safetyTimer); }
+        if ('Notification' in window && Notification.permission !== 'granted') { void Notification.requestPermission(); }
+        return () => clearTimeout(safetyTimer);
     }, [user, currentList]);
 
     useEffect(() => {

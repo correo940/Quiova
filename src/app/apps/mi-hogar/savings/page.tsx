@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -38,12 +38,14 @@ import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savings-notification-settings';
+import dynamic from 'next/dynamic';
 import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import SavingsDashboardUI from '@/components/apps/mi-hogar/savings/savings-dashboard-ui';
-import BankStatementImporter from '@/components/apps/mi-hogar/savings/bank-statement-importer';
-import ResetDataDialog, { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
-import AccountDetailDialog from '@/components/apps/mi-hogar/savings/account-detail-dialog';
+const BankStatementImporter = dynamic(() => import('@/components/apps/mi-hogar/savings/bank-statement-importer'), { ssr: false });
+const SavingsNotificationSettings = dynamic(() => import('@/components/apps/mi-hogar/savings/savings-notification-settings'), { ssr: false });
+const ResetDataDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/reset-data-dialog'), { ssr: false });
+const AccountDetailDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/account-detail-dialog'), { ssr: false });
+import type { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
 
 // Types
 type BankAccount = {

@@ -24,8 +24,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isPremium, setIsPremium] = useState(false)
     const router = useRouter()
 
+    const checkPremiumStatus = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('is_premium, subscription_tier')
+                .eq('id', userId)
+                .single()
+
+            if (data && !error) {
+                setIsPremium(data.is_premium || data.subscription_tier === 'premium')
+            }
+        } catch (error) {
+            console.error('Error fetching premium status:', error)
+        }
+    }
+
     useEffect(() => {
-        // Safety timeout â€” never stay loading more than 5 seconds
+        // Safety timeout — never stay loading more than 5 seconds
         const safetyTimer = setTimeout(() => {
             setLoading(false)
         }, 5000)
@@ -67,27 +83,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false)
         })
 
+        // ─── PAGE VISIBILITY FIX ────────────────────────────────────────────
+        // When the tab/app returns from background after idle time, the JWT
+        // may have expired silently. Re-validate so components don't freeze.
+        const handleVisibilityChange = async () => {
+            if (document.visibilityState !== 'visible') return
+            try {
+                const { data: { session: freshSession } } = await supabase.auth.getSession()
+                if (!freshSession) {
+                    // Session gone — update state so UI reflects signed-out
+                    setSession(null)
+                    setUser(null)
+                    setIsPremium(false)
+                } else {
+                    // Refresh session object in state
+                    setSession(freshSession)
+                    setUser(freshSession.user ?? null)
+                }
+            } catch {
+                // Silently ignore network errors on visibility change
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        // ────────────────────────────────────────────────────────────────────
+
         return () => {
             subscription.unsubscribe()
             clearTimeout(safetyTimer)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
     }, [])
-
-    const checkPremiumStatus = async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('is_premium, subscription_tier')
-                .eq('id', userId)
-                .single()
-
-            if (data && !error) {
-                setIsPremium(data.is_premium || data.subscription_tier === 'premium')
-            }
-        } catch (error) {
-            console.error('Error fetching premium status:', error)
-        }
-    }
 
     const signOut = async () => {
         await supabase.auth.signOut()
@@ -108,4 +133,3 @@ export const useAuth = () => {
     }
     return context
 }
-

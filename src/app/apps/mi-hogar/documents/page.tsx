@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -35,9 +35,13 @@ import {
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { differenceInDays, format, parseISO, startOfDay, subDays } from 'date-fns';
-import { DocumentAnalysisResult, DocumentDialog, DocumentForm, DocumentMetadata } from '@/components/apps/mi-hogar/documents/document-dialog';
-import { DocumentReminder, DocumentReminderDialog } from '@/components/apps/mi-hogar/documents/reminder-dialog';
-import { DocumentVersionHistoryDialog } from '@/components/apps/mi-hogar/documents/version-history-dialog';
+import dynamic from 'next/dynamic';
+import type { DocumentAnalysisResult, DocumentForm, DocumentMetadata } from '@/components/apps/mi-hogar/documents/document-dialog';
+import type { DocumentReminder } from '@/components/apps/mi-hogar/documents/reminder-dialog';
+
+const DocumentDialog = dynamic(() => import('@/components/apps/mi-hogar/documents/document-dialog').then(mod => mod.DocumentDialog), { ssr: false });
+const DocumentReminderDialog = dynamic(() => import('@/components/apps/mi-hogar/documents/reminder-dialog').then(mod => mod.DocumentReminderDialog), { ssr: false });
+const DocumentVersionHistoryDialog = dynamic(() => import('@/components/apps/mi-hogar/documents/version-history-dialog').then(mod => mod.DocumentVersionHistoryDialog), { ssr: false });
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

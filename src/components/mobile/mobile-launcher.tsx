@@ -574,8 +574,27 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
 
     if (!mounted) {
         return (
-            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                <div className="animate-pulse text-emerald-600 font-semibold">Cargando Quioba...</div>
+            <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center pt-20 px-6 gap-8">
+                {/* Time skeleton */}
+                <div className="text-center space-y-2">
+                    <div className="h-12 w-32 bg-slate-200/60 rounded-2xl animate-pulse mx-auto" />
+                    <div className="h-4 w-48 bg-slate-200/40 rounded-lg animate-pulse mx-auto" />
+                </div>
+                {/* Quick actions skeleton */}
+                <div className="flex gap-4">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="w-16 h-20 bg-slate-200/50 rounded-2xl animate-pulse" />
+                    ))}
+                </div>
+                {/* App grid skeleton */}
+                <div className="grid grid-cols-4 gap-4 w-full max-w-sm">
+                    {[...Array(8)].map((_, i) => (
+                        <div key={i} className="flex flex-col items-center gap-2">
+                            <div className="w-14 h-14 bg-slate-200/50 rounded-2xl animate-pulse" />
+                            <div className="h-3 w-10 bg-slate-200/40 rounded animate-pulse" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
