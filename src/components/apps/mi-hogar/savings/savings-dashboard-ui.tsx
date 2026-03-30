@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -404,7 +404,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{monthlyStats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> ReducciÃ³n del 5%</span>
+                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Reducción del 5%</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -419,7 +419,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Gran desempeÃ±o</span>
+                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Gran desempeño</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -434,7 +434,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{(monthlyStats.savingsRate || 0).toFixed(1)}%</span>
-                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-2 font-medium">{(monthlyStats.savingsRate || 0) >= 0 ? 'Â¡Meta lograda!' : 'Vigila tus gastos'}</span>
+                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-2 font-medium">{(monthlyStats.savingsRate || 0) >= 0 ? '¡Meta lograda!' : 'Vigila tus gastos'}</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -454,9 +454,9 @@ export default function SavingsDashboardUI({
                                                         <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
                                                             <TrendingUp className="w-5 h-5" />
                                                         </div>
-                                                        EvoluciÃ³n Patrimonial
+                                                        Evolución Patrimonial
                                                     </CardTitle>
-                                                    <CardDescription className="mt-1">FluctuaciÃ³n de tus activos y ahorros en tiempo real</CardDescription>
+                                                    <CardDescription className="mt-1">Fluctuación de tus activos y ahorros en tiempo real</CardDescription>
                                                 </div>
                                                 <div className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg">
                                                     {['1M', '3M', '6M', 'YTD', '1A'].map((period) => (
@@ -580,7 +580,7 @@ export default function SavingsDashboardUI({
                                                             <ReceiptText className="w-8 h-8 text-slate-400 dark:text-slate-500" />
                                                         </div>
                                                         <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sin movimientos recientes</p>
-                                                        <p className="text-xs mt-1">Tu extracto aparecerÃ¡ aquÃ­ de forma automÃ¡tica.</p>
+                                                        <p className="text-xs mt-1">Tu extracto aparecerá aquí de forma automática.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -630,9 +630,9 @@ export default function SavingsDashboardUI({
                                                     )}
                                                 </motion.div>
                                             ) : aiError ? (
-                                                <p className="text-amber-200/80 text-sm italic py-4">No se pudo generar un anÃ¡lisis en este momento. IntÃ©ntalo mÃ¡s tarde.</p>
+                                                <p className="text-amber-200/80 text-sm italic py-4">No se pudo generar un análisis en este momento. Inténtalo más tarde.</p>
                                             ) : (
-                                                <p className="text-indigo-200/50 text-sm italic py-4">AÃ±ade mÃ¡s movimientos financieros para un anÃ¡lisis inteligente...</p>
+                                                <p className="text-indigo-200/50 text-sm italic py-4">Añade más movimientos financieros para un análisis inteligente...</p>
                                             )}
                                         </div>
                                     </div>
@@ -640,7 +640,7 @@ export default function SavingsDashboardUI({
                                     {/* Quick Actions */}
                                     <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
                                         <CardContent className="p-6">
-                                            <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide">Operaciones RÃ¡pidas</h3>
+                                            <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide">Operaciones Rápidas</h3>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
                                                     <Button variant="outline" className="w-full h-auto py-5 flex flex-col items-center gap-3 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 bg-transparent transition-all hover:border-emerald-300" onClick={onAddTransaction}>
@@ -665,7 +665,7 @@ export default function SavingsDashboardUI({
                                     {/* Distribution Chart */}
                                     <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl flex-grow flex flex-col">
                                         <CardHeader className="pb-0">
-                                            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide">DistribuciÃ³n de Activos</CardTitle>
+                                            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide">Distribución de Activos</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-6 flex flex-col flex-grow">
                                             <div className="h-[200px] w-full flex items-center justify-center relative">
@@ -736,7 +736,7 @@ export default function SavingsDashboardUI({
                                 <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900 transition-colors">
                                     <Plus className="w-8 h-8 text-slate-400 group-hover:text-emerald-600 dark:text-slate-500 dark:group-hover:text-emerald-400" />
                                 </div>
-                                <p className="font-medium text-slate-500 group-hover:text-emerald-700 dark:text-slate-400">AÃ±adir Nueva Cuenta</p>
+                                <p className="font-medium text-slate-500 group-hover:text-emerald-700 dark:text-slate-400">Añadir Nueva Cuenta</p>
                             </motion.div>
 
                             {/* Account Cards */}
@@ -833,7 +833,7 @@ export default function SavingsDashboardUI({
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg">{goal.name}</h3>
-                                                <p className="text-sm text-muted-foreground">{goal.interest_rate ? `${goal.interest_rate}% InterÃ©s` : 'Sin interÃ©s'}</p>
+                                                <p className="text-sm text-muted-foreground">{goal.interest_rate ? `${goal.interest_rate}% Interés` : 'Sin interés'}</p>
                                             </div>
                                         </div>
                                         <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-xs font-medium">
@@ -900,7 +900,7 @@ export default function SavingsDashboardUI({
                             {/* Add Button */}
                             <div className="flex justify-end">
                                 <Button onClick={onAddRecurring} className="bg-purple-600 hover:bg-purple-700 text-white gap-2 rounded-full px-6 shadow-lg shadow-purple-500/20">
-                                    <Plus className="w-5 h-5" /> AÃ±adir Fijo
+                                    <Plus className="w-5 h-5" /> Añadir Fijo
                                 </Button>
                             </div>
 
@@ -920,7 +920,7 @@ export default function SavingsDashboardUI({
                                                     </div>
                                                     <div>
                                                         <p className="font-medium">{item.name}</p>
-                                                        <p className="text-xs text-muted-foreground">DÃ­a {item.day_of_month}</p>
+                                                        <p className="text-xs text-muted-foreground">Día {item.day_of_month}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
@@ -948,7 +948,7 @@ export default function SavingsDashboardUI({
                                                     </div>
                                                     <div>
                                                         <p className="font-medium">{item.name}</p>
-                                                        <p className="text-xs text-muted-foreground">DÃ­a {item.day_of_month}</p>
+                                                        <p className="text-xs text-muted-foreground">Día {item.day_of_month}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
