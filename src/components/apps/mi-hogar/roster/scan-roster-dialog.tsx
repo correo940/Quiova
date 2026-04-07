@@ -504,7 +504,7 @@ rawContext: "${result.rawContext || '(vacío)'}"`);
                                     </div>
                                 </div>
 
-                                {/* DEBUG PANEL - Shows raw Gemini response */}
+                                {/* DEBUG PANEL - Shows raw IA response */}
                                 {debugInfo && (
                                     <details className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs">
                                         <summary className="font-bold cursor-pointer text-blue-600 dark:text-blue-400">🔍 Ver respuesta de IA (DEBUG)</summary>

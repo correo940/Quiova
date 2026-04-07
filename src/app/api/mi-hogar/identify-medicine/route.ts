@@ -1,11 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
-const apiKey = process.env.GEMINI_API_KEY ?? process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
+const GROQ_VISION_MODEL = 'llama-3.2-90b-vision-preview';
 
 export async function POST(request: Request) {
-  if (!apiKey) {
+  if (!GROQ_API_KEY) {
     return NextResponse.json({ success: false, error: 'Clave API no configurada' }, { status: 500 });
   }
 
@@ -26,28 +26,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Imagen no proporcionada' }, { status: 400 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
 
-    const result = await model.generateContent([
-      `Analiza esta imagen de una caja de medicamento y devuelve solo JSON:
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: GROQ_VISION_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analiza esta imagen de una caja de medicamento y devuelve solo JSON:
 {
   "name": "Nombre del medicamento",
   "description": "Para qué sirve en una frase",
   "expiration_date": "YYYY-MM-DD o null"
 }`,
-      {
-        inlineData: {
-          data: base64Image.replace(/^data:image\/\w+;base64,/, ''),
-          mimeType: 'image/jpeg',
-        },
-      },
-    ]);
+              },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 300,
+      }),
+    });
 
-    const parsed = JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Groq API error: ${err}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
 
     if (user) {
       await recordApiUsage(user.id, 'identify-medicine');

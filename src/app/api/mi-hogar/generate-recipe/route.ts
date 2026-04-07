@@ -1,11 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
-const apiKey = process.env.GEMINI_API_KEY ?? process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 export async function POST(request: Request) {
-  if (!apiKey) {
+  if (!GROQ_API_KEY) {
     return NextResponse.json({ success: false, error: 'Clave API no configurada' }, { status: 500 });
   }
 
@@ -29,13 +29,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
-
-    const result = await model.generateContent(`Actúa como un chef y crea una receta con estos ingredientes: ${pantryItems.join(', ')}.
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un chef experto. Responde SOLO con JSON válido, sin texto adicional ni bloques de código.',
+          },
+          {
+            role: 'user',
+            content: `Crea una receta con estos ingredientes: ${pantryItems.join(', ')}.
 Devuelve solo JSON:
 {
   "title": "Nombre",
@@ -44,9 +53,22 @@ Devuelve solo JSON:
   "difficulty": "Fácil/Media/Difícil",
   "ingredients": [{"name":"Ingrediente","quantity":"Cantidad","has_it":true}],
   "steps": ["Paso 1", "Paso 2"]
-}`);
+}`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    });
 
-    const parsed = JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Groq API error: ${err}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
 
     if (user) {
       await recordApiUsage(user.id, 'generate-recipe');

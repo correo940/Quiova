@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
-const apiKey = process.env.GEMINI_API_KEY ?? process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
+const GROQ_VISION_MODEL = 'llama-3.2-90b-vision-preview';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +15,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  if (!apiKey) {
+  if (!GROQ_API_KEY) {
     return NextResponse.json(
       { success: false, error: 'Clave API no configurada en el servidor' },
       { status: 500, headers: corsHeaders }
@@ -44,11 +44,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
+    const base64Data = base64Image.includes('base64,')
+      ? base64Image.split('base64,')[1]
+      : base64Image;
 
     const prompt = `Identifica el producto en esta imagen.
 Devuelve un JSON con:
@@ -58,22 +56,37 @@ Devuelve un JSON con:
 }
 Si no se puede identificar, devuelve {"productName":"Desconocido","supermarket":null}.`;
 
-    const base64Data = base64Image.includes('base64,')
-      ? base64Image.split('base64,')[1]
-      : base64Image;
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: 'image/jpeg',
-        },
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-    ]);
+      body: JSON.stringify({
+        model: GROQ_VISION_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 200,
+      }),
+    });
 
-    const content = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(content);
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Groq API error: ${err}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const cleanedContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanedContent);
 
     if (parsed.productName?.toLowerCase().includes('desconocido')) {
       return NextResponse.json(

@@ -73,7 +73,7 @@ Responde SOLO con el JSON, sin texto adicional:
                     'X-Title': 'Mi Economía - Scanner'
                 },
                 body: JSON.stringify({
-                    model: modelName || 'google/gemini-2.0-flash-001',
+                    model: modelName || 'llama-3.2-90b-vision-preview',
                     messages: [
                         {
                             role: 'user',

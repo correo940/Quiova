@@ -1,21 +1,40 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFParse } from 'pdf-parse';
 import * as XLSX from 'xlsx';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const PROMPT = `Eres un experto en extractos bancarios españoles y europeos. Analiza el siguiente texto y extrae todas las transacciones.
 Devuelve únicamente un JSON array válido con elementos de este tipo:
 {"date":"YYYY-MM-DD","description":"texto descriptivo","amount":123.45}
 Importe positivo = ingreso. Importe negativo = gasto.`;
 
-async function callGemini(textForAI: string) {
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-  const result = await model.generateContent(`${PROMPT}\n\n${textForAI}`);
-  return result.response.text();
+async function callGroq(textForAI: string) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: PROMPT },
+        { role: 'user', content: textForAI },
+      ],
+      temperature: 0.1,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 function parseAIResponse(content: string) {
@@ -55,6 +74,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!GROQ_API_KEY) {
+      return NextResponse.json({ error: 'Falta configurar GROQ_API_KEY en el servidor.' }, { status: 500 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -68,6 +91,7 @@ export async function POST(request: NextRequest) {
     let extractedText = '';
 
     if (fileName.endsWith('.pdf')) {
+      const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const textResult = await parser.getText();
       extractedText = textResult.text;
@@ -87,7 +111,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rawResponse = await callGemini(extractedText);
+    console.log(`[Parse Bank Statement] Extracted ${extractedText.length} chars from ${fileName}, sending to Groq...`);
+    const rawResponse = await callGroq(extractedText);
     const transactions = parseAIResponse(rawResponse)
       .filter((tx: any) => tx.date && tx.description && tx.amount !== undefined)
       .map((tx: any) => ({
@@ -106,7 +131,7 @@ export async function POST(request: NextRequest) {
       transactions,
       count: transactions.length,
       source: fileName,
-      provider: 'gemini',
+      provider: 'groq',
     });
   } catch (error: any) {
     console.error('[Parse Bank Statement] Error:', error);

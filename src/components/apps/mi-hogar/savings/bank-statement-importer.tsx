@@ -326,6 +326,7 @@ export default function BankStatementImporter({
         try {
             // Insert in batches of 20 to avoid timeouts
             const BATCH_SIZE = 20;
+            let insertedTotal = 0;
             for (let i = 0; i < selected.length; i += BATCH_SIZE) {
                 const batch = selected.slice(i, i + BATCH_SIZE);
                 const inserts = batch.map(tx => ({
@@ -335,14 +336,18 @@ export default function BankStatementImporter({
                     description: tx.description
                 }));
 
-                const { error: insertError } = await supabase
+                const { data: insertedData, error: insertError } = await supabase
                     .from('savings_account_transactions')
-                    .insert(inserts);
+                    .insert(inserts)
+                    .select();
 
                 if (insertError) {
                     console.error('[Importer] Batch insert error:', insertError);
-                    throw insertError;
+                    throw new Error(insertError.message || 'Error al insertar movimientos');
                 }
+
+                insertedTotal += insertedData?.length || 0;
+                console.log(`[Importer] Batch ${Math.floor(i / BATCH_SIZE) + 1}: inserted ${insertedData?.length || 0} rows`);
             }
 
             // Update account balance
@@ -360,7 +365,8 @@ export default function BankStatementImporter({
                 }
             }
 
-            setImportedCount(selected.length);
+            setImportedCount(insertedTotal);
+            toast.success(`✅ Se importaron ${insertedTotal} movimientos correctamente`);
             setStep('done');
             onImportComplete();
         } catch (err: any) {

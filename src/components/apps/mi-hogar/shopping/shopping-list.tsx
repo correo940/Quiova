@@ -444,7 +444,7 @@ export default function ShoppingList() {
                                 <img src={capturedImage} alt="Captura" className="max-w-full max-h-full object-contain opacity-50" />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                     <Loader2 className="h-12 w-12 text-white animate-spin mb-4" />
-                                    <p className="text-white font-medium text-lg animate-pulse">Analizando con Gemini AI...</p>
+                                    <p className="text-white font-medium text-lg animate-pulse">Analizando con IA...</p>
                                 </div>
                             </div>
                         )}

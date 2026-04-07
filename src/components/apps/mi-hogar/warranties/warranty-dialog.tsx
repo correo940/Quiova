@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { extractReceiptData } from '@/lib/gemini';
+import { extractReceiptData } from '@/lib/ai-service';
 import { Loader2, Camera as CameraIcon, Save, Sparkles, Image as ImageIcon, ChevronDown } from 'lucide-react';
 import {
     DropdownMenu,
@@ -58,9 +58,9 @@ export function WarrantyDialog({ open, onOpenChange, form, setForm, onSave, uplo
                 const dataUrl = `data:image/jpeg;base64,${image.base64String}`;
                 setForm({ ...form, image_url: dataUrl });
 
-                // 2. Analyze with Gemini
+                // 2. Analyze with IA
                 setAnalyzing(true);
-                toast.info('Gemini está leyendo el ticket... 🤖');
+                toast.info('La IA está leyendo el ticket... 🤖');
 
                 const data = await extractReceiptData(dataUrl);
 
@@ -79,7 +79,7 @@ export function WarrantyDialog({ open, onOpenChange, form, setForm, onSave, uplo
                 }
             }
         } catch (error) {
-            console.error('Camera/Gemini Error:', error);
+            console.error('Camera/IA Error:', error);
             // Ignore user cancellation errors
         } finally {
             setAnalyzing(false);
