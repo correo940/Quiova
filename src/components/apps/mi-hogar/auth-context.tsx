@@ -85,23 +85,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // ─── PAGE VISIBILITY FIX ────────────────────────────────────────────
         // When the tab/app returns from background after idle time, the JWT
-        // may have expired silently. Re-validate so components don't freeze.
+        // may have expired silently. Use refreshSession() to silently renew
+        // the token instead of getSession() which just reads the local cache.
+        let visibilityRefreshInProgress = false
         const handleVisibilityChange = async () => {
             if (document.visibilityState !== 'visible') return
+            if (visibilityRefreshInProgress) return
+            visibilityRefreshInProgress = true
             try {
-                const { data: { session: freshSession } } = await supabase.auth.getSession()
-                if (!freshSession) {
-                    // Session gone — update state so UI reflects signed-out
-                    setSession(null)
-                    setUser(null)
-                    setIsPremium(false)
+                // First try to refresh the session (renews expired JWTs)
+                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                
+                if (refreshError || !refreshedSession) {
+                    // Refresh failed — try getSession as fallback (maybe token isn't expired, just stale in state)
+                    const { data: { session: cachedSession } } = await supabase.auth.getSession()
+                    if (!cachedSession) {
+                        // Truly no session — user must re-login
+                        setSession(null)
+                        setUser(null)
+                        setIsPremium(false)
+                    } else {
+                        setSession(cachedSession)
+                        setUser(cachedSession.user ?? null)
+                    }
                 } else {
-                    // Refresh session object in state
-                    setSession(freshSession)
-                    setUser(freshSession.user ?? null)
+                    // Successfully refreshed
+                    setSession(refreshedSession)
+                    setUser(refreshedSession.user ?? null)
                 }
             } catch {
                 // Silently ignore network errors on visibility change
+            } finally {
+                visibilityRefreshInProgress = false
             }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange)

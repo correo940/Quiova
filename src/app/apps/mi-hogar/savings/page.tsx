@@ -170,9 +170,8 @@ export default function SavingsPage() {
         if (!loading) return;
 
         const timer = window.setTimeout(() => {
-            console.error('SavingsPage: forcing loading state to stop after timeout');
+            console.warn('SavingsPage: safety timeout — force-stopping loading spinner');
             setLoading(false);
-            toast.error('Mi Econom?a tard? demasiado en cargar. Se ha mostrado la vista sin esperar m?s.');
         }, QUERY_TIMEOUT_MS);
 
         return () => window.clearTimeout(timer);
