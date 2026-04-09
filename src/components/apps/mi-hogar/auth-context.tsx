@@ -89,18 +89,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
 
         // ─── PAGE VISIBILITY FIX ────────────────────────────────────────────
-        // When the tab/app returns from background after idle time, the JWT
-        // may have expired silently. Use refreshSession() to silently renew
-        // the token instead of getSession() which just reads the local cache.
-        // Supabase already handles visibility-based token refreshing internally when autoRefreshToken is true.
-        // A custom visibility listener here forces new object references into state,
-        // causing all child components (like dashboards) to unmount or infinite-load.
-        
+        // When the tab returns from background the JWT may have expired.
+        // Use the SDK's own start/stop auto-refresh to silently renew it
+        // without forcing new state objects that would remount children.
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                supabase.auth.startAutoRefresh()
+            } else {
+                supabase.auth.stopAutoRefresh()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibility)
         // ────────────────────────────────────────────────────────────────────
 
         return () => {
             subscription.unsubscribe()
             clearTimeout(safetyTimer)
+            document.removeEventListener('visibilitychange', handleVisibility)
         }
     }, [])
 
