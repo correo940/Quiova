@@ -15,6 +15,11 @@ export async function getValidatedSession(): Promise<ResolvedSession> {
     return { session: null, user: null };
   }
 
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
   // If there's a network error (like waking up tab on mobile), error won't have a 4xx status.
   // We should NOT sign the user out just because they have no internet right now.
   const isAuthError = error && error.status && error.status >= 400 && error.status < 500;
