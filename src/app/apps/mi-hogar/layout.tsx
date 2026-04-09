@@ -125,17 +125,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const allowed = (isExpensesPage && hasPartners) || (isTasksPage && hasTaskInvite);
 
     if (!allowed && pathname !== '/apps/mi-hogar/login') {
-        if (pathname === '/apps/mi-hogar') {
-            if (hasTaskInvite) {
-                router.replace('/apps/mi-hogar/tasks');
-                return null;
-            }
-            if (hasPartners) {
-                router.replace('/apps/mi-hogar/expenses');
-                return null;
-            }
-        }
-
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
                 <Lock className="w-12 h-12 text-slate-300 mb-4" />
