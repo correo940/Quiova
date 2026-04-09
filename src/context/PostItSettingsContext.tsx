@@ -92,25 +92,19 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
         } catch (e) {
             console.error('Failed to parse post-it settings from cache', e);
         }
+        let isMounted = true;
 
-        // 2. Load from Supabase (authoritative, survives cookie clears)
-        const loadFromSupabase = async () => {
+        // 2. Fetch from Supabase helper
+        const fetchFromSupabase = async (userId: string) => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!session?.user) {
-                    setHasLoaded(true);
-                    return;
-                }
-                userIdRef.current = session.user.id;
-
                 const { data, error } = await supabase
                     .from('user_preferences')
                     .select('value')
-                    .eq('user_id', session.user.id)
+                    .eq('user_id', userId)
                     .eq('key', PREFS_KEY)
                     .maybeSingle();
 
-                if (!error && data?.value) {
+                if (isMounted && !error && data?.value) {
                     const parsed = data.value as any;
                     applyParsed(parsed, setIsVisible, setVisibilityMode, setAllowedPaths, setColors, setSnoozeDuration, setPosition, setOpacity, setLayout, setDaysToHideAfterExpiration);
                     // Update local cache with server data
@@ -119,17 +113,39 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
             } catch (e) {
                 console.error('Failed to load post-it settings from Supabase', e);
             }
-            setHasLoaded(true);
+            if (isMounted) setHasLoaded(true);
         };
 
-        loadFromSupabase();
-
-        // Listen for auth changes to capture userId
+        // Listen for auth changes to capture userId and fetch
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            userIdRef.current = session?.user?.id ?? null;
+            const userId = session?.user?.id;
+            
+            if (userId && userId !== userIdRef.current) {
+                // User logged in / session arrived
+                userIdRef.current = userId;
+                fetchFromSupabase(userId);
+            } else if (!userId) {
+                // User logged out / no session
+                userIdRef.current = null;
+                if (isMounted) setHasLoaded(true); // Stop waiting
+            }
         });
 
-        return () => subscription.unsubscribe();
+        // Backup: explicitly check current session in case onAuthStateChange is already initialized
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            const userId = session?.user?.id;
+            if (userId && userId !== userIdRef.current) {
+                userIdRef.current = userId;
+                fetchFromSupabase(userId);
+            } else if (!userId && userIdRef.current === null) {
+                if (isMounted) setHasLoaded(true);
+            }
+        });
+
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     // Save to both localStorage (cache) and Supabase (persistent) on change
