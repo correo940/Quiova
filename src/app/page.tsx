@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
@@ -51,8 +51,28 @@ function HomeContent() {
 
         if (!mounted) return;
 
-        if (sessionResult && typeof sessionResult === 'object' && 'user' in sessionResult) {
-          setUser(sessionResult.user ?? null);
+        if (sessionResult && typeof sessionResult === 'object' && 'user' in sessionResult && sessionResult.user) {
+          // Validate the session is actually alive (not a stale localStorage ghost)
+          try {
+            const { error } = await Promise.race([
+              supabase.auth.getUser(),
+              new Promise<{ data: null; error: Error }>((resolve) =>
+                setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3000)
+              ),
+            ]);
+            if (error) {
+              console.warn('Home: cached session invalid, clearing', error.message);
+              await supabase.auth.signOut({ scope: 'local' });
+              if (mounted) setUser(null);
+              return;
+            }
+          } catch {
+            console.warn('Home: session validation failed, clearing');
+            await supabase.auth.signOut({ scope: 'local' });
+            if (mounted) setUser(null);
+            return;
+          }
+          setUser(sessionResult.user);
         } else {
           setUser(null);
         }

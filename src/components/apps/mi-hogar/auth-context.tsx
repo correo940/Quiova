@@ -52,17 +52,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ensureCompatibleBrowserStorage()
             try {
                 console.log('[AuthProvider] initAuth: calling getValidatedSession...')
-                const { session, user } = await getValidatedSession()
-                console.log('[AuthProvider] initAuth: session=', !!session, 'user=', !!user)
-                setSession(session)
-                setUser(user ?? null)
+                const { session: localSession, user: localUser } = await getValidatedSession()
+                console.log('[AuthProvider] initAuth: session=', !!localSession, 'user=', !!localUser)
 
-                if (user) {
-                    console.log('[AuthProvider] initAuth: checking premium for', user.id)
-                    await checkPremiumStatus(user.id)
+                if (localSession) {
+                    // Validate the cached session is still usable by probing
+                    // the token refresh. If the refresh token is dead the SDK
+                    // throws or returns null — in that case clean up.
+                    try {
+                        const { data, error } = await Promise.race([
+                            supabase.auth.getUser(),
+                            new Promise<{ data: null; error: Error }>((resolve) =>
+                                setTimeout(() => resolve({ data: null, error: new Error('Auth validation timeout') }), 4000)
+                            ),
+                        ])
+                        if (error || !data?.user) {
+                            console.warn('[AuthProvider] initAuth: cached session invalid, signing out', error?.message)
+                            await supabase.auth.signOut({ scope: 'local' })
+                            setSession(null)
+                            setUser(null)
+                            setIsPremium(false)
+                            return
+                        }
+                    } catch {
+                        console.warn('[AuthProvider] initAuth: session validation failed, signing out')
+                        await supabase.auth.signOut({ scope: 'local' })
+                        setSession(null)
+                        setUser(null)
+                        setIsPremium(false)
+                        return
+                    }
+
+                    setSession(localSession)
+                    setUser(localUser ?? null)
+                    if (localUser) {
+                        console.log('[AuthProvider] initAuth: checking premium for', localUser.id)
+                        await checkPremiumStatus(localUser.id)
+                    }
+                } else {
+                    setSession(null)
+                    setUser(null)
                 }
             } catch (error) {
                 console.error('[AuthProvider] initAuth: ERROR', error)
+                // If anything blows up, ensure we clear corrupted state
+                try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* ignore */ }
+                setSession(null)
+                setUser(null)
+                setIsPremium(false)
             } finally {
                 console.log('[AuthProvider] initAuth: setting loading=false')
                 setLoading(false)
@@ -76,6 +113,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (_event, session) => {
             console.log('[AuthProvider] onAuthStateChange:', _event, 'session=', !!session)
+
+            // If the SDK fires SIGNED_OUT or TOKEN_REFRESHED with no session,
+            // the refresh token was rejected — clean up immediately.
+            if (_event === 'SIGNED_OUT' || (_event === 'TOKEN_REFRESHED' && !session)) {
+                setSession(null)
+                setUser(null)
+                setIsPremium(false)
+                setLoading(false)
+                return
+            }
+
             setSession(session)
             setUser(session?.user ?? null)
 
@@ -93,10 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Use the SDK's own start/stop auto-refresh to silently renew it
         // without forcing new state objects that would remount children.
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible') {
-                supabase.auth.startAutoRefresh()
-            } else {
-                supabase.auth.stopAutoRefresh()
+            try {
+                if (document.visibilityState === 'visible') {
+                    supabase.auth.startAutoRefresh()
+                } else {
+                    supabase.auth.stopAutoRefresh()
+                }
+            } catch (e) {
+                console.warn('[AuthProvider] visibility handler error:', e)
             }
         }
         document.addEventListener('visibilitychange', handleVisibility)
