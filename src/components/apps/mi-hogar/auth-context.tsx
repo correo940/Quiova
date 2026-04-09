@@ -48,18 +48,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Initial session check
         const initAuth = async () => {
+            console.log('[AuthProvider] initAuth: starting...')
             ensureCompatibleBrowserStorage()
             try {
+                console.log('[AuthProvider] initAuth: calling getValidatedSession...')
                 const { session, user } = await getValidatedSession()
+                console.log('[AuthProvider] initAuth: session=', !!session, 'user=', !!user)
                 setSession(session)
                 setUser(user ?? null)
 
                 if (user) {
+                    console.log('[AuthProvider] initAuth: checking premium for', user.id)
                     await checkPremiumStatus(user.id)
                 }
             } catch (error) {
-                console.error('AuthProvider: Error initializing auth', error)
+                console.error('[AuthProvider] initAuth: ERROR', error)
             } finally {
+                console.log('[AuthProvider] initAuth: setting loading=false')
                 setLoading(false)
                 clearTimeout(safetyTimer)
             }
@@ -67,10 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         initAuth()
 
-        // Auth state change listener
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            console.log('[AuthProvider] onAuthStateChange:', _event, 'session=', !!session)
             setSession(session)
             setUser(session?.user ?? null)
 

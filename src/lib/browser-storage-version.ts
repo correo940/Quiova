@@ -1,4 +1,4 @@
-﻿const STORAGE_SCHEMA_VERSION = '2026-03-27-1';
+const STORAGE_SCHEMA_VERSION = '2026-03-27-1';
 const STORAGE_VERSION_KEY = 'quioba_storage_schema_version';
 
 const APP_LOCAL_KEYS = [
@@ -34,13 +34,8 @@ export function ensureCompatibleBrowserStorage() {
 
     APP_LOCAL_KEYS.forEach(clearKeyIfPresent);
 
-    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
-      const key = window.localStorage.key(index);
-      if (!key) continue;
-      if (key.startsWith('sb-')) {
-        clearKeyIfPresent(key);
-      }
-    }
+    // NOTE: We intentionally do NOT clear 'sb-*' keys here.
+    // Those are Supabase auth session tokens. Deleting them logs the user out.
 
     window.localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_SCHEMA_VERSION);
   } catch {

@@ -94,6 +94,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [user, loading, checkingAccess, pathname, router])
 
     if (loading || checkingAccess) {
+        console.log('[AuthGuard] BLOCKING UI — loading=', loading, 'checkingAccess=', checkingAccess, 'user=', !!user, 'hasCheckedOnce=', hasCheckedOnce.current)
         return <AuthGuardSkeleton />
     }
 
