@@ -197,7 +197,7 @@ export default function SavingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [user, authLoading]);
+    }, [user?.id, authLoading]);
 
     // --- AUTOMATION LOGIC ---
     const processAutoDeposits = async (userId?: string) => {
