@@ -87,37 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // When the tab/app returns from background after idle time, the JWT
         // may have expired silently. Use refreshSession() to silently renew
         // the token instead of getSession() which just reads the local cache.
-        let visibilityRefreshInProgress = false
-        const handleVisibilityChange = async () => {
-            if (document.visibilityState !== 'visible') return
-            if (visibilityRefreshInProgress) return
-            visibilityRefreshInProgress = true
-            try {
-                // Safely check session status using the local cache + SDK auto-refresh mechanism.
-                // Doing manual refreshSession() causes token race conditions between tabs and API rate limits.
-                const { data: { session: currentSession }, error } = await supabase.auth.getSession()
-                
-                if (error || !currentSession) {
-                    setSession(null)
-                    setUser(null)
-                    setIsPremium(false)
-                } else {
-                    setSession(currentSession)
-                    setUser(currentSession.user ?? null)
-                }
-            } catch {
-                // Silently ignore network errors on visibility change
-            } finally {
-                visibilityRefreshInProgress = false
-            }
-        }
-        document.addEventListener('visibilitychange', handleVisibilityChange)
+        // Supabase already handles visibility-based token refreshing internally when autoRefreshToken is true.
+        // A custom visibility listener here forces new object references into state,
+        // causing all child components (like dashboards) to unmount or infinite-load.
+        
         // ────────────────────────────────────────────────────────────────────
 
         return () => {
             subscription.unsubscribe()
             clearTimeout(safetyTimer)
-            document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
     }, [])
 
