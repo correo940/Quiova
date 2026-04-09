@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
 type PostItColors = {
     overdue: string;
@@ -37,7 +38,33 @@ const defaultColors: PostItColors = {
     future: 'bg-[#fef3c7] dark:bg-[#fcd34d]',
 };
 
+const PREFS_KEY = 'postit_settings';
+const LOCAL_CACHE_KEY = 'postItSettings';
+
 const PostItSettingsContext = createContext<PostItSettings | undefined>(undefined);
+
+function applyParsed(
+    parsed: any,
+    setIsVisible: (v: boolean) => void,
+    setVisibilityMode: (v: 'all' | 'custom') => void,
+    setAllowedPaths: (v: string[]) => void,
+    setColors: (v: PostItColors) => void,
+    setSnoozeDuration: (v: number) => void,
+    setPosition: (v: any) => void,
+    setOpacity: (v: number) => void,
+    setLayout: (v: any) => void,
+    setDaysToHideAfterExpiration: (v: number) => void,
+) {
+    if (parsed.isVisible !== undefined) setIsVisible(parsed.isVisible);
+    if (parsed.visibilityMode) setVisibilityMode(parsed.visibilityMode);
+    if (parsed.allowedPaths) setAllowedPaths(parsed.allowedPaths);
+    if (parsed.colors) setColors({ ...defaultColors, ...parsed.colors });
+    if (parsed.snoozeDuration) setSnoozeDuration(parsed.snoozeDuration);
+    if (parsed.position) setPosition(parsed.position);
+    if (parsed.opacity !== undefined) setOpacity(parsed.opacity);
+    if (parsed.layout) setLayout(parsed.layout);
+    if (parsed.daysToHideAfterExpiration !== undefined) setDaysToHideAfterExpiration(parsed.daysToHideAfterExpiration);
+}
 
 export function PostItSettingsProvider({ children }: { children: React.ReactNode }) {
     const [isVisible, setIsVisible] = useState(true);
@@ -48,37 +75,91 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
     const [position, setPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'top-center' | 'bottom-center'>('top-left');
     const [opacity, setOpacity] = useState(0.8);
     const [layout, setLayout] = useState<'vertical' | 'horizontal'>('vertical');
-
     const [daysToHideAfterExpiration, setDaysToHideAfterExpiration] = useState(0);
-    const [hasLoaded, setHasLoaded] = useState(false);
 
-    // Load from localStorage on mount
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const userIdRef = useRef<string | null>(null);
+
+    // Load settings: first from localStorage (fast), then override from Supabase (authoritative)
     useEffect(() => {
-        const savedSettings = localStorage.getItem('postItSettings');
-        if (savedSettings) {
-            try {
-                const parsed = JSON.parse(savedSettings);
-                if (parsed.isVisible !== undefined) setIsVisible(parsed.isVisible);
-                if (parsed.visibilityMode) setVisibilityMode(parsed.visibilityMode);
-                if (parsed.allowedPaths) setAllowedPaths(parsed.allowedPaths);
-                if (parsed.colors) setColors({ ...defaultColors, ...parsed.colors });
-                if (parsed.snoozeDuration) setSnoozeDuration(parsed.snoozeDuration);
-                if (parsed.position) setPosition(parsed.position);
-                if (parsed.opacity !== undefined) setOpacity(parsed.opacity);
-                if (parsed.layout) setLayout(parsed.layout);
-                if (parsed.daysToHideAfterExpiration !== undefined) setDaysToHideAfterExpiration(parsed.daysToHideAfterExpiration);
-            } catch (e) {
-                console.error('Failed to parse post-it settings', e);
+        // 1. Instant load from localStorage cache
+        try {
+            const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                applyParsed(parsed, setIsVisible, setVisibilityMode, setAllowedPaths, setColors, setSnoozeDuration, setPosition, setOpacity, setLayout, setDaysToHideAfterExpiration);
             }
+        } catch (e) {
+            console.error('Failed to parse post-it settings from cache', e);
         }
-        setHasLoaded(true);
+
+        // 2. Load from Supabase (authoritative, survives cookie clears)
+        const loadFromSupabase = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.user) {
+                    setHasLoaded(true);
+                    return;
+                }
+                userIdRef.current = session.user.id;
+
+                const { data, error } = await supabase
+                    .from('user_preferences')
+                    .select('value')
+                    .eq('user_id', session.user.id)
+                    .eq('key', PREFS_KEY)
+                    .maybeSingle();
+
+                if (!error && data?.value) {
+                    const parsed = data.value as any;
+                    applyParsed(parsed, setIsVisible, setVisibilityMode, setAllowedPaths, setColors, setSnoozeDuration, setPosition, setOpacity, setLayout, setDaysToHideAfterExpiration);
+                    // Update local cache with server data
+                    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(parsed));
+                }
+            } catch (e) {
+                console.error('Failed to load post-it settings from Supabase', e);
+            }
+            setHasLoaded(true);
+        };
+
+        loadFromSupabase();
+
+        // Listen for auth changes to capture userId
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            userIdRef.current = session?.user?.id ?? null;
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
-    // Save to localStorage on change
+    // Save to both localStorage (cache) and Supabase (persistent) on change
     useEffect(() => {
         if (!hasLoaded) return;
+
         const settings = { isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration };
-        localStorage.setItem('postItSettings', JSON.stringify(settings));
+
+        // Always update local cache
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(settings));
+
+        // Save to Supabase if user is logged in
+        const userId = userIdRef.current;
+        if (!userId) return;
+
+        const saveToSupabase = async () => {
+            try {
+                const { error } = await supabase
+                    .from('user_preferences')
+                    .upsert(
+                        { user_id: userId, key: PREFS_KEY, value: settings, updated_at: new Date().toISOString() },
+                        { onConflict: 'user_id,key' }
+                    );
+                if (error) console.error('Failed to save post-it settings to Supabase:', error.message);
+            } catch (e) {
+                console.error('Failed to save post-it settings to Supabase', e);
+            }
+        };
+
+        saveToSupabase();
     }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration, hasLoaded]);
 
     return (
