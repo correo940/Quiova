@@ -527,7 +527,7 @@ export default function SavingsDashboardUI({
                                     <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
                                         <CardHeader className="pb-3">
                                             <CardTitle className="text-base font-semibold flex items-center justify-between">
-                                                <span><span className="text-emerald-600 mr-2">â—</span>Ãšltimos Movimientos</span>
+                                                <span><span className="text-emerald-600 mr-2">â—</span>Últimos Movimientos</span>
                                                 <Button variant="ghost" size="sm" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 h-6 flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
                                                     Ver extracto <ArrowUpRight className="w-3 h-3" />
                                                 </Button>
@@ -563,7 +563,7 @@ export default function SavingsDashboardUI({
                                                                     <p className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate">{tx.description || 'Gasto General'}</p>
                                                                     <p className="text-[11px] text-muted-foreground mt-0.5 tracking-wide font-medium truncate flex items-center gap-1.5">
                                                                         <span className="uppercase text-slate-600 dark:text-slate-400 font-bold">{account ? account.bank_name : (tx.amount > 0 ? 'Ingreso' : 'Compra Tarjeta')}</span> 
-                                                                        <span className="opacity-50">â€¢</span> 
+                                                                        <span className="opacity-50">•</span> 
                                                                         <span>{format(new Date(tx.date), 'd MMM', { locale: es })}</span>
                                                                     </p>
                                                                 </div>
@@ -778,7 +778,7 @@ export default function SavingsDashboardUI({
                                                 <div className="flex gap-1">
                                                     {[1, 2, 3, 4].map(i => <div key={i} className="w-2 h-2 rounded-full bg-white/40" />)}
                                                 </div>
-                                                <span className="text-white/60 font-mono text-sm ml-2">â€¢â€¢â€¢â€¢ {account.id.substring(0, 4)}</span>
+                                                <span className="text-white/60 font-mono text-sm ml-2">•••• {account.id.substring(0, 4)}</span>
                                             </div>
 
                                             <div className="flex justify-between items-end">
@@ -924,7 +924,7 @@ export default function SavingsDashboardUI({
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-bold text-emerald-600">+{item.amount}â‚¬</span>
+                                                    <span className="font-bold text-emerald-600">+{item.amount}€</span>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => onDeleteRecurring && onDeleteRecurring(item.id)}>
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
@@ -952,7 +952,7 @@ export default function SavingsDashboardUI({
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-bold text-rose-600">-{item.amount}â‚¬</span>
+                                                    <span className="font-bold text-rose-600">-{item.amount}€</span>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => onDeleteRecurring && onDeleteRecurring(item.id)}>
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
