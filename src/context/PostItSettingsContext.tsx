@@ -50,6 +50,7 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
     const [layout, setLayout] = useState<'vertical' | 'horizontal'>('vertical');
 
     const [daysToHideAfterExpiration, setDaysToHideAfterExpiration] = useState(0);
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     // Load from localStorage on mount
     useEffect(() => {
@@ -70,13 +71,15 @@ export function PostItSettingsProvider({ children }: { children: React.ReactNode
                 console.error('Failed to parse post-it settings', e);
             }
         }
+        setHasLoaded(true);
     }, []);
 
     // Save to localStorage on change
     useEffect(() => {
+        if (!hasLoaded) return;
         const settings = { isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration };
         localStorage.setItem('postItSettings', JSON.stringify(settings));
-    }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration]);
+    }, [isVisible, visibilityMode, allowedPaths, colors, snoozeDuration, position, opacity, layout, daysToHideAfterExpiration, hasLoaded]);
 
     return (
         <PostItSettingsContext.Provider value={{
