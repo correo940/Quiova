@@ -16,85 +16,69 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter()
     const pathname = usePathname()
 
-    const [checkingAccess, setCheckingAccess] = useState(true)
     const [hasPartners, setHasPartners] = useState(false)
     const [hasTaskInvite, setHasTaskInvite] = useState(false)
+    const [accessChecked, setAccessChecked] = useState(false)
     const hasCheckedOnce = useRef(false)
 
+    // Background access check — NEVER blocks the UI
     useEffect(() => {
-        // Safety timeout — never stay checking more than 3 seconds
-        const safetyTimer = setTimeout(() => {
-            setCheckingAccess(false)
-        }, 3000)
+        if (loading || !user || hasCheckedOnce.current) return
 
         const checkAccess = async () => {
-            if (!user) {
-                setCheckingAccess(false)
-                return
-            }
-
-            // After the first successful check, DON'T block the UI again.
-            // Token refreshes fire onAuthStateChange which changes user?.id ref,
-            // but access permissions don't change on token refresh.
-            if (hasCheckedOnce.current) {
-                setCheckingAccess(false)
-                return
-            }
-
             try {
-                // Check Partners (Shared Expenses Access)
-                const { count: expensesCount } = await supabase
-                    .from('expense_partners')
-                    .select('*', { count: 'exact', head: true })
-                    .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`)
+                const [partnersResult, tasksResult] = await Promise.allSettled([
+                    supabase
+                        .from('expense_partners')
+                        .select('*', { count: 'exact', head: true })
+                        .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`),
+                    supabase
+                        .from('task_list_members')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', user.id)
+                ])
 
-                setHasPartners((expensesCount || 0) > 0)
-
-                // Check Task List Members (Shared Tasks Access)
-                const { count: tasksCount } = await supabase
-                    .from('task_list_members')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-
-                setHasTaskInvite((tasksCount || 0) > 0)
-                hasCheckedOnce.current = true
-
+                if (partnersResult.status === 'fulfilled') {
+                    setHasPartners((partnersResult.value.count || 0) > 0)
+                }
+                if (tasksResult.status === 'fulfilled') {
+                    setHasTaskInvite((tasksResult.value.count || 0) > 0)
+                }
             } catch (error) {
                 console.error("Access check error:", error)
-                // On error, still unblock the UI — don't leave users stuck
-                hasCheckedOnce.current = true
             } finally {
-                setCheckingAccess(false)
-                clearTimeout(safetyTimer)
+                hasCheckedOnce.current = true
+                setAccessChecked(true)
             }
         }
 
-        if (!loading) {
-            checkAccess()
-        }
+        // Run with a timeout safety net
+        const timer = setTimeout(() => {
+            hasCheckedOnce.current = true
+            setAccessChecked(true)
+        }, 3000)
 
-        return () => clearTimeout(safetyTimer)
-    }, [user?.id, loading]) // Use primitive user?.id, not the whole user object
+        checkAccess().finally(() => clearTimeout(timer))
 
+        return () => clearTimeout(timer)
+    }, [user?.id, loading])
+
+    // Redirect unauthenticated users
     useEffect(() => {
-        if (loading || checkingAccess) return;
+        if (loading) return
 
-        const isPublicAuthPage = pathname === '/apps/mi-hogar/login';
+        const isPublicAuthPage = pathname === '/apps/mi-hogar/login'
 
         if (!user && !isPublicAuthPage) {
-            // Special case: Unauthenticated access to Expenses -> Show Guest Access
             if (pathname?.startsWith('/apps/mi-hogar/expenses')) {
-                // Allow rendering GuestExpensesAccess component directly in return
-                return;
+                return // Allow guest expenses access
             }
-            // Or Tasks sharing? usually requires login first.
-            // If not logged in and not on login page, redirect
             router.push('/apps/mi-hogar/login')
         }
-    }, [user, loading, checkingAccess, pathname, router])
+    }, [user, loading, pathname, router])
 
-    if (loading || checkingAccess) {
-        console.log('[AuthGuard] BLOCKING UI — loading=', loading, 'checkingAccess=', checkingAccess, 'user=', !!user, 'hasCheckedOnce=', hasCheckedOnce.current)
+    // ONLY block on initial auth loading — NEVER on access checks
+    if (loading) {
         return <AuthGuardSkeleton />
     }
 
