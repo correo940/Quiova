@@ -25,30 +25,11 @@ const customStorage = {
     },
 }
 
-// A custom fetch wrapper that enforces a strict 8-second timeout.
-// This prevents the notorious mobile browser issue where a TCP connection
-// goes zombie during tab suspension, causing Supabase auth mutexes and 
-// PostgREST queries to hang indefinitely, resulting in eternal loading spinners.
-const customFetch = (url: RequestInfo | URL, options?: RequestInit) => {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 8000);
-    
-    return fetch(url, { ...options, signal: controller.signal })
-        .catch(err => {
-            console.warn('Supabase Network Error or Timeout:', err);
-            throw err;
-        })
-        .finally(() => clearTimeout(id));
-};
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         storage: customStorage,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: !Capacitor.isNativePlatform()
-    },
-    global: {
-        fetch: (...args) => customFetch(...args)
     }
 })
