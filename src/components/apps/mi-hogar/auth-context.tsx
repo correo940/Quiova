@@ -93,25 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (visibilityRefreshInProgress) return
             visibilityRefreshInProgress = true
             try {
-                // First try to refresh the session (renews expired JWTs)
-                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                // Safely check session status using the local cache + SDK auto-refresh mechanism.
+                // Doing manual refreshSession() causes token race conditions between tabs and API rate limits.
+                const { data: { session: currentSession }, error } = await supabase.auth.getSession()
                 
-                if (refreshError || !refreshedSession) {
-                    // Refresh failed — try getSession as fallback (maybe token isn't expired, just stale in state)
-                    const { data: { session: cachedSession } } = await supabase.auth.getSession()
-                    if (!cachedSession) {
-                        // Truly no session — user must re-login
-                        setSession(null)
-                        setUser(null)
-                        setIsPremium(false)
-                    } else {
-                        setSession(cachedSession)
-                        setUser(cachedSession.user ?? null)
-                    }
+                if (error || !currentSession) {
+                    setSession(null)
+                    setUser(null)
+                    setIsPremium(false)
                 } else {
-                    // Successfully refreshed
-                    setSession(refreshedSession)
-                    setUser(refreshedSession.user ?? null)
+                    setSession(currentSession)
+                    setUser(currentSession.user ?? null)
                 }
             } catch {
                 // Silently ignore network errors on visibility change
