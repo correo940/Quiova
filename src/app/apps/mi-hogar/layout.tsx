@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/apps/mi-hogar/auth-context'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Lock, Sword } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { GuestExpensesAccess } from '@/components/apps/mi-hogar/expenses/guest-access'
@@ -19,15 +19,24 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const [checkingAccess, setCheckingAccess] = useState(true)
     const [hasPartners, setHasPartners] = useState(false)
     const [hasTaskInvite, setHasTaskInvite] = useState(false)
+    const hasCheckedOnce = useRef(false)
 
     useEffect(() => {
-        // Safety timeout — never stay checking more than 5 seconds
+        // Safety timeout — never stay checking more than 3 seconds
         const safetyTimer = setTimeout(() => {
             setCheckingAccess(false)
-        }, 5000)
+        }, 3000)
 
         const checkAccess = async () => {
             if (!user) {
+                setCheckingAccess(false)
+                return
+            }
+
+            // After the first successful check, DON'T block the UI again.
+            // Token refreshes fire onAuthStateChange which changes user?.id ref,
+            // but access permissions don't change on token refresh.
+            if (hasCheckedOnce.current) {
                 setCheckingAccess(false)
                 return
             }
@@ -48,9 +57,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
                     .eq('user_id', user.id)
 
                 setHasTaskInvite((tasksCount || 0) > 0)
+                hasCheckedOnce.current = true
 
             } catch (error) {
                 console.error("Access check error:", error)
+                // On error, still unblock the UI — don't leave users stuck
+                hasCheckedOnce.current = true
             } finally {
                 setCheckingAccess(false)
                 clearTimeout(safetyTimer)
@@ -62,7 +74,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         }
 
         return () => clearTimeout(safetyTimer)
-    }, [user, loading]) // isPremium is already loaded in context
+    }, [user?.id, loading]) // Use primitive user?.id, not the whole user object
 
     useEffect(() => {
         if (loading || checkingAccess) return;
