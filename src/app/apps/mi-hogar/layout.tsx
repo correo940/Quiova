@@ -92,10 +92,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     // --- ACCESS CONTROL LOGIC ---
     // If Premium -> Allow everything
     if (isPremium) {
-        return <>{children}</>;
+        return <ErrorBoundary>{children}</ErrorBoundary>;
     }
 
-    // Guests (Non-Premium)
+    // While the background access check is still running, show children
+    // (prevents flash of "Access Restricted" before we know the user's status)
+    if (!accessChecked) {
+        return <ErrorBoundary>{children}</ErrorBoundary>;
+    }
+
+    // Guests (Non-Premium) — only enforced AFTER accessChecked=true
     const isExpensesPage = pathname?.startsWith('/apps/mi-hogar/expenses');
     const isTasksPage = pathname?.startsWith('/apps/mi-hogar/tasks');
 
@@ -113,34 +119,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         if (hasTaskInvite) {
             return <>{children}</>; // Allow if invited/member
         }
-        // If not invited, they will see the block screen below
     }
 
     // 3. Trying to access restricted pages
-    // Allowed pages for free users (if invited):
     const allowed = (isExpensesPage && hasPartners) || (isTasksPage && hasTaskInvite);
 
-    // Whitelist public pages if any (e.g. root dashboard might be allowed but empty?)
-    // For now, if they are not premium and try to access anything else, block.
-    // NOTE: /apps/mi-hogar root might need to be allowed to show the menu?
-    // User requirement: "no ver el resto de las aplicaciones" implies blocking.
-
     if (!allowed && pathname !== '/apps/mi-hogar/login') {
-        // Allow root '/apps/mi-hogar' only if they have at least one permission?
-        // Or block it too and force them to go to their allowed app?
-        // Let's block dashboard if they have absolutely no permissions.
-        // If they have permissions, maybe show dashboard? But user said "no ver el resto".
-
-        // Simpler approach: If on a specific app page they don't have access to, block.
-        // If on root, maybe allow? Let's stick to blocking restricted paths.
-
         if (pathname === '/apps/mi-hogar') {
-            // If they have tasks access, redirect to tasks?
             if (hasTaskInvite) {
                 router.replace('/apps/mi-hogar/tasks');
                 return null;
             }
-            // If expsense access, redirect to expenses?
             if (hasPartners) {
                 router.replace('/apps/mi-hogar/expenses');
                 return null;
