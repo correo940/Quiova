@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react'
+import { Lock, Mail, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { translateAuthError } from '@/lib/utils'
 
 import LogoLoader from '@/components/ui/logo-loader'
@@ -48,6 +48,20 @@ export default function LoginPage() {
     const [mode, setMode] = useState<'signin' | 'signup'>('signin')
     const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
+
+    const handleClearCache = async () => {
+        if (confirm('¿Estás seguro de que quieres limpiar la caché y recargar? Esto puede solucionar problemas de conexión.')) {
+            localStorage.clear()
+            sessionStorage.clear()
+            if ('caches' in window) {
+                try {
+                    const keys = await caches.keys()
+                    await Promise.all(keys.map(key => caches.delete(key)))
+                } catch (e) {}
+            }
+            window.location.reload()
+        }
+    }
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -316,7 +330,29 @@ export default function LoginPage() {
                             : '¿Ya tienes cuenta? Inicia sesión'}
                     </button>
                 </div>
+
+                <div className="mt-8 pt-6 border-t flex flex-col items-center" style={{ borderColor: 'rgba(16, 185, 129, 0.1)' }}>
+                    <p className="text-xs text-center mb-3 max-w-[280px]" style={{ color: '#6b7280' }}>
+                        ¿La aplicación se queda cargando o tienes problemas de conexión?
+                    </p>
+                    <button
+                        onClick={handleClearCache}
+                        type="button"
+                        className="flex items-center gap-2 text-xs px-4 py-2 border rounded-full transition-colors"
+                        style={{ color: '#4b5563', borderColor: 'rgba(16, 185, 129, 0.2)', background: 'rgba(255, 255, 255, 0.5)' }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
+                        }}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Limpiar Caché y Recargar
+                    </button>
+                </div>
             </motion.div>
         </div>
     )
 }
+
