@@ -159,6 +159,8 @@ export default function AccountDetailDialog({
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
     const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+    const [exactMonthFilter, setExactMonthFilter] = useState('');
+    const [exactDateFilter, setExactDateFilter] = useState('');
 
     useEffect(() => {
         if (!open) return;
@@ -222,7 +224,10 @@ export default function AccountDetailDialog({
             (movementFilter === 'income' && tx.amount > 0) ||
             (movementFilter === 'expense' && tx.amount < 0);
 
-        return matchesSearch && matchesFilter;
+        const matchesMonth = !exactMonthFilter || tx.date.startsWith(exactMonthFilter);
+        const matchesDate = !exactDateFilter || tx.date === exactDateFilter;
+
+        return matchesSearch && matchesFilter && matchesMonth && matchesDate;
     });
 
     const selectedMonthTransactions = transactions.filter((tx) =>
@@ -868,6 +873,28 @@ export default function AccountDetailDialog({
                                                             {item.label}
                                                         </Button>
                                                     ))}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        type="month"
+                                                        title="Filtrar por mes"
+                                                        value={exactMonthFilter}
+                                                        onChange={(e) => {
+                                                            setExactMonthFilter(e.target.value);
+                                                            if (e.target.value) setExactDateFilter('');
+                                                        }}
+                                                        className="h-11 rounded-2xl border-slate-200 bg-slate-50 w-[140px]"
+                                                    />
+                                                    <Input
+                                                        type="date"
+                                                        title="Filtrar por fecha exacta"
+                                                        value={exactDateFilter}
+                                                        onChange={(e) => {
+                                                            setExactDateFilter(e.target.value);
+                                                            if (e.target.value) setExactMonthFilter('');
+                                                        }}
+                                                        className="h-11 rounded-2xl border-slate-200 bg-slate-50 w-[140px]"
+                                                    />
                                                 </div>
                                                 {selectedTxIds.size > 0 && onDeleteTransactions && (
                                                     <Button
