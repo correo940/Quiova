@@ -892,27 +892,42 @@ export default function AccountDetailDialog({
                                                         </Button>
                                                     ))}
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <Input
-                                                        type="month"
-                                                        title="Filtrar por mes"
-                                                        value={exactMonthFilter}
-                                                        onChange={(e) => {
-                                                            setExactMonthFilter(e.target.value);
-                                                            if (e.target.value) setExactDateFilter('');
-                                                        }}
-                                                        className="h-11 rounded-2xl border-slate-200 bg-slate-50 w-[140px]"
-                                                    />
-                                                    <Input
-                                                        type="date"
-                                                        title="Filtrar por fecha exacta"
-                                                        value={exactDateFilter}
-                                                        onChange={(e) => {
-                                                            setExactDateFilter(e.target.value);
-                                                            if (e.target.value) setExactMonthFilter('');
-                                                        }}
-                                                        className="h-11 rounded-2xl border-slate-200 bg-slate-50 w-[140px]"
-                                                    />
+                                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1 shadow-sm">
+                                                    <div className="flex items-center pl-3">
+                                                        <span className="text-xs font-medium text-slate-400 mr-2 whitespace-nowrap">Filtrar para borrar:</span>
+                                                        <select
+                                                            title="Filtrar por mes"
+                                                            value={exactMonthFilter}
+                                                            onChange={(e) => {
+                                                                setExactMonthFilter(e.target.value);
+                                                                if (e.target.value) setExactDateFilter('');
+                                                            }}
+                                                            className="h-9 bg-transparent border-none text-sm outline-none cursor-pointer focus:ring-0 text-slate-700 font-medium capitalize"
+                                                        >
+                                                            <option value="">Mes completo...</option>
+                                                            {Array.from({length: 12}).map((_, i) => {
+                                                                const d = new Date();
+                                                                d.setMonth(d.getMonth() - i);
+                                                                const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                                                                const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(d);
+                                                                return <option key={val} value={val}>{label}</option>;
+                                                            })}
+                                                        </select>
+                                                    </div>
+                                                    <div className="w-px h-6 bg-slate-200 mx-1" />
+                                                    <div className="flex items-center pr-1">
+                                                        <span className="text-xs font-medium text-slate-400 mr-2">ó Día:</span>
+                                                        <Input
+                                                            type="date"
+                                                            title="Día exacto"
+                                                            value={exactDateFilter}
+                                                            onChange={(e) => {
+                                                                setExactDateFilter(e.target.value);
+                                                                if (e.target.value) setExactMonthFilter('');
+                                                            }}
+                                                            className="h-9 w-[130px] border-none bg-white shadow-sm rounded-xl text-sm"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 {selectedTxIds.size > 0 && onDeleteTransactions && (
                                                     <Button
