@@ -34,7 +34,8 @@ import {
     ShieldCheck,
     Sparkles,
     Trash2,
-    Wallet
+    Wallet,
+    RefreshCw
 } from 'lucide-react';
 import {
     Dialog,
@@ -102,6 +103,7 @@ interface AccountDetailDialogProps {
     onDeleteTransaction: (transactionId: string, amount: number) => Promise<void>;
     onDeleteTransactions?: (transactionIds: string[], totalAmount: number) => Promise<void>;
     onDeleteAccount: () => Promise<void>;
+    onSyncBalance?: (accountId: string) => Promise<void>;
     onToggleIncludeInTotal: (checked: boolean) => Promise<void>;
     onNavigateToPassword?: () => void;
 }
@@ -140,6 +142,7 @@ export default function AccountDetailDialog({
     onDeleteTransaction,
     onDeleteTransactions,
     onDeleteAccount,
+    onSyncBalance,
     onToggleIncludeInTotal,
     onNavigateToPassword
 }: AccountDetailDialogProps) {
@@ -774,8 +777,23 @@ export default function AccountDetailDialog({
                                                             : 'Sin datos'}
                                                     </p>
                                                 </div>
-                                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                                                    <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Balance actual</p>
+                                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 group relative">
+                                                    <div className="flex justify-between items-start">
+                                                        <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Balance actual</p>
+                                                        {onSyncBalance && (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    if(window.confirm('¿Quieres sincronizar y recalcular el saldo desde cero sumando el historial exacto de movimientos?')) {
+                                                                        onSyncBalance(account.id);
+                                                                    }
+                                                                }}
+                                                                className="text-slate-400 hover:text-emerald-600 transition-colors"
+                                                                title="Sincronizar saldo con el historial"
+                                                            >
+                                                                <RefreshCw className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <p className="mt-1 text-base font-bold text-slate-900">{currencyFormatter.format(account.current_balance)}</p>
                                                 </div>
                                             </div>

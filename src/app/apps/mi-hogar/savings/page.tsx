@@ -334,7 +334,9 @@ export default function SavingsPage() {
             setMonthlyStats({ income: mIncome, expense: mExpense, savingsRate: rate > 0 ? rate : 0 });
 
             // Calculate Chart Data (Reconstruct backwards)
-            let currentTotal = accs?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
+            // We only want to graph the total of accounts that are marked 'include_in_total'
+            const includedAccountIds = (accs || []).filter(a => a.include_in_total !== false).map(a => a.id);
+            let currentTotal = (accs || []).reduce((sum, a) => sum + (a.include_in_total !== false ? (a.current_balance || 0) : 0), 0);
             const dailyBalances = [];
 
             for (let i = 0; i < 30; i++) {
@@ -348,7 +350,8 @@ export default function SavingsPage() {
                     value: currentTotal // Using 'value' for Recharts compatibility
                 });
 
-                const daysTransactions = (txs || []).filter(t => t.date === dateStr);
+                // Subtract ONLY the transactions from the included accounts
+                const daysTransactions = (txs || []).filter(t => t.date === dateStr && includedAccountIds.includes(t.account_id));
                 const daysChange = daysTransactions.reduce((sum, t) => sum + t.amount, 0);
 
                 currentTotal -= daysChange;
@@ -660,6 +663,35 @@ export default function SavingsPage() {
         } catch (error) {
             console.error(error);
             toast.error('Error al eliminar movimientos');
+        }
+    };
+
+    const handleSyncAccountBalance = async (accountId: string) => {
+        try {
+            const { data: allTxs, error: txError } = await supabase
+                .from('savings_account_transactions')
+                .select('amount')
+                .eq('account_id', accountId);
+
+            if (txError) throw txError;
+
+            const trueBalance = (allTxs || []).reduce((sum, tx) => sum + tx.amount, 0);
+
+            const { error: updateError } = await supabase
+                .from('savings_accounts')
+                .update({ current_balance: trueBalance })
+                .eq('id', accountId);
+
+            if (updateError) throw updateError;
+            
+            toast.success('Saldo sincronizado a partir del historial');
+            await fetchData(user?.id);
+            if (selectedAccount?.id === accountId) {
+                setSelectedAccount(prev => prev ? { ...prev, current_balance: trueBalance } : prev);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al sincronizar saldo');
         }
     };
 
@@ -1015,6 +1047,7 @@ export default function SavingsPage() {
                 onDeleteTransaction={handleDeleteAccountTransaction}
                 onDeleteTransactions={handleDeleteAccountTransactions}
                 onDeleteAccount={handleDeleteAccount}
+                onSyncBalance={handleSyncAccountBalance}
                 onToggleIncludeInTotal={handleToggleAccountInTotal}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
             />
