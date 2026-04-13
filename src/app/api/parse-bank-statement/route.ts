@@ -5,6 +5,21 @@ import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
+// Polyfill DOMMatrix and Path2D for pdfjs-dist used by pdf-parse on Next.js/Node 18+ environments
+if (typeof global !== 'undefined') {
+  if (typeof global.DOMMatrix === 'undefined') {
+    global.DOMMatrix = class DOMMatrix {
+      a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+      constructor() {}
+    } as any;
+  }
+  if (typeof global.Path2D === 'undefined') {
+    global.Path2D = class Path2D {
+      constructor() {}
+    } as any;
+  }
+}
+
 const PROMPT = `Eres un experto en extractos bancarios españoles y europeos. Analiza el siguiente texto y extrae todas las transacciones.
 Devuelve únicamente un JSON array válido con elementos de este tipo:
 {"date":"YYYY-MM-DD","description":"texto descriptivo","amount":123.45}
