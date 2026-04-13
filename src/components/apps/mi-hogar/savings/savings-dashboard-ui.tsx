@@ -740,8 +740,21 @@ export default function SavingsDashboardUI({
                                 <p className="font-medium text-slate-500 group-hover:text-emerald-700 dark:text-slate-400">Añadir Nueva Cuenta</p>
                             </motion.div>
 
-                            {/* Account Cards */}
-                            {accounts.map((account) => (
+                        {accounts.map((account) => {
+                            const currentMonth = new Date().getMonth();
+                            const currentYear = new Date().getFullYear();
+                            let accIncome = 0;
+                            let accExpense = 0;
+                            const accountTransactions = recentTransactions.filter(tx => tx.account_id === account.id);
+                            accountTransactions.forEach(tx => {
+                                const d = new Date(tx.date);
+                                if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+                                   if (tx.amount > 0) accIncome += tx.amount;
+                                   else accExpense += Math.abs(tx.amount);
+                                }
+                            });
+
+                            return (
                                 <motion.div
                                     key={account.id}
                                     variants={itemVariants}
@@ -782,6 +795,23 @@ export default function SavingsDashboardUI({
                                                 <span className="text-white/60 font-mono text-sm ml-2">•••• {account.id.substring(0, 4)}</span>
                                             </div>
 
+                                            <div className="flex justify-between items-center bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                                <div>
+                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Ingresos ({format(new Date(), 'MMM', { locale: es })})</p>
+                                                    <p className="font-bold text-emerald-300">{accIncome.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</p>
+                                                </div>
+                                                <div className="h-6 w-px bg-white/20" />
+                                                <div>
+                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Gastos ({format(new Date(), 'MMM', { locale: es })})</p>
+                                                    <p className="font-bold text-rose-300">{accExpense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</p>
+                                                </div>
+                                                <div className="h-6 w-px bg-white/20" />
+                                                <div>
+                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Dif.</p>
+                                                    <p className={`font-bold ${(accIncome - accExpense) >= 0 ? 'text-white' : 'text-rose-200'}`}>{(accIncome - accExpense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</p>
+                                                </div>
+                                            </div>
+
                                             <div className="flex justify-between items-end">
                                                 <div>
                                                     <p className="text-xs text-white/70 uppercase tracking-widest mb-1">Saldo Disponible</p>
@@ -792,17 +822,15 @@ export default function SavingsDashboardUI({
                                                 {account.interest_rate && (
                                                     <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                                                         <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                                        <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                                                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                                            <span className="font-bold text-sm">{account.interest_rate}% TAE</span>
-                                                        </div>
+                                                        <span className="font-bold text-sm">{account.interest_rate}% TAE</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
                                 </motion.div>
-                            ))}
+                            );
+                        })}
                         </motion.div>
                     )}
 

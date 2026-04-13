@@ -298,11 +298,14 @@ export default function SavingsPage() {
             // 3. Transactions (Last 30 days for stats & chart)
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const fetchStartDate = firstDayOfMonth < thirtyDaysAgo ? firstDayOfMonth : thirtyDaysAgo;
 
             const { data: txs } = await supabase
                 .from('savings_account_transactions')
                 .select('*')
-                .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+                .gte('date', fetchStartDate.toISOString().split('T')[0])
                 .in('account_id', accs?.map(a => a.id) || [])
                 .order('date', { ascending: false });
 
