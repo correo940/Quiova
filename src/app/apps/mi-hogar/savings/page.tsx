@@ -634,6 +634,35 @@ export default function SavingsPage() {
         }
     };
 
+    const handleDeleteAccountTransactions = async (transactionIds: string[], totalAmount: number) => {
+        if (!selectedAccount || transactionIds.length === 0) return;
+
+        try {
+            const { error: txError } = await supabase
+                .from('savings_account_transactions')
+                .delete()
+                .in('id', transactionIds);
+
+            if (txError) throw txError;
+
+            const recalculatedBalance = (selectedAccount.current_balance || 0) - totalAmount;
+            const { error: accountError } = await supabase
+                .from('savings_accounts')
+                .update({ current_balance: recalculatedBalance })
+                .eq('id', selectedAccount.id);
+
+            if (accountError) throw accountError;
+
+            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+            await fetchAccountTransactions(selectedAccount.id);
+            await fetchData(user?.id);
+            toast.success(`${transactionIds.length} movimientos eliminados`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar movimientos');
+        }
+    };
+
 
     const handleDeleteAccount = async () => {
         if (!selectedAccount) return;
@@ -984,6 +1013,7 @@ export default function SavingsPage() {
                 linkedPasswordName={selectedAccountPasswordName}
                 onSubmitTransaction={handleSubmitAccountTransaction}
                 onDeleteTransaction={handleDeleteAccountTransaction}
+                onDeleteTransactions={handleDeleteAccountTransactions}
                 onDeleteAccount={handleDeleteAccount}
                 onToggleIncludeInTotal={handleToggleAccountInTotal}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}

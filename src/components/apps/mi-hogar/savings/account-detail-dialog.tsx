@@ -50,6 +50,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
     TableBody,
@@ -99,6 +100,7 @@ interface AccountDetailDialogProps {
     linkedPasswordName?: string;
     onSubmitTransaction: (payload: TransactionPayload) => Promise<void>;
     onDeleteTransaction: (transactionId: string, amount: number) => Promise<void>;
+    onDeleteTransactions?: (transactionIds: string[], totalAmount: number) => Promise<void>;
     onDeleteAccount: () => Promise<void>;
     onToggleIncludeInTotal: (checked: boolean) => Promise<void>;
     onNavigateToPassword?: () => void;
@@ -136,6 +138,7 @@ export default function AccountDetailDialog({
     linkedPasswordName,
     onSubmitTransaction,
     onDeleteTransaction,
+    onDeleteTransactions,
     onDeleteAccount,
     onToggleIncludeInTotal,
     onNavigateToPassword
@@ -155,6 +158,7 @@ export default function AccountDetailDialog({
     const [movementFilter, setMovementFilter] = useState<'all' | 'income' | 'expense'>('all');
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
+    const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!open) return;
@@ -170,7 +174,8 @@ export default function AccountDetailDialog({
         setSearchTerm('');
         setMovementFilter('all');
         setSelectedMonth(new Date());
-    }, [open, account?.id]);
+        setSelectedTxIds(new Set());
+    }, [open, account?.id, activeTab]);
 
     if (!account) {
         return null;
@@ -322,6 +327,38 @@ export default function AccountDetailDialog({
         } finally {
             setIsUpdatingIncludeInTotal(false);
         }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedTxIds.size === 0) return;
+        if (!window.confirm(`¿Eliminar ${selectedTxIds.size} movimientos seleccionados? El saldo se recalculará automáticamente.`)) return;
+
+        if (onDeleteTransactions) {
+            setIsSubmitting(true);
+            try {
+                const txsToDelete = transactions.filter(t => selectedTxIds.has(t.id));
+                const totalAmount = txsToDelete.reduce((sum, t) => sum + t.amount, 0);
+                await onDeleteTransactions(Array.from(selectedTxIds), totalAmount);
+                setSelectedTxIds(new Set());
+            } finally {
+                setIsSubmitting(false);
+            }
+        }
+    };
+
+    const toggleAllVisible = () => {
+        if (selectedTxIds.size >= filteredTransactions.length && filteredTransactions.length > 0) {
+            setSelectedTxIds(new Set());
+        } else {
+            setSelectedTxIds(new Set(filteredTransactions.map(tx => tx.id)));
+        }
+    };
+
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedTxIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedTxIds(newSet);
     };
 
     return (
@@ -826,13 +863,32 @@ export default function AccountDetailDialog({
                                                         </Button>
                                                     ))}
                                                 </div>
+                                                {selectedTxIds.size > 0 && onDeleteTransactions && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        className="h-11 rounded-2xl gap-2 font-semibold shadow-sm"
+                                                        onClick={handleBulkDelete}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        Borrar {selectedTxIds.size}
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-0">
                                         <Table>
-                                            <TableHeader className="sticky top-0 bg-white/95 backdrop-blur-xl">
+                                            <TableHeader className="sticky top-0 bg-white/95 backdrop-blur-xl z-20 shadow-sm">
                                                 <TableRow>
+                                                    <TableHead className="w-12 text-center">
+                                                        <Checkbox 
+                                                            checked={filteredTransactions.length > 0 && selectedTxIds.size >= filteredTransactions.length}
+                                                            onCheckedChange={toggleAllVisible}
+                                                            className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-none"
+                                                        />
+                                                    </TableHead>
                                                     <TableHead>Movimiento</TableHead>
                                                     <TableHead className="hidden md:table-cell">Fecha</TableHead>
                                                     <TableHead className="hidden lg:table-cell">Tipo</TableHead>
@@ -844,13 +900,24 @@ export default function AccountDetailDialog({
                                             <TableBody>
                                                 {filteredTransactions.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                                                        <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                                                             No hay movimientos que coincidan con ese filtro.
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
                                                     filteredTransactions.map((tx) => (
-                                                        <TableRow key={tx.id} className="hover:bg-slate-50/70">
+                                                        <TableRow 
+                                                            key={tx.id} 
+                                                            className={cn("hover:bg-slate-50/70 transition-colors cursor-pointer", selectedTxIds.has(tx.id) && "bg-emerald-50/40 hover:bg-emerald-50/60")}
+                                                            onClick={() => toggleSelection(tx.id)}
+                                                        >
+                                                            <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                                                <Checkbox 
+                                                                    checked={selectedTxIds.has(tx.id)}
+                                                                    onCheckedChange={() => toggleSelection(tx.id)}
+                                                                    className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-none"
+                                                                />
+                                                            </TableCell>
                                                             <TableCell>
                                                                 <div className="flex items-center gap-3">
                                                                     <div
@@ -903,7 +970,7 @@ export default function AccountDetailDialog({
                                                             <TableCell className="hidden xl:table-cell text-right font-semibold text-slate-600">
                                                                 {currencyFormatter.format(tx.runningBalance)}
                                                             </TableCell>
-                                                            <TableCell className="text-right">
+                                                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                                 <div className="flex justify-end gap-2">
                                                                     <Button
                                                                         type="button"
