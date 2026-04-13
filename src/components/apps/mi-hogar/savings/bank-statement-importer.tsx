@@ -150,6 +150,26 @@ export default function BankStatementImporter({
 
     const handleDragLeave = useCallback(() => setDragOver(false), []);
 
+    const normalizeDate = (dateStr: string) => {
+        if (!dateStr) return format(new Date(), 'yyyy-MM-dd');
+        try {
+            if (/^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}$/.test(dateStr.trim())) {
+                const parts = dateStr.trim().split(/[\/.\-]/);
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                return `${year}-${month}-${day}`;
+            }
+            if (/^\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}$/.test(dateStr.trim())) {
+                const parts = dateStr.trim().split(/[\/.\-]/);
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+        } catch {
+            return dateStr;
+        }
+        return dateStr;
+    };
+
     // --- LOCAL REGEX PARSER (no AI needed) ---
     const parseTextLocally = (text: string): ParsedTransaction[] => {
         const lines = text.split('\n');
@@ -255,7 +275,7 @@ export default function BankStatementImporter({
 
                 refreshUsage(); // Update counter after successful AI call
 
-                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
+                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, date: normalizeDate(tx.date), selected: true }));
                 if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
 
                 setTransactions(parsed);
@@ -300,7 +320,7 @@ export default function BankStatementImporter({
 
                 refreshUsage(); // Update counter after successful AI call
 
-                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, selected: true }));
+                const parsed: ParsedTransaction[] = (data.transactions || []).map((tx: any) => ({ ...tx, date: normalizeDate(tx.date), selected: true }));
                 if (parsed.length === 0) throw new Error('No se encontraron movimientos.');
 
                 setTransactions(parsed);
