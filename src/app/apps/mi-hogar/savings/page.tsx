@@ -28,7 +28,9 @@ import {
     Trash2,
     Save,
     FileUp,
-    Settings
+    Settings,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -140,14 +142,22 @@ export default function SavingsPage() {
     const [transType, setTransType] = useState<'deposit' | 'expense'>('deposit');
     const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd') });
 
-    // Dialog States
+    // Dialogs
     const [isGoalDetailOpen, setIsGoalDetailOpen] = useState(false);
-    const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
     const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
     const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
     const [isAddRecurringOpen, setIsAddRecurringOpen] = useState(false);
+    const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
     const [isImporterOpen, setIsImporterOpen] = useState(false);
     const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+    
+    // Month Filter
+    const [selectedMonth, setSelectedMonth] = useState<Date>(() => {
+        const d = new Date();
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    });
 
     // Forms
     const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string, includeInTotal: boolean }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true });
@@ -163,6 +173,7 @@ export default function SavingsPage() {
         setRecurringItems([]);
         setPasswords([]);
         setPendingTotal(0);
+        setSelectedMonth(new Date());
         setLoading(false);
     };
 
@@ -271,7 +282,9 @@ export default function SavingsPage() {
         }
     };
 
-    const fetchData = async (userId?: string) => {
+    const fetchData = async (userIdArg?: string, monthDateArg?: Date) => {
+        const userId = userIdArg || user?.id;
+        const monthDate = monthDateArg || selectedMonth;
         if (!userId) {
             setLoading(false);
             return;
@@ -296,11 +309,11 @@ export default function SavingsPage() {
             setGoals(gls || []);
 
             // 3. Transactions (Last 30 days for stats & chart)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const chartStartDate = new Date();
+            chartStartDate.setDate(chartStartDate.getDate() - 30);
             
-            const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-            const fetchStartDate = firstDayOfMonth < thirtyDaysAgo ? firstDayOfMonth : thirtyDaysAgo;
+            const firstDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+            const fetchStartDate = firstDayOfMonth < chartStartDate ? firstDayOfMonth : chartStartDate;
 
             const { data: txs } = await supabase
                 .from('savings_account_transactions')
@@ -319,9 +332,9 @@ export default function SavingsPage() {
                 .order('day_of_month', { ascending: true });
             setRecurringItems((recs as RecurringItem[]) || []);
 
-            // Calculate Monthly Stats (Current Month)
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
+            // Calculate Monthly Stats (Selected Month)
+            const currentMonth = monthDate.getMonth();
+            const currentYear = monthDate.getFullYear();
             let mIncome = 0;
             let mExpense = 0;
 
@@ -833,6 +846,28 @@ export default function SavingsPage() {
             <SavingsNotificationManager />
 
             {/* MAIN DASHBOARD UI */}
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 rounded-[1.5rem] p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+                <Button variant="ghost" size="icon" onClick={() => {
+                    const prev = new Date(selectedMonth);
+                    prev.setMonth(prev.getMonth() - 1);
+                    setSelectedMonth(prev);
+                    fetchData(user?.id, prev);
+                }}>
+                    <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <h2 className="text-lg font-bold capitalize">
+                    {format(selectedMonth, 'MMMM yyyy', { locale: es })}
+                </h2>
+                <Button variant="ghost" size="icon" onClick={() => {
+                    const next = new Date(selectedMonth);
+                    next.setMonth(next.getMonth() + 1);
+                    setSelectedMonth(next);
+                    fetchData(user?.id, next);
+                }}>
+                    <ChevronRight className="w-5 h-5" />
+                </Button>
+            </div>
+
             <SavingsDashboardUI
                 accounts={accounts}
                 goals={goals}
@@ -841,6 +876,7 @@ export default function SavingsPage() {
                 totalGoalSaved={totalGoalSaved}
                 chartData={chartData}
                 loading={loading}
+                selectedMonth={selectedMonth}
                 onAddAccount={() => setIsAddAccountOpen(true)}
                 onAddGoal={() => setIsAddGoalOpen(true)}
                 onAddTransaction={() => {

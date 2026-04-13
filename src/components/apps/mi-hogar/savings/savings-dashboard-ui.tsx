@@ -115,6 +115,7 @@ interface SavingsDashboardUIProps {
     onBalanceChange?: () => void;
     pendingTotal?: number;
     onResetData?: () => Promise<void>;
+    selectedMonth?: Date;
 }
 
 export default function SavingsDashboardUI({
@@ -135,7 +136,8 @@ export default function SavingsDashboardUI({
     onDeleteRecurring,
     userId,
     onBalanceChange,
-    pendingTotal = 0
+    pendingTotal = 0,
+    selectedMonth = new Date()
 }: SavingsDashboardUIProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'goals' | 'recurring' | 'pending'>('overview');
 
@@ -383,7 +385,7 @@ export default function SavingsDashboardUI({
                                         <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
                                         <CardContent className="p-5 flex flex-col justify-center relative">
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Ingresos ({format(new Date(), 'MMMM', { locale: es })})</span>
+                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Ingresos ({format(selectedMonth, 'MMMM', { locale: es })})</span>
                                                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                                                     <ArrowDownRight className="w-4 h-4" />
                                                 </div>
@@ -398,7 +400,7 @@ export default function SavingsDashboardUI({
                                         <div className="absolute right-0 top-0 w-24 h-24 bg-rose-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
                                         <CardContent className="p-5 flex flex-col justify-center relative">
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Gastos ({format(new Date(), 'MMMM', { locale: es })})</span>
+                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Gastos ({format(selectedMonth, 'MMMM', { locale: es })})</span>
                                                 <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                                                     <ArrowUpRight className="w-4 h-4" />
                                                 </div>
@@ -741,8 +743,8 @@ export default function SavingsDashboardUI({
                             </motion.div>
 
                         {accounts.map((account) => {
-                            const currentMonth = new Date().getMonth();
-                            const currentYear = new Date().getFullYear();
+                            const currentMonth = selectedMonth.getMonth();
+                            const currentYear = selectedMonth.getFullYear();
                             let accIncome = 0;
                             let accExpense = 0;
                             const accountTransactions = recentTransactions.filter(tx => tx.account_id === account.id);
@@ -797,12 +799,12 @@ export default function SavingsDashboardUI({
 
                                             <div className="flex justify-between items-center bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
                                                 <div>
-                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Ingresos ({format(new Date(), 'MMM', { locale: es })})</p>
+                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Ingresos ({format(selectedMonth, 'MMM', { locale: es })})</p>
                                                     <p className="font-bold text-emerald-300">{accIncome.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</p>
                                                 </div>
                                                 <div className="h-6 w-px bg-white/20" />
                                                 <div>
-                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Gastos ({format(new Date(), 'MMM', { locale: es })})</p>
+                                                    <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Gastos ({format(selectedMonth, 'MMM', { locale: es })})</p>
                                                     <p className="font-bold text-rose-300">{accExpense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</p>
                                                 </div>
                                                 <div className="h-6 w-px bg-white/20" />
