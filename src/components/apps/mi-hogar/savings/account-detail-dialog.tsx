@@ -175,7 +175,13 @@ export default function AccountDetailDialog({
         setMovementFilter('all');
         setSelectedMonth(new Date());
         setSelectedTxIds(new Set());
-    }, [open, account?.id, activeTab]);
+    }, [open, account?.id]);
+
+    useEffect(() => {
+        if (open) {
+            setSelectedTxIds(new Set());
+        }
+    }, [activeTab, open]);
 
     if (!account) {
         return null;
