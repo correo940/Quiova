@@ -24,7 +24,7 @@ async function callGroq(textForAI: string) {
         { role: 'user', content: textForAI },
       ],
       temperature: 0.1,
-      max_tokens: 4096,
+      max_tokens: 2500,
     }),
   });
 
@@ -109,6 +109,13 @@ export async function POST(request: NextRequest) {
         { error: 'No se pudo extraer texto del archivo. ¿Está vacío o es un PDF de imagen?' },
         { status: 400 }
       );
+    }
+
+    // Limit text to roughly ~5500 tokens (approx 22,000 characters)
+    // We slice from the END to prioritize parsing the most recent transactions
+    if (extractedText.length > 22000) {
+      console.warn(`[Parse Bank Statement] Truncating text from ${extractedText.length} to 22000 chars to avoid TPM limit.`);
+      extractedText = extractedText.slice(-22000);
     }
 
     console.log(`[Parse Bank Statement] Extracted ${extractedText.length} chars from ${fileName}, sending to Groq...`);
