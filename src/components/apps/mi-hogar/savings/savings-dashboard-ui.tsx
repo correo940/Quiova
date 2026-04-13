@@ -383,7 +383,7 @@ export default function SavingsDashboardUI({
                                         <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
                                         <CardContent className="p-5 flex flex-col justify-center relative">
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Ingresos (Mes)</span>
+                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Ingresos ({format(new Date(), 'MMMM', { locale: es })})</span>
                                                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                                                     <ArrowDownRight className="w-4 h-4" />
                                                 </div>
@@ -398,7 +398,7 @@ export default function SavingsDashboardUI({
                                         <div className="absolute right-0 top-0 w-24 h-24 bg-rose-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
                                         <CardContent className="p-5 flex flex-col justify-center relative">
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Gastos (Mes)</span>
+                                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Gastos ({format(new Date(), 'MMMM', { locale: es })})</span>
                                                 <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                                                     <ArrowUpRight className="w-4 h-4" />
                                                 </div>
@@ -434,7 +434,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{(monthlyStats.savingsRate || 0).toFixed(1)}%</span>
-                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-2 font-medium">{(monthlyStats.savingsRate || 0) >= 0 ? '¡Meta lograda!' : 'Vigila tus gastos'}</span>
+                                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-2 font-medium">{(monthlyStats.savingsRate || 0) > 20 ? 'Excelente nivel' : (monthlyStats.savingsRate || 0) > 0 ? 'Ahorro positivo' : 'Vigila tus gastos'}</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -494,6 +494,7 @@ export default function SavingsDashboardUI({
                                                         tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
                                                         tickFormatter={(value) => `${value / 1000}k`}
                                                         dx={10}
+                                                        domain={['auto', 'auto']}
                                                     />
                                                     <Tooltip
                                                         contentStyle={{

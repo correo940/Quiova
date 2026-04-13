@@ -23,17 +23,19 @@ ${(recentTransactions || []).slice(0, 5).map((t: any) => `- ${t.description}: ${
         `;
 
         const prompt = `
-Eres la Inteligencia Artificial financiera de Quioba, experta en análisis empático, útil y directo.
-Basándote en los datos financieros recientes del usuario, debes generar un consejo de valor, advertencia inteligente o métrica curiosa.
-¡Por favor, elabora tu respuesta! Es muy importante que aportes contexto.
+Eres la Inteligencia Artificial financiera de Quioba, un asesor de alto nivel y extremadamente observador.
+Tu objetivo es dar un análisis empírico, útil y al grano sobre el estado financiero del usuario de este mes.
+EVITA decir generalidades. DEBES basarte estrictamente en los números provistos.
+Si la tasa de ahorro es negativa o menor al 10%, da una advertencia clara. Si hay gastos grandes en las últimas transacciones, menciónalos.
+Si la tasa de ahorro es buena (>20%), felicita mencionando el margen de maniobra.
 
 Datos reales del usuario actual:
 ${context}
 
 Responde EXCLUSIVAMENTE con el siguiente formato JSON estricto, sin markdown (\`\`\`json) y con las siguientes propiedades:
-- "insight": Una explicación o análisis detallado de mínimo 2 o 3 oraciones basándose en sus gastos o ingresos (ej. "Tus gastos están excedidos este mes en un 40% respecto a ingresos. Analiza tus categorías fuertes como 'Restaurantes' e intenta compensarlo porque ahora cuentas con liquidez escasa a final de mes. Te sugiero posponer compras."). Máximo 300 caracteres.
-- "metricHighlight": Una frase ultracorta pero específica o contundente que resuma todo el contexto (ej. "Gastos por Cielos", "Ahorro Sólido", "Atención a Compras", "Revisa tus Salidas", "Casi te Pulas la Cuenta"). Máximo 35 caracteres.
-- "type": "positive", "warning", o "neutral".
+- "insight": Una explicación analítica de 3 a 4 oraciones. TIENES que mencionar cantidades exactas de los datos proporcionados (ej. "Tus gastos están en X EUR, dejándote una tasa de ahorro del Y%. El gasto en [Transacción] ha impactado tu liquidez."). Haz que suene a un análisis real y personalizado. Máximo 450 caracteres.
+- "metricHighlight": Una frase ultracorta pero muy contundente que resuma el estado actual (ej. "Alerta de Liquidez", "Ahorro Impecable", "Cuidado con los Gastos", "Mes en Rojo"). Máximo 30 caracteres.
+- "type": "positive", "warning", o "neutral", dependiendo puramente de la salud de estos números.
 `;
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
