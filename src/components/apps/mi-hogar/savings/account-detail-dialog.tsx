@@ -577,7 +577,7 @@ export default function AccountDetailDialog({
                                 </div>
 
                                 {/* ── DERECHA: Selector de mes + KPIs ── */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 pr-10 lg:pr-12">
                                     {/* Selector de mes */}
                                     <div className="flex items-center justify-between">
                                         <button
