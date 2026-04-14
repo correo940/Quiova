@@ -106,6 +106,7 @@ interface AccountDetailDialogProps {
     onSyncBalance?: (accountId: string) => Promise<void>;
     onToggleIncludeInTotal: (checked: boolean) => Promise<void>;
     onNavigateToPassword?: () => void;
+    onUpdateBalance?: (accountId: string, newBalance: number) => Promise<void>;
 }
 
 const currencyFormatter = new Intl.NumberFormat('es-ES', {
@@ -144,7 +145,8 @@ export default function AccountDetailDialog({
     onDeleteAccount,
     onSyncBalance,
     onToggleIncludeInTotal,
-    onNavigateToPassword
+    onNavigateToPassword,
+    onUpdateBalance
 }: AccountDetailDialogProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'details'>('overview');
     const [transactionKind, setTransactionKind] = useState<TransactionKind>('deposit');
@@ -164,6 +166,8 @@ export default function AccountDetailDialog({
     const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
     const [exactMonthFilter, setExactMonthFilter] = useState('');
     const [exactDateFilter, setExactDateFilter] = useState('');
+    const [isEditingBalance, setIsEditingBalance] = useState(false);
+    const [manualBalanceValue, setManualBalanceValue] = useState('');
 
     useEffect(() => {
         if (!open) return;
@@ -291,6 +295,15 @@ export default function AccountDetailDialog({
             date: tx.date
         });
         setActiveTab('overview');
+    };
+
+    const handleManualBalanceSave = async () => {
+        const val = parseFloat(manualBalanceValue.replace(',', '.'));
+        if (isNaN(val)) return;
+        if (onUpdateBalance && account) {
+            await onUpdateBalance(account.id, val);
+            setIsEditingBalance(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -427,11 +440,51 @@ export default function AccountDetailDialog({
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <p className="text-[10px] uppercase tracking-[0.3em] text-white/45">Saldo actual</p>
-                                        <p className="text-xl font-black tracking-tight text-white sm:text-2xl">
-                                            {currencyFormatter.format(account.current_balance)}
+                                    <div className="group relative">
+                                        <p className="text-[10px] uppercase tracking-[0.3em] text-white/45 flex items-center gap-2">
+                                            Saldo actual
+                                            {onUpdateBalance && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setIsEditingBalance(!isEditingBalance);
+                                                        setManualBalanceValue(String(account.current_balance));
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                    title="Editar saldo manualmente"
+                                                >
+                                                    <Edit3 className="w-3 h-3 text-white/60" />
+                                                </button>
+                                            )}
+                                            {onSyncBalance && (
+                                                <button 
+                                                    onClick={() => onSyncBalance(account.id)}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                    title="Sincronizar con historial"
+                                                >
+                                                    <RefreshCw className="w-3 h-3 text-white/60" />
+                                                </button>
+                                            )}
                                         </p>
+                                        {isEditingBalance ? (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Input 
+                                                    className="h-8 w-32 bg-white/10 border-white/20 text-white font-bold"
+                                                    value={manualBalanceValue}
+                                                    onChange={(e) => setManualBalanceValue(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <Button size="sm" className="h-8 bg-emerald-500 hover:bg-emerald-600" onClick={handleManualBalanceSave}>
+                                                    <Save className="w-3 h-3" />
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-8 text-white/60 hover:text-white" onClick={() => setIsEditingBalance(false)}>
+                                                    X
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xl font-black tracking-tight text-white sm:text-2xl">
+                                                {currencyFormatter.format(account.current_balance)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 

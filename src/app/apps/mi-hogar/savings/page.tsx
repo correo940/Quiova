@@ -27,6 +27,7 @@ import {
     Wallet,
     Trash2,
     Save,
+    Repeat,
     FileUp,
     Settings,
     ChevronLeft,
@@ -624,6 +625,64 @@ export default function SavingsPage() {
         }
     };
 
+    const handleDeleteGoalTransaction = async (txId: string, amount: number) => {
+        if (!selectedGoal) return;
+        try {
+            const { error: txError } = await supabase
+                .from('savings_goal_transactions')
+                .delete()
+                .eq('id', txId);
+
+            if (txError) throw txError;
+
+            const newAmount = (selectedGoal.current_amount || 0) - amount;
+            const { error: gError } = await supabase
+                .from('savings_goals')
+                .update({ current_amount: newAmount })
+                .eq('id', selectedGoal.id);
+
+            if (gError) throw gError;
+
+            setSelectedGoal({ ...selectedGoal, current_amount: newAmount });
+            
+            // Re-fetch transactions
+            const { data: gtxs } = await supabase
+                .from('savings_goal_transactions')
+                .select('*')
+                .eq('goal_id', selectedGoal.id)
+                .order('date', { ascending: false });
+            setGoalTransactions(gtxs || []);
+            
+            fetchData(user?.id);
+            toast.success('Movimiento de meta eliminado');
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar movimiento de meta');
+        }
+    };
+
+    const handleSyncGoalBalance = async (goalId: string) => {
+        try {
+            const { data: gtxs } = await supabase
+                .from('savings_goal_transactions')
+                .select('amount')
+                .eq('goal_id', goalId);
+                
+            const trueSum = (gtxs || []).reduce((s, t) => s + t.amount, 0);
+            
+            await supabase.from('savings_goals').update({ current_amount: trueSum }).eq('id', goalId);
+            
+            toast.success('Meta sincronizada');
+            fetchData(user?.id);
+            if (selectedGoal?.id === goalId) {
+                setSelectedGoal(prev => prev ? { ...prev, current_amount: trueSum } : prev);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al sincronizar meta');
+        }
+    };
+
     const handleDeleteAccountTransaction = async (transactionId: string, amount: number) => {
         if (!selectedAccount) return;
 
@@ -708,6 +767,59 @@ export default function SavingsPage() {
         } catch (error) {
             console.error(error);
             toast.error('Error al sincronizar saldo');
+        }
+    };
+
+    const handleUpdateAccountBalance = async (accountId: string, newBalance: number) => {
+        try {
+            const { error: updateError } = await supabase
+                .from('savings_accounts')
+                .update({ current_balance: newBalance })
+                .eq('id', accountId);
+
+            if (updateError) throw updateError;
+            
+            toast.success('Saldo actualizado manualmente');
+            await fetchData(user?.id);
+            if (selectedAccount?.id === accountId) {
+                setSelectedAccount(prev => prev ? { ...prev, current_balance: newBalance } : prev);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar saldo');
+        }
+    };
+
+    const handleSyncAllBalances = async () => {
+        if (!user) return;
+        try {
+            toast.loading('Sincronizando todo...', { id: 'sync-all' });
+            
+            // 1. Sync Accounts
+            const { data: accs } = await supabase.from('savings_accounts').select('id').eq('user_id', user.id);
+            if (accs) {
+                for (const acc of accs) {
+                    const { data: txs } = await supabase.from('savings_account_transactions').select('amount').eq('account_id', acc.id);
+                    const sum = (txs || []).reduce((s, t) => s + t.amount, 0);
+                    await supabase.from('savings_accounts').update({ current_balance: sum }).eq('id', acc.id);
+                }
+            }
+
+            // 2. Sync Goals
+            const { data: metas } = await supabase.from('savings_goals').select('id').eq('user_id', user.id);
+            if (metas) {
+                for (const meta of metas) {
+                    const { data: gtxs } = await supabase.from('savings_goal_transactions').select('amount').eq('goal_id', meta.id);
+                    const sum = (gtxs || []).reduce((s, t) => s + t.amount, 0);
+                    await supabase.from('savings_goals').update({ current_amount: sum }).eq('id', meta.id);
+                }
+            }
+
+            toast.success('Todo sincronizado correctamente', { id: 'sync-all' });
+            fetchData(user.id);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error en la sincronización global', { id: 'sync-all' });
         }
     };
 
@@ -893,6 +1005,7 @@ export default function SavingsPage() {
                 userId={user?.id}
                 pendingTotal={pendingTotal}
                 onBalanceChange={() => fetchData(user?.id)}
+                onSyncAll={handleSyncAllBalances}
             />
 
             {/* --- BANK STATEMENT IMPORTER --- */}
@@ -1042,7 +1155,20 @@ export default function SavingsPage() {
                     <DialogHeader><DialogTitle>Detalle: {selectedGoal?.name}</DialogTitle></DialogHeader>
                     <div className="space-y-6 py-2">
                         <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg text-center relative">
-                            <p className="text-sm text-muted-foreground">Saldo Actual</p>
+                            <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                                Saldo Actual
+                                <button 
+                                    onClick={() => {
+                                        if(selectedGoal && window.confirm('¿Quieres sincronizar esta meta con sus movimientos?')) {
+                                            handleSyncGoalBalance(selectedGoal.id);
+                                        }
+                                    }}
+                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+                                    title="Sincronizar Meta"
+                                >
+                                    <Repeat className="w-3 h-3 text-slate-400" />
+                                </button>
+                            </p>
                             <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedGoal?.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
                             <p className="text-xs text-muted-foreground mt-1">Meta: {selectedGoal?.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
                             {selectedGoal?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedGoal.interest_rate}% Interés</div> : null}
@@ -1067,7 +1193,19 @@ export default function SavingsPage() {
                                 goalTransactions.map(tx => (
                                     <div key={tx.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                         <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
-                                        <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
+                                            <button 
+                                                onClick={() => {
+                                                    if(window.confirm('¿Eliminar este movimiento de la meta?')) {
+                                                        handleDeleteGoalTransaction(tx.id, tx.amount);
+                                                    }
+                                                }} 
+                                                className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             }
@@ -1087,6 +1225,7 @@ export default function SavingsPage() {
                 onDeleteTransactions={handleDeleteAccountTransactions}
                 onDeleteAccount={handleDeleteAccount}
                 onSyncBalance={handleSyncAccountBalance}
+                onUpdateBalance={handleUpdateAccountBalance}
                 onToggleIncludeInTotal={handleToggleAccountInTotal}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
             />

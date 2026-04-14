@@ -116,6 +116,7 @@ interface SavingsDashboardUIProps {
     pendingTotal?: number;
     onResetData?: () => Promise<void>;
     selectedMonth?: Date;
+    onSyncAll?: () => Promise<void>;
 }
 
 export default function SavingsDashboardUI({
@@ -137,7 +138,8 @@ export default function SavingsDashboardUI({
     userId,
     onBalanceChange,
     pendingTotal = 0,
-    selectedMonth = new Date()
+    selectedMonth = new Date(),
+    onSyncAll
 }: SavingsDashboardUIProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'goals' | 'recurring' | 'pending'>('overview');
 
@@ -265,6 +267,19 @@ export default function SavingsDashboardUI({
                                 <Wallet className="w-4 h-4" />
                             </div>
                             <span className="text-sm font-medium tracking-wide uppercase">Balance Total</span>
+                            {onSyncAll && (
+                                <button 
+                                    onClick={() => {
+                                        if(window.confirm('¿Re-sincronizar todos los saldos con el historial?')) {
+                                            onSyncAll();
+                                        }
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-full transition-colors ml-1"
+                                    title="Sincronizar todo"
+                                >
+                                    <Repeat className="w-3 h-3 text-emerald-100/60" />
+                                </button>
+                            )}
                         </div>
                         <div className="space-y-1">
                             <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white drop-shadow-sm">
