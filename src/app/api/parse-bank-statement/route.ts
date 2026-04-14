@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
 
     if (fileName.endsWith('.pdf')) {
       const PDFParser = (await import('pdf2json')).default;
-      const pdfParser = new PDFParser(null, 1); // 1 = raw text mode
+      // Using "as any" to bypass recent TypeScript definition updates in pdf2json
+      const pdfParser = new (PDFParser as any)(null, 1); // 1 = raw text mode
       
       extractedText = await new Promise<string>((resolve, reject) => {
         pdfParser.on("pdfParser_dataError", (errData: any) => reject(new Error(errData.parserError)));
