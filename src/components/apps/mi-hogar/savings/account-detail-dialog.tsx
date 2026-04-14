@@ -390,7 +390,7 @@ export default function AccountDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden border-none bg-transparent p-0 shadow-none">
+            <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:right-6 [&>button]:top-6 [&>button]:text-white [&>button]:opacity-60 [&>button]:bg-white/10 [&>button]:p-2 [&>button]:rounded-full hover:[&>button]:opacity-100 hover:[&>button]:bg-white/20 [&>button]:transition-all">
                 <Tabs
                     value={activeTab}
                     onValueChange={(value) => setActiveTab(value as 'overview' | 'transactions' | 'details')}
