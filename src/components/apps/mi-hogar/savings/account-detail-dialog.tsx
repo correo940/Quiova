@@ -35,7 +35,8 @@ import {
     Sparkles,
     Trash2,
     Wallet,
-    RefreshCw
+    RefreshCw,
+    X
 } from 'lucide-react';
 import {
     Dialog,
@@ -390,7 +391,7 @@ export default function AccountDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:right-6 [&>button]:top-6 [&>button]:text-white [&>button]:opacity-60 [&>button]:bg-white/10 [&>button]:p-2 [&>button]:rounded-full hover:[&>button]:opacity-100 hover:[&>button]:bg-white/20 [&>button]:transition-all">
+            <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
                 <Tabs
                     value={activeTab}
                     onValueChange={(value) => setActiveTab(value as 'overview' | 'transactions' | 'details')}
@@ -405,7 +406,14 @@ export default function AccountDetailDialog({
                     >
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_24%)] opacity-90" />
 
-                        <DialogHeader className="relative z-10 space-y-0 text-left">
+                        <DialogHeader className="relative z-10 space-y-0 text-left pt-2">
+                            <button 
+                                onClick={() => onOpenChange(false)}
+                                className="absolute right-0 top-0 z-50 -mt-2 -mr-2 rounded-full bg-white/10 p-2 text-white/50 backdrop-blur-md transition-all hover:bg-white/20 hover:text-white"
+                                aria-label="Cerrar"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
                             <div className="grid gap-2 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
 
                                 {/* ── IZQUIERDA: Info de la cuenta ── */}
