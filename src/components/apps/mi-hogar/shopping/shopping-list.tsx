@@ -28,6 +28,8 @@ type ShoppingItem = {
 
 export default function ShoppingList() {
     const [items, setItems] = useState<ShoppingItem[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
     const [newItemName, setNewItemName] = useState('');
     const [loading, setLoading] = useState(true);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -311,6 +313,16 @@ export default function ShoppingList() {
         const newStatus = item.status === 'to_buy' ? 'in_stock' : 'to_buy';
         const isChecked = newStatus === 'in_stock';
 
+        // 1. Optimistic Update Local
+        const originalItems = [...items];
+        setItems(items.map(i => {
+            if (i.id === id) {
+                return { ...i, status: newStatus };
+            }
+            return i;
+        }));
+
+        // 2. Fetch en Background
         try {
             const { error } = await supabase
                 .from('shopping_items')
@@ -318,18 +330,12 @@ export default function ShoppingList() {
                 .eq('id', id);
 
             if (error) throw error;
-
-            setItems(items.map(i => {
-                if (i.id === id) {
-                    return { ...i, status: newStatus };
-                }
-                return i;
-            }));
-
-            toast.success(newStatus === 'to_buy' ? '¡Añadido a la lista!' : '¡Comprado!');
+            // Opcional: toast.success(newStatus === 'to_buy' ? '¡Añadido a la lista!' : '¡Comprado!');
         } catch (error) {
             console.error('Error updating item:', error);
-            toast.error('Error al actualizar el estado');
+            // 3. Rollback en caso de fallo
+            setItems(originalItems);
+            toast.error('Error al actualizar el estado de red');
         }
     };
 
@@ -350,8 +356,21 @@ export default function ShoppingList() {
         }
     };
 
-    const toBuyItems = items.filter(i => i.status === 'to_buy');
-    const inStockItems = items.filter(i => i.status === 'in_stock');
+    const filteredItems = React.useMemo(() => {
+        return items.filter(item => {
+            const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchCategory = !categoryFilter || item.category === categoryFilter;
+            return matchSearch && matchCategory;
+        });
+    }, [items, searchTerm, categoryFilter]);
+
+    const categories = React.useMemo(() => 
+        [...new Set(items.map(i => i.category).filter(Boolean))],
+        [items]
+    );
+
+    const toBuyItems = filteredItems.filter(i => i.status === 'to_buy');
+    const inStockItems = filteredItems.filter(i => i.status === 'in_stock');
 
     const getSupermarketBadgeColor = (supermarket?: string) => {
         if (!supermarket) return "bg-gray-100 text-gray-800";
@@ -503,6 +522,46 @@ export default function ShoppingList() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <div className="flex gap-2 mb-3 mt-4">
+                <Input
+                    placeholder="Buscar producto en tus listas..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="flex-1 bg-background"
+                />
+                {searchTerm && (
+                    <Button variant="ghost" size="icon" onClick={() => setSearchTerm('')}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+
+            {categories.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-4">
+                    <button
+                        onClick={() => setCategoryFilter(null)}
+                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${!categoryFilter ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    >
+                        Todas
+                    </button>
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategoryFilter(prev => prev === cat ? null : cat)}
+                            className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryFilter === cat ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {(searchTerm || categoryFilter) && (
+                <p className="text-xs text-muted-foreground mb-3 font-medium">
+                    {filteredItems.length} resultados encontrados
+                </p>
+            )}
 
             <Tabs defaultValue="list" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
