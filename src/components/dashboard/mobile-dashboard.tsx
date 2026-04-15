@@ -6,6 +6,7 @@ import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
 import PostItQuotes from '@/components/post-it-quotes';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 /**
  * Dashboard optimizado para dispositivos móviles (iOS y Android)
@@ -14,6 +15,7 @@ import PostItQuotes from '@/components/post-it-quotes';
 export default function MobileDashboard() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const { user } = useAuth(); // ✅ user del AuthProvider global
 
     // Simulación de pull-to-refresh (podría integrarse con Capacitor plugin)
     const handleRefresh = async () => {
@@ -77,6 +79,7 @@ export default function MobileDashboard() {
                             <CalendarWidget
                                 date={selectedDate}
                                 onDateSelect={setSelectedDate}
+                                user={user}
                             />
                         </div>
                     </div>
@@ -92,7 +95,7 @@ export default function MobileDashboard() {
                             </h2>
                         </div>
                         <div className="max-h-[400px] overflow-y-auto">
-                            <OrganizerWidget selectedDate={selectedDate} />
+                            <OrganizerWidget selectedDate={selectedDate} user={user} />
                         </div>
                     </div>
                 </div>
