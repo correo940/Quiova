@@ -203,7 +203,7 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
 
     useEffect(() => {
         fetchData();
-    }, [selectedDate]);
+    }, [selectedDate, user]); // ✅ re-ejecutar cuando user cambia de null → User
 
     // Subscribe to changes
     useEffect(() => {
@@ -218,7 +218,7 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [selectedDate]);
+    }, [selectedDate, user]); // ✅ re-suscribir con el user correcto
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         const { error } = await supabase

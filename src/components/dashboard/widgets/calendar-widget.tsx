@@ -82,7 +82,7 @@ export default function CalendarWidget({ date, onDateSelect, user }: CalendarWid
             window.removeEventListener('quioba-calendar-refresh', handleExternalRefresh);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, []);
+    }, [user, date]); // ✅ re-ejecutar cuando user cambia de null → User
 
     useEffect(() => {
         if (date) {
