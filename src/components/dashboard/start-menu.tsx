@@ -13,6 +13,7 @@ import JournalPanel from '@/components/journal/journal-panel';
 import { useJournal } from '@/context/JournalContext';
 import BrowserWidget from '@/components/journal/browser-widget';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import PurchaseDialog from '@/components/mobile/purchase-dialog';
 import { MarketplaceApp } from '@/types/marketplace';
 
@@ -51,7 +52,8 @@ export default function StartMenu() {
     const { isStartMenuOpen, closeStartMenu } = useGlobalMenu();
     const [activeView, setActiveView] = useState<'menu' | 'apps'>('menu');
     const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen } = useJournal();
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
+    const [userProfile, setUserProfile] = useState<any>(null);
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
     const [mounted, setMounted] = useState(false);
@@ -158,49 +160,45 @@ export default function StartMenu() {
 
     useEffect(() => {
         setMounted(true);
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchCounts(session.user.id);
-                fetchMarketplace(session.user.id);
-                supabase.from('profiles').select('custom_avatar_url').eq('id', session.user.id).single()
-                    .then(({ data }) => {
-                        if (data) {
-                            setUser((prev: any) => ({
-                                ...prev,
-                                profile: data
-                            }));
-                        }
+    }, []);
+
+    useEffect(() => {
+        if (!user) {
+            setShoppingCount(0);
+            setTaskCount(0);
+            setUserProfile(null);
+            return;
+        }
+
+        fetchCounts(user.id);
+        fetchMarketplace(user.id);
+        
+        supabase.from('profiles').select('custom_avatar_url, nickname').eq('id', user.id).single()
+            .then(({ data }) => {
+                if (data) {
+                    setUserProfile({
+                        ...user,
+                        profile: data
                     });
-            }
-        });
+                } else {
+                    setUserProfile(user);
+                }
+            });
 
         const channel = supabase
-            .channel('dashboard_badges')
+            .channel('dashboard_badges_start')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-                if (user) fetchCounts(user.id);
+                fetchCounts(user.id);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items' }, () => {
-                if (user) fetchCounts(user.id);
+                fetchCounts(user.id);
             })
             .subscribe();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchCounts(session.user.id);
-                fetchMarketplace(session.user.id);
-            } else {
-                setShoppingCount(0);
-                setTaskCount(0);
-            }
-        });
-
         return () => {
-            subscription.unsubscribe();
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [user]);
 
     const fetchCounts = async (userId: string) => {
         const { count: sCount } = await supabase
@@ -273,7 +271,7 @@ export default function StartMenu() {
                                     <Link href="/profile" onClick={closeStartMenu}>
                                         <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 ring-2 ring-white/20 hover:scale-105 transition-transform cursor-pointer">
                                             <img
-                                                src={user.profile?.custom_avatar_url || user.user_metadata?.avatar_url || "/images/logo.png"}
+                                                src={userProfile?.profile?.custom_avatar_url || userProfile?.user_metadata?.avatar_url || "/images/logo.png"}
                                                 alt="User"
                                                 className="w-full h-full object-cover"
                                             />
@@ -281,7 +279,7 @@ export default function StartMenu() {
                                     </Link>
                                     <div>
                                         <h3 className="font-bold text-sm">Mi Quioba</h3>
-                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{user.profile?.nickname || user.email}</p>
+                                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{userProfile?.profile?.nickname || userProfile?.email}</p>
                                     </div>
                                 </div>
                                 {activeView === 'apps' && (

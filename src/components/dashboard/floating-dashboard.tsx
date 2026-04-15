@@ -12,12 +12,13 @@ import { toast } from 'sonner';
 import JournalPanel from '@/components/journal/journal-panel';
 import { useJournal } from '@/context/JournalContext';
 import BrowserWidget from '@/components/journal/browser-widget';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 export default function FloatingDashboard() {
     const [isOpen, setIsOpen] = useState(false);
     const [activeView, setActiveView] = useState<'menu' | 'apps'>('menu');
     const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen, width } = useJournal();
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
@@ -52,41 +53,32 @@ export default function FloatingDashboard() {
 
     useEffect(() => {
         setMounted(true);
-        // Check initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchCounts(session.user.id);
-            }
-        });
+    }, []);
+
+    useEffect(() => {
+        if (!user) {
+            setShoppingCount(0);
+            setTaskCount(0);
+            return;
+        }
+
+        fetchCounts(user.id);
 
         // Set up real-time subscription for immediate updates
         const channel = supabase
             .channel('dashboard_badges')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-                if (user) fetchCounts(user.id);
+                fetchCounts(user.id);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items' }, () => {
-                if (user) fetchCounts(user.id);
+                fetchCounts(user.id);
             })
             .subscribe();
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchCounts(session.user.id);
-            } else {
-                setShoppingCount(0);
-                setTaskCount(0);
-            }
-        });
-
         return () => {
-            subscription.unsubscribe();
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [user]);
 
     const fetchCounts = async (userId: string) => {
         // Shopping Count
