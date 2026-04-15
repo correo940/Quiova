@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { addMonths, format, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -21,9 +22,10 @@ import { supabase } from '@/lib/supabase';
 interface CalendarWidgetProps {
     date: Date | undefined;
     onDateSelect: (date: Date | undefined) => void;
+    user: User | null; // ✅ recibido del padre, sin llamadas extra a Supabase
 }
 
-export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetProps) {
+export default function CalendarWidget({ date, onDateSelect, user }: CalendarWidgetProps) {
     const [taskDates, setTaskDates] = useState<Date[]>([]);
     const [journalDates, setJournalDates] = useState<Date[]>([]);
     const [shiftDates, setShiftDates] = useState<Date[]>([]);
@@ -32,15 +34,13 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
 
     useEffect(() => {
         const fetchCalendarData = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            if (!session?.user) return;
+            // ✅ Usar el user recibido como prop — sin llamadas extra a Supabase
+            if (!user) return;
 
             const { data: tasks } = await supabase
                 .from('tasks')
                 .select('due_date')
-                .eq('user_id', session.user.id)
+                .eq('user_id', user.id)
                 .eq('is_completed', false)
                 .not('due_date', 'is', null);
             if (tasks) setTaskDates(tasks.map((task: any) => new Date(task.due_date)));
@@ -48,13 +48,13 @@ export default function CalendarWidget({ date, onDateSelect }: CalendarWidgetPro
             const { data: entries } = await supabase
                 .from('journal_entries')
                 .select('updated_at')
-                .eq('user_id', session.user.id);
+                .eq('user_id', user.id);
             if (entries) setJournalDates(entries.map((entry: any) => new Date(entry.updated_at)));
 
             const { data: shifts } = await supabase
                 .from('work_shifts')
                 .select('start_time')
-                .eq('user_id', session.user.id);
+                .eq('user_id', user.id);
             if (shifts) setShiftDates(shifts.map((shift: any) => new Date(shift.start_time)));
         };
 

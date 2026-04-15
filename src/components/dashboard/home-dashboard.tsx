@@ -4,18 +4,17 @@ import React, { useState } from 'react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Button } from '@/components/ui/button';
-import { Bell } from 'lucide-react';
-import { toast } from 'sonner';
 import { usePlatform } from '@/hooks/use-platform';
 import MobileDashboard from './mobile-dashboard';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 export default function HomeDashboard() {
     // Hooks SIEMPRE deben estar al principio, antes de cualquier return condicional
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const platformInfo = usePlatform();
     const { isMobile } = platformInfo;
+    // ✅ Leer el user UNA sola vez desde el AuthProvider global
+    const { user } = useAuth();
 
     // Si es móvil (iOS o Android), mostrar el dashboard móvil
     if (isMobile) {
@@ -38,12 +37,12 @@ export default function HomeDashboard() {
 
                     {/* Columna 1: Calendario (Izquierda) */}
                     <div className="lg:col-span-4 flex flex-col gap-4 h-full">
-                        <CalendarWidget date={selectedDate} onDateSelect={setSelectedDate} />
+                        <CalendarWidget date={selectedDate} onDateSelect={setSelectedDate} user={user} />
                     </div>
 
                     {/* Columna 2: Organizador (Centro y Derecha) */}
                     <div className="lg:col-span-8 flex flex-col h-full min-h-0">
-                        <OrganizerWidget selectedDate={selectedDate} />
+                        <OrganizerWidget selectedDate={selectedDate} user={user} />
                     </div>
                 </div>
             </div>

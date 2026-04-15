@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
@@ -41,9 +42,10 @@ type SmartBlock = {
 
 interface OrganizerWidgetProps {
     selectedDate: Date | undefined;
+    user: User | null; // ✅ recibido del padre, sin llamadas extra a Supabase
 }
 
-export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) {
+export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
     const [shifts, setShifts] = useState<any[]>([]);
@@ -55,8 +57,11 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
 
     const fetchData = async () => {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
+        // ✅ Usar el user recibido como prop — sin llamadas extra a Supabase
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         // --- Fetch Smart Schedule Blocks ---
         const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
@@ -70,7 +75,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         const { data: fixedData } = await supabase
             .from('smart_scheduler_fixed_blocks')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .eq('day_of_week', englishDay);
 
         // 2. Generated Blocks for this specific date
@@ -80,7 +85,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
                 *,
                 activity:smart_scheduler_activities(name, description)
             `)
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .eq('date', dateStr);
 
         // Combine and sort
@@ -115,7 +120,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         let taskQuery = supabase
             .from('tasks')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .eq('is_completed', false)
             .order('due_date', { ascending: true });
 
@@ -139,7 +144,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         let journalQuery = supabase
             .from('journal_entries')
             .select('*, tags')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .order('updated_at', { ascending: false });
 
         if (selectedDate) {
@@ -173,7 +178,7 @@ export default function OrganizerWidget({ selectedDate }: OrganizerWidgetProps) 
         let shiftQuery = supabase
             .from('work_shifts')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .order('start_time', { ascending: true });
 
         if (selectedDate) {
