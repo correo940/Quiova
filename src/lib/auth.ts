@@ -28,33 +28,43 @@ export const authOptions: NextAuthOptions = {
         signIn: "/admin/login",
         error: "/admin/error",
     },
-    callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
-                token.user = user;
-            }
-            return token;
-        },
-        async session({ session, token }) {
-            if (token?.user) {
-                session.user = token.user;
-            }
-            return session;
-        },
-    },
+    // ✅ Sesión con duración de 8 horas y refresco automático cada hora
     session: {
         strategy: "jwt",
-        maxAge: 30 * 60, // 30 minutes fallback
+        maxAge: 60 * 60 * 8,    // 8 horas
+        updateAge: 60 * 60,      // refresca el token cada 1 hora
     },
+    // ✅ JWT con el mismo maxAge que la sesión
+    jwt: {
+        maxAge: 60 * 60 * 8,    // debe coincidir con session.maxAge
+    },
+    // ✅ Cookie segura y bien configurada
     cookies: {
         sessionToken: {
             name: `next-auth.session-token`,
             options: {
                 httpOnly: true,
-                sameSite: 'lax',
-                path: '/',
-                secure: process.env.NODE_ENV === 'production',
+                sameSite: "lax",
+                path: "/",
+                secure: process.env.NODE_ENV === "production",
             },
+        },
+    },
+    // ✅ Callbacks correctos para que token.id fluya a la sesión
+    callbacks: {
+        async jwt({ token, user }) {
+            // Solo en el primer login: guarda el id en el token
+            if (user) {
+                token.id = user.id;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            // Pasa el id del token a la sesión
+            if (token && session.user) {
+                (session.user as typeof session.user & { id: string }).id = token.id as string;
+            }
+            return session;
         },
     },
 };
