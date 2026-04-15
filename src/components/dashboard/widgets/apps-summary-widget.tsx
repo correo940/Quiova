@@ -210,7 +210,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
         };
 
         fetchStats();
-    }, [selectedDate]);
+    }, [selectedDate, user]); // ✅ re-ejecutar cuando user cambia de null → User
 
     // Build display value for each key
     const getItemValue = useCallback((key: string): string => {
