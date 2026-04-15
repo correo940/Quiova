@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
@@ -58,7 +59,7 @@ function saveOrder(userId: string, keys: string[]) {
     } catch { }
 }
 
-export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Date }) {
+export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate?: Date; user: User | null }) {
     const [stats, setStats] = useState({
         shoppingCount: 0,
         taskCount: 0,
@@ -78,7 +79,6 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
     const [loading, setLoading] = useState(true);
     const [userProfile, setUserProfile] = useState<any>(null);
     const [orderedKeys, setOrderedKeys] = useState<string[]>(DEFAULT_ITEMS_CONFIG.map(i => i.key));
-    const [userId, setUserId] = useState<string | null>(null);
 
     // Drag state
     const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -92,10 +92,11 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
         const fetchStats = async () => {
             try {
                 setLoading(true);
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                setUserId(user.id);
+                // ✅ Usar el user recibido como prop — sin llamadas extra a Supabase
+                if (!user) {
+                    setLoading(false);
+                    return;
+                }
 
                 // Load saved order
                 const savedOrder = loadSavedOrder(user.id);
@@ -315,7 +316,7 @@ export default function AppsSummaryWidget({ selectedDate }: { selectedDate?: Dat
         newOrder.splice(toIndex, 0, draggedKey);
 
         setOrderedKeys(newOrder);
-        if (userId) saveOrder(userId, newOrder);
+        if (user) saveOrder(user.id, newOrder);
 
         setDraggedKey(null);
         setDragOverKey(null);

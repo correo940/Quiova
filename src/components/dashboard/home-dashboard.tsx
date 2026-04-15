@@ -29,7 +29,7 @@ export default function HomeDashboard() {
             <div className="flex flex-col gap-4 flex-1 min-h-0">
                 {/* Fila Superior: Resumen General */}
                 <div className="w-full shrink-0">
-                    <AppsSummaryWidget selectedDate={selectedDate} />
+                    <AppsSummaryWidget selectedDate={selectedDate} user={user} />
                 </div>
 
                 {/* Grid Principal: 3 Columnas en pantallas grandes */}

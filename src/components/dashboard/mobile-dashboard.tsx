@@ -63,7 +63,7 @@ export default function MobileDashboard() {
 
                 {/* 1. Apps Summary - Horizontal Scroll Cards */}
                 <div className="px-4 pt-4">
-                    <AppsSummaryWidget selectedDate={selectedDate} />
+                    <AppsSummaryWidget selectedDate={selectedDate} user={user} />
                 </div>
 
                 {/* 2. Calendar Widget - Compacto */}
