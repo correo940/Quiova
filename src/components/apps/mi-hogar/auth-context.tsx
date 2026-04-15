@@ -1,10 +1,8 @@
 'use client'
-
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { getValidatedSession } from '@/lib/supabase-session'
 import { ensureCompatibleBrowserStorage } from '@/lib/browser-storage-version'
 
 type AuthContextType = {
@@ -31,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .select('is_premium, subscription_tier')
                 .eq('id', userId)
                 .single()
-
             if (data && !error) {
                 setIsPremium(data.is_premium || data.subscription_tier === 'premium')
             }
@@ -41,118 +38,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
-        // Safety timeout — never stay loading more than 5 seconds
-        const safetyTimer = setTimeout(() => {
-            setLoading(false)
-        }, 5000)
+        ensureCompatibleBrowserStorage()
 
-        // Initial session check
-        const initAuth = async () => {
-            console.log('[AuthProvider] initAuth: starting...')
-            ensureCompatibleBrowserStorage()
-            try {
-                console.log('[AuthProvider] initAuth: calling getValidatedSession...')
-                const { session: localSession, user: localUser } = await getValidatedSession()
-                console.log('[AuthProvider] initAuth: session=', !!localSession, 'user=', !!localUser)
+        // ✅ FIX 1: Dejar que Supabase gestione todo via onAuthStateChange
+        // No llamar a getValidatedSession() manualmente — Supabase ya emite
+        // INITIAL_SESSION al montar, que es más fiable que leer caché manual.
+        const safetyTimer = setTimeout(() => setLoading(false), 5000)
 
-                if (localSession) {
-                    // Validate the cached session is still usable by probing
-                    // the token refresh. If the refresh token is dead the SDK
-                    // throws or returns null — in that case clean up.
-                    try {
-                        const { data, error } = await Promise.race([
-                            supabase.auth.getUser(),
-                            new Promise<{ data: null; error: Error }>((resolve) =>
-                                setTimeout(() => resolve({ data: null, error: new Error('Auth validation timeout') }), 4000)
-                            ),
-                        ])
-                        if (error || !data?.user) {
-                            console.warn('[AuthProvider] initAuth: cached session invalid, signing out', error?.message)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, newSession) => {
+                console.log('[AuthProvider] onAuthStateChange:', event, 'session=', !!newSession)
+
+                // ✅ FIX 2: Manejar INITIAL_SESSION explícitamente
+                if (event === 'INITIAL_SESSION') {
+                    if (newSession) {
+                        // Validar que el token del servidor sigue siendo válido
+                        const { error } = await supabase.auth.getUser()
+                        if (error) {
+                            console.warn('[AuthProvider] INITIAL_SESSION inválida, cerrando sesión')
                             await supabase.auth.signOut({ scope: 'local' })
                             setSession(null)
                             setUser(null)
                             setIsPremium(false)
-                            return
+                        } else {
+                            setSession(newSession)
+                            setUser(newSession.user)
+                            await checkPremiumStatus(newSession.user.id)
                         }
-                    } catch {
-                        console.warn('[AuthProvider] initAuth: session validation failed, signing out')
-                        await supabase.auth.signOut({ scope: 'local' })
+                    } else {
                         setSession(null)
                         setUser(null)
-                        setIsPremium(false)
-                        return
                     }
+                    clearTimeout(safetyTimer)
+                    setLoading(false)
+                    return
+                }
 
-                    setSession(localSession)
-                    setUser(localUser ?? null)
-                    if (localUser) {
-                        console.log('[AuthProvider] initAuth: checking premium for', localUser.id)
-                        await checkPremiumStatus(localUser.id)
-                    }
-                } else {
+                if (event === 'SIGNED_OUT') {
                     setSession(null)
                     setUser(null)
+                    setIsPremium(false)
+                    setLoading(false)
+                    return
                 }
-            } catch (error) {
-                console.error('[AuthProvider] initAuth: ERROR', error)
-                // If anything blows up, ensure we clear corrupted state
-                try { await supabase.auth.signOut({ scope: 'local' }) } catch { /* ignore */ }
-                setSession(null)
-                setUser(null)
-                setIsPremium(false)
-            } finally {
-                console.log('[AuthProvider] initAuth: setting loading=false')
-                setLoading(false)
-                clearTimeout(safetyTimer)
+
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    setSession(newSession)
+                    setUser(newSession?.user ?? null)
+                    if (newSession?.user) {
+                        await checkPremiumStatus(newSession.user.id)
+                    }
+                    setLoading(false)
+                    return
+                }
             }
-        }
+        )
 
-        initAuth()
-
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            console.log('[AuthProvider] onAuthStateChange:', _event, 'session=', !!session)
-
-            // If the SDK fires SIGNED_OUT or TOKEN_REFRESHED with no session,
-            // the refresh token was rejected — clean up immediately.
-            if (_event === 'SIGNED_OUT' || (_event === 'TOKEN_REFRESHED' && !session)) {
-                setSession(null)
-                setUser(null)
-                setIsPremium(false)
-                setLoading(false)
-                return
-            }
-
-            setSession(session)
-            setUser(session?.user ?? null)
-
-            if (session?.user) {
-                await checkPremiumStatus(session.user.id)
+        // ✅ FIX 3: Al volver visible, pedir refresco activo en vez de solo startAutoRefresh
+        const handleVisibility = async () => {
+            if (document.visibilityState === 'visible') {
+                // Forzar refresco real del token al volver
+                const { data, error } = await supabase.auth.getSession()
+                if (error || !data.session) {
+                    await supabase.auth.signOut({ scope: 'local' })
+                    setSession(null)
+                    setUser(null)
+                    setIsPremium(false)
+                    router.push('/apps/mi-hogar/login')
+                }
+                supabase.auth.startAutoRefresh()
             } else {
-                setIsPremium(false)
-            }
-
-            setLoading(false)
-        })
-
-        // ─── PAGE VISIBILITY FIX ────────────────────────────────────────────
-        // When the tab returns from background the JWT may have expired.
-        // Use the SDK's own start/stop auto-refresh to silently renew it
-        // without forcing new state objects that would remount children.
-        const handleVisibility = () => {
-            try {
-                if (document.visibilityState === 'visible') {
-                    supabase.auth.startAutoRefresh()
-                } else {
-                    supabase.auth.stopAutoRefresh()
-                }
-            } catch (e) {
-                console.warn('[AuthProvider] visibility handler error:', e)
+                // ✅ NO parar el autorefresh al ocultar — dejarlo correr
+                // stopAutoRefresh() causaba que el token muriera al cerrar
             }
         }
+
         document.addEventListener('visibilitychange', handleVisibility)
-        // ────────────────────────────────────────────────────────────────────
 
         return () => {
             subscription.unsubscribe()
