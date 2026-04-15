@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, Crown, Clock, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-// import { useAuth } from '@/components/apps/mi-hogar/auth-context'; // Removed dependency
+import { useAuth } from '@/components/apps/mi-hogar/auth-context'; 
 import { usePostItSettings } from '@/context/PostItSettingsContext';
 import { usePathname } from 'next/navigation';
 import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
@@ -27,40 +27,22 @@ type AdminPostIt = {
 export default function SystemPostIts() {
     const [postIts, setPostIts] = useState<AdminPostIt[]>([]);
     const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-    // const { user, isPremium, loading: authLoading } = useAuth(); // REMOVED (Not inside AuthProvider)
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
     const [isPremium, setIsPremium] = useState(false);
 
     const { isVisible, allowedPaths, visibilityMode, position, layout, opacity } = usePostItSettings();
     const pathname = usePathname();
 
     useEffect(() => {
-        // Init Session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                setUser(session.user);
-                checkPremiumAndFetch(session.user.id);
-            } else {
-                setUser(null);
-                setIsPremium(false);
-                fetchPostIts();
-            }
-        });
+        if (!user) {
+            setIsPremium(false);
+            setDismissedIds(new Set()); // Reset dismissed items
+            fetchPostIts(); // Fetch public post-its
+            return;
+        }
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session?.user) {
-                setUser(session.user);
-                checkPremiumAndFetch(session.user.id);
-            } else {
-                setUser(null);
-                setIsPremium(false);
-                setDismissedIds(new Set()); // Reset dismissed items
-                fetchPostIts(); // Fetch public post-its
-            }
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
+        checkPremiumAndFetch(user.id);
+    }, [user]);
 
     const checkPremiumAndFetch = async (userId: string) => {
         // Fetch Premium Status

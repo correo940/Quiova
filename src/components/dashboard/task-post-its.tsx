@@ -8,6 +8,7 @@ import { format, differenceInCalendarDays, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter, usePathname } from 'next/navigation';
 import { usePostItSettings } from '@/context/PostItSettingsContext';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type Task = {
     id: string;
@@ -20,7 +21,7 @@ type Task = {
 export default function TaskPostIts() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [hiddenTaskIds, setHiddenTaskIds] = useState<Set<string>>(new Set());
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const { isVisible, colors, snoozeDuration, position, opacity, layout, visibilityMode, allowedPaths, daysToHideAfterExpiration } = usePostItSettings();
@@ -30,22 +31,12 @@ export default function TaskPostIts() {
 
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            if (session?.user) fetchTasks(session.user.id);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchTasks(session.user.id);
-            } else {
-                setTasks([]);
-            }
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
+        if (!user) {
+            setTasks([]);
+            return;
+        }
+        fetchTasks(user.id);
+    }, [user]);
 
     const fetchTasks = async (userId: string) => {
         const { data, error } = await supabase

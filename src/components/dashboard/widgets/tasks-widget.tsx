@@ -9,6 +9,7 @@ import { CheckCircle2, Circle, Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 type Task = {
     id: string;
@@ -25,15 +26,15 @@ interface TasksWidgetProps {
 export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     const fetchTasks = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
+        if (!user) return;
 
         let query = supabase
             .from('tasks')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .eq('is_completed', false)
             .order('due_date', { ascending: true });
 
@@ -61,10 +62,12 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
     };
 
     useEffect(() => {
+        if (!user) return;
         fetchTasks();
-    }, [selectedDate]); // Refetch when date changes
+    }, [selectedDate, user]); // Refetch when date changes
 
     useEffect(() => {
+        if (!user) return;
         fetchTasks();
 
         // Subscribe to changes
@@ -78,7 +81,7 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [user]);
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         const { error } = await supabase
