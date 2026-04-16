@@ -159,7 +159,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                 try { const { data } = await supabase.from('expenses').select('amount').is('folder_id', null); expCount = data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0; } catch (e) { }
                 try { const { count } = await supabase.from('warranties').select('*', { count: 'exact', head: true }).eq('user_id', user.id); wCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', user.id); rCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('instruction_manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }).eq('user_id', user.id); passCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('insurances').select('*', { count: 'exact', head: true }).eq('user_id', user.id); iCount = count || 0; } catch (e) { }
 
