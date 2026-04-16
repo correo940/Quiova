@@ -86,7 +86,7 @@ export default function LoginPage() {
                         setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
                     ),
                 ])
-                const { error } = result
+                console.log('[LOGIN] result:', JSON.stringify(result)); const { error } = result
                 if (error) throw error
 
                 router.replace('/')
