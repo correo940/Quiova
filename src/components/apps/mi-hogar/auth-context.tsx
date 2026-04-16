@@ -52,25 +52,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // ✅ FIX 2: Manejar INITIAL_SESSION explícitamente
                 if (event === 'INITIAL_SESSION') {
                     if (newSession) {
-                        // Validar que el token del servidor sigue siendo válido
-                        const { error } = await supabase.auth.getUser()
-                        if (error) {
-                            console.warn('[AuthProvider] INITIAL_SESSION inválida, cerrando sesión')
-                            await supabase.auth.signOut({ scope: 'local' })
-                            setSession(null)
-                            setUser(null)
-                            setIsPremium(false)
-                        } else {
-                            setSession(newSession)
-                            setUser(newSession.user)
-                            await checkPremiumStatus(newSession.user.id)
-                        }
+                        // NO AWAIT aquí para evitar deadlock del cliente de Supabase
+                        ;(async () => {
+                            const { error } = await supabase.auth.getUser()
+                            if (error) {
+                                console.warn('[AuthProvider] INITIAL_SESSION inválida, cerrando sesión')
+                                await supabase.auth.signOut({ scope: 'local' })
+                                setSession(null)
+                                setUser(null)
+                                setIsPremium(false)
+                            } else {
+                                setSession(newSession)
+                                setUser(newSession.user)
+                                checkPremiumStatus(newSession.user.id) // Sin await
+                            }
+                            clearTimeout(safetyTimer)
+                            setLoading(false)
+                        })()
                     } else {
                         setSession(null)
                         setUser(null)
+                        clearTimeout(safetyTimer)
+                        setLoading(false)
                     }
-                    clearTimeout(safetyTimer)
-                    setLoading(false)
                     return
                 }
 
@@ -86,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setSession(newSession)
                     setUser(newSession?.user ?? null)
                     if (newSession?.user) {
-                        await checkPremiumStatus(newSession.user.id)
+                        checkPremiumStatus(newSession.user.id) // NO AWAIT to prevent GoTrue token deadlock
                     }
                     setLoading(false)
                     return
