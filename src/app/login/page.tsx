@@ -9,7 +9,7 @@ import { translateAuthError } from '@/lib/utils'
 
 import LogoLoader from '@/components/ui/logo-loader'
 
-const AUTH_TIMEOUT_MS = 12000
+const AUTH_TIMEOUT_MS = 30000
 
 // Floating particle component for background ambiance (Light version)
 function FloatingParticle({ delay, duration, x, y, size }: { delay: number; duration: number; x: string; y: string; size: number }) {
