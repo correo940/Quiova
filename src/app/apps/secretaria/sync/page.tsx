@@ -26,7 +26,7 @@ import {
 } from '@/lib/secretary-intelligence';
 import { usePredictiveShopping } from '@/lib/hooks/use-predictive-shopping';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SyncBlock {
   id: string;
@@ -37,18 +37,18 @@ interface SyncBlock {
 }
 
 const BLOCKS: SyncBlock[] = [
-  { id: 'welcome',    title: 'Bienvenida',           emoji: '🌙', icon: Zap },
-  { id: 'followup',   title: 'Seguimiento del día',  emoji: '📊', icon: RefreshCw },
-  { id: 'shifts',     title: 'Turno de mañana',      emoji: '💼', icon: Briefcase, skippableInQuick: false },
+  { id: 'welcome',    title: 'Bienvenida',           emoji: 'ðŸŒ™', icon: Zap },
+  { id: 'followup',   title: 'Seguimiento del día',  emoji: 'ðŸ“Š', icon: RefreshCw },
+  { id: 'shifts',     title: 'Turno de mañana',      emoji: 'ðŸ’¼', icon: Briefcase, skippableInQuick: false },
   { id: 'tasks',      title: 'Tareas de mañana',     emoji: '✅', icon: ListTodo },
-  { id: 'shopping',   title: 'Lista de la compra',   emoji: '🛒', icon: ShoppingCart },
-  { id: 'medicines',  title: 'Medicación',           emoji: '💊', icon: Pill, skippableInQuick: true },
-  { id: 'finances',   title: 'Finanzas',             emoji: '💶', icon: Wallet },
-  { id: 'victories',  title: 'Victorias del día',    emoji: '🏆', icon: Trophy },
-  { id: 'done',       title: '¡Listo!',              emoji: '🎉', icon: PartyPopper },
+  { id: 'shopping',   title: 'Lista de la compra',   emoji: 'ðŸ›’', icon: ShoppingCart },
+  { id: 'medicines',  title: 'MedicaciÃ³n',           emoji: 'ðŸ’Š', icon: Pill, skippableInQuick: true },
+  { id: 'finances',   title: 'Finanzas',             emoji: 'ðŸ’¶', icon: Wallet },
+  { id: 'victories',  title: 'Victorias del día',    emoji: 'ðŸ†', icon: Trophy },
+  { id: 'done',       title: 'Â¡Listo!',              emoji: 'ðŸŽ‰', icon: PartyPopper },
 ];
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function SecretariaSyncPage() {
   const router = useRouter();
@@ -77,20 +77,20 @@ export default function SecretariaSyncPage() {
   const [victories, setVictories] = useState<string[]>([]);
   const [newVictory, setNewVictory] = useState('');
 
-  // Phase 2 — follow-up state
+  // Phase 2 â€” follow-up state
   const [rescheduledTasks, setRescheduledTasks] = useState<Set<string>>(new Set());
   const [skippedTasks, setSkippedTasks] = useState<Set<string>>(new Set());
   const [tomorrowConflicts, setTomorrowConflicts] = useState<DayConflict[]>([]);
   const [tomorrowLoad, setTomorrowLoad] = useState<DayLoad | null>(null);
 
-  // Phase 4.3 — conversational mode
+  // Phase 4.3 â€” conversational mode
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSummary, setChatSummary] = useState<string | null>(null);
   const [chatReady, setChatReady] = useState(false); // ready to close
 
-  // ── Load data ─────────────────────────────────────────────────────────────
+  // â”€â”€ Load data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   useEffect(() => {
     const s = getSecretarySettings();
@@ -137,7 +137,7 @@ export default function SecretariaSyncPage() {
 
       setTomorrowShifts(shiftsData);
       setTomorrowTasks(tasksData);
-      setScoredTasks(scoreTaskPriority(tasksData)); // Fase 4.1 — prioridades
+      setScoredTasks(scoreTaskPriority(tasksData)); // Fase 4.1 â€” prioridades
       setShoppingItems(shopping.data || []);
       setMedicines((meds.data || []).filter((m: any) => m.alarm_times?.length > 0));
       setAccounts(accsData);
@@ -167,7 +167,7 @@ export default function SecretariaSyncPage() {
     }
   };
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const activeBlocks = mode === 'quick'
     ? BLOCKS.filter(b => !b.skippableInQuick)
@@ -176,7 +176,7 @@ export default function SecretariaSyncPage() {
   const next = () => { if (currentBlock < activeBlocks.length - 1) setCurrentBlock(c => c + 1); };
   const prev = () => { if (currentBlock > 0) setCurrentBlock(c => c - 1); };
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const addTask = async () => {
     if (!newTaskTitle.trim() || !user) return;
@@ -208,7 +208,7 @@ export default function SecretariaSyncPage() {
     setNewVictory('');
   };
 
-  // Phase 2 — Reschedule a pending today task to tomorrow
+  // Phase 2 â€” Reschedule a pending today task to tomorrow
   const rescheduleTask = async (task: any) => {
     const tomorrow = addDays(new Date(), 1); tomorrow.setHours(9, 0, 0, 0);
     const { data, error } = await supabase.from('tasks')
@@ -242,16 +242,16 @@ export default function SecretariaSyncPage() {
         notes: syncNotes || null,
         victories: allVictories.length > 0 ? allVictories : null,
         planned_expenses: plannedExpense ? parseFloat(plannedExpense) : null,
-        // Fase 4.3 — guardar conversación y resumen IA
+        // Fase 4.3 â€” guardar conversaciÃ³n y resumen IA
         conversation_history: chatMessages.length > 0 ? chatMessages : null,
         ai_summary: chatSummary ?? null,
-        // Fase 4.1 — guardar puntuaciones de prioridad
+        // Fase 4.1 â€” guardar puntuaciones de prioridad
         priority_scores: scoredTasks.length > 0
           ? scoredTasks.map(s => ({ id: s.task.id, title: s.task.title, score: s.score, level: s.level }))
           : null,
         completed_at: new Date().toISOString(),
       }, { onConflict: 'user_id,sync_date' });
-      toast.success('¡Sync completado! Que descanses 😴');
+      toast.success('Â¡Sync completado! Que descanses ðŸ˜´');
       router.push('/');
     } catch (e) {
       console.error(e);
@@ -261,7 +261,7 @@ export default function SecretariaSyncPage() {
     }
   };
 
-  // ── Conversational mode chat ──────────────────────────────────────────────
+  // â”€â”€ Conversational mode chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const sendChatMessage = async (text?: string) => {
     const content = text ?? chatInput.trim();
@@ -334,7 +334,7 @@ export default function SecretariaSyncPage() {
     }
   };
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance || 0), 0);
   const profile      = settings ? getAvatarById(settings.avatarId) : null;
@@ -342,7 +342,7 @@ export default function SecretariaSyncPage() {
   const firstName    = getUserFirstName(user);
   const progressPercent = ((currentBlock + 1) / activeBlocks.length) * 100;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (loading || !settings) {
     return (
@@ -355,7 +355,7 @@ export default function SecretariaSyncPage() {
     );
   }
 
-  // Modo conversacional — pantalla completa de chat
+  // Modo conversacional â€” pantalla completa de chat
   if (mode === 'conversational') {
     return (
       <ConversationalSyncScreen
@@ -406,7 +406,7 @@ export default function SecretariaSyncPage() {
         </button>
         <div className="flex items-center gap-2">
           <span className="text-white/50 text-xs">
-            {mode === 'quick' ? '⚡ Sync Rápido' : (mode as string) === 'conversational' ? '🤖 Conversacional' : '📖 Planificación Profunda'}
+            {mode === 'quick' ? 'âš¡ Sync RÃ¡pido' : (mode as string) === 'conversational' ? '🤖 Conversacional' : 'ðŸ“– Planificación Profunda'}
           </span>
           <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30 text-xs">
             {currentBlock + 1}/{activeBlocks.length}
@@ -521,7 +521,7 @@ export default function SecretariaSyncPage() {
   );
 }
 
-// ── Sub-screens ───────────────────────────────────────────────────────────────
+// â”€â”€ Sub-screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad, tomorrowConflicts, hasIncomplete, onSelect }: any) {
   return (
@@ -530,7 +530,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
         <span className="text-7xl animate-bounce">{profile?.emoji ?? '🤖'}</span>
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">{texts.syncWelcome(firstName)}</h1>
-          <p className="text-white/50 text-sm">¿Cómo quieres hacer el Sync de hoy?</p>
+          <p className="text-white/50 text-sm">Â¿CÃ³mo quieres hacer el Sync de hoy?</p>
         </div>
 
         {/* Tomorrow load preview */}
@@ -539,7 +539,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
             <span className="text-xl">{tomorrowLoad.emoji}</span>
             <div>
               <p className={`text-sm font-semibold ${tomorrowLoad.color}`}>{tomorrowLoad.label}</p>
-              <p className="text-white/40 text-xs">Mañana tiene {tomorrowLoad.score}/100 de carga</p>
+              <p className="text-white/40 text-xs">MaÃ±ana tiene {tomorrowLoad.score}/100 de carga</p>
             </div>
           </div>
         )}
@@ -547,7 +547,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
         {/* Critical conflicts preview */}
         {tomorrowConflicts.filter((c: any) => c.severity === 'critical').length > 0 && (
           <div className="w-full p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <p className="text-red-300 text-xs font-bold uppercase tracking-wider mb-1.5">⚠️ Conflictos detectados</p>
+            <p className="text-red-300 text-xs font-bold uppercase tracking-wider mb-1.5">âš ï¸ Conflictos detectados</p>
             {tomorrowConflicts.filter((c: any) => c.severity === 'critical').map((c: any) => (
               <p key={c.id} className="text-white/60 text-xs">{c.emoji} {c.title}</p>
             ))}
@@ -569,10 +569,10 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
           >
             <div className="flex items-center gap-3 mb-1">
               <Zap className="w-5 h-5 text-yellow-400" />
-              <span className="font-semibold text-lg">Sync Rápido</span>
-              <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30 text-xs ml-auto">≈ 2 min</Badge>
+              <span className="font-semibold text-lg">Sync RÃ¡pido</span>
+              <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30 text-xs ml-auto">â‰ˆ 2 min</Badge>
             </div>
-            <p className="text-white/50 text-sm">Todo sigue igual o ajustas lo necesario. Bloques simples y directos.</p>
+            <p className="text-white/50 text-sm">Revisa en 2 minutos lo que tienes mañana y confirma o cambia lo que necesites. Rápido y sin complicaciones.</p>
           </button>
           <button
             onClick={() => onSelect('deep')}
@@ -583,7 +583,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
               <span className="font-semibold text-lg">Planificación Profunda</span>
               <Badge className="bg-purple-400/20 text-purple-300 border-purple-400/30 text-xs ml-auto">Completo</Badge>
             </div>
-            <p className="text-white/50 text-sm">Editas y ajustas cada bloque en detalle. Ideal para el domingo.</p>
+            <p className="text-white/50 text-sm">Repasa con calma cada apartado: tareas, finanzas, compra y turnos. Perfecto cuando tienes unos minutos para organizarte bien.</p>
           </button>
           <button
             onClick={() => onSelect('conversational')}
@@ -594,7 +594,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
               <span className="font-semibold text-lg">Sync Conversacional</span>
               <Badge className="bg-emerald-400/20 text-emerald-300 border-emerald-400/30 text-xs ml-auto">IA</Badge>
             </div>
-            <p className="text-white/50 text-sm">Cuéntame tu día y yo lo estructuro. Llama-3.3 analiza tu contexto.</p>
+            <p className="text-white/50 text-sm">Habla con la IA de Quioba y ella organiza tu mañana por ti. Solo cuéntale cómo ha ido el día.</p>
           </button>
         </div>
       </div>
@@ -607,7 +607,7 @@ function WelcomeBlock({ firstName, texts, profile, mode }: any) {
     <div className="space-y-4">
       <p className="text-white/70 text-lg leading-relaxed">
         {mode === 'quick'
-          ? `Vas a revisar rápidamente cada bloque. Si todo está bien, pulsa "Siguiente". Si no, edita lo que necesites.`
+          ? `Vas a revisar rÃ¡pidamente cada bloque. Si todo estÃ¡ bien, pulsa "Siguiente". Si no, edita lo que necesites.`
           : `Vamos a revisar todos los bloques y ajustar lo que necesites para que mañana salga perfecto.`}
       </p>
       <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
@@ -621,7 +621,7 @@ function WelcomeBlock({ firstName, texts, profile, mode }: any) {
   );
 }
 
-// ── Phase 2: Follow-Up Block ─────────────────────────────────────────────────
+// â”€â”€ Phase 2: Follow-Up Block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, onReschedule, onSkip, mode }: any) {
   const pending = todayIncompleteTasks.filter(
@@ -634,9 +634,9 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
     return (
       <div className="space-y-3">
         <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-          <span className="text-4xl">🎉</span>
-          <p className="text-emerald-300 font-bold mt-2">¡Cumpliste todo lo de hoy!</p>
-          <p className="text-white/50 text-sm mt-1">No quedan tareas pendientes. Magnífico.</p>
+          <span className="text-4xl">ðŸŽ‰</span>
+          <p className="text-emerald-300 font-bold mt-2">Â¡Cumpliste todo lo de hoy!</p>
+          <p className="text-white/50 text-sm mt-1">No quedan tareas pendientes. MagnÃ­fico.</p>
         </div>
       </div>
     );
@@ -646,7 +646,7 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
     <div className="space-y-4">
       <p className="text-white/70 text-base">
         Tienes <span className="text-amber-300 font-bold">{todayIncompleteTasks.length} tarea{todayIncompleteTasks.length > 1 ? 's' : ''}</span> de hoy sin completar.
-        Decide qué hacer con cada una:
+        Decide quÃ© hacer con cada una:
       </p>
 
       <div className="space-y-2">
@@ -679,13 +679,13 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
       {(done > 0 || skipped > 0) && (
         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/40 flex gap-4">
           {done > 0    && <span>✅ {done} pospuesta{done > 1 ? 's' : ''} a mañana</span>}
-          {skipped > 0 && <span>🗑️ {skipped} descartada{skipped > 1 ? 's' : ''}</span>}
+          {skipped > 0 && <span>ðŸ—‘ï¸ {skipped} descartada{skipped > 1 ? 's' : ''}</span>}
         </div>
       )}
 
       {pending.length === 0 && todayIncompleteTasks.length > 0 && (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-          <p className="text-emerald-300 font-semibold">Todo gestionado 👍</p>
+          <p className="text-emerald-300 font-semibold">Todo gestionado ðŸ‘</p>
           <p className="text-white/40 text-sm mt-1">Pulsa Siguiente para continuar.</p>
         </div>
       )}
@@ -696,7 +696,7 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
 function ShiftsBlock({ shifts, settings }: any) {
   const tomorrow = addDays(new Date(), 1);
   if (!settings.modules.shifts) {
-    return <p className="text-white/40 italic">Módulo de turnos desactivado.</p>;
+    return <p className="text-white/40 italic">MÃ³dulo de turnos desactivado.</p>;
   }
   return (
     <div className="space-y-3">
@@ -709,13 +709,13 @@ function ShiftsBlock({ shifts, settings }: any) {
             <p className="font-semibold text-blue-300">{s.title}</p>
             <p className="text-white/60 text-sm flex items-center gap-1 mt-1">
               <Clock className="w-3.5 h-3.5" />
-              {format(new Date(s.start_time), 'HH:mm')} – {format(new Date(s.end_time), 'HH:mm')}
+              {format(new Date(s.start_time), 'HH:mm')} â€“ {format(new Date(s.end_time), 'HH:mm')}
             </p>
           </div>
         ))
       ) : (
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-sm italic">
-          Sin turno asignado para mañana. ✨ Día libre.
+          Sin turno asignado para mañana. âœ¨ DÃ­a libre.
         </div>
       )}
     </div>
@@ -733,7 +733,7 @@ function TasksBlock({ tasks, setTasks, scoredTasks, setScoredTasks, newTaskTitle
   // Usar scoredTasks si disponible, si no renderizar tasks sin puntaje
   const displayTasks: TaskWithScore[] = scoredTasks?.length > 0
     ? scoredTasks
-    : tasks.map((t: any) => ({ task: t, score: 0, level: 'normal', levelLabel: 'Normal', levelEmoji: '⚪', levelColor: 'text-white/40', levelBg: 'bg-white/5 border-white/10', daysUntilDue: null }));
+    : tasks.map((t: any) => ({ task: t, score: 0, level: 'normal', levelLabel: 'Normal', levelEmoji: 'âšª', levelColor: 'text-white/40', levelBg: 'bg-white/5 border-white/10', daysUntilDue: null }));
 
   return (
     <div className="space-y-3">
@@ -761,7 +761,7 @@ function TasksBlock({ tasks, setTasks, scoredTasks, setScoredTasks, newTaskTitle
                 <p className="text-sm font-medium truncate">{t.title}</p>
                 {daysUntilDue !== null && (
                   <p className={`text-xs mt-0.5 ${levelColor}`}>
-                    {daysUntilDue <= 0 ? '⚠️ Vence hoy' : daysUntilDue === 1 ? 'Vence mañana' : `En ${daysUntilDue} días`}
+                    {daysUntilDue <= 0 ? 'âš ï¸ Vence hoy' : daysUntilDue === 1 ? 'Vence mañana' : `En ${daysUntilDue} días`}
                   </p>
                 )}
               </div>
@@ -778,7 +778,7 @@ function TasksBlock({ tasks, setTasks, scoredTasks, setScoredTasks, newTaskTitle
           value={newTaskTitle}
           onChange={e => setNewTaskTitle(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onAddTask()}
-          placeholder="Añadir tarea rápida..."
+          placeholder="AÃ±adir tarea rÃ¡pida..."
           className="bg-white/10 border-white/20 text-white placeholder:text-white/30 rounded-xl"
         />
         <Button onClick={onAddTask} className="bg-indigo-500 hover:bg-indigo-600 rounded-xl flex-shrink-0">
@@ -809,7 +809,7 @@ function ShoppingBlock({ items, setItems, newItem, setNewItem, onAdd, userId }: 
     <div className="space-y-4">
       <p className="text-white/60 text-sm">Lista de la compra pendiente ({items.length} ítems):</p>
       {items.length === 0 ? (
-        <p className="text-white/40 italic text-sm">La lista está vacía. 🎉</p>
+        <p className="text-white/40 italic text-sm">La lista estÃ¡ vacÃ­a. ðŸŽ‰</p>
       ) : (
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {items.map((item: any) => (
@@ -828,7 +828,7 @@ function ShoppingBlock({ items, setItems, newItem, setNewItem, onAdd, userId }: 
           value={newItem}
           onChange={e => setNewItem(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onAdd()}
-          placeholder="Añadir ítem..."
+          placeholder="AÃ±adir Ã­tem..."
           className="bg-white/10 border-white/20 text-white placeholder:text-white/30 rounded-xl"
         />
         <Button onClick={onAdd} className="bg-orange-500 hover:bg-orange-600 rounded-xl flex-shrink-0">
@@ -836,13 +836,13 @@ function ShoppingBlock({ items, setItems, newItem, setNewItem, onAdd, userId }: 
         </Button>
       </div>
 
-      {/* Fase 4.4 — Sugerencias predictivas */}
+      {/* Fase 4.4 â€” Sugerencias predictivas */}
       {!predLoading && suggestions.length > 0 && (
         <div className="space-y-2 pt-2 border-t border-white/10">
           <div className="flex items-center gap-2">
-            <p className="text-white/40 text-xs uppercase tracking-wider">💡 Sugerencias recurrentes</p>
+            <p className="text-white/40 text-xs uppercase tracking-wider">ðŸ’¡ Sugerencias recurrentes</p>
             {confidenceLevel === 'low' && (
-              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">⚠️ Confianza baja</Badge>
+              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">âš ï¸ Confianza baja</Badge>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -854,7 +854,7 @@ function ShoppingBlock({ items, setItems, newItem, setNewItem, onAdd, userId }: 
               >
                 <Plus className="w-3 h-3" />
                 {s.name}
-                <span className="text-orange-400/60">×{s.frequency}</span>
+                <span className="text-orange-400/60">Ã—{s.frequency}</span>
               </button>
             ))}
           </div>
@@ -870,7 +870,7 @@ function ShoppingBlock({ items, setItems, newItem, setNewItem, onAdd, userId }: 
 function MedicinesBlock({ medicines }: any) {
   return (
     <div className="space-y-3">
-      <p className="text-white/60 text-sm">Tu medicación diaria programada:</p>
+      <p className="text-white/60 text-sm">Tu medicaciÃ³n diaria programada:</p>
       {medicines.length === 0 ? (
         <p className="text-white/40 italic text-sm">Sin tomas programadas.</p>
       ) : (
@@ -889,7 +889,7 @@ function MedicinesBlock({ medicines }: any) {
           ))}
         </div>
       )}
-      <p className="text-white/30 text-xs italic">Solo informativo — edita la medicación desde Mi Hogar.</p>
+      <p className="text-white/30 text-xs italic">Solo informativo â€” edita la medicaciÃ³n desde Mi Hogar.</p>
     </div>
   );
 }
@@ -904,11 +904,11 @@ function FinancesBlock({ balance, plannedExpense, setPlannedExpense, notes, setN
         <p className={`text-4xl font-extrabold mt-1 ${negative ? 'text-red-300' : low ? 'text-amber-300' : 'text-emerald-300'}`}>
           {balance.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
         </p>
-        {low && !negative && <p className="text-amber-400 text-xs mt-1">⚠️ Saldo bajo</p>}
-        {negative && <p className="text-red-400 text-xs mt-1">🚨 Saldo negativo</p>}
+        {low && !negative && <p className="text-amber-400 text-xs mt-1">âš ï¸ Saldo bajo</p>}
+        {negative && <p className="text-red-400 text-xs mt-1">ðŸš¨ Saldo negativo</p>}
       </div>
       <div className="space-y-2">
-        <label className="text-white/60 text-sm">¿Tienes algún gasto fuerte previsto mañana?</label>
+        <label className="text-white/60 text-sm">Â¿Tienes algÃºn gasto fuerte previsto mañana?</label>
         <Input
           type="number"
           value={plannedExpense}
@@ -991,7 +991,7 @@ function DoneBlock({ firstName, texts, profile, tomorrowTasks, shoppingItems, to
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <span className="text-6xl">{profile?.emoji ?? '🎉'}</span>
+        <span className="text-6xl">{profile?.emoji ?? 'ðŸŽ‰'}</span>
         <p className="text-xl font-bold text-white mt-2">{texts.confirmationMessage}</p>
       </div>
 
@@ -1001,7 +1001,7 @@ function DoneBlock({ firstName, texts, profile, tomorrowTasks, shoppingItems, to
           <span className="text-xl">{tomorrowLoad.emoji}</span>
           <div>
             <p className={`text-sm font-bold ${tomorrowLoad.color}`}>{tomorrowLoad.label}</p>
-            <p className="text-white/40 text-xs">Mañana: {tomorrowTasks.length} tareas{tomorrowShifts.length > 0 ? ' + turno' : ''}</p>
+            <p className="text-white/40 text-xs">MaÃ±ana: {tomorrowTasks.length} tareas{tomorrowShifts.length > 0 ? ' + turno' : ''}</p>
           </div>
         </div>
       )}
@@ -1025,10 +1025,10 @@ function DoneBlock({ firstName, texts, profile, tomorrowTasks, shoppingItems, to
 
       {/* Summary */}
       <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/10">
-        <SummaryRow emoji="💼" label="Turnos mañana" value={tomorrowShifts.length > 0 ? tomorrowShifts[0].title : 'Libre'} />
+        <SummaryRow emoji="ðŸ’¼" label="Turnos mañana" value={tomorrowShifts.length > 0 ? tomorrowShifts[0].title : 'Libre'} />
         <SummaryRow emoji="✅" label="Tareas mañana" value={`${tomorrowTasks.length} pendientes`} />
-        <SummaryRow emoji="🛒" label="Lista compra" value={`${shoppingItems.length} ítems`} />
-        <SummaryRow emoji="💶" label="Saldo" value={`${balance.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€`} />
+        <SummaryRow emoji="ðŸ›’" label="Lista compra" value={`${shoppingItems.length} ítems`} />
+        <SummaryRow emoji="ðŸ’¶" label="Saldo" value={`${balance.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€`} />
       </div>
 
       <Button
@@ -1054,7 +1054,7 @@ function SummaryRow({ emoji, label, value }: { emoji: string; label: string; val
   );
 }
 
-// ── Fase 4.3: Pantalla de Sync Conversacional ─────────────────────────────────
+// â”€â”€ Fase 4.3: Pantalla de Sync Conversacional â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ConversationalSyncScreen({
   profile, firstName, chatMessages, chatInput, setChatInput,
@@ -1146,7 +1146,7 @@ function ConversationalSyncScreen({
       {/* Quick replies */}
       {chatMessages.length > 0 && !chatReady && !chatLoading && (
         <div className="px-4 flex gap-2 flex-wrap">
-          {['Todo bien por aquí 👍', 'Tengo algo más que añadir', 'Listo para cerrar el sync'].map((s) => (
+          {['Todo bien por Aquí ðŸ‘', 'Tengo algo mÃ¡s que añadir', 'Listo para cerrar el sync'].map((s) => (
             <button
               key={s}
               onClick={() => onSend(s)}
@@ -1166,7 +1166,7 @@ function ConversationalSyncScreen({
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && onSend()}
-            placeholder="Escribe aquí..."
+            placeholder="Escribe Aquí..."
             disabled={chatLoading}
             className="flex-1 bg-white/10 border border-white/20 text-white placeholder:text-white/30 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-400/50 disabled:opacity-50"
           />
@@ -1192,3 +1192,5 @@ function ConversationalSyncScreen({
     </div>
   );
 }
+
+
