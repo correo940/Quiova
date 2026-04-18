@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, Activity, Leaf } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, Activity, Leaf, Bot } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -198,6 +198,20 @@ export default function FloatingDashboard() {
                                                     <div className="text-xs text-muted-foreground">Diario y notas rápidas</div>
                                                 </div>
                                             </button>
+
+                                            <Link
+                                                href="/apps/secretaria"
+                                                onClick={() => setIsOpen(false)}
+                                                className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
+                                            >
+                                                <div className="p-3 bg-indigo-500/10 rounded-full text-indigo-500 group-hover:scale-110 transition-transform">
+                                                    <Bot className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-sm">Secretaria</div>
+                                                    <div className="text-xs text-muted-foreground">Tu asistente diario</div>
+                                                </div>
+                                            </Link>
 
                                             <Link
                                                 href="/apps/debate"

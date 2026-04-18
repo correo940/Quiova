@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Brain } from 'lucide-react';
+import { Home, Brain, Bot } from 'lucide-react';
 import Link from 'next/link';
 
 const apps = [
@@ -16,7 +16,14 @@ const apps = [
     icon: Brain,
     description: 'Meditacion breve, respiracion guiada y pensamiento personal con estilo Quioba.',
   },
+  {
+    name: 'Quioba Secretaria',
+    href: '/apps/secretaria',
+    icon: Bot,
+    description: 'Tu asistente de vida diaria: planifica mañana, recibe tu briefing matinal y registra victorias.',
+  },
 ];
+
 
 export default function AppsPage() {
   return (

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf, Bot } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -46,6 +46,7 @@ const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.R
     { key: 'huerto', name: 'Mis Plantas/Huerto', route: '/apps/huerto', icon: <Leaf className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
     { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
     { key: 'assistant', name: 'Asistente', route: '/apps/mi-hogar/asistente', icon: <MessageCircle className="w-4 h-4" />, color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
+    { key: 'secretary', name: 'Secretaria', route: '/apps/secretaria', icon: <Bot className="w-4 h-4" />, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
 ];
 
 export default function StartMenu() {

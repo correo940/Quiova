@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, Camera, UserPlus, Star, Crown, Shield, Users, Sparkles, Wand2, RefreshCw, Loader2, Check, Package, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
+import { LogOut, Camera, UserPlus, Star, Crown, Shield, Users, Sparkles, Wand2, RefreshCw, Loader2, Check, Package, Clock, ToggleLeft, ToggleRight, Bot, Bell, BellOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import LogoLoader from '@/components/ui/logo-loader';
 import { ProfileSkeleton } from '@/components/ui/skeleton-loaders';
+import { Switch } from '@/components/ui/switch';
+import {
+    getSecretarySettings, saveSecretarySettings, SECRETARY_AVATARS,
+    type SecretarySettings, type SecretaryPersonality, type SecretaryAvatarId
+} from '@/lib/secretary-settings';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NotificationManager } from '@/lib/notifications';
 
 interface Subscription {
     id: string;
@@ -368,7 +375,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid gap-6">
-                {/* Account Status Card */}
+                {/* Account Status Card — se queda fuera de las pestañas */}
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -466,136 +473,349 @@ export default function ProfilePage() {
                     </CardContent>
                 </Card>
 
-                {/* Subscriptions Management */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Package className="w-5 h-5 text-emerald-600" />
-                            Mis Suscripciones
-                        </CardTitle>
-                        <CardDescription>Gestiona tus apps activas y su renovación</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {subscriptions.length > 0 ? (
-                            <div className="space-y-3">
-                                {subscriptions.map((sub) => {
-                                    const timeInfo = getTimeRemaining(sub.expires_at);
-                                    return (
-                                        <div
-                                            key={sub.id}
-                                            className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${timeInfo.expired
-                                                ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'
-                                                : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30'
-                                                }`}
-                                        >
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
-                                                    {sub.app_name}
-                                                </p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <Clock className={`w-3 h-3 ${timeInfo.color}`} />
-                                                    <span className={`text-xs font-medium ${timeInfo.color}`}>
-                                                        {timeInfo.expired ? 'Caducada' : `Caduca en ${timeInfo.text}`}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 mt-0.5">
-                                                    {sub.amount_paid === 0 ? 'Gratuita' : `${sub.amount_paid}€/año`}
-                                                </p>
-                                            </div>
-                                            <button
-                                                onClick={() => toggleAutoRenew(sub.id, sub.auto_renew)}
-                                                className="flex items-center gap-1.5 shrink-0 ml-3"
-                                                title={sub.auto_renew ? 'Desactivar renovación' : 'Activar renovación'}
-                                            >
-                                                {sub.auto_renew ? (
-                                                    <ToggleRight className="w-8 h-8 text-emerald-500" />
-                                                ) : (
-                                                    <ToggleLeft className="w-8 h-8 text-slate-300" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                                <p className="text-[10px] text-center text-slate-400 mt-2">
-                                    Activa/desactiva la renovación automática de cada app
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
-                                <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                                <p>No tienes suscripciones activas.</p>
-                                <p className="text-xs mt-1">Explora las apps desde el menú principal.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                {/* Las 3 pestañas */}
+                <Tabs defaultValue="suscripciones" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 rounded-2xl h-12">
+                        <TabsTrigger value="suscripciones" className="rounded-xl text-xs flex items-center gap-2">
+                            <Package className="w-4 h-4" /> Suscripciones
+                        </TabsTrigger>
+                        <TabsTrigger value="amigos" className="rounded-xl text-xs flex items-center gap-2">
+                            <Users className="w-4 h-4" /> Mis Amigos
+                        </TabsTrigger>
+                        <TabsTrigger value="agente" className="rounded-xl text-xs flex items-center gap-2">
+                            <Bot className="w-4 h-4" /> Mi Agente
+                        </TabsTrigger>
+                    </TabsList>
 
-                {/* Friends / Contacts */}
-                <Card>
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Users className="w-5 h-5 text-primary" />
-                                Mis Amigos
-                            </CardTitle>
-                            <CardDescription>Gente con la que compartes apps</CardDescription>
-                        </div>
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="secondary" className="gap-2">
-                                    <UserPlus className="w-4 h-4" /> Añadir
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Añadir Amigo</DialogTitle>
-                                    <DialogDescription>
-                                        Invita a alguien a usar Quioba Apps contigo.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Email o Código de Usuario</Label>
-                                        <Input placeholder="usuario@ejemplo.com" />
-                                    </div>
-                                    <Button className="w-full">Enviar Invitación</Button>
-                                    <p className="text-xs text-muted-foreground text-center">
-                                        También puedes añadir amigos directamente desde cada aplicación.
-                                    </p>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                    </CardHeader>
-                    <CardContent>
-                        {contacts.length > 0 ? (
-                            <ScrollArea className="h-[200px]">
-                                <div className="space-y-2">
-                                    {contacts.map((contact) => (
-                                        <div key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="w-8 h-8">
-                                                    <AvatarImage src={contact.contact?.custom_avatar_url} />
-                                                    <AvatarFallback>{contact.contact?.nickname?.[0] || '?'}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="text-sm font-medium">{contact.contact?.nickname || 'Usuario'}</p>
-                                                    <p className="text-xs text-muted-foreground">En tus contactos</p>
+                    <TabsContent value="suscripciones" className="mt-4">
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Package className="w-5 h-5 text-emerald-600" />
+                                    Mis Suscripciones
+                                </CardTitle>
+                                <CardDescription>Gestiona tus apps activas y su renovación</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {subscriptions.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {subscriptions.map((sub) => {
+                                            const timeInfo = getTimeRemaining(sub.expires_at);
+                                            return (
+                                                <div
+                                                    key={sub.id}
+                                                    className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${timeInfo.expired
+                                                        ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'
+                                                        : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30'
+                                                        }`}
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                                                            {sub.app_name}
+                                                        </p>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <Clock className={`w-3 h-3 ${timeInfo.color}`} />
+                                                            <span className={`text-xs font-medium ${timeInfo.color}`}>
+                                                                {timeInfo.expired ? 'Caducada' : `Caduca en ${timeInfo.text}`}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                                            {sub.amount_paid === 0 ? 'Gratuita' : `${sub.amount_paid}€/año`}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => toggleAutoRenew(sub.id, sub.auto_renew)}
+                                                        className="flex items-center gap-1.5 shrink-0 ml-3"
+                                                        title={sub.auto_renew ? 'Desactivar renovación' : 'Activar renovación'}
+                                                    >
+                                                        {sub.auto_renew ? (
+                                                            <ToggleRight className="w-8 h-8 text-emerald-500" />
+                                                        ) : (
+                                                            <ToggleLeft className="w-8 h-8 text-slate-300" />
+                                                        )}
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            <Button variant="ghost" size="sm">Invitar a...</Button>
-                                        </div>
-                                    ))}
+                                            );
+                                        })}
+                                        <p className="text-[10px] text-center text-slate-400 mt-2">
+                                            Activa/desactiva la renovación automática de cada app
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
+                                        <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                                        <p>No tienes suscripciones activas.</p>
+                                        <p className="text-xs mt-1">Explora las apps desde el menú principal.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="amigos" className="mt-4">
+                        <Card>
+                            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-primary" />
+                                        Mis Amigos
+                                    </CardTitle>
+                                    <CardDescription>Gente con la que compartes apps</CardDescription>
                                 </div>
-                            </ScrollArea>
-                        ) : (
-                            <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
-                                <p>No tienes amigos añadidos aún.</p>
-                                <p className="text-xs mt-1">Invita a gente a tus listas o grupos.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="secondary" className="gap-2">
+                                            <UserPlus className="w-4 h-4" /> Añadir
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Añadir Amigo</DialogTitle>
+                                            <DialogDescription>
+                                                Invita a alguien a usar Quioba Apps contigo.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Email o Código de Usuario</Label>
+                                                <Input placeholder="usuario@ejemplo.com" />
+                                            </div>
+                                            <Button className="w-full">Enviar Invitación</Button>
+                                            <p className="text-xs text-muted-foreground text-center">
+                                                También puedes añadir amigos directamente desde cada aplicación.
+                                            </p>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </CardHeader>
+                            <CardContent>
+                                {contacts.length > 0 ? (
+                                    <ScrollArea className="h-[200px]">
+                                        <div className="space-y-2">
+                                            {contacts.map((contact) => (
+                                                <div key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-8 h-8">
+                                                            <AvatarImage src={contact.contact?.custom_avatar_url} />
+                                                            <AvatarFallback>{contact.contact?.nickname?.[0] || '?'}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-medium">{contact.contact?.nickname || 'Usuario'}</p>
+                                                            <p className="text-xs text-muted-foreground">En tus contactos</p>
+                                                        </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm">Invitar a...</Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
+                                        <p>No tienes amigos añadidos aún.</p>
+                                        <p className="text-xs mt-1">Invita a gente a tus listas o grupos.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="agente" className="mt-4">
+                        <SecretariaSettingsCard />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
+    );
+}
+
+// ── Quioba Secretaria Card ────────────────────────────────────────────────────
+
+function SecretariaSettingsCard() {
+    const router = useRouter();
+    const [settings, setSettings] = useState<SecretarySettings>(() => getSecretarySettings());
+    const [saving, setSaving] = useState(false);
+
+    const update = (patch: Partial<SecretarySettings>) =>
+        setSettings(prev => ({ ...prev, ...patch }));
+
+    const updateModule = (key: keyof SecretarySettings['modules'], val: boolean) =>
+        setSettings(prev => ({ ...prev, modules: { ...prev.modules, [key]: val } }));
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            saveSecretarySettings(settings);
+            if (settings.enabled) {
+                await NotificationManager.requestPermissions();
+                await NotificationManager.scheduleSecretary(
+                    settings.syncTime,
+                    settings.briefingTime,
+                    settings.personality
+                );
+                toast.success('¡Secretaria activada! Recibirás tus notificaciones diarias.');
+            } else {
+                await NotificationManager.cancelSecretary();
+                toast.success('Secretaria desactivada.');
+            }
+        } catch (e) {
+            toast.error('Error al guardar la configuración.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const personalities: { id: SecretaryPersonality; label: string; emoji: string; desc: string }[] = [
+        { id: 'formal',   label: 'Formal',   emoji: '🎩', desc: 'Tono profesional y ejecutivo' },
+        { id: 'friendly', label: 'Amigable', emoji: '😊', desc: 'Cercana y motivadora' },
+        { id: 'sergeant', label: 'Sargento', emoji: '💪', desc: 'Directa, al grano, sin rodeos' },
+    ];
+
+    const modulesList: { key: keyof SecretarySettings['modules']; label: string; emoji: string }[] = [
+        { key: 'tasks',     label: 'Tareas',    emoji: '✅' },
+        { key: 'shopping',  label: 'Compras',   emoji: '🛒' },
+        { key: 'medicines', label: 'Medicación',emoji: '💊' },
+        { key: 'finances',  label: 'Finanzas',  emoji: '💶' },
+        { key: 'shifts',    label: 'Turnos',    emoji: '💼' },
+    ];
+
+    return (
+        <Card className="border-indigo-200 dark:border-indigo-800/40">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-indigo-600" />
+                    Mi Agente Quioba
+                    {settings.enabled && (
+                        <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border-0 text-xs ml-1">
+                            Activa
+                        </Badge>
+                    )}
+                </CardTitle>
+                <CardDescription>Tu asistente personal de planificación diaria</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+                {/* Enable toggle */}
+                <div className="flex items-center justify-between p-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+                    <div className="flex items-center gap-2">
+                        {settings.enabled ? <Bell className="w-4 h-4 text-indigo-600" /> : <BellOff className="w-4 h-4 text-muted-foreground" />}
+                        <div>
+                            <p className="font-medium text-sm">Notificaciones diarias</p>
+                            <p className="text-xs text-muted-foreground">{settings.enabled ? 'Sync + Briefing activados' : 'Desactivado'}</p>
+                        </div>
+                    </div>
+                    <Switch
+                        checked={settings.enabled}
+                        onCheckedChange={(v) => update({ enabled: v })}
+                    />
+                </div>
+
+                {/* Avatar selection */}
+                <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Elige tu secretaria/o</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                        {SECRETARY_AVATARS.map(av => (
+                            <button
+                                key={av.id}
+                                onClick={() => update({ avatarId: av.id })}
+                                className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${
+                                    settings.avatarId === av.id
+                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                                        : 'border-transparent hover:border-indigo-200 dark:hover:border-indigo-700'
+                                }`}
+                            >
+                                <span className="text-2xl">{av.emoji}</span>
+                                <span className="text-[10px] font-medium text-muted-foreground">{av.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Horarios */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">🌙 Sync nocturno</Label>
+                        <Input
+                            type="time"
+                            value={settings.syncTime}
+                            onChange={e => update({ syncTime: e.target.value })}
+                            className="rounded-xl"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">☀️ Briefing matinal</Label>
+                        <Input
+                            type="time"
+                            value={settings.briefingTime}
+                            onChange={e => update({ briefingTime: e.target.value })}
+                            className="rounded-xl"
+                        />
+                    </div>
+                </div>
+
+                {/* Personality */}
+                <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Personalidad</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {personalities.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => update({ personality: p.id })}
+                                className={`p-3 rounded-xl border-2 text-center transition-all ${
+                                    settings.personality === p.id
+                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                                        : 'border-muted hover:border-indigo-200 dark:hover:border-indigo-700'
+                                }`}
+                            >
+                                <span className="text-xl block">{p.emoji}</span>
+                                <span className="text-xs font-medium mt-1 block">{p.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    {personalities.find(p => p.id === settings.personality) && (
+                        <p className="text-xs text-muted-foreground text-center">
+                            {personalities.find(p => p.id === settings.personality)?.desc}
+                        </p>
+                    )}
+                </div>
+
+                {/* Modules */}
+                <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Módulos incluidos</Label>
+                    <div className="space-y-2">
+                        {modulesList.map(m => (
+                            <div key={m.key} className="flex items-center justify-between py-1.5">
+                                <span className="text-sm flex items-center gap-2">
+                                    <span>{m.emoji}</span> {m.label}
+                                </span>
+                                <Switch
+                                    checked={settings.modules[m.key]}
+                                    onCheckedChange={(v) => updateModule(m.key, v)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
+                    >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                        {settings.enabled ? 'Guardar y activar' : 'Guardar'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => router.push('/apps/secretaria/sync')}
+                        className="rounded-xl"
+                    >
+                        Probar Sync
+                    </Button>
+                </div>
+
+            </CardContent>
+        </Card>
     );
 }

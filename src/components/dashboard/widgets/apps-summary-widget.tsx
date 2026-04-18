@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ import LogoLoader from '@/components/ui/logo-loader';
 const ICON_MAP: Record<string, any> = {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
-    Book, Key, Shield, CalendarDays, Newspaper, Brain
+    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot
 };
 
 // Default item order (keys used for persistence)
@@ -39,6 +39,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-teal-600', href: '/apps/mi-hogar/insurance' },
     { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-600', href: '/apps/mi-hogar/roster' },
     { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-violet-500', href: '/apps/resumen-diario' },
+    { key: 'secretary', label: 'Secretaria', iconKey: 'Bot', color: 'bg-indigo-600', href: '/apps/secretaria' },
 ];
 
 function getStorageKey(userId: string) {
@@ -231,6 +232,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
             case 'insurance': return `${stats.insuranceCount}`;
             case 'roster': return 'Ver';
             case 'summary': return 'Hoy';
+            case 'secretary': return 'Sync';
             default: return '0';
         }
     }, [stats]);
@@ -251,6 +253,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
             case 'manuals': return stats.manualCount;
             case 'passwords': return stats.passwordCount;
             case 'insurance': return stats.insuranceCount;
+            case 'secretary': return 1; // always active
             default: return 0;
         }
     }, [stats]);

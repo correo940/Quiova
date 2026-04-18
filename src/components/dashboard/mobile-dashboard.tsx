@@ -1,26 +1,56 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
 import PostItQuotes from '@/components/post-it-quotes';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { format } from 'date-fns';
+import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 
 /**
  * Dashboard optimizado para dispositivos móviles (iOS y Android)
  * Layout vertical con scroll, diseñado para uso táctil
  */
 export default function MobileDashboard() {
+    const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [refreshing, setRefreshing] = useState(false);
-    const { user } = useAuth(); // ✅ user del AuthProvider global
+    const { user } = useAuth();
+    const [secretaryStatus, setSecretaryStatus] = useState<'sync' | 'briefing' | 'ok' | null>(null);
+    const [secretaryEmoji, setSecretaryEmoji] = useState('🤖');
 
-    // Simulación de pull-to-refresh (podría integrarse con Capacitor plugin)
+    useEffect(() => {
+        const checkSecretaryStatus = async () => {
+            const settings = getSecretarySettings();
+            if (!settings.enabled) return;
+            setSecretaryEmoji(getAvatarById(settings.avatarId).emoji);
+            const { data: u } = await supabase.auth.getUser();
+            if (!u.user) return;
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const { data } = await supabase
+                .from('secretary_syncs')
+                .select('completed_at, briefing_read_at')
+                .eq('user_id', u.user.id)
+                .eq('sync_date', today)
+                .maybeSingle();
+            if (!data || !data.completed_at) {
+                setSecretaryStatus('sync');
+            } else if (!data.briefing_read_at) {
+                setSecretaryStatus('briefing');
+            } else {
+                setSecretaryStatus('ok');
+            }
+        };
+        checkSecretaryStatus();
+    }, []);
+
     const handleRefresh = async () => {
         setRefreshing(true);
-        // Simular recarga de datos
         await new Promise(resolve => setTimeout(resolve, 1000));
         setRefreshing(false);
         window.location.reload();
@@ -60,6 +90,33 @@ export default function MobileDashboard() {
 
             {/* Contenido Principal - Vertical Scroll */}
             <div className="pb-6 space-y-4">
+
+                {/* Secretary status banner */}
+                {secretaryStatus && secretaryStatus !== 'ok' && (
+                    <div className="px-4 pt-3">
+                        <button
+                            onClick={() => router.push(secretaryStatus === 'sync' ? '/apps/secretaria/sync' : '/apps/secretaria/briefing')}
+                            className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all active:scale-98 ${
+                                secretaryStatus === 'sync'
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700/40'
+                                    : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700/40'
+                            }`}
+                        >
+                            <span className="text-2xl">{secretaryEmoji}</span>
+                            <div className="flex-1 text-left">
+                                <p className={`text-sm font-semibold ${
+                                    secretaryStatus === 'sync' ? 'text-indigo-700 dark:text-indigo-300' : 'text-amber-700 dark:text-amber-300'
+                                }`}>
+                                    {secretaryStatus === 'sync' ? '🌙 Sync pendiente' : '📋 Briefing sin leer'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {secretaryStatus === 'sync' ? 'Toca para planificar mañana' : 'Tu resumen del día está listo'}
+                                </p>
+                            </div>
+                            <span className="text-muted-foreground text-xs">→</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* 1. Apps Summary - Horizontal Scroll Cards */}
                 <div className="px-4 pt-4">
