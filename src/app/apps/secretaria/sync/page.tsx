@@ -42,10 +42,10 @@ const BLOCKS: SyncBlock[] = [
   { id: 'shifts',     title: 'Turno de mañana',      emoji: 'ðŸ’¼', icon: Briefcase, skippableInQuick: false },
   { id: 'tasks',      title: 'Tareas de mañana',     emoji: '✅', icon: ListTodo },
   { id: 'shopping',   title: 'Lista de la compra',   emoji: 'ðŸ›’', icon: ShoppingCart },
-  { id: 'medicines',  title: 'MedicaciÃ³n',           emoji: 'ðŸ’Š', icon: Pill, skippableInQuick: true },
+  { id: 'medicines',  title: 'Medicación',           emoji: 'ðŸ’Š', icon: Pill, skippableInQuick: true },
   { id: 'finances',   title: 'Finanzas',             emoji: 'ðŸ’¶', icon: Wallet },
   { id: 'victories',  title: 'Victorias del día',    emoji: 'ðŸ†', icon: Trophy },
-  { id: 'done',       title: 'Â¡Listo!',              emoji: 'ðŸŽ‰', icon: PartyPopper },
+  { id: 'done',       title: '¡Listo!',              emoji: 'ðŸŽ‰', icon: PartyPopper },
 ];
 
 // â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -406,7 +406,7 @@ export default function SecretariaSyncPage() {
         </button>
         <div className="flex items-center gap-2">
           <span className="text-white/50 text-xs">
-            {mode === 'quick' ? 'âš¡ Sync RÃ¡pido' : (mode as string) === 'conversational' ? '🤖 Conversacional' : 'ðŸ“– Planificación Profunda'}
+            {mode === 'quick' ? '⚡ Sync Rápido' : (mode as string) === 'conversational' ? '🤖 Conversacional' : '📖 Planificación Profunda'}
           </span>
           <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30 text-xs">
             {currentBlock + 1}/{activeBlocks.length}
@@ -530,7 +530,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
         <span className="text-7xl animate-bounce">{profile?.emoji ?? '🤖'}</span>
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">{texts.syncWelcome(firstName)}</h1>
-          <p className="text-white/50 text-sm">Â¿CÃ³mo quieres hacer el Sync de hoy?</p>
+          <p className="text-white/50 text-sm">¿Cómo quieres hacer el Sync de hoy?</p>
         </div>
 
         {/* Tomorrow load preview */}
@@ -569,7 +569,7 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
           >
             <div className="flex items-center gap-3 mb-1">
               <Zap className="w-5 h-5 text-yellow-400" />
-              <span className="font-semibold text-lg">Sync RÃ¡pido</span>
+              <span className="font-semibold text-lg">Sync Rápido</span>
               <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30 text-xs ml-auto">â‰ˆ 2 min</Badge>
             </div>
             <p className="text-white/50 text-sm">Revisa en 2 minutos lo que tienes mañana y confirma o cambia lo que necesites. Rápido y sin complicaciones.</p>
