@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useAi } from '@/context/AiContext';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -61,6 +62,7 @@ function saveOrder(userId: string, keys: string[]) {
 }
 
 export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate?: Date; user: User | null }) {
+    const { setIsOpen: setAiPanelOpen } = useAi();
     const [stats, setStats] = useState({
         shoppingCount: 0,
         taskCount: 0,
@@ -376,7 +378,18 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                             {dateInfo.fullDate} • {dateInfo.time}
                         </span>
                     </div>
-                    <NotificationSettingsDialog />
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setAiPanelOpen(true)}
+                            className="relative w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 shadow-md hover:scale-110 transition-transform overflow-hidden"
+                            title="IA de Quioba"
+                        >
+                            <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200">
+                                <img src="/images/quioba-avatar.png" alt="IA" className="w-full h-full object-cover" />
+                            </div>
+                        </button>
+                        <NotificationSettingsDialog />
+                    </div>
                 </div>
                 {/* Mobile Date fallback */}
                 <div className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">

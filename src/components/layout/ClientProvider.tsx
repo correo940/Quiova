@@ -18,6 +18,8 @@ import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
 import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
 import { ShareTargetProvider } from '@/context/ShareTargetContext';
+import { AiProvider } from '@/context/AiContext';
+import AiPanel from '@/components/assistant/ai-panel';
 
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
@@ -31,19 +33,22 @@ export default function ClientProvider({ children }: { children: React.ReactNode
       <GlobalMenuProvider>
         <PostItSettingsProvider>
           <JournalProvider>
-            <ShareTargetProvider>
-              <TextSelectionToolbar />
-              <MedicineAlarmManager />
-              <TaskNotificationManager />
-              <VehicleNotificationManager />
-              <PlantNotificationManager />
-              <LayoutResizer>
-                {children}
-              </LayoutResizer>
-              <StartMenu />
-              <TaskPostIts />
-              <SystemPostIts />
-            </ShareTargetProvider>
+            <AiProvider>
+              <ShareTargetProvider>
+                <TextSelectionToolbar />
+                <MedicineAlarmManager />
+                <TaskNotificationManager />
+                <VehicleNotificationManager />
+                <PlantNotificationManager />
+                <LayoutResizer>
+                  {children}
+                </LayoutResizer>
+                <StartMenu />
+                <TaskPostIts />
+                <SystemPostIts />
+                <AiPanel />
+              </ShareTargetProvider>
+            </AiProvider>
           </JournalProvider>
         </PostItSettingsProvider>
       </GlobalMenuProvider>
