@@ -8,61 +8,110 @@ interface UseWakeWordOptions {
 }
 
 export function useWakeWord({ onWakeWord, enabled = true, paused = false }: UseWakeWordOptions) {
-    const recognitionRef = useRef<any>(null);
-    const restartTimerRef = useRef<any>(null);
     const onWakeWordRef = useRef(onWakeWord);
+    const recognitionRef = useRef<any>(null);
+    const enabledRef = useRef(enabled);
+    const pausedRef = useRef(paused);
+    const timeoutRef = useRef<any>(null);
+
+    useEffect(() => { onWakeWordRef.current = onWakeWord; }, [onWakeWord]);
+    useEffect(() => { enabledRef.current = enabled; }, [enabled]);
+    useEffect(() => { pausedRef.current = paused; }, [paused]);
 
     useEffect(() => {
-        onWakeWordRef.current = onWakeWord;
-    }, [onWakeWord]);
+        let isActive = true;
 
-    useEffect(() => {
-        if (!enabled || paused || typeof window === 'undefined') return;
+        if (!enabled || paused || typeof window === 'undefined') {
+            return;
+        }
 
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SR) {
+            console.warn("SpeechRecognition no soportado en este navegador");
+            return;
+        }
 
-        const start = () => {
+        function start() {
+            if (!isActive) return;
+            clearTimeout(timeoutRef.current);
+            if (!enabledRef.current || pausedRef.current) return;
+            if (recognitionRef.current) return;
+
             try {
-                const recognition = new SpeechRecognition();
+                const recognition = new SR();
                 recognition.lang = 'es-ES';
                 recognition.continuous = true;
-                recognition.interimResults = true;
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 5;
 
                 recognition.onresult = (e: any) => {
+                    if (!isActive) return;
                     for (let i = e.resultIndex; i < e.results.length; i++) {
-                        const transcript = e.results[i][0].transcript.toLowerCase().trim();
-                        if (transcript.includes('quioba') || transcript.includes('kioba') || transcript.includes('quiova')) {
-                            onWakeWordRef.current();
+                        if (!e.results[i].isFinal) continue;
+                        for (let j = 0; j < e.results[i].length; j++) {
+                            const t = e.results[i][j].transcript.toLowerCase().trim();
+                            console.log('🗣️ Escuché:', t);
+                            if (
+                                t.includes('quioba') ||
+                                t.includes('kioba') ||
+                                t.includes('quiova') ||
+                                t.includes('kiova') ||
+                                t.includes('gioba') ||
+                                t.includes('quiroba') ||
+                                t.includes('quiroga') ||
+                                t.includes('nova') ||
+                                t.includes('quio')
+                            ) {
+                                console.log('🎯 WAKE WORD DETECTADO!');
+                                onWakeWordRef.current();
+                                return;
+                            }
                         }
                     }
                 };
 
-                recognition.onend = () => {
-                    // Reiniciar automáticamente tras 1 segundo
-                    restartTimerRef.current = setTimeout(start, 1000);
+                recognition.onerror = (e: any) => {
+                    if (!isActive) return;
+                    if (e.error !== 'no-speech') {
+                        console.log('⚠️ Wake word error:', e.error);
+                    }
+                    if (e.error === 'not-allowed') return; // Bloqueado, no insistir
+
+                    // En Chrome para Windows, el reconocimiento continuo a veces aborta silenciosamente. 
+                    // No hacemos nada para forzar reinicio, onend lo manejará.
                 };
 
-                recognition.onerror = (e: any) => {
-                    if (e.error !== 'no-speech') {
-                        restartTimerRef.current = setTimeout(start, 2000);
-                    } else {
-                        restartTimerRef.current = setTimeout(start, 500);
+                recognition.onend = () => {
+                    recognitionRef.current = null;
+                    if (!isActive) return; // Si ya se desmontó, salir de aquí
+
+                    if (enabledRef.current && !pausedRef.current) {
+                        timeoutRef.current = setTimeout(start, 500);
                     }
                 };
 
                 recognitionRef.current = recognition;
                 recognition.start();
-            } catch {
-                restartTimerRef.current = setTimeout(start, 2000);
+                console.log('🎙️ Escuchando wake word...');
+            } catch (err) {
+                console.error("Error al arrancar SpeechRecognition", err);
+                if (isActive) {
+                    timeoutRef.current = setTimeout(start, 1500);
+                }
             }
-        };
+        }
+
+        function stop() {
+            isActive = false; // Bloquea todo futuro reinicio de onend o catch
+            clearTimeout(timeoutRef.current);
+            if (recognitionRef.current) {
+                try { recognitionRef.current.abort(); } catch { }
+                recognitionRef.current = null;
+            }
+        }
 
         start();
+        return stop;
 
-        return () => {
-            clearTimeout(restartTimerRef.current);
-            try { recognitionRef.current?.stop(); } catch {}
-        };
     }, [enabled, paused]);
 }

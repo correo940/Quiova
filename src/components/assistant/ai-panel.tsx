@@ -62,6 +62,33 @@ function QuiobaEyes() {
     );
 }
 
+// Emite un pitido agradable y futurista al reconocer la palabra
+function playWakeBeep() {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+    } catch {
+        // Ignorar si el navegador bloquea el audio
+    }
+}
+
 export default function AiPanel() {
     const { isOpen, setIsOpen, width } = useAi();
     const { user } = useAuth();
@@ -72,25 +99,6 @@ export default function AiPanel() {
     const [voiceMode, setVoiceMode] = useState(false); // toggle texto/voz
     const [speaking, setSpeaking] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
-
-    // Wake word — escuchar "Quioba" continuamente
-    const handleWakeWord = useCallback(() => {
-        if (!isOpen) {
-            setIsOpen(true);
-            setVoiceMode(true);
-            setTimeout(() => startListening(), 800);
-        }
-    }, [isOpen]);
-
-    useWakeWord({
-        onWakeWord: handleWakeWord,
-        enabled: false, // desactivado temporalmente
-        paused: true,
-    });
-
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
 
     // ── Enviar mensaje (acepta texto directo o usa el input) ──────────
     const sendMessageWithText = async (text: string) => {
@@ -148,15 +156,37 @@ export default function AiPanel() {
         recognition.onend = () => setListening(false);
         recognition.onresult = (e: any) => {
             const transcript = e.results[0][0].transcript;
-            // Envío automático al terminar de hablar
             sendMessageWithText(transcript);
         };
         recognition.onerror = () => {
             setListening(false);
-            toast.error('No se pudo escuchar. Inténtalo de nuevo.');
         };
         recognition.start();
     };
+
+    // Wake word — escuchar "Quioba" continuamente
+    const handleWakeWord = () => {
+        playWakeBeep(); // <--- Emite pitido de confirmación
+
+        setVoiceMode(true);
+        if (!isOpen) {
+            setIsOpen(true);
+            setTimeout(() => startListening(), 800);
+        } else {
+            // Ya está abierto, solo reactivamos el dictado
+            startListening();
+        }
+    };
+
+    useWakeWord({
+        onWakeWord: handleWakeWord,
+        enabled: true,
+        paused: listening || speaking,  // Solo pausa si ya te está escuchando o si ella misma está hablando
+    });
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     // ── Síntesis de voz ───────────────────────────────────────────────
     const speak = (text: string) => {
@@ -210,11 +240,10 @@ export default function AiPanel() {
                                     setVoiceMode(v => !v);
                                     if (speaking) stopSpeaking();
                                 }}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
-                                    voiceMode
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400'
-                                }`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${voiceMode
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                    : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400'
+                                    }`}
                                 title={voiceMode ? 'Modo voz activo — pulsa para desactivar' : 'Activar respuestas por voz'}
                             >
                                 {voiceMode ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
@@ -228,7 +257,7 @@ export default function AiPanel() {
                                     title="Parar voz"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                        <rect x="6" y="6" width="12" height="12" rx="2"/>
+                                        <rect x="6" y="6" width="12" height="12" rx="2" />
                                     </svg>
                                 </button>
                             )}
@@ -251,11 +280,10 @@ export default function AiPanel() {
                         )}
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                                    msg.role === 'user'
-                                        ? 'bg-emerald-500 text-white rounded-br-sm'
-                                        : 'bg-muted text-foreground rounded-bl-sm'
-                                }`}>
+                                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${msg.role === 'user'
+                                    ? 'bg-emerald-500 text-white rounded-br-sm'
+                                    : 'bg-muted text-foreground rounded-bl-sm'
+                                    }`}>
                                     {msg.role === 'assistant' ? (
                                         <AiReply content={msg.content} />
                                     ) : (
@@ -297,18 +325,17 @@ export default function AiPanel() {
                             <button
                                 onClick={startListening}
                                 disabled={loading || listening}
-                                className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors shrink-0 ${
-                                    listening
-                                        ? 'bg-red-500 animate-pulse text-white'
-                                        : 'bg-slate-200 hover:bg-slate-300 dark:bg-zinc-700 dark:text-zinc-300'
-                                }`}
+                                className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors shrink-0 ${listening
+                                    ? 'bg-red-500 animate-pulse text-white'
+                                    : 'bg-slate-200 hover:bg-slate-300 dark:bg-zinc-700 dark:text-zinc-300'
+                                    }`}
                                 title="Hablar"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                    <line x1="12" y1="19" x2="12" y2="23"/>
-                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                    <line x1="12" y1="19" x2="12" y2="23" />
+                                    <line x1="8" y1="23" x2="16" y2="23" />
                                 </svg>
                             </button>
                             {/* Enviar */}
