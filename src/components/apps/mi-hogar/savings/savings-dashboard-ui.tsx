@@ -902,28 +902,42 @@ export default function SavingsDashboardUI({
                                                         </div>
                                                     </div>
 
-                                                    {/* TWO BUTTONS TO TOGGLE DATA */}
+                                                    {/* THREE BUTTONS TO TOGGLE DATA OR OPERATE */}
                                                     <div className="flex gap-2 mt-4 pt-4 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const candidates = bankAccounts.filter(a => !a.parent_account_id);
+                                                                const principal = candidates.find(a => a.name.toLowerCase().includes(bankName.toLowerCase())) ||
+                                                                    candidates.sort((a, b) => (b.current_balance || 0) - (a.current_balance || 0))[0] ||
+                                                                    bankAccounts[0];
+                                                                if (principal && onViewAccount) onViewAccount(principal);
+                                                            }}
+                                                            className="flex-1 bg-emerald-500/80 hover:bg-emerald-500 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-emerald-400/30"
+                                                        >
+                                                            <Plus className="w-4 h-4 shrink-0" />
+                                                            <span className="truncate">Operar</span>
+                                                        </button>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setExpandedSummaries(prev => prev.includes(bankName) ? prev.filter(b => b !== bankName) : [...prev, bankName]);
                                                             }}
-                                                            className="flex-1 bg-black/20 hover:bg-black/30 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/5"
+                                                            className="flex-1 bg-black/20 hover:bg-black/30 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-white/5"
                                                         >
-                                                            <List className="w-4 h-4" />
-                                                            {expandedSummaries.includes(bankName) ? 'Ocultar Resumen' : 'Ver Resumen'}
+                                                            <List className="w-4 h-4 shrink-0" />
+                                                            <span className="truncate">{expandedSummaries.includes(bankName) ? 'Ocultar' : 'Resumen'}</span>
                                                         </button>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 toggleBank(bankName);
                                                             }}
-                                                            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                                                            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
                                                         >
-                                                            <CreditCard className="w-4 h-4" />
-                                                            {isExpanded ? 'Ocultar Cuentas' : 'Extraer Cuentas'}
-                                                            <ChevronDown className="w-4 h-4 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                                                            <CreditCard className="w-4 h-4 shrink-0" />
+                                                            <span className="truncate">{isExpanded ? 'Ocultar' : 'Cuentas'}</span>
+                                                            <ChevronDown className="w-3.5 h-3.5 shrink-0 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                                                         </button>
                                                     </div>
 
@@ -943,13 +957,20 @@ export default function SavingsDashboardUI({
                                                                         const disp = acc.current_balance - envSpent;
 
                                                                         return (
-                                                                            <div key={acc.id} className="flex flex-col gap-1 bg-black/10 rounded-lg px-3 py-2 border border-white/5 shadow-inner">
+                                                                            <div
+                                                                                key={acc.id}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (onViewAccount) onViewAccount(acc);
+                                                                                }}
+                                                                                className="flex flex-col gap-1 bg-black/10 hover:bg-black/20 rounded-lg px-3 py-2 border border-white/5 shadow-inner cursor-pointer transition-colors"
+                                                                            >
                                                                                 <div className="flex justify-between items-center text-xs">
-                                                                                    <span className="text-white/90 font-medium truncate pr-2 flex items-center gap-1.5">
+                                                                                    <span className="text-white/90 font-medium truncate pr-2 flex items-center gap-1.5 transition-colors group-hover:text-white">
                                                                                         {isEnv ? <span className="text-amber-300">🗂</span> : <span className="text-emerald-300">💳</span>}
                                                                                         {acc.name}
                                                                                     </span>
-                                                                                    <span className="font-bold text-white">
+                                                                                    <span className="font-bold text-white group-hover:scale-105 transition-transform">
                                                                                         {currencyFormatter.format(acc.current_balance)}
                                                                                     </span>
                                                                                 </div>

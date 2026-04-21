@@ -1344,6 +1344,7 @@ export default function SavingsPage() {
                 onUpdateBalance={handleUpdateAccountBalance}
                 onUpdateAccount={handleUpdateAccount}
                 onToggleIncludeInTotal={handleToggleAccountInTotal}
+                onNavigateAccount={handleOpenAccountDetail}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
                 accounts={accounts}
             />

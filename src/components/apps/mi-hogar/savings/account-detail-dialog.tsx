@@ -114,6 +114,7 @@ interface AccountDetailDialogProps {
     onNavigateToPassword?: () => void;
     onUpdateBalance?: (accountId: string, newBalance: number) => Promise<void>;
     onUpdateAccount?: (accountId: string, updates: Partial<BankAccount>) => Promise<void>;
+    onNavigateAccount?: (acc: BankAccount) => void;
     accounts?: BankAccount[];
 }
 
@@ -156,6 +157,7 @@ export default function AccountDetailDialog({
     onNavigateToPassword,
     onUpdateBalance,
     onUpdateAccount,
+    onNavigateAccount,
     accounts = []
 }: AccountDetailDialogProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'details'>('overview');
@@ -198,6 +200,20 @@ export default function AccountDetailDialog({
         setSelectedMonth(new Date());
         setSelectedTxIds(new Set());
     }, [open, account?.id]);
+
+    const handleNextAccount = () => {
+        if (!account || accounts.length <= 1 || !onNavigateAccount) return;
+        const currentIndex = accounts.findIndex(a => a.id === account.id);
+        const nextIndex = (currentIndex + 1) % accounts.length;
+        onNavigateAccount(accounts[nextIndex]);
+    };
+
+    const handlePrevAccount = () => {
+        if (!account || accounts.length <= 1 || !onNavigateAccount) return;
+        const currentIndex = accounts.findIndex(a => a.id === account.id);
+        const prevIndex = (currentIndex - 1 + accounts.length) % accounts.length;
+        onNavigateAccount(accounts[prevIndex]);
+    };
 
     useEffect(() => {
         if (open) {
@@ -455,10 +471,22 @@ export default function AccountDetailDialog({
                                                     <Landmark className="h-5 w-5 text-slate-800" />
                                                 )}
                                             </div>
-                                            <div>
-                                                <DialogTitle className="text-xl font-black tracking-tight text-white">
-                                                    {account.name}
-                                                </DialogTitle>
+                                            <div className="flex-1 pr-12 lg:pr-0">
+                                                <div className="flex items-center gap-2">
+                                                    {onNavigateAccount && accounts && accounts.length > 1 && (
+                                                        <button onClick={handlePrevAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors -ml-2" title="Cuenta anterior">
+                                                            <ChevronLeft className="w-5 h-5 text-white/50 hover:text-white" />
+                                                        </button>
+                                                    )}
+                                                    <DialogTitle className="text-xl font-black tracking-tight text-white">
+                                                        {account.name}
+                                                    </DialogTitle>
+                                                    {onNavigateAccount && accounts && accounts.length > 1 && (
+                                                        <button onClick={handleNextAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors" title="Siguiente cuenta">
+                                                            <ChevronRight className="w-5 h-5 text-white/50 hover:text-white" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs text-white/70">
                                                     <span>{account.bank_name}</span>
                                                     <span className="h-0.5 w-0.5 rounded-full bg-white/40" />
