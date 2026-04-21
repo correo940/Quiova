@@ -63,6 +63,9 @@ type BankAccount = {
     interest_rate?: number;
     include_in_total?: boolean;
     account_type?: 'libre' | 'objetivo' | 'bloqueada';
+    // Envelope system
+    parent_account_id?: string | null;
+    envelope_spent?: number;
 };
 
 type SavingsGoal = {
@@ -82,6 +85,8 @@ type SavingsTransaction = {
     amount: number;
     date: string;
     description: string;
+    account_id: string; // From the relationship
+    is_envelope_spend?: boolean;
 };
 
 export type RecurringItem = {
@@ -151,7 +156,7 @@ export default function SavingsPage() {
     const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
     const [isImporterOpen, setIsImporterOpen] = useState(false);
     const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-    
+
     // Month Filter
     const [selectedMonth, setSelectedMonth] = useState<Date>(() => {
         const d = new Date();
@@ -161,7 +166,7 @@ export default function SavingsPage() {
     });
 
     // Forms
-    const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string, includeInTotal: boolean }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true });
+    const [newAccount, setNewAccount] = useState<{ name: string, bank: string, color: string, passId: string, customBankName?: string, interestRate: string, includeInTotal: boolean, parentAccountId: string, envelopeSpent: string }>({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true, parentAccountId: 'none', envelopeSpent: '' });
     const [newGoal, setNewGoal] = useState({ name: '', target: '', current: '', deadline: '', linkedAccountId: 'none', interestRate: '' });
     const [newRecurring, setNewRecurring] = useState({ name: '', amount: '', type: 'expense', day: '', targetAccountId: 'none', endDate: '' });
 
@@ -312,7 +317,7 @@ export default function SavingsPage() {
             // 3. Transactions (Last 30 days for stats & chart)
             const chartStartDate = new Date();
             chartStartDate.setDate(chartStartDate.getDate() - 30);
-            
+
             const firstDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
             const fetchStartDate = firstDayOfMonth < chartStartDate ? firstDayOfMonth : chartStartDate;
 
@@ -346,7 +351,7 @@ export default function SavingsPage() {
                     else mExpense += Math.abs(tx.amount);
                 }
             });
-            
+
             const rate = mIncome > 0 ? ((mIncome - mExpense) / mIncome) * 100 : 0;
             setMonthlyStats({ income: mIncome, expense: mExpense, savingsRate: rate > 0 ? rate : 0 });
 
@@ -455,13 +460,15 @@ export default function SavingsPage() {
                 logo_url: bankLogo,
                 password_id: newAccount.passId === 'none' ? null : newAccount.passId,
                 interest_rate: newAccount.interestRate ? parseFloat(newAccount.interestRate) : 0,
-                include_in_total: newAccount.includeInTotal
+                include_in_total: newAccount.includeInTotal,
+                parent_account_id: newAccount.parentAccountId === 'none' ? null : newAccount.parentAccountId,
+                envelope_spent: newAccount.envelopeSpent ? parseFloat(newAccount.envelopeSpent) : 0
             };
             const { error } = await supabase.from('savings_accounts').insert(payload);
             if (error) throw error;
             toast.success('Cuenta creada');
             setIsAddAccountOpen(false);
-            setNewAccount({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true });
+            setNewAccount({ name: '', bank: 'Otro', color: '#64748b', passId: 'none', interestRate: '', includeInTotal: true, parentAccountId: 'none', envelopeSpent: '' });
             fetchData(user?.id);
         } catch (error) {
             toast.error('Error al crear cuenta');
@@ -550,13 +557,15 @@ export default function SavingsPage() {
         amount,
         date,
         description,
-        kind
+        kind,
+        is_envelope_spend
     }: {
         transactionId?: string;
         amount: number;
         date: string;
         description: string;
         kind: 'deposit' | 'expense';
+        is_envelope_spend?: boolean;
     }) => {
         if (!selectedAccount) {
             toast.error('Selecciona una cuenta');
@@ -579,41 +588,68 @@ export default function SavingsPage() {
                     .update({
                         amount: signedAmount,
                         date,
-                        description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro')
+                        description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro'),
+                        is_envelope_spend
                     })
                     .eq('id', transactionId);
 
                 if (txError) throw txError;
 
-                const recalculatedBalance = (selectedAccount.current_balance || 0) - currentTransaction.amount + signedAmount;
+                let balanceDiff = 0;
+                let envelopeDiff = 0;
+
+                if (currentTransaction.is_envelope_spend) {
+                    envelopeDiff -= Math.abs(currentTransaction.amount);
+                } else {
+                    balanceDiff -= currentTransaction.amount;
+                }
+
+                if (is_envelope_spend) {
+                    envelopeDiff += Math.abs(signedAmount);
+                } else {
+                    balanceDiff += signedAmount;
+                }
+
+                const recalculatedBalance = (selectedAccount.current_balance || 0) + balanceDiff;
+                const recalculatedEnvelope = (selectedAccount.envelope_spent || 0) + envelopeDiff;
+
                 const { error: accountError } = await supabase
                     .from('savings_accounts')
-                    .update({ current_balance: recalculatedBalance })
+                    .update({ current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope })
                     .eq('id', selectedAccount.id);
 
                 if (accountError) throw accountError;
 
-                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope });
                 toast.success('Movimiento actualizado');
             } else {
                 const { error: txError } = await supabase.from('savings_account_transactions').insert({
                     account_id: selectedAccount.id,
                     amount: signedAmount,
                     date,
-                    description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro')
+                    description: description || (kind === 'deposit' ? 'Ingreso' : 'Retiro'),
+                    is_envelope_spend
                 });
 
                 if (txError) throw txError;
 
-                const recalculatedBalance = (selectedAccount.current_balance || 0) + signedAmount;
+                let recalculatedBalance = selectedAccount.current_balance || 0;
+                let recalculatedEnvelope = selectedAccount.envelope_spent || 0;
+
+                if (is_envelope_spend) {
+                    recalculatedEnvelope += Math.abs(signedAmount);
+                } else {
+                    recalculatedBalance += signedAmount;
+                }
+
                 const { error: accountError } = await supabase
                     .from('savings_accounts')
-                    .update({ current_balance: recalculatedBalance })
+                    .update({ current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope })
                     .eq('id', selectedAccount.id);
 
                 if (accountError) throw accountError;
 
-                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+                setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope });
                 toast.success('Movimiento registrado');
             }
 
@@ -644,7 +680,7 @@ export default function SavingsPage() {
             if (gError) throw gError;
 
             setSelectedGoal({ ...selectedGoal, current_amount: newAmount });
-            
+
             // Re-fetch transactions
             const { data: gtxs } = await supabase
                 .from('savings_goal_transactions')
@@ -652,7 +688,7 @@ export default function SavingsPage() {
                 .eq('goal_id', selectedGoal.id)
                 .order('date', { ascending: false });
             setGoalTransactions(gtxs || []);
-            
+
             fetchData(user?.id);
             toast.success('Movimiento de meta eliminado');
         } catch (error) {
@@ -667,11 +703,11 @@ export default function SavingsPage() {
                 .from('savings_goal_transactions')
                 .select('amount')
                 .eq('goal_id', goalId);
-                
+
             const trueSum = (gtxs || []).reduce((s, t) => s + t.amount, 0);
-            
+
             await supabase.from('savings_goals').update({ current_amount: trueSum }).eq('id', goalId);
-            
+
             toast.success('Meta sincronizada');
             fetchData(user?.id);
             if (selectedGoal?.id === goalId) {
@@ -687,6 +723,7 @@ export default function SavingsPage() {
         if (!selectedAccount) return;
 
         try {
+            const tx = accountTransactions.find(t => t.id === transactionId);
             const { error: txError } = await supabase
                 .from('savings_account_transactions')
                 .delete()
@@ -694,15 +731,23 @@ export default function SavingsPage() {
 
             if (txError) throw txError;
 
-            const recalculatedBalance = (selectedAccount.current_balance || 0) - amount;
+            let recalculatedBalance = selectedAccount.current_balance || 0;
+            let recalculatedEnvelope = selectedAccount.envelope_spent || 0;
+
+            if (tx?.is_envelope_spend) {
+                recalculatedEnvelope -= Math.abs(amount);
+            } else {
+                recalculatedBalance -= amount;
+            }
+
             const { error: accountError } = await supabase
                 .from('savings_accounts')
-                .update({ current_balance: recalculatedBalance })
+                .update({ current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope })
                 .eq('id', selectedAccount.id);
 
             if (accountError) throw accountError;
 
-            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope });
             await fetchAccountTransactions(selectedAccount.id);
             await fetchData(user?.id);
             toast.success('Movimiento eliminado');
@@ -716,6 +761,7 @@ export default function SavingsPage() {
         if (!selectedAccount || transactionIds.length === 0) return;
 
         try {
+            const txsToDelete = accountTransactions.filter(t => transactionIds.includes(t.id));
             const { error: txError } = await supabase
                 .from('savings_account_transactions')
                 .delete()
@@ -723,15 +769,28 @@ export default function SavingsPage() {
 
             if (txError) throw txError;
 
-            const recalculatedBalance = (selectedAccount.current_balance || 0) - totalAmount;
+            let balanceDiff = 0;
+            let envelopeDiff = 0;
+
+            for (const tx of txsToDelete) {
+                if (tx.is_envelope_spend) {
+                    envelopeDiff -= Math.abs(tx.amount);
+                } else {
+                    balanceDiff -= tx.amount;
+                }
+            }
+
+            const recalculatedBalance = (selectedAccount.current_balance || 0) + balanceDiff;
+            const recalculatedEnvelope = (selectedAccount.envelope_spent || 0) + envelopeDiff;
+
             const { error: accountError } = await supabase
                 .from('savings_accounts')
-                .update({ current_balance: recalculatedBalance })
+                .update({ current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope })
                 .eq('id', selectedAccount.id);
 
             if (accountError) throw accountError;
 
-            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance });
+            setSelectedAccount({ ...selectedAccount, current_balance: recalculatedBalance, envelope_spent: recalculatedEnvelope });
             await fetchAccountTransactions(selectedAccount.id);
             await fetchData(user?.id);
             toast.success(`${transactionIds.length} movimientos eliminados`);
@@ -743,26 +802,33 @@ export default function SavingsPage() {
 
     const handleSyncAccountBalance = async (accountId: string) => {
         try {
-            const { data: allTxs, error: txError } = await supabase
+            const { data: txs } = await supabase
                 .from('savings_account_transactions')
-                .select('amount')
+                .select('amount, is_envelope_spend')
                 .eq('account_id', accountId);
 
-            if (txError) throw txError;
+            let trueBalance = 0;
+            let currentEnvelope = 0;
 
-            const trueBalance = (allTxs || []).reduce((sum, tx) => sum + tx.amount, 0);
+            for (const tx of (txs || [])) {
+                if (tx.is_envelope_spend) {
+                    currentEnvelope += Math.abs(tx.amount);
+                } else {
+                    trueBalance += tx.amount;
+                }
+            }
 
-            const { error: updateError } = await supabase
+            const { error: accError } = await supabase
                 .from('savings_accounts')
-                .update({ current_balance: trueBalance })
+                .update({ current_balance: trueBalance, envelope_spent: currentEnvelope })
                 .eq('id', accountId);
 
-            if (updateError) throw updateError;
-            
-            toast.success('Saldo sincronizado a partir del historial');
-            await fetchData(user?.id);
+            if (accError) throw accError;
+
+            toast.success('Saldo sincronizado (incluye estado de sobre)');
+            fetchData(user?.id);
             if (selectedAccount?.id === accountId) {
-                setSelectedAccount(prev => prev ? { ...prev, current_balance: trueBalance } : prev);
+                setSelectedAccount(prev => prev ? { ...prev, current_balance: trueBalance, envelope_spent: currentEnvelope } : prev);
             }
         } catch (error) {
             console.error(error);
@@ -778,7 +844,7 @@ export default function SavingsPage() {
                 .eq('id', accountId);
 
             if (updateError) throw updateError;
-            
+
             toast.success('Saldo actualizado manualmente');
             await fetchData(user?.id);
             if (selectedAccount?.id === accountId) {
@@ -790,18 +856,45 @@ export default function SavingsPage() {
         }
     };
 
+    const handleUpdateAccount = async (accountId: string, updates: Partial<BankAccount>) => {
+        try {
+            const { error: updateError } = await supabase
+                .from('savings_accounts')
+                .update(updates)
+                .eq('id', accountId);
+
+            if (updateError) throw updateError;
+
+            toast.success('Cuenta actualizada');
+            await fetchData(user?.id);
+            if (selectedAccount?.id === accountId) {
+                setSelectedAccount(prev => prev ? { ...prev, ...updates } : prev);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar cuenta');
+        }
+    };
+
     const handleSyncAllBalances = async () => {
         if (!user) return;
         try {
             toast.loading('Sincronizando todo...', { id: 'sync-all' });
-            
+
             // 1. Sync Accounts
-            const { data: accs } = await supabase.from('savings_accounts').select('id').eq('user_id', user.id);
+            const { data: accs } = await supabase.from('savings_accounts').select('id, parent_account_id').eq('user_id', user.id);
             if (accs) {
                 for (const acc of accs) {
-                    const { data: txs } = await supabase.from('savings_account_transactions').select('amount').eq('account_id', acc.id);
-                    const sum = (txs || []).reduce((s, t) => s + t.amount, 0);
-                    await supabase.from('savings_accounts').update({ current_balance: sum }).eq('id', acc.id);
+                    const { data: txs } = await supabase.from('savings_account_transactions').select('amount, is_envelope_spend').eq('account_id', acc.id);
+
+                    let sum = 0;
+                    let envSum = 0;
+                    for (const t of (txs || [])) {
+                        if (t.is_envelope_spend && acc.parent_account_id) envSum += Math.abs(t.amount);
+                        else sum += t.amount;
+                    }
+
+                    await supabase.from('savings_accounts').update({ current_balance: sum, envelope_spent: envSum }).eq('id', acc.id);
                 }
             }
 
@@ -942,10 +1035,10 @@ export default function SavingsPage() {
                         <FileUp className="h-4 w-4" /> Importar Extracto
                     </Button>
                     <SavingsNotificationSettings />
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-900/20 w-9 h-9 sm:w-8 sm:h-8" 
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-900/20 w-9 h-9 sm:w-8 sm:h-8"
                         onClick={() => setIsResetDialogOpen(true)}
                         title="Purgar Datos"
                     >
@@ -1018,7 +1111,7 @@ export default function SavingsPage() {
             />
 
             {/* --- RESET DATA DIALOG --- */}
-            <ResetDataDialog 
+            <ResetDataDialog
                 isOpen={isResetDialogOpen}
                 onClose={() => setIsResetDialogOpen(false)}
                 onConfirm={handleResetData}
@@ -1069,6 +1162,29 @@ export default function SavingsPage() {
                                 <SelectContent><SelectItem value="none">Sin vincular</SelectItem>{passwords.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
+
+                        <div className="flex flex-col gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                            <div className="space-y-2">
+                                <Label>¿Es un Sobre protegido?</Label>
+                                <p className="text-[10px] text-slate-500 mb-2">Vincula esta cuenta como un fondo que vive dentro de otra cuenta principal (ej. Vacaciones en BBVA).</p>
+                                <Select onValueChange={(v) => setNewAccount({ ...newAccount, parentAccountId: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Cuenta Independiente" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Cuenta Independiente (No es sobre)</SelectItem>
+                                        {accounts.filter(a => !a.parent_account_id).map(acc => (
+                                            <SelectItem key={acc.id} value={acc.id}>🗂 Sobre de: {acc.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {newAccount.parentAccountId !== 'none' && (
+                                <div className="space-y-2">
+                                    <Label>Gastado del sobre en la cuenta principal (€)</Label>
+                                    <Input type="number" placeholder="Ej: 500" value={newAccount.envelopeSpent} onChange={(e) => setNewAccount({ ...newAccount, envelopeSpent: e.target.value })} />
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
                             <div className="space-y-1">
                                 <Label htmlFor="include-in-total" className="text-sm font-semibold text-slate-900">Incluir en balance general</Label>
@@ -1157,9 +1273,9 @@ export default function SavingsPage() {
                         <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg text-center relative">
                             <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
                                 Saldo Actual
-                                <button 
+                                <button
                                     onClick={() => {
-                                        if(selectedGoal && window.confirm('¿Quieres sincronizar esta meta con sus movimientos?')) {
+                                        if (selectedGoal && window.confirm('¿Quieres sincronizar esta meta con sus movimientos?')) {
                                             handleSyncGoalBalance(selectedGoal.id);
                                         }
                                     }}
@@ -1195,12 +1311,12 @@ export default function SavingsPage() {
                                         <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
                                         <div className="flex items-center gap-3">
                                             <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
-                                            <button 
+                                            <button
                                                 onClick={() => {
-                                                    if(window.confirm('¿Eliminar este movimiento de la meta?')) {
+                                                    if (window.confirm('¿Eliminar este movimiento de la meta?')) {
                                                         handleDeleteGoalTransaction(tx.id, tx.amount);
                                                     }
-                                                }} 
+                                                }}
                                                 className="text-slate-400 hover:text-red-500 transition-colors p-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1226,8 +1342,10 @@ export default function SavingsPage() {
                 onDeleteAccount={handleDeleteAccount}
                 onSyncBalance={handleSyncAccountBalance}
                 onUpdateBalance={handleUpdateAccountBalance}
+                onUpdateAccount={handleUpdateAccount}
                 onToggleIncludeInTotal={handleToggleAccountInTotal}
                 onNavigateToPassword={selectedAccountPasswordId ? () => navigateToPassword(selectedAccountPasswordId) : undefined}
+                accounts={accounts}
             />
 
         </div>
