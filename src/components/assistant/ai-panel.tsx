@@ -90,7 +90,7 @@ function playWakeBeep() {
 }
 
 export default function AiPanel() {
-    const { isOpen, setIsOpen, width } = useAi();
+    const { isOpen, setIsOpen, width, isWakeWordEnabled } = useAi();
     const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -180,7 +180,7 @@ export default function AiPanel() {
 
     useWakeWord({
         onWakeWord: handleWakeWord,
-        enabled: true,
+        enabled: isWakeWordEnabled,
         paused: listening || speaking,  // Solo pausa si ya te está escuchando o si ella misma está hablando
     });
 

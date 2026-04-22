@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff, Pencil } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff, Pencil, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, Wand2, CalendarDays, Timer } from 'lucide-react';
+import { guessCategoryAndPrice, generatePlanItems, checkExpiration } from '@/lib/shopping-list-ai-helpers';
 
 type ShoppingItem = {
     id: string;
@@ -33,6 +34,9 @@ export default function ShoppingList() {
     const [newItemName, setNewItemName] = useState('');
     const [loading, setLoading] = useState(true);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+    const [plannerText, setPlannerText] = useState('');
+    const [proposedItems, setProposedItems] = useState<string[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const { user } = useAuth();
 
@@ -269,6 +273,9 @@ export default function ShoppingList() {
     const addItem = async (name: string = newItemName, supermarket?: string) => {
         if (!name.trim() || !user) return;
 
+        // AUTO-CATEGORIZATION AI MAGIC
+        const aiAnalysis = guessCategoryAndPrice(name);
+
         try {
             const { data, error } = await supabase
                 .from('shopping_items')
@@ -276,7 +283,7 @@ export default function ShoppingList() {
                     {
                         user_id: user.id,
                         name: name,
-                        category: 'General',
+                        category: aiAnalysis.category,
                         supermarket: supermarket || null,
                         is_checked: false, // to_buy
                     },
@@ -297,13 +304,38 @@ export default function ShoppingList() {
 
             setItems(prevItems => [newItem, ...prevItems]);
             setNewItemName('');
-            toast.success('Añadido a la lista de compra');
+            toast.success(`Añadido: ${data.name} en ${aiAnalysis.category} ${aiAnalysis.emoji}`);
             return true;
         } catch (error) {
             console.error('Error adding item:', error);
             toast.error('Error al añadir el producto');
             return false;
         }
+    };
+
+    const handlePlanSubmit = async () => {
+        if (!plannerText.trim()) return;
+        setIsProcessing(true);
+        toast.info("Generando plan mágico...");
+
+        // Simular espera de IA para generar expectación
+        setTimeout(async () => {
+            const plannedItems = generatePlanItems(plannerText);
+            setProposedItems(plannedItems);
+            setIsProcessing(false);
+        }, 800);
+    };
+
+    const confirmPlan = async () => {
+        setIsProcessing(true);
+        for (const item of proposedItems) {
+            addItem(item);
+        }
+        toast.success(`¡Mágico! Añadidos ${proposedItems.length} ingredientes a tu lista.`);
+        setPlannerText('');
+        setProposedItems([]);
+        setIsPlannerOpen(false);
+        setIsProcessing(false);
     };
 
     const toggleStatus = async (id: string) => {
@@ -364,7 +396,7 @@ export default function ShoppingList() {
         });
     }, [items, searchTerm, categoryFilter]);
 
-    const categories = React.useMemo(() => 
+    const categories = React.useMemo(() =>
         [...new Set(items.map(i => i.category).filter(Boolean))],
         [items]
     );
@@ -372,310 +404,465 @@ export default function ShoppingList() {
     const toBuyItems = filteredItems.filter(i => i.status === 'to_buy');
     const inStockItems = filteredItems.filter(i => i.status === 'in_stock');
 
+    // PRICE ESTIMATION MAGIC
+    const estimatedTotal = toBuyItems.reduce((acc, item) => acc + guessCategoryAndPrice(item.name).estimatedPrice, 0);
+
+    // ProgressBar info
+    const totalFiltered = toBuyItems.length + inStockItems.length;
+    const progressPercent = totalFiltered === 0 ? 0 : Math.round((inStockItems.length / totalFiltered) * 100);
+
     const getSupermarketBadgeColor = (supermarket?: string) => {
-        if (!supermarket) return "bg-gray-100 text-gray-800";
+        if (!supermarket) return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
         const lower = supermarket.toLowerCase();
-        if (lower.includes('mercadona')) return "bg-green-100 text-green-800 border-green-200";
-        if (lower.includes('carrefour')) return "bg-blue-100 text-blue-800 border-blue-200";
-        if (lower.includes('lidl')) return "bg-yellow-100 text-yellow-800 border-yellow-200";
-        if (lower.includes('dia')) return "bg-red-100 text-red-800 border-red-200";
-        if (lower.includes('aldi')) return "bg-blue-50 text-blue-900 border-blue-100";
-        return "bg-gray-100 text-gray-800";
+        if (lower.includes('mercadona')) return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50";
+        if (lower.includes('carrefour')) return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50";
+        if (lower.includes('lidl')) return "bg-yellow-100/80 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50";
+        if (lower.includes('dia')) return "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/50";
+        if (lower.includes('aldi')) return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/50";
+        return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
     };
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "";
         return new Date(dateString).toLocaleDateString('es-ES', {
             day: 'numeric',
-            month: 'long',
-            year: 'numeric'
+            month: 'short'
         });
     };
 
     if (loading) {
         return (
-            <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+                <p className="text-sm font-medium text-muted-foreground animate-pulse">Sincronizando listas...</p>
             </div>
         );
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 flex gap-2 flex-wrap">
-                    <Input
-                        placeholder="¿Qué necesitas comprar? (ej. Leche, Pan...)"
-                        value={newItemName}
-                        onChange={(e) => setNewItemName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && addItem()}
-                    />
-                    <Button onClick={() => addItem()}>
-                        <Plus className="mr-2 h-4 w-4" /> Añadir
-                    </Button>
-                    <Button
-                        variant={isListening ? "destructive" : "outline"}
-                        onClick={handleVoiceInput}
-                        title={isListening ? "Detener escucha" : "Dictar producto"}
-                    >
-                        {isListening ? <MicOff className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsScannerOpen(true)} title="Identificar producto con IA">
-                        <Camera className="h-4 w-4 mr-2" />
-                        <Sparkles className="h-3 w-3 text-yellow-500" />
-                    </Button>
-                    <Link href="/apps/mi-hogar/recipes">
-                        <Button variant="outline" title="Chef Inteligente">
-                            <ChefHat className="h-4 w-4 mr-2" />
-                            <Sparkles className="h-3 w-3 text-orange-500" />
-                        </Button>
-                    </Link>
+        <div className="max-w-3xl mx-auto space-y-8 pb-10">
+            {/* ── SECCIÓN CENTRAL DE COMANDOS FLORANTE ── */}
+            <div className="sticky top-4 z-40">
+                <div className="relative group">
+                    {/* Efecto resplandor */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
+                    <div className="relative flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-1.5 shadow-lg">
+                        <div className="flex-1 px-3">
+                            <Input
+                                placeholder="Añadir a la lista (Ej. Manzanas...)"
+                                value={newItemName}
+                                onChange={(e) => setNewItemName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                                className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-base h-10 px-0 placeholder:text-muted-foreground font-medium"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                            <Button
+                                variant={isListening ? "destructive" : "secondary"}
+                                size="icon"
+                                className="rounded-full w-10 h-10 transition-transform hover:scale-105"
+                                onClick={handleVoiceInput}
+                                title={isListening ? "Detener escucha" : "Dictar producto"}
+                            >
+                                {isListening ? <MicOff className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4 text-slate-600 dark:text-slate-300" />}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="rounded-full w-10 h-10 transition-transform hover:scale-105"
+                                onClick={() => setIsScannerOpen(true)}
+                                title="Identificar producto con IA"
+                            >
+                                <Camera className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="rounded-full w-10 h-10 transition-transform hover:scale-105"
+                                onClick={() => setIsPlannerOpen(true)}
+                                title="Planear un evento / Botón Mágico"
+                            >
+                                <Wand2 className="h-5 w-5 text-indigo-500" />
+                            </Button>
+                            <Link href="/apps/mi-hogar/recipes">
+                                <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="rounded-full w-10 h-10 transition-transform hover:scale-105 mr-1"
+                                    title="Sugerir Receta Inteligente"
+                                >
+                                    <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                </Button>
+                            </Link>
+                            <Button
+                                onClick={() => addItem()}
+                                className="rounded-full px-5 h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold tracking-wide shadow-md transition-all hover:shadow-lg active:scale-95"
+                            >
+                                Añadir
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Identificar Producto (IA)</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col items-center justify-center p-4 bg-black rounded-lg overflow-hidden min-h-[300px] relative">
+            {/* ── CABECERA Y BÚSQUEDA ── */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5">
+                <div className="flex flex-col sm:flex-row gap-5 items-center justify-between">
+                    <div className="flex-1 w-full">
+                        <h1 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2">
+                            <ShoppingCart className="w-6 h-6 text-emerald-500" /> Lista de Compra
+                        </h1>
+                        <p className="text-sm font-semibold text-muted-foreground mt-1">
+                            Tienes {toBuyItems.length} artículos pendientes
+                        </p>
+                    </div>
 
+                    <div className="flex-1 w-full flex sm:justify-center items-center">
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-3 flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/20 rounded-full">
+                                <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-indigo-600/80 dark:text-indigo-400/80">Coste Estimado Mágico</p>
+                                <p className="text-xl font-black text-indigo-700 dark:text-indigo-300">~{estimatedTotal.toFixed(2)}€</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Búsqueda y Filtros Compactos */}
+                    <div className="w-full sm:w-[260px] shrink-0 space-y-2">
+                        <div className="relative">
+                            <Input
+                                placeholder="🔍 Buscar..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="h-10 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-md pl-10 pr-8"
+                            />
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+                            {searchTerm && (
+                                <button onClick={() => setSearchTerm('')} className="absolute right-2 top-2.5 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {categories.length > 0 && (
+                    <div className="flex gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                        <button
+                            onClick={() => setCategoryFilter(null)}
+                            className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all ${!categoryFilter
+                                ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            Todas
+                        </button>
+                        {categories.map((cat, i) => (
+                            <button
+                                key={cat}
+                                onClick={() => setCategoryFilter(prev => prev === cat ? null : cat)}
+                                className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all ${categoryFilter === cat
+                                    ? 'bg-emerald-500 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── MODALS (ESCANER Y EDICIÓN) ── */}
+            <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+                <DialogContent className="sm:max-w-md border-0 bg-slate-950 p-0 overflow-hidden text-white shadow-xl rounded-2xl">
+                    <DialogHeader className="p-4 bg-slate-900/50 backdrop-blur border-b border-white/10 relative z-10">
+                        <DialogTitle className="flex items-center gap-2 tracking-tight text-lg">
+                            <Sparkles className="w-5 h-5 text-emerald-400" /> Identificar Producto
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center bg-black min-h-[350px] relative">
                         {isScannerOpen && !capturedImage && (
-                            <div className="relative w-full h-full flex items-center justify-center">
+                            <div className="relative w-full h-full flex flex-col items-center justify-center">
                                 <Webcam
                                     audio={false}
                                     ref={webcamRef}
                                     screenshotFormat="image/jpeg"
                                     screenshotQuality={0.8}
                                     forceScreenshotSourceSize={true}
-                                    videoConstraints={{
-                                        facingMode: "environment",
-                                        width: { ideal: 1280 },
-                                        height: { ideal: 720 }
-                                    }}
-                                    className="w-full h-full object-cover"
+                                    videoConstraints={{ facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }}
+                                    className="absolute inset-0 w-full h-full object-cover"
                                 />
-                                <p className="absolute bottom-4 text-white text-sm font-medium drop-shadow-md">Haz una foto al producto</p>
+                                <div className="absolute inset-0 border-[3px] border-white/20 rounded-xl m-8 pointer-events-none" />
                             </div>
                         )}
                         {capturedImage && (
                             <div className="relative w-full h-full flex items-center justify-center bg-black">
-                                <img src={capturedImage} alt="Captura" className="max-w-full max-h-full object-contain opacity-50" />
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <Loader2 className="h-12 w-12 text-white animate-spin mb-4" />
-                                    <p className="text-white font-medium text-lg animate-pulse">Analizando con IA...</p>
+                                <img src={capturedImage} alt="Captura" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" />
+                                <img src={capturedImage} alt="Captura Focus" className="z-10 max-w-[80%] max-h-[80%] object-contain rounded-lg shadow-2xl border border-white/10" />
+                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                                    <div className="bg-emerald-500/20 p-4 rounded-full mb-4">
+                                        <Loader2 className="h-10 w-10 text-emerald-400 animate-spin" />
+                                    </div>
+                                    <p className="text-white font-bold tracking-wider text-sm animate-pulse">ANALIZANDO CON IA...</p>
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    <div className="flex justify-center mt-4">
-                        <Button
-                            size="lg"
-                            onClick={captureAndIdentify}
-                            disabled={isProcessing}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                            {isProcessing ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Procesando...
-                                </>
-                            ) : (
-                                <>
-                                    <Camera className="mr-2 h-5 w-5" />
-                                    Identificar
-                                </>
-                            )}
-                        </Button>
-                    </div>
+                    {!capturedImage && (
+                        <div className="p-4 bg-slate-900 relative z-10 flex justify-center">
+                            <button
+                                onClick={captureAndIdentify}
+                                disabled={isProcessing}
+                                className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all transform active:scale-95"
+                            >
+                                <Camera className="h-6 w-6 text-white" />
+                            </button>
+                        </div>
+                    )}
                 </DialogContent>
-
             </Dialog>
 
             <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle>Editar Producto</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">Editar Producto</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nombre del producto</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre</label>
                             <Input
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
-                                placeholder="Ej. Leche"
+                                className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 text-base"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Supermercado (Opcional)</label>
-                            <Input
-                                value={editSupermarket}
-                                onChange={(e) => setEditSupermarket(e.target.value)}
-                                placeholder="Ej. Mercadona"
-                            />
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Supermercado <span className="opacity-50">(Opcional)</span></label>
+                            <div className="relative">
+                                <Input
+                                    value={editSupermarket}
+                                    onChange={(e) => setEditSupermarket(e.target.value)}
+                                    className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl pl-10 pr-4 text-base"
+                                    placeholder="Ej. Mercadona"
+                                />
+                                <Store className="w-4 h-4 absolute left-3.5 top-4 text-muted-foreground" />
+                            </div>
                         </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
-                            <Button onClick={updateItem}>Guardar Cambios</Button>
+                        <div className="flex gap-2 pt-4">
+                            <Button variant="outline" className="h-11 rounded-xl flex-1 font-semibold" onClick={() => setEditingItem(null)}>Cancelar</Button>
+                            <Button onClick={updateItem} className="h-11 rounded-xl flex-1 bg-emerald-500 hover:bg-emerald-600 font-bold">Guardar Cambios</Button>
                         </div>
                     </div>
                 </DialogContent>
             </Dialog>
 
-            <div className="flex gap-2 mb-3 mt-4">
-                <Input
-                    placeholder="Buscar producto en tus listas..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 bg-background"
-                />
-                {searchTerm && (
-                    <Button variant="ghost" size="icon" onClick={() => setSearchTerm('')}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
-            </div>
+            <Dialog open={isPlannerOpen} onOpenChange={setIsPlannerOpen}>
+                <DialogContent className="sm:max-w-md rounded-3xl border-0 overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 p-6 shadow-2xl">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -ml-10 -mb-10" />
 
-            {categories.length > 0 && (
-                <div className="flex gap-2 flex-wrap mb-4">
-                    <button
-                        onClick={() => setCategoryFilter(null)}
-                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${!categoryFilter ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                    >
-                        Todas
-                    </button>
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setCategoryFilter(prev => prev === cat ? null : cat)}
-                            className={`text-xs px-3 py-1 rounded-full border transition-colors ${categoryFilter === cat ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-            )}
+                    <DialogHeader className="relative z-10 mb-2">
+                        <DialogTitle className="text-2xl font-black text-indigo-900 dark:text-indigo-100 flex items-center gap-3">
+                            <div className="p-2.5 bg-indigo-500 text-white rounded-xl shadow-lg">
+                                <Wand2 className="h-6 w-6" />
+                            </div>
+                            Botón Mágico
+                        </DialogTitle>
+                    </DialogHeader>
 
-            {(searchTerm || categoryFilter) && (
-                <p className="text-xs text-muted-foreground mb-3 font-medium">
-                    {filteredItems.length} resultados encontrados
-                </p>
-            )}
+                    <div className="space-y-5 relative z-10">
+                        <p className="text-sm font-medium text-indigo-800/70 dark:text-indigo-200/70 leading-relaxed">
+                            Describe tu evento o comida (ej: "Barbacoa el sábado", "Cena italiana para 3"). La IA deducirá lo que necesitas.
+                        </p>
+
+                        {proposedItems.length === 0 ? (
+                            <div className="space-y-4">
+                                <textarea
+                                    value={plannerText}
+                                    onChange={(e) => setPlannerText(e.target.value)}
+                                    placeholder="Escribe tu super plan aquí..."
+                                    className="w-full h-28 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-2xl resize-none p-4 text-base focus-visible:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
+                                />
+
+                                <Button
+                                    onClick={handlePlanSubmit}
+                                    disabled={isProcessing || !plannerText.trim()}
+                                    className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isProcessing ? (
+                                        <><Loader2 className="h-5 w-5 animate-spin" /> Pensando...</>
+                                    ) : (
+                                        <>Desglosar Ingredientes <Sparkles className="h-5 w-5" /></>
+                                    )}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="bg-white/60 dark:bg-slate-900/60 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800/50">
+                                    <h4 className="font-bold text-indigo-900 dark:text-indigo-100 mb-2">He pensado en todo esto:</h4>
+                                    <ul className="space-y-2 mb-2 max-h-40 overflow-y-auto pr-2">
+                                        {proposedItems.map((item, idx) => (
+                                            <li key={idx} className="flex items-center justify-between text-sm text-indigo-800 dark:text-indigo-200">
+                                                <div className="flex items-center gap-2 truncate">
+                                                    <div className="w-1.5 h-1.5 shrink-0 rounded-full bg-indigo-400" />
+                                                    <span className="truncate">{item}</span>
+                                                </div>
+                                                <button onClick={() => setProposedItems(prev => prev.filter((_, i) => i !== idx))} className="text-indigo-400 hover:text-red-500 p-1 shrink-0">
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" className="flex-1 border-indigo-200 text-indigo-700 font-bold" onClick={() => setProposedItems([])}>
+                                        Volver
+                                    </Button>
+                                    <Button
+                                        onClick={confirmPlan}
+                                        disabled={isProcessing || proposedItems.length === 0}
+                                        className="flex-[2] bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold shadow-lg"
+                                    >
+                                        {isProcessing ? "Añadiendo..." : `¡Añadir los ${proposedItems.length}!`}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <Tabs defaultValue="list" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="list" className="relative">
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        Lista de Compra
-                        {toBuyItems.length > 0 && (
-                            <Badge variant="destructive" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                                {toBuyItems.length}
-                            </Badge>
-                        )}
+                <TabsList className="grid w-full max-w-sm mx-auto grid-cols-2 p-1.5 h-auto bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl mb-6">
+                    <TabsTrigger value="list" className="rounded-xl py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all text-sm font-semibold">
+                        <ShoppingCart className="w-4 h-4 mr-2 opacity-70" />
+                        Por Comprar
                     </TabsTrigger>
-                    <TabsTrigger value="pantry">
-                        <Archive className="mr-2 h-4 w-4" />
-                        Despensa / Historial
+                    <TabsTrigger value="pantry" className="rounded-xl py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all text-sm font-semibold">
+                        <Archive className="w-4 h-4 mr-2 opacity-70" />
+                        Despensa
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="list" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Por Comprar</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {toBuyItems.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    <ShoppingCart className="mx-auto h-12 w-12 opacity-20 mb-4" />
-                                    <p>¡Todo comprado! No hay nada en la lista.</p>
-                                </div>
-                            ) : (
-                                <ul className="space-y-2">
-                                    {toBuyItems.map(item => (
-                                        <li key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors group gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">{item.name}</span>
-                                                    {item.supermarket && (
-                                                        <Badge variant="outline" className={`w-fit mt-1 text-xs border ${getSupermarketBadgeColor(item.supermarket)}`}>
-                                                            <Store className="w-3 h-3 mr-1" />
-                                                            {item.supermarket}
-                                                        </Badge>
-                                                    )}
-                                                    {item.created_at && (
-                                                        <span className="text-[10px] text-muted-foreground mt-0.5 block">
-                                                            Añadido el {formatDate(item.created_at)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => openEditDialog(item)}>
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
-                                            </div>
+                {/* ── PESTAÑA: POR COMPRAR ── */}
+                <TabsContent value="list" className="focus-visible:outline-none focus:ring-0">
+                    {toBuyItems.length === 0 ? (
+                        <div className="text-center py-20 bg-white/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50 rounded-3xl">
+                            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
+                                <Sparkles className="h-8 w-8" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">¡Todo al día!</h3>
+                            <p className="text-muted-foreground mt-2 text-sm max-w-[250px] mx-auto">No hay compras pendientes. Escribe o dicta algo para añadir.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {toBuyItems.map(item => {
+                                const aiData = guessCategoryAndPrice(item.name);
+                                return (
+                                    <div key={item.id} className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-start gap-3">
+                                        <button
+                                            onClick={() => toggleStatus(item.id)}
+                                            className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-200 dark:border-slate-700 group-hover:border-emerald-400 group-hover:bg-emerald-50/[0.3] flex items-center justify-center transition-all focus:outline-none"
+                                            title="Marcar como comprado"
+                                        >
+                                            <div className="w-full h-full rounded-full transition-transform scale-0 group-hover:scale-50 bg-emerald-400" />
+                                        </button>
 
-                                            <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                                <Button size="sm" variant="outline" onClick={() => toggleStatus(item.id)} className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                                                    <ArrowRight className="mr-2 h-4 w-4" />
-                                                    Marcar Comprado
-                                                </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => deleteItem(item.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                        <div className="flex-1 min-w-0 pr-6">
+                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight truncate mb-1">
+                                                {aiData.emoji} {item.name}
+                                            </h4>
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                {item.supermarket && (
+                                                    <Badge variant="outline" className={`text-[9px] uppercase tracking-wider font-bold border rounded-md px-1.5 py-0 ${getSupermarketBadgeColor(item.supermarket)}`}>
+                                                        {item.supermarket}
+                                                    </Badge>
+                                                )}
+                                                {item.created_at && (
+                                                    <span className="text-[10px] text-muted-foreground font-medium opacity-60">
+                                                        {formatDate(item.created_at)}
+                                                    </span>
+                                                )}
                                             </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        </div>
+
+                                        {/* Action buttons (Absolute to float on hover right side) */}
+                                        <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-md transition-colors" title="Editar">
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button onClick={() => deleteItem(item.id)} className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-400 hover:text-red-600 dark:hover:text-red-300 rounded-md transition-colors" title="Eliminar definitivamente">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </TabsContent>
 
-                <TabsContent value="pantry" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>En Casa (Despensa)</CardTitle>
-                            <p className="text-sm text-muted-foreground">Marca lo que se ha gastado para añadirlo de nuevo a la lista.</p>
-                        </CardHeader>
-                        <CardContent>
-                            {inStockItems.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    <Archive className="mx-auto h-12 w-12 opacity-20 mb-4" />
-                                    <p>La despensa está vacía.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                    {inStockItems.map(item => (
-                                        <div key={item.id} className="flex flex-col p-3 border rounded-lg bg-secondary/20 gap-2">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex flex-col overflow-hidden">
-                                                    <span className="truncate font-medium">{item.name}</span>
+                {/* ── PESTAÑA: DESPENSA / HISTORIAL ── */}
+                <TabsContent value="pantry" className="focus-visible:outline-none focus:ring-0">
+                    {inStockItems.length === 0 ? (
+                        <div className="text-center py-20 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                            <Archive className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-700 mb-3" />
+                            <p className="text-muted-foreground font-medium">La despensa está vacía.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {inStockItems.map(item => {
+                                const aiData = guessCategoryAndPrice(item.name);
+                                const expiration = item.created_at ? checkExpiration(aiData.category, item.created_at) : null;
+                                return (
+                                    <div key={item.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-3.5 flex flex-col h-full hover:shadow-sm transition-shadow group relative overflow-hidden">
+                                        <div className={`absolute -right-2 -top-2 w-12 h-12 rounded-full opacity-20 blur-xl ${item.supermarket ? getSupermarketBadgeColor(item.supermarket).split(' ')[0] : 'bg-slate-300'}`} />
+
+                                        <div className="flex justify-between items-start mb-2 relative z-10 w-full">
+                                            <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-sm leading-tight line-clamp-2 pr-4 opacity-80 group-hover:opacity-100 flex items-center gap-1.5 flex-wrap">
+                                                {expiration?.status === 'expired' && <Timer className="w-3.5 h-3.5 text-red-500 animate-pulse shrink-0" />}
+                                                {expiration?.status === 'warning' && <Timer className="w-3.5 h-3.5 text-yellow-500 shrink-0" />}
+                                                <span className="truncate">{aiData.emoji} {item.name}</span>
+                                            </h4>
+                                            <button onClick={() => deleteItem(item.id)} className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all shrink-0">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 mt-auto pt-2 relative z-10">
+                                            <div className="flex items-end justify-between">
+                                                <div className="flex flex-col gap-1.5 items-start">
                                                     {item.supermarket && (
-                                                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 opacity-70 w-fit">
+                                                        <Badge variant="secondary" className="text-[9px] h-5 px-1.5 uppercase font-bold tracking-wider opacity-60">
                                                             {item.supermarket}
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0" onClick={() => openEditDialog(item)}>
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
+                                                <button
+                                                    onClick={() => toggleStatus(item.id)}
+                                                    className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-emerald-500 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all hover:scale-110 active:scale-95"
+                                                    title="Reagregar a la lista"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                </button>
                                             </div>
-                                            {item.created_at && (
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    {formatDate(item.created_at)}
-                                                </span>
+                                            {/* Warning caducidad renderizado debajo con estilo */}
+                                            {expiration && (
+                                                <div className="text-[10px] font-bold tracking-wide uppercase mt-1 w-full text-center rounded overflow-hidden shadow-sm">
+                                                    {expiration.status === 'expired'
+                                                        ? <span className="text-red-600 bg-red-100/80 dark:bg-red-900/40 dark:text-red-400 py-1 w-full block border border-red-200 dark:border-red-800/50">{expiration.message}</span>
+                                                        : <span className="text-yellow-600 bg-yellow-100/80 dark:bg-yellow-900/40 dark:text-yellow-400 py-1 w-full block border border-yellow-200 dark:border-yellow-800/50">{expiration.message}</span>}
+                                                </div>
                                             )}
-                                            <Button size="sm" variant="secondary" onClick={() => toggleStatus(item.id)} title="Se ha gastado" className="w-full mt-1">
-                                                <RefreshCw className="h-4 w-4 mr-2" />
-                                                Gastado
-                                            </Button>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div >

@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -62,7 +62,7 @@ function saveOrder(userId: string, keys: string[]) {
 }
 
 export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate?: Date; user: User | null }) {
-    const { setIsOpen: setAiPanelOpen } = useAi();
+    const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
     const [stats, setStats] = useState({
         shoppingCount: 0,
         taskCount: 0,
@@ -379,6 +379,16 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
+                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                    : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
+                                }`}
+                            title={isWakeWordEnabled ? "Micrófono IA activo (Toca para desactivar)" : "Micrófono IA desactivado (Toca para reactivar)"}
+                        >
+                            {isWakeWordEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                        </button>
                         <button
                             onClick={() => setAiPanelOpen(true)}
                             className="relative w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 shadow-md hover:scale-110 transition-transform overflow-hidden"

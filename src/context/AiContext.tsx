@@ -7,6 +7,8 @@ interface AiContextType {
     setIsOpen: (isOpen: boolean) => void;
     width: number;
     setWidth: (width: number) => void;
+    isWakeWordEnabled: boolean;
+    setIsWakeWordEnabled: (enabled: boolean) => void;
 }
 
 const AiContext = createContext<AiContextType | undefined>(undefined);
@@ -14,13 +16,34 @@ const AiContext = createContext<AiContextType | undefined>(undefined);
 export function AiProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [width, setWidth] = useState(33);
+    const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(false);
+
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem('quioba_wake_word');
+            if (saved !== null) {
+                setIsWakeWordEnabled(saved === 'true');
+            } else {
+                setIsWakeWordEnabled(false);
+            }
+        } catch {
+            setIsWakeWordEnabled(false);
+        }
+    }, []);
+
+    const toggleWakeWord = (enabled: boolean) => {
+        setIsWakeWordEnabled(enabled);
+        localStorage.setItem('quioba_wake_word', String(enabled));
+    };
 
     return (
         <AiContext.Provider value={{
             isOpen,
             setIsOpen,
             width,
-            setWidth
+            setWidth,
+            isWakeWordEnabled,
+            setIsWakeWordEnabled: toggleWakeWord
         }}>
             {children}
         </AiContext.Provider>

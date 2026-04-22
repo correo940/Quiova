@@ -60,7 +60,9 @@ export function useWakeWord({ onWakeWord, enabled = true, paused = false }: UseW
                                 t.includes('quiroba') ||
                                 t.includes('quiroga') ||
                                 t.includes('nova') ||
-                                t.includes('quio')
+                                t.includes('quio') ||
+                                t.includes('jehova') ||
+                                t.includes('jehová')
                             ) {
                                 console.log('🎯 WAKE WORD DETECTADO!');
                                 onWakeWordRef.current();
