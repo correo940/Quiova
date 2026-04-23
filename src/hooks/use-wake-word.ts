@@ -74,31 +74,28 @@ export function useWakeWord({ onWakeWord, enabled = true, paused = false }: UseW
 
                 recognition.onerror = (e: any) => {
                     if (!isActive) return;
-                    if (e.error !== 'no-speech') {
+                    // 'aborted' y 'no-speech' son normales en Chrome/Windows, ignorar
+                    if (e.error !== 'no-speech' && e.error !== 'aborted') {
                         console.log('⚠️ Wake word error:', e.error);
                     }
                     if (e.error === 'not-allowed') return; // Bloqueado, no insistir
-
-                    // En Chrome para Windows, el reconocimiento continuo a veces aborta silenciosamente. 
-                    // No hacemos nada para forzar reinicio, onend lo manejará.
                 };
 
                 recognition.onend = () => {
                     recognitionRef.current = null;
-                    if (!isActive) return; // Si ya se desmontó, salir de aquí
+                    if (!isActive) return;
 
                     if (enabledRef.current && !pausedRef.current) {
-                        timeoutRef.current = setTimeout(start, 500);
+                        timeoutRef.current = setTimeout(start, 1500);
                     }
                 };
 
                 recognitionRef.current = recognition;
                 recognition.start();
-                console.log('🎙️ Escuchando wake word...');
+                console.log('🎙️ Reconocimiento activo');
             } catch (err) {
-                console.error("Error al arrancar SpeechRecognition", err);
                 if (isActive) {
-                    timeoutRef.current = setTimeout(start, 1500);
+                    timeoutRef.current = setTimeout(start, 500);
                 }
             }
         }

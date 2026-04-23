@@ -98,7 +98,25 @@ export default function AiPanel() {
     const [listening, setListening] = useState(false);
     const [voiceMode, setVoiceMode] = useState(false); // toggle texto/voz
     const [speaking, setSpeaking] = useState(false);
+    const [waitingForMic, setWaitingForMic] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    const voiceModeRef = useRef(voiceMode);
+    useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
+
+    const isOpenRef = useRef(isOpen);
+    useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+    const listeningRef = useRef(listening);
+    useEffect(() => { listeningRef.current = listening; }, [listening]);
+
+    const loadingRef = useRef(loading);
+    useEffect(() => { loadingRef.current = loading; }, [loading]);
+
+    const messagesRef = useRef(messages);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+    const cancelRef = useRef(false);
 
     // ── Enviar mensaje (acepta texto directo o usa el input) ──────────
     const sendMessageWithText = async (text: string) => {
@@ -113,7 +131,7 @@ export default function AiPanel() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, { role: 'user', content: userMsg }],
+                    messages: [...messagesRef.current, { role: 'user', content: userMsg }],
                     userId: user?.id,
                 }),
             });
@@ -141,27 +159,43 @@ export default function AiPanel() {
 
     const sendMessage = () => sendMessageWithText(input);
 
-    // ── Micrófono ─────────────────────────────────────────────────────
     const startListening = () => {
+        if (listeningRef.current || !isOpenRef.current) {
+            setWaitingForMic(false);
+            return;
+        }
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
             toast.error('Tu navegador no soporta reconocimiento de voz');
+            setWaitingForMic(false);
             return;
         }
         const recognition = new SpeechRecognition();
         recognition.lang = 'es-ES';
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.onstart = () => setListening(true);
-        recognition.onend = () => setListening(false);
+        recognition.onstart = () => {
+            setListening(true);
+            setWaitingForMic(false);
+        };
+        recognition.onend = () => {
+            setListening(false);
+            setWaitingForMic(false);
+        };
         recognition.onresult = (e: any) => {
             const transcript = e.results[0][0].transcript;
             sendMessageWithText(transcript);
         };
         recognition.onerror = () => {
             setListening(false);
+            setWaitingForMic(false);
         };
-        recognition.start();
+        try {
+            recognition.start();
+        } catch (e) {
+            setListening(false);
+            setWaitingForMic(false);
+        }
     };
 
     // Wake word — escuchar "Quioba" continuamente
@@ -181,7 +215,7 @@ export default function AiPanel() {
     useWakeWord({
         onWakeWord: handleWakeWord,
         enabled: isWakeWordEnabled,
-        paused: listening || speaking,  // Solo pausa si ya te está escuchando o si ella misma está hablando
+        paused: listening || speaking || waitingForMic,  // Solo pausa si ya te está escuchando o si ella misma está hablando
     });
 
     useEffect(() => {
@@ -203,14 +237,39 @@ export default function AiPanel() {
         const spanish = preferred || voices.find(v => v.lang === 'es-ES') || voices.find(v => v.lang.startsWith('es'));
         if (spanish) utterance.voice = spanish;
 
+        // Solución técnica: guardar la referencia globalmente evita que el garbage collector la destruya en Chrome
+        (window as any).__quiobaVoiceUtterance = utterance;
+
+        cancelRef.current = false;
         utterance.onstart = () => setSpeaking(true);
-        utterance.onend = () => setSpeaking(false);
+        utterance.onend = () => {
+            setSpeaking(false);
+
+            if (!voiceModeRef.current || !isOpenRef.current || cancelRef.current) {
+                toast.error(`Debug 1: voice=${voiceModeRef.current}, open=${isOpenRef.current}, cancel=${cancelRef.current}`);
+            }
+
+            if (voiceModeRef.current && isOpenRef.current && !cancelRef.current) {
+                setWaitingForMic(true);
+                setTimeout(() => {
+                    if (listeningRef.current || loadingRef.current) {
+                        toast.error(`Debug 2: listening=${listeningRef.current}, loading=${loadingRef.current}`);
+                        setWaitingForMic(false);
+                    } else {
+                        toast("🎤 Te toca, dime...", { position: 'top-center' });
+                        startListening();
+                    }
+                }, 1000); // 1000ms delay to ensure Chrome TTS audio hardware releases the microphone
+            }
+        };
         window.speechSynthesis.speak(utterance);
     };
 
     const stopSpeaking = () => {
+        cancelRef.current = true;
         window.speechSynthesis?.cancel();
         setSpeaking(false);
+        setWaitingForMic(false);
     };
 
     return (
