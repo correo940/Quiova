@@ -30,7 +30,6 @@ export async function POST(req: Request) {
       { data: shifts },
       { data: medicines },
       { data: expenses },
-      { data: knowledge },
     ] = await Promise.all([
       supabase.from('tasks').select('title, is_completed, due_date').eq('user_id', userId).eq('is_completed', false).limit(10),
       supabase.from('shopping_items').select('name, quantity').eq('user_id', userId).eq('is_checked', false).limit(15),
@@ -38,20 +37,14 @@ export async function POST(req: Request) {
       supabase.from('work_shifts').select('title, start_time, end_time').eq('user_id', userId).gte('start_time', today).limit(5),
       supabase.from('medicines').select('name, dosage, frequency').eq('user_id', userId).limit(10),
       supabase.from('expenses').select('description, amount, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('ai_knowledge').select('title, content').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
     ]);
 
     const totalBalance = savings?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
 
-    const knowledgeSection = knowledge && knowledge.length > 0
-      ? `\n📚 CONOCIMIENTO PERSONALIZADO DEL USUARIO:\n${knowledge.map(k => `## ${k.title}\n${k.content}`).join('\n\n')}\n`
-      : '';
-
     const systemPrompt = `Eres la IA de Quioba, asistente personal inteligente y cercano del usuario.
 Tienes acceso a sus datos reales y puedes ayudarle con cualquier pregunta sobre su vida diaria.
 Responde siempre en español, de forma concisa y útil. Nunca menciones que eres Llama ni ningún modelo externo.
-Cuando el usuario pregunte sobre algún tema que aparezca en el CONOCIMIENTO PERSONALIZADO, úsalo como base principal de tu respuesta.
-${knowledgeSection}
+
 DATOS ACTUALES DEL USUARIO (${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}):
 
 💰 FINANZAS:
@@ -66,10 +59,10 @@ ${shopping?.map(s => `- ${s.name}${s.quantity ? ` x${s.quantity}` : ''}`).join('
 
 💼 PRÓXIMOS TURNOS:
 ${shifts?.map(s => {
-      const start = new Date(s.start_time);
-      const end = new Date(s.end_time);
-      return `- ${s.title}: ${start.toLocaleDateString('es-ES')} ${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')}–${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`;
-    }).join('\n') || '- Sin turnos próximos'}
+  const start = new Date(s.start_time);
+  const end = new Date(s.end_time);
+  return `- ${s.title}: ${start.toLocaleDateString('es-ES')} ${start.getHours()}:${String(start.getMinutes()).padStart(2,'0')}–${end.getHours()}:${String(end.getMinutes()).padStart(2,'0')}`;
+}).join('\n') || '- Sin turnos próximos'}
 
 💊 MEDICACIÓN:
 ${medicines?.map(m => `- ${m.name}${m.dosage ? ` (${m.dosage})` : ''}${m.frequency ? ` — ${m.frequency}` : ''}`).join('\n') || '- Sin medicación registrada'}
