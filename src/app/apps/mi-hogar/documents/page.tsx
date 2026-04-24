@@ -595,12 +595,12 @@ export default function DocumentsPage() {
                                     .from('documents')
                                     .insert([{
                                         title: newData.file_name || 'Nuevo Escaneo Móvil',
-                                        url: newData.file_url,
+                                        file_url: newData.file_url,
                                         category: 'Otros',
-                                        status: 'activo',
+                                        lifecycle_status: 'activo',
                                         issuer: 'Quioba Mobile',
-                                        file_name: newData.file_name,
-                                        issue_date: new Date().toISOString()
+                                        tags: ['escaneo-movil'],
+                                        is_favorite: false
                                     }]);
 
                                 if (insertError) {
