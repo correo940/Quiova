@@ -510,19 +510,6 @@ export default function DocumentsPage() {
         }
     };
 
-    const handleMobileScanSim = async () => {
-        setMobileScanStatus('scanning');
-        await new Promise(r => setTimeout(r, 2500));
-        setMobileScanStatus('received');
-        await new Promise(r => setTimeout(r, 1000));
-        setIsMobileScanDialogOpen(false);
-        setMobileScanStatus('waiting');
-        toast.success("Documento Recibido", {
-            description: "El archivo se ha transferido y analizado correctamente.",
-            icon: <Sparkles className="w-4 h-4 text-amber-500" />
-        });
-        await refreshDataAndSync();
-    };
 
     function handleOpenDetail(doc: SecureDocument) {
         setSelectedDocument(doc);
