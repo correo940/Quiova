@@ -590,13 +590,33 @@ export default function DocumentsPage() {
                                 setBridgeStatus('scanning');
                                 setIsProcessingBridgeFile(true);
 
-                                // Simular un pequeño tiempo de "análisis"
+                                // 1. INSERTAR EL DOCUMENTO REAL EN LA TABLA
+                                const { error: insertError } = await supabase
+                                    .from('documents')
+                                    .insert([{
+                                        title: newData.file_name || 'Nuevo Escaneo Móvil',
+                                        url: newData.file_url,
+                                        category: 'Otros',
+                                        status: 'activo',
+                                        issuer: 'Quioba Mobile',
+                                        file_name: newData.file_name,
+                                        issue_date: new Date().toISOString()
+                                    }]);
+
+                                if (insertError) {
+                                    console.error('Error saving bridge document:', insertError);
+                                    toast.error('Error al guardar el archivo en tu biblioteca');
+                                }
+
+                                // 2. Simular un pequeño tiempo de "análisis"
                                 setTimeout(() => {
                                     setBridgeStatus('received');
                                     setIsProcessingBridgeFile(false);
 
-                                    toast.success(`¡Documento "${newData.file_name}" recibido desde el móvil!`);
-                                    refreshDataAndSync(); // Recargar la lista
+                                    if (!insertError) {
+                                        toast.success(`¡Documento "${newData.file_name}" recibido y guardado!`);
+                                        refreshDataAndSync(); // Recargar la lista
+                                    }
                                 }, 2000);
                             }
                         }
