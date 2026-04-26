@@ -467,8 +467,17 @@ export default function PasswordsClient() {
                       <p className="text-xs text-slate-400 font-medium">Bóveda asegurada por biometría local</p>
                     </div>
                   ) : (
-                    <>
-                      <div className="flex items-center justify-between w-full max-w-sm px-2 gap-3">
+                    <div className="w-full max-w-sm space-y-6">
+                      {isMobile && !isBiometricsEnabled && (
+                        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl text-center">
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-bold mb-1 flex items-center justify-center gap-2">
+                            <Fingerprint className="w-4 h-4" /> ¡Activa el Acceso Directo!
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Entra con tu contraseña una última vez y pulsa el icono de la huella arriba para no tener que volver a escribirla.</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between w-full px-2 gap-3">
                         {!isMobile && (
                           <Button
                             variant="ghost"
@@ -483,7 +492,7 @@ export default function PasswordsClient() {
                         <div className="relative w-full group">
                           <Input
                             type={showMasterPassword ? "text" : "password"}
-                            placeholder="Contraseña"
+                            placeholder={isMobile ? "Llave Maestra" : "Contraseña"}
                             className="bg-slate-50 dark:bg-black/50 border-slate-200 dark:border-zinc-800/50 text-xl font-bold tracking-widest placeholder:tracking-normal placeholder:text-base text-center h-16 rounded-2xl focus-visible:ring-emerald-500 shadow-inner w-full pr-12"
                             value={masterPasswordInput}
                             onChange={(e) => setMasterPasswordInput(e.target.value)}
@@ -523,30 +532,30 @@ export default function PasswordsClient() {
                           </Button>
                         </motion.div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               )}
-
-              {isFirstTime && (
-                <form onSubmit={handleUnlock} className="space-y-4">
-                  <Input
-                    type={showMasterPassword ? "text" : "password"}
-                    placeholder="Escribe tu nueva llave maestra..."
-                    className="text-center py-7 bg-slate-50 dark:bg-black/50 rounded-2xl focus-visible:ring-emerald-500 border-slate-200 dark:border-zinc-800/50 font-medium"
-                    value={masterPasswordInput}
-                    onChange={(e) => setMasterPasswordInput(e.target.value)}
-                  />
-                  <Button type="submit" disabled={!masterPasswordInput} className="w-full py-7 font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg">Configurar y Entrar</Button>
-                </form>
-              )}
             </div>
 
-            <div className="bg-slate-50 dark:bg-black/20 p-4 text-center border-t border-slate-100 dark:border-zinc-800/50">
-              <p className="text-[11px] font-semibold tracking-widest uppercase text-emerald-600 dark:text-emerald-500 flex items-center justify-center gap-1.5 opacity-80">
-                <Lock className="w-3 h-3" /> Protección Local Segura
-              </p>
-            </div>
+            {isFirstTime && (
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <Input
+                  type={showMasterPassword ? "text" : "password"}
+                  placeholder="Escribe tu nueva llave maestra..."
+                  className="text-center py-7 bg-slate-50 dark:bg-black/50 rounded-2xl focus-visible:ring-emerald-500 border-slate-200 dark:border-zinc-800/50 font-medium"
+                  value={masterPasswordInput}
+                  onChange={(e) => setMasterPasswordInput(e.target.value)}
+                />
+                <Button type="submit" disabled={!masterPasswordInput} className="w-full py-7 font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg">Configurar y Entrar</Button>
+              </form>
+            )}
+          </div>
+
+          <div className="bg-slate-50 dark:bg-black/20 p-4 text-center border-t border-slate-100 dark:border-zinc-800/50">
+            <p className="text-[11px] font-semibold tracking-widest uppercase text-emerald-600 dark:text-emerald-500 flex items-center justify-center gap-1.5 opacity-80">
+              <Lock className="w-3 h-3" /> Protección Local Segura
+            </p>
           </div>
         </div>
       </div>
@@ -891,6 +900,6 @@ export default function PasswordsClient() {
           </div>
         )}
       </AnimatePresence>
-    </div >
+    </div>
   );
 }
