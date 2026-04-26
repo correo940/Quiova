@@ -63,6 +63,8 @@ export default function PasswordsClient() {
   const [showQrScreen, setShowQrScreen] = useState(false);
   const [currentQrSession, setCurrentQrSession] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const scanLock = useRef<boolean>(false);
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -98,17 +100,25 @@ export default function PasswordsClient() {
   };
 
   const startQrPolling = (sessionId: string) => {
-    const interval = setInterval(async () => {
-      const success = await checkQrSession(sessionId);
-      if (success) {
-        clearInterval(interval);
-        setShowQrScreen(false);
-        setCurrentQrSession(null);
-      }
-    }, 2000);
+    if (pollingInterval.current) clearInterval(pollingInterval.current);
 
-    // Auto cleanup after 1 min
-    setTimeout(() => clearInterval(interval), 60000);
+    pollingInterval.current = setInterval(async () => {
+      const isApproved = await checkQrSession(sessionId);
+      if (isApproved) {
+        if (pollingInterval.current) clearInterval(pollingInterval.current);
+        setShowQrScreen(false);
+      }
+    }, 1500);
+
+    setTimeout(() => {
+      if (pollingInterval.current) clearInterval(pollingInterval.current);
+      if (showQrScreen) setShowQrScreen(false);
+    }, 60000);
+  };
+
+  const handleCloseQr = () => {
+    setShowQrScreen(false);
+    if (pollingInterval.current) clearInterval(pollingInterval.current);
   };
 
   const handleShowQr = () => {
@@ -119,10 +129,16 @@ export default function PasswordsClient() {
   };
 
   const handleScanSuccess = async (text: string) => {
+    if (scanLock.current) return;
+
     if (text.startsWith('quioba-pass:')) {
-      const sessionId = text.split(':')[1];
-      setIsScanning(false);
+      scanLock.current = true;
+      const sessionId = text.replace('quioba-pass:', '');
       await authorizeQrSession(sessionId);
+      setIsScanning(false);
+
+      // Liberar el candado tras 3 segundos para prevenir falsos dobles en el render
+      setTimeout(() => { scanLock.current = false; }, 3000);
     }
   };
 
@@ -352,7 +368,7 @@ export default function PasswordsClient() {
                   exit={{ opacity: 0, scale: 0.9, y: 20 }}
                   className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative border border-white/10"
                 >
-                  <button onClick={() => setShowQrScreen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
+                  <button onClick={handleCloseQr} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                   <div className="mb-6">
@@ -783,7 +799,7 @@ export default function PasswordsClient() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative border border-white/10"
             >
-              <button onClick={() => setShowQrScreen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
+              <button onClick={handleCloseQr} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
                 <X className="w-6 h-6" />
               </button>
               <div className="mb-6">
