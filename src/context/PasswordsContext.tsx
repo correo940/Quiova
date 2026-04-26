@@ -163,6 +163,8 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
           pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
           authenticatorSelection: {
             authenticatorAttachment: "platform", // Requerimos huella integrada en el dispositivo
+            requireResidentKey: true, // Para navegadores antiguos
+            residentKey: "required", // Permite leer la llave sin tener que rastrear el ID (Discoverable Credential)
             userVerification: "required" // Obliga al SO a pedir la huella sí o sí
           },
           timeout: 60000,
