@@ -432,22 +432,20 @@ export default function PasswordsClient() {
             <Button
               onClick={isBiometricsEnabled ? disableBiometrics : enableBiometrics}
               variant="outline"
-              className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap ${isBiometricsEnabled ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-400'}`}
-              title={isBiometricsEnabled ? "Biometría Activa" : "Activar Biometría"}
+              className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap min-w-[40px] px-3 ${isBiometricsEnabled ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-400'}`}
+              title={isBiometricsEnabled ? "Biometría Activa" : "Vincular Huella"}
             >
-              <Fingerprint className="mr-2 h-4 w-4" />
-              <span className="hidden lg:inline">{isBiometricsEnabled ? 'Link Activo' : 'Vincular Huella'}</span>
+              <Fingerprint className="h-5 w-5" />
             </Button>
           )}
 
           <Button
             variant="outline"
             onClick={() => setIsScanning(!isScanning)}
-            className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap ${isScanning ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400'}`}
-            title="Autorizar PC vía QR"
+            className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap min-w-[120px] shadow-sm ${isScanning ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 dark:text-slate-300'}`}
           >
-            <ScanLine className="mr-2 h-4 w-4" />
-            <span className="hidden lg:inline">Scanner QR</span>
+            <ScanLine className="mr-2 h-4 w-4 text-emerald-500" />
+            <span>Escanear QR</span>
           </Button>
 
           <Button
@@ -696,9 +694,9 @@ export default function PasswordsClient() {
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">Accesibilidad Remota</h2>
                 <div className="bg-slate-50 dark:bg-zinc-900 rounded-xl p-4 mt-4 text-left border border-slate-100 dark:border-zinc-800 shadow-inner">
                   <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 font-medium list-decimal list-inside">
-                    <li>Abre Quioba en tu móvil.</li>
-                    <li>Ve a <b>Mis Contraseñas</b> (y desbloquea).</li>
-                    <li>Pulsa el botón superior <b>&quot;Scanner QR&quot;</b>.</li>
+                    <li>Abre <b>Claves</b> en tu móvil.</li>
+                    <li>Desbloquea introduciendo tu contraseña.</li>
+                    <li>Pulsa el botón <b>&quot;Escanear QR&quot;</b> de la cabecera e ilumina esta pantalla.</li>
                   </ol>
                 </div>
               </div>
