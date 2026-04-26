@@ -565,8 +565,8 @@ export default function PasswordsClient() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* ── Controles de Acciones y Búsqueda ── */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-4 rounded-3xl border border-slate-200/60 dark:border-zinc-800 shadow-sm">
-        <div className="relative w-full md:max-w-md">
+      <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-4 rounded-3xl border border-slate-200/60 dark:border-zinc-800 shadow-sm">
+        <div className="relative w-full flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input
             type="text"
@@ -577,7 +577,7 @@ export default function PasswordsClient() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="application/json" />
 
           <Button
