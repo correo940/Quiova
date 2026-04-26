@@ -305,14 +305,16 @@ export default function PasswordsClient() {
               <div className="space-y-4">
                 <Button
                   onClick={async () => {
-                    // Forzamos comprobación de huella antes de dar ok
-                    // En PWA sin backend FIDO, usamos un dummy con PublicKeyCredential si existe para provocar prompt, o simplemente auto-aprobar simulando huella (según capacidades del OS)
                     if (window.PublicKeyCredential) {
                       try {
                         await navigator.credentials.create({ publicKey: { challenge: new Uint8Array(16), rp: { name: "Quioba" }, user: { id: new Uint8Array(16), name: "user", displayName: "User" }, pubKeyCredParams: [{ type: "public-key", alg: -7 }], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 } });
-                      } catch (e) { } // Ignoramos si se cancela o falla por localhost. Solo queríamos el prompt.
+                        completeMfaUnlock();
+                      } catch (e) {
+                        toast.error('Autorización biométrica cancelada o fallida.');
+                      }
+                    } else {
+                      toast.error('El dispositivo actual no soporta biometría.');
                     }
-                    completeMfaUnlock();
                   }}
                   className="w-full py-7 text-lg bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
                 >
@@ -339,6 +341,47 @@ export default function PasswordsClient() {
               </Button>
             </div>
           </div>
+
+          {/* QR PC MODAL (COPIA PARA MFA) */}
+          <AnimatePresence>
+            {showQrScreen && (
+              <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative border border-white/10"
+                >
+                  <button onClick={() => setShowQrScreen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
+                    <X className="w-6 h-6" />
+                  </button>
+                  <div className="mb-6">
+                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-950/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600">
+                      <QrCode className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">Certificar Acceso</h2>
+                    <div className="bg-slate-50 dark:bg-zinc-900 rounded-xl p-4 mt-4 text-left border border-slate-100 dark:border-zinc-800 shadow-inner">
+                      <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 font-medium list-decimal list-inside">
+                        <li>Abre <b>Claves</b> en tu móvil y entra con tu huella.</li>
+                        <li>Pulsa el botón superior <b>&quot;Escanear QR&quot;</b>.</li>
+                        <li>Apunta con la cámara aquí para autorizar este acceso.</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-3xl shadow-inner inline-block mb-6 border-4 border-slate-50">
+                    <QRCodeSVG value={`quioba-pass:${currentQrSession}`} size={200} level="H" />
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 text-blue-600 text-sm font-bold animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Esperando autorización...</span>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
         </div>
       );
     }
