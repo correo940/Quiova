@@ -160,13 +160,13 @@ export default function Taskbar() {
     ];
 
     return (
-        <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <div className="fixed bottom-6 md:bottom-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
             <motion.div
                 initial={{ y: 40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 className={cn(
-                    "pointer-events-auto bg-white/60 dark:bg-slate-900/60 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[3rem] p-3 flex items-center gap-4 transition-all duration-500 ring-1 ring-black/5 dark:ring-white/10"
+                    "pointer-events-auto bg-white/60 dark:bg-slate-900/60 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[3rem] p-2 md:p-3 flex items-center gap-2 md:gap-4 transition-all duration-500 ring-1 ring-black/5 dark:ring-white/10"
                 )}
             >
                 {apps.map((app) => {

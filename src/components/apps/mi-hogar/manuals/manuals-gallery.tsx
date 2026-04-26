@@ -15,7 +15,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
-import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle, Loader2, Mic, Square, Pencil, Grid3x3, List, Filter, X, Home, ChefHat, Droplet, Tv, Bed, Car, FolderOpen, Tag as TagIcon, SortAsc, Download, Share2, Bell, History, CloudOff, QrCode, Scan, Settings, Star, Images, StickyNote, Upload, Database, ListChecks, Zap, File, BookOpen, ShieldCheck } from 'lucide-react';
+import { useAi } from '@/context/AiContext';
+import { Plus, Search, FileText, Image as ImageIcon, Video, Trash2, ExternalLink, AlertCircle, Loader2, Mic, Square, Pencil, Grid3x3, List, Filter, X, Home, ChefHat, Droplet, Tv, Bed, Car, FolderOpen, Tag as TagIcon, SortAsc, Download, Share2, Bell, History, CloudOff, QrCode, Scan, Settings, Star, Images, StickyNote, Upload, Database, ListChecks, Zap, File, BookOpen, ShieldCheck, Wand2, Bot } from 'lucide-react';
 import { es } from 'date-fns/locale';
 import imageCompression from 'browser-image-compression';
 import { exportManualToPDF } from '@/lib/export-manual-pdf';
@@ -23,6 +24,7 @@ import { ShareManualDialog } from './share-manual-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ReminderDialog } from './reminder-dialog';
 import { VersionHistoryDialog } from './version-history-dialog';
+import { motion, AnimatePresence } from 'framer-motion';
 import { offlineStorage } from '@/lib/offline-storage';
 import { QRScannerDialog } from './qr-scanner-dialog';
 import { extractTextFromImage } from '@/lib/ocr-extract';
@@ -30,6 +32,7 @@ import { ManageRoomsDialog } from './manage-rooms-dialog';
 import { ManualsDashboard } from './manuals-dashboard';
 import { NotesDialog } from './notes-dialog';
 import { ImageGalleryDialog } from './image-gallery-dialog';
+import { MagicAssetScanner, AssetAnalysisData } from './magic-asset-scanner';
 import { exportBackup, importBackup, exportManualsCsv } from '@/lib/backup-restore';
 import { ChecklistDialog } from './checklist-dialog';
 import { EnergyDialog } from './energy-dialog';
@@ -84,6 +87,7 @@ export default function ManualsGallery() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
+    const { setIsOpen, setPendingPrompt } = useAi();
 
     // Form states
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -137,6 +141,7 @@ export default function ManualsGallery() {
     const [warrantyExpires, setWarrantyExpires] = useState('');
     const [showManageRooms, setShowManageRooms] = useState(false);
     const [manualContentImages, setManualContentImages] = useState<Record<string, string[]>>({});
+    const [addModalTab, setAddModalTab] = useState<'magic' | 'manual'>('magic');
 
     useEffect(() => {
         if (user) {
@@ -347,6 +352,31 @@ export default function ManualsGallery() {
         }
     };
 
+    const handleScanComplete = (data: AssetAnalysisData, file: File) => {
+        setTitle(data.title || '');
+        setCategory(data.category || '');
+        setPurchasePrice(data.price ? data.price.toString() : '');
+        setPurchaseDate(data.date || '');
+        setPurchaseStore(data.store || '');
+        setDescription(data.summary || '');
+
+        if (data.date && data.warranty_years) {
+            const d = new Date(data.date);
+            d.setFullYear(d.getFullYear() + data.warranty_years);
+            setWarrantyExpires(d.toISOString().split('T')[0]);
+        }
+
+        // Cargar imagen extraída
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setDraftImage(reader.result as string);
+            setType('image');
+        };
+        reader.readAsDataURL(file);
+
+        setAddModalTab('manual'); // cambiar al editor para poder verificar
+    };
+
     const addManual = async () => {
         if (!title || !category || !user) {
             toast.error('Título y categoría son obligatorios');
@@ -375,7 +405,11 @@ export default function ManualsGallery() {
                         description,
                         type,
                         content: finalContent,
-                        room_id: roomId || null
+                        room_id: roomId || null,
+                        purchase_store: purchaseStore || null,
+                        purchase_date: purchaseDate || null,
+                        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
+                        warranty_expires: warrantyExpires || null,
                     })
                     .eq('id', editingId)
                     .select()
@@ -385,7 +419,7 @@ export default function ManualsGallery() {
 
                 await saveManualTags(editingId, tags);
 
-                toast.success('Manual actualizado');
+                toast.success('Activo actualizado satisfactoriamente');
             } else {
                 const { data, error } = await supabase
                     .from('manuals')
@@ -396,7 +430,11 @@ export default function ManualsGallery() {
                         description,
                         type,
                         content: finalContent,
-                        room_id: roomId || null
+                        room_id: roomId || null,
+                        purchase_store: purchaseStore || null,
+                        purchase_date: purchaseDate || null,
+                        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
+                        warranty_expires: warrantyExpires || null,
                     }])
                     .select()
                     .single();
@@ -426,6 +464,13 @@ export default function ManualsGallery() {
         setType(manual.type);
         setRoomId(manual.room_id || '');
         setTags(manual.tags || []);
+
+        setPurchaseStore(manual.purchase_store || '');
+        setPurchaseDate(manual.purchase_date || '');
+        setPurchasePrice(manual.purchase_price ? manual.purchase_price.toString() : '');
+        setWarrantyExpires(manual.warranty_expires || '');
+
+        setAddModalTab('manual');
 
         try {
             if (manual.content.startsWith('{')) {
@@ -523,6 +568,7 @@ export default function ManualsGallery() {
         setPurchasePrice('');
         setSparePartsUrl('');
         setWarrantyExpires('');
+        setAddModalTab('magic');
     };
 
     const startRecording = async () => {
@@ -717,97 +763,8 @@ export default function ManualsGallery() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b pb-6">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-100 rounded-xl text-emerald-600">
-                        <BookOpen className="h-8 w-8" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                            Manual y Mantenimiento
-                        </h1>
-                        <p className="text-slate-500">
-                            Gestión inteligente de tus electrodomésticos y garantías
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-
-
-            {/* Room Filters */}
-            <div className="flex gap-3 overflow-x-auto pb-2 mb-6">
-                <Button
-                    variant={selectedRoom === '' ? 'default' : 'outline'}
-                    size="lg"
-                    onClick={() => setSelectedRoom('')}
-                    className={`gap-3 px-6 rounded-full font-medium transition-all duration-300 ${selectedRoom === ''
-                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-200 scale-105'
-                        : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-400 hover:shadow-md border-2'
-                        }`}
-                >
-                    <div className={`rounded-full p-1.5 ${selectedRoom === '' ? 'bg-white/20' : 'bg-emerald-100'
-                        }`}>
-                        <FolderOpen className="h-5 w-5" />
-                    </div>
-                    <span className="font-semibold">Todos</span>
-                </Button>
-                {rooms.map(room => {
-                    const Icon = ROOM_ICONS[room.icon] || Home;
-                    const isSelected = selectedRoom === room.id;
-                    return (
-                        <Button
-                            key={room.id}
-                            variant={isSelected ? 'default' : 'outline'}
-                            size="lg"
-                            onClick={() => setSelectedRoom(room.id)}
-                            className={`gap-3 px-6 rounded-full font-medium transition-all duration-300 ${isSelected
-                                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-200 scale-105'
-                                : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-400 hover:shadow-md hover:scale-105 border-2'
-                                }`}
-                        >
-                            <div className={`rounded-full p-1.5 transition-all ${isSelected ? 'bg-white/20' : 'bg-emerald-100 group-hover:bg-emerald-200'
-                                }`}>
-                                <Icon className="h-5 w-5" />
-                            </div>
-                            <span className="font-semibold">{room.name}</span>
-                        </Button>
-                    );
-                })}
-                <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setShowManageRooms(true)}
-                    title="Gestionar habitaciones"
-                    className="gap-3 px-6 rounded-full border-2 border-dashed border-emerald-300 hover:bg-emerald-50 hover:border-emerald-500 hover:text-emerald-700 transition-all duration-300 hover:scale-105 font-medium"
-                >
-                    <div className="rounded-full p-1.5 bg-emerald-100">
-                        <Settings className="h-5 w-5" />
-                    </div>
-                    <span className="font-semibold">Gestionar</span>
-                </Button>
-                <Button
-                    variant={showFavoritesOnly ? 'default' : 'outline'}
-                    size="lg"
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`gap-3 px-6 rounded-full font-medium transition-all duration-300 ${showFavoritesOnly
-                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-200 scale-105'
-                        : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-400 hover:shadow-md hover:scale-105 border-2'
-                        }`}
-                    title="Mostrar solo favoritos"
-                >
-                    <div className={`rounded-full p-1.5 ${showFavoritesOnly ? 'bg-white/20' : 'bg-emerald-100'
-                        }`}>
-                        <Star className={`h-5 w-5 ${showFavoritesOnly ? 'fill-current' : ''}`} />
-                    </div>
-                    <span className="font-semibold">Favoritos</span>
-                </Button>
-            </div>
-
-            {/* Statistics Dashboard */}
-            <ManualsDashboard />
+            {/* Statistics Dashboard / Bento Grid */}
+            <ManualsDashboard selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} />
 
             {/* Search and Filters Bar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -940,189 +897,284 @@ export default function ManualsGallery() {
 
 
 
-                    {/* Add Manual Button */}
+                    {/* Add Asset Modal */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button onClick={resetForm} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transition-all">
-                                <Plus className="mr-2 h-4 w-4" /> Nuevo Manual
+                                <Plus className="mr-2 h-4 w-4" /> Añadir a tu Guía
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
-                            <DialogHeader>
-                                <DialogTitle>{editingId ? 'Editar Manual' : 'Añadir Manual'}</DialogTitle>
-                                <DialogDescription>Sube instrucciones, fotos o vídeos de tus electrodomésticos.</DialogDescription>
+                        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 border-none shadow-2xl rounded-3xl">
+                            <DialogHeader className="px-6 pt-6 pb-2">
+                                <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900 dark:text-white">
+                                    <div className="p-2 bg-emerald-500/10 rounded-xl">
+                                        <BookOpen className="h-6 w-6 text-emerald-500" />
+                                    </div>
+                                    {editingId ? 'Editar entrada' : '¿Qué quieres documentar?'}
+                                </DialogTitle>
+                                {!editingId && (
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 ml-14">
+                                        Piscina, lavadora, caldera, jardín, coche... cualquier cosa de tu hogar.
+                                    </p>
+                                )}
                             </DialogHeader>
-                            <div className="grid gap-4 py-4 overflow-y-auto">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Título *</Label>
-                                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Caldera" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Categoría *</Label>
-                                        <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ej. Calefacción" />
-                                    </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label>Habitación</Label>
-                                    <Select value={roomId} onValueChange={setRoomId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar habitación (opcional)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Sin habitación</SelectItem>
-                                            {rooms.map(room => {
-                                                const Icon = ROOM_ICONS[room.icon] || Home;
-                                                return (
-                                                    <SelectItem key={room.id} value={room.id}>
-                                                        <div className="flex items-center gap-2">
-                                                            <Icon className="h-4 w-4" />
-                                                            {room.name}
-                                                        </div>
-                                                    </SelectItem>
-                                                );
-                                            })}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Etiquetas</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            value={tagInput}
-                                            onChange={(e) => setTagInput(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                                            placeholder="Añadir etiqueta..."
-                                        />
-                                        <Button type="button" onClick={addTag} size="sm">
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    {tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {tags.map(tag => (
-                                                <Badge key={tag} variant="secondary" className="gap-1">
-                                                    <TagIcon className="h-3 w-3" />
-                                                    {tag}
-                                                    <X
-                                                        className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                                        onClick={() => removeTag(tag)}
-                                                    />
-                                                </Badge>
-                                            ))}
-                                        </div>
+                            <div className="flex-1 overflow-y-auto w-full p-2">
+                                <Tabs value={addModalTab} onValueChange={(val: any) => setAddModalTab(val)}>
+                                    {!editingId && (
+                                        <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl">
+                                            <TabsTrigger value="magic" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 font-bold transition-all data-[state=active]:shadow-sm">
+                                                <Wand2 className="h-4 w-4 mr-2" /> Tengo el ticket/factura
+                                            </TabsTrigger>
+                                            <TabsTrigger value="manual" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 font-bold transition-all data-[state=active]:shadow-sm">
+                                                <ListChecks className="h-4 w-4 mr-2" /> Lo describo yo
+                                            </TabsTrigger>
+                                        </TabsList>
                                     )}
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label>Descripción</Label>
-                                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Instrucciones breves..." />
-                                </div>
-
-                                <Tabs defaultValue="text" value={type} onValueChange={(v: any) => setType(v as any)}>
-                                    <TabsList className="grid w-full grid-cols-5">
-                                        <TabsTrigger value="text">Texto</TabsTrigger>
-                                        <TabsTrigger value="image">Imagen</TabsTrigger>
-                                        <TabsTrigger value="video">Vídeo</TabsTrigger>
-                                        <TabsTrigger value="audio">Audio</TabsTrigger>
-                                        <TabsTrigger value="link">Link</TabsTrigger>
-                                    </TabsList>
-
-                                    <TabsContent value="text" className="pt-4">
-                                        <Label>Contenido del Manual</Label>
-                                        <Textarea
-                                            className="min-h-[150px]"
-                                            value={draftText}
-                                            onChange={(e) => setDraftText(e.target.value)}
-                                            placeholder="Escribe aquí los pasos detallados..."
-                                        />
+                                    <TabsContent value="magic" className="m-0 mt-2">
+                                        <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                            <MagicAssetScanner onScanComplete={handleScanComplete} />
+                                        </div>
                                     </TabsContent>
 
-                                    <TabsContent value="image" className="pt-4 space-y-4">
-                                        <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                            <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                                            <p className="text-sm text-muted-foreground">Click para subir imagen (se comprimirá auto.)</p>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={handleFileChange}
-                                            />
-                                        </div>
-                                        {draftImage && (
-                                            <div className="relative aspect-video rounded-lg overflow-hidden border">
-                                                <img src={draftImage} alt="Preview" className="object-cover w-full h-full" />
-                                                <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-6 w-6" onClick={(e) => { e.stopPropagation(); setDraftImage(''); }}>
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
+                                    <TabsContent value="manual" className="space-y-6 m-0">
+                                        <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-6">
+                                            <h4 className="text-sm font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                <FileText className="h-4 w-4" /> Datos Principales
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">¿Cómo se llama? *</Label>
+                                                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Piscina, Lavadora Bosch, Caldera..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">¿Qué tipo de cosa es? *</Label>
+                                                    <Select value={category} onValueChange={setCategory}>
+                                                        <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner">
+                                                            <SelectValue placeholder="Selecciona..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Electrodoméstico">🍽️ Electrodoméstico (lavadora, lavavajillas...)</SelectItem>
+                                                            <SelectItem value="Climatización">❄️ Climatización (caldera, AA, calefacción...)</SelectItem>
+                                                            <SelectItem value="Piscina/Jardín">🏊 Piscina / Jardín</SelectItem>
+                                                            <SelectItem value="Vehículo">🚗 Vehículo / Coche</SelectItem>
+                                                            <SelectItem value="Tecnología">💻 Tecnología (TV, router, PC...)</SelectItem>
+                                                            <SelectItem value="Instalación">🔧 Instalación (fontanería, electricidad...)</SelectItem>
+                                                            <SelectItem value="Mueble">🪑 Mueble / Equipamiento</SelectItem>
+                                                            <SelectItem value="Otro">📦 Otro</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">¿En qué espacio está?</Label>
+                                                    <Select value={roomId} onValueChange={setRoomId}>
+                                                        <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner">
+                                                            <SelectValue placeholder="Asignar al espacio..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">Sin habitación</SelectItem>
+                                                            {rooms.map(room => {
+                                                                const Icon = ROOM_ICONS[room.icon] || Home;
+                                                                return (
+                                                                    <SelectItem key={room.id} value={room.id}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Icon className="h-4 w-4 text-emerald-600" />
+                                                                            {room.name}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">Descripción breve</Label>
+                                                    <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ej. Bomba de calor, 8kg, A+++..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                </div>
                                             </div>
-                                        )}
-                                    </TabsContent>
 
-                                    <TabsContent value="video" className="pt-4 space-y-4">
-                                        <div className="space-y-2">
-                                            <Label>URL del Vídeo (YouTube/Vimeo)</Label>
-                                            <Input value={draftVideo} onChange={(e) => setDraftVideo(e.target.value)} placeholder="https://youtube.com/..." />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground flex items-center">
-                                            <AlertCircle className="h-3 w-3 mr-1" />
-                                            Por ahora solo soportamos enlaces externos para vídeos.
-                                        </p>
-                                    </TabsContent>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">Fecha de Compra</Label>
+                                                    <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">Precio / Valor (€)</Label>
+                                                    <Input type="number" step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="0.00" className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold">Tienda</Label>
+                                                    <Input value={purchaseStore} onChange={(e) => setPurchaseStore(e.target.value)} placeholder="MediaMarkt, Amazon..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold text-emerald-600">Fin de Garantía</Label>
+                                                    <Input type="date" value={warrantyExpires} onChange={(e) => setWarrantyExpires(e.target.value)} className="bg-emerald-50 dark:bg-emerald-900/20 border-none shadow-inner text-emerald-700" />
+                                                </div>
+                                            </div>
 
-                                    <TabsContent value="audio" className="pt-4 space-y-4">
-                                        <div className="flex flex-col items-center justify-center space-y-4 border-2 border-dashed rounded-lg p-8">
-                                            {!isRecording ? (
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-16 w-16 rounded-full border-red-500 hover:bg-red-50 hover:text-red-600"
-                                                    onClick={startRecording}
-                                                >
-                                                    <Mic className="h-8 w-8 text-red-500" />
-                                                </Button>
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className="animate-pulse text-red-500 font-bold mb-2">Grabando...</div>
-                                                    <Button
-                                                        variant="destructive"
-                                                        className="h-16 w-16 rounded-full"
-                                                        onClick={stopRecording}
-                                                    >
-                                                        <Square className="h-8 w-8 fill-current" />
+                                            <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <Label className="text-slate-600 dark:text-slate-400 font-bold">Etiquetas Rápidas</Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        value={tagInput}
+                                                        onChange={(e) => setTagInput(e.target.value)}
+                                                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                                                        placeholder="Cargador, A+++, Regalo..."
+                                                        className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner flex-1"
+                                                    />
+                                                    <Button type="button" onClick={addTag} size="icon" className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 shrink-0">
+                                                        <Plus className="h-4 w-4" />
                                                     </Button>
                                                 </div>
-                                            )}
-                                            <p className="text-sm text-muted-foreground">
-                                                {isRecording ? 'Pulsa para detener' : 'Pulsa para grabar nota de voz'}
+                                                {tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {tags.map(tag => (
+                                                            <Badge key={tag} variant="secondary" className="gap-1 bg-white dark:bg-slate-800 shadow-sm border border-slate-200">
+                                                                <TagIcon className="h-3 w-3 text-slate-400" />
+                                                                {tag}
+                                                                <X
+                                                                    className="h-3 w-3 cursor-pointer hover:text-destructive text-slate-400"
+                                                                    onClick={() => removeTag(tag)}
+                                                                />
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                            <div className="flex items-center gap-2">
+                                                <StickyNote className="h-4 w-4 text-emerald-500" />
+                                                <Label className="text-sm font-black text-slate-700 dark:text-slate-300">Instrucciones / Cómo funciona</Label>
+                                            </div>
+                                            <p className="text-xs text-slate-500">
+                                                Escribe aquí cómo usar esto, qué hay que hacer para el mantenimiento, pasos a seguir... Para que tú o cualquier miembro del hogar lo sepa.
                                             </p>
                                         </div>
-                                        {draftAudio && (
-                                            <div className="w-full bg-muted p-3 rounded-lg flex items-center justify-between gap-2">
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold mb-2">Vista previa:</p>
-                                                    <audio controls src={draftAudio} className="w-full" />
-                                                </div>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDraftAudio(''); }}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </TabsContent>
 
-                                    <TabsContent value="link" className="pt-4 space-y-4">
-                                        <div className="space-y-2">
-                                            <Label>Enlace al Manual PDF/Web</Label>
-                                            <Input value={draftLink} onChange={(e) => setDraftLink(e.target.value)} placeholder="https://..." />
+                                        {/* TABS MULTIMEDIA (Ticket/Manual PDF) */}
+                                        <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+                                            <h4 className="text-sm font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                <Images className="h-4 w-4" /> Adjuntar Foto o Instrucciones
+                                            </h4>
+
+                                            <Tabs defaultValue="image" value={type} onValueChange={(v: any) => setType(v as any)}>
+                                                <TabsList className="grid w-full grid-cols-5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <TabsTrigger value="image" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">Foto</TabsTrigger>
+                                                    <TabsTrigger value="text" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">Ayuda</TabsTrigger>
+                                                    <TabsTrigger value="video" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">Vídeo</TabsTrigger>
+                                                    <TabsTrigger value="audio" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">Voz</TabsTrigger>
+                                                    <TabsTrigger value="link" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">Link</TabsTrigger>
+                                                </TabsList>
+
+                                                <TabsContent value="image" className="pt-4 space-y-4">
+                                                    <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                                                        <ImageIcon className="mx-auto h-12 w-12 text-slate-400 group-hover:text-emerald-500 transition-colors mb-3" />
+                                                        <p className="text-sm text-slate-500 font-medium">Click para adjuntar Ticket o Manual 📸</p>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={handleFileChange}
+                                                        />
+                                                    </div>
+                                                    {draftImage && (
+                                                        <div className="relative aspect-video rounded-xl overflow-hidden border shadow-sm group">
+                                                            <img src={draftImage} alt="Preview" className="object-cover w-full h-full" />
+                                                            <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setDraftImage(''); }}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </TabsContent>
+
+                                                <TabsContent value="text" className="pt-4">
+                                                    <Textarea
+                                                        className="min-h-[150px] bg-slate-50 dark:bg-slate-900 border-none shadow-inner"
+                                                        value={draftText}
+                                                        onChange={(e) => setDraftText(e.target.value)}
+                                                        placeholder="Explica cómo funciona, cómo arrancar, dónde está la llave de paso, qué hay que revisar cada año... Cualquier cosa que quieras recordar."
+                                                    />
+                                                </TabsContent>
+
+                                                <TabsContent value="video" className="pt-4 space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label>URL del Vídeo de Youtube de Soporte</Label>
+                                                        <Input value={draftVideo} onChange={(e) => setDraftVideo(e.target.value)} placeholder="https://youtube.com/..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground flex items-center">
+                                                        <AlertCircle className="h-3 w-3 mr-1" />
+                                                        Solo enlaces externos soportados por ahora.
+                                                    </p>
+                                                </TabsContent>
+
+                                                <TabsContent value="audio" className="pt-4 space-y-4">
+                                                    <div className="flex flex-col items-center justify-center space-y-4 border-2 border-dashed rounded-xl p-8 bg-slate-50 border-slate-200">
+                                                        {!isRecording ? (
+                                                            <Button
+                                                                variant="outline"
+                                                                className="h-16 w-16 rounded-full border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 shadow-md"
+                                                                onClick={startRecording}
+                                                            >
+                                                                <Mic className="h-8 w-8 text-emerald-500" />
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center gap-2">
+                                                                <div className="animate-pulse text-rose-500 font-bold mb-2">Grabando...</div>
+                                                                <Button
+                                                                    variant="destructive"
+                                                                    className="h-16 w-16 rounded-full shadow-lg shadow-rose-200"
+                                                                    onClick={stopRecording}
+                                                                >
+                                                                    <Square className="h-8 w-8 fill-current" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        <p className="text-sm font-medium text-slate-500">
+                                                            {isRecording ? 'Pulsa para detener' : 'Pulsa para grabar nota de voz'}
+                                                        </p>
+                                                    </div>
+                                                    {draftAudio && (
+                                                        <div className="w-full bg-slate-100 p-4 rounded-xl flex items-center justify-between gap-4 border border-slate-200 shadow-sm">
+                                                            <div className="flex-1">
+                                                                <audio controls src={draftAudio} className="w-full h-10" />
+                                                            </div>
+                                                            <Button size="icon" variant="ghost" className="h-10 w-10 shrink-0 text-rose-500 hover:bg-rose-100 rounded-full" onClick={(e) => { e.stopPropagation(); setDraftAudio(''); }}>
+                                                                <Trash2 className="h-5 w-5" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </TabsContent>
+
+                                                <TabsContent value="link" className="pt-4 space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Enlace al Manual del Fabricante</Label>
+                                                        <Input value={draftLink} onChange={(e) => setDraftLink(e.target.value)} placeholder="https://..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
+                                                    </div>
+                                                </TabsContent>
+                                            </Tabs>
                                         </div>
                                     </TabsContent>
                                 </Tabs>
                             </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                                <Button onClick={addManual}>{editingId ? 'Guardar Cambios' : 'Guardar Manual'}</Button>
+
+                            <DialogFooter className="bg-white dark:bg-slate-950 p-4 border-t border-slate-100 dark:border-slate-800 rounded-b-3xl">
+                                {addModalTab === 'manual' ? (
+                                    <div className="flex w-full justify-between items-center">
+                                        <Button variant="ghost" className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl px-6 font-bold" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 rounded-xl px-8 font-bold text-md" onClick={addManual}>
+                                            <Zap className="h-4 w-4 mr-2" />
+                                            {editingId ? 'Guardar Cambios' : 'Guardar en mi Guía'}
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex w-full justify-start mt-2">
+                                        <Button variant="ghost" className="text-slate-500" onClick={() => setIsDialogOpen(false)}>Cancelar Carga</Button>
+                                    </div>
+                                )}
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -1162,136 +1214,140 @@ export default function ManualsGallery() {
                     </div>
                 ) : viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {filteredManuals.map(manual => {
-                            const contentTypes = getContentTypes(manual);
-                            return (
-                                <Card key={manual.id} className="group hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-emerald-500/30 overflow-hidden bg-white hover:bg-slate-50/50">
-                                    <div className="relative aspect-video bg-slate-100 overflow-hidden group/image flex items-center justify-center">
-                                        {/* Preview Content */}
-                                        {manual.type === 'image' && manual.content ? (
-                                            <img
-                                                src={manual.content}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-105"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.parentElement?.classList.add('fallback-icon');
-                                                }}
-                                            />
-                                        ) : null}
-
-                                        {/* Fallbacks / Type Icons */}
-                                        {(manual.type !== 'image' || !manual.content) && (
-                                            <div className="flex flex-col items-center justify-center text-slate-300 group-hover:text-emerald-500/50 transition-colors">
-                                                {manual.type === 'video' && <Video className="h-12 w-12" />}
-                                                {manual.type === 'audio' && <Mic className="h-12 w-12" />}
-                                                {(manual.type === 'text' || manual.type === 'link') && <FileText className="h-12 w-12" />}
-                                                {manual.type === 'image' && !manual.content && <ImageIcon className="h-12 w-12" />}
-                                            </div>
-                                        )}
-
-                                        {/* Action Buttons Overlay */}
-                                        <div className="absolute top-2 right-2 flex gap-1 transform translate-x-12 group-hover/image:translate-x-0 transition-transform duration-300">
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-sm"
-                                                onClick={(e) => { e.stopPropagation(); handleEdit(manual); }}
-                                            >
-                                                <Pencil className="h-4 w-4 text-slate-600" />
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-sm hover:text-red-500"
-                                                onClick={(e) => deleteManual(manual.id, e)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-
-                                        {/* Badges Overlay */}
-                                        <div className="absolute top-2 left-2 flex gap-1">
-                                            {manual.warranty_expires && isBefore(new Date(manual.warranty_expires), new Date()) && (
-                                                <Badge variant="destructive" className="shadow-sm text-[10px] h-6 px-2">Expirado</Badge>
+                        <AnimatePresence mode="popLayout">
+                            {filteredManuals.map(manual => {
+                                const isExpiredWarranty = manual.warranty_expires && isBefore(new Date(manual.warranty_expires), new Date());
+                                return (
+                                    <motion.div
+                                        key={manual.id}
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                        className="group relative rounded-3xl overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-emerald-400/50 dark:hover:border-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex flex-col"
+                                    >
+                                        <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 group/image flex items-center justify-center overflow-hidden">
+                                            {/* Preview Content */}
+                                            {manual.type === 'image' && manual.content ? (
+                                                <img
+                                                    src={manual.content}
+                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.parentElement?.classList.add('fallback-icon');
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover/image:text-emerald-500/50 transition-colors drop-shadow-sm">
+                                                    {manual.type === 'video' && <Video className="h-16 w-16" />}
+                                                    {manual.type === 'audio' && <Mic className="h-16 w-16" />}
+                                                    {(manual.type === 'text' || manual.type === 'link') && <FileText className="h-16 w-16" />}
+                                                    {manual.type === 'image' && !manual.content && <ImageIcon className="h-16 w-16" />}
+                                                </div>
                                             )}
+
+                                            {/* Status Overlays */}
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                                            {/* Action Buttons Top Right */}
+                                            <div className="absolute top-3 right-3 flex flex-col gap-2 transform translate-x-12 opacity-0 group-hover/image:translate-x-0 group-hover/image:opacity-100 transition-all duration-300">
+                                                <Button
+                                                    variant="secondary"
+                                                    size="icon"
+                                                    className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-800/95 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 hover:text-emerald-600 shadow-xl backdrop-blur transition-transform hover:scale-110 border-none"
+                                                    onClick={(e) => { e.stopPropagation(); handleEdit(manual); }}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="icon"
+                                                    className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-800/95 hover:bg-rose-50 dark:hover:bg-rose-900/50 hover:text-rose-600 shadow-xl backdrop-blur text-rose-500 transition-transform hover:scale-110 border-none"
+                                                    onClick={(e) => deleteManual(manual.id, e)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+
+                                            {/* Badges Overlay Top Left */}
+                                            <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
+                                                {manual.warranty_expires && (
+                                                    <Badge className={`shadow-md px-2.5 py-0.5 text-[10px] uppercase font-black tracking-wider backdrop-blur border border-white/20 ${isExpiredWarranty ? 'bg-rose-500/90 hover:bg-rose-500 text-white shadow-rose-500/20' : 'bg-emerald-500/90 hover:bg-emerald-500 text-white shadow-emerald-500/20'}`}>
+                                                        {isExpiredWarranty ? 'Garantía Expirada' : `Garantía: ${new Date(manual.warranty_expires).getFullYear()}`}
+                                                    </Badge>
+                                                )}
+                                            </div>
+
+                                            {/* Quick Actions Bottom */}
+                                            <div className="absolute bottom-3 right-3 flex gap-2">
+                                                <Button
+                                                    className="h-9 w-9 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-lg hover:scale-105 transition-all opacity-0 group-hover/image:opacity-100 transform translate-y-2 group-hover/image:translate-y-0 duration-300 delay-75 border-none"
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={(e) => { e.stopPropagation(); setQrManual(manual); }}
+                                                >
+                                                    <QrCode className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    className={`h-9 w-9 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 shadow-lg transition-all transform border-none ${manual.is_favorite ? 'opacity-100 text-yellow-500' : 'opacity-0 text-slate-400 dark:text-slate-300 group-hover/image:opacity-100 group-hover/image:translate-y-0 translate-y-2'}`}
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={(e) => toggleFavorite(manual.id, !!manual.is_favorite, e)}
+                                                >
+                                                    <Star className={`h-4 w-4 ${manual.is_favorite ? 'fill-current' : ''}`} />
+                                                </Button>
+                                            </div>
                                         </div>
 
-                                        {/* Favorites & QR Buttons (Bottom) */}
-                                        <Button
-                                            className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white text-yellow-500 shadow-sm opacity-0 group-hover/image:opacity-100 transition-opacity transform translate-y-2 group-hover/image:translate-y-0 duration-300"
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={(e) => toggleFavorite(manual.id, !!manual.is_favorite, e)}
-                                        >
-                                            <Star className={`h-5 w-5 ${manual.is_favorite ? 'fill-current' : ''}`} />
-                                        </Button>
-
-                                        <Button
-                                            className="absolute bottom-2 left-2 h-8 w-8 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-sm transition-all hover:scale-105"
-                                            size="icon"
-                                            variant="ghost"
-                                            title="Generar QR"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setQrManual(manual);
-                                            }}
-                                        >
-                                            <QrCode className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-
-                                    <CardContent className="p-4">
-                                        <div className="mb-3">
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="font-bold text-base leading-tight group-hover:text-emerald-700 transition-colors line-clamp-1 pr-2">
+                                        <div className="p-5 flex-1 flex flex-col relative z-20">
+                                            <div className="flex justify-between items-start gap-4 mb-2">
+                                                <h3 className="font-black text-[1.1rem] leading-tight line-clamp-1 text-slate-800 dark:text-white group-hover:text-emerald-500 transition-colors drop-shadow-sm tracking-tight">
                                                     {manual.title}
                                                 </h3>
-                                                <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground border-slate-200 shrink-0">
+                                                <Badge variant="outline" className="shrink-0 bg-slate-100/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold tracking-wider text-[9px] uppercase shadow-sm">
                                                     {manual.category}
                                                 </Badge>
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
+
+                                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold mb-4">
                                                 <span className="text-sm">{manual.room?.icon ? getRoomIcon(manual.room.icon) : '🏠'}</span>
-                                                <span>{manual.room?.name || 'General'}</span>
+                                                <span className="uppercase tracking-wider">{manual.room?.name || 'Inventario General'}</span>
+                                            </div>
+
+                                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/50 flex gap-2">
+                                                <Button
+                                                    className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 font-bold shadow-sm transition-all h-10 border border-slate-100 dark:border-slate-700 active:scale-95"
+                                                    onClick={() => setViewManual(manual)}
+                                                >
+                                                    Visualizar
+                                                </Button>
+                                                {manualContentImages[manual.id] && manualContentImages[manual.id].length > 0 && (
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="icon"
+                                                        className="shrink-0 h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 border border-emerald-100 dark:border-emerald-800"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setGalleryImages(manualContentImages[manual.id].map((img, idx) => ({
+                                                                id: `${manual.id}-img-${idx}`,
+                                                                image_url: img,
+                                                                image_order: idx,
+                                                                caption: manual.title
+                                                            })));
+                                                            setGalleryIndex(0);
+                                                            setShowGallery(true);
+                                                        }}
+                                                    >
+                                                        <Images className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-50">
-                                            <Button
-                                                variant="outline"
-                                                className="flex-1 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 h-9 text-xs transition-colors font-medium"
-                                                onClick={() => setViewManual(manual)}
-                                            >
-                                                Ver Detalles
-                                            </Button>
-                                            {manualContentImages[manual.id] && manualContentImages[manual.id].length > 0 && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="shrink-0 h-9 w-9 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setGalleryImages(manualContentImages[manual.id].map((img, idx) => ({
-                                                            id: `${manual.id}-img-${idx}`,
-                                                            image_url: img,
-                                                            image_order: idx,
-                                                            caption: manual.title
-                                                        })));
-                                                        setGalleryIndex(0);
-                                                        setShowGallery(true);
-                                                    }}
-                                                >
-                                                    <Images className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="px-4 py-2 bg-slate-50 text-[10px] text-muted-foreground flex justify-between border-t h-8">
-                                        <span>Updated {formatDistanceToNow(new Date(manual.updated_at || manual.date), { locale: es, addSuffix: true })}</span>
-                                    </CardFooter>
-                                </Card>
-                            );
-                        })}
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
                     </div>
                 ) : (
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1386,220 +1442,215 @@ export default function ManualsGallery() {
                 )
             }
 
-            {/* View Manual Dialog remains the same as before */}
+            {/* View Manual Dialog - Modo Wiki */}
             {
                 viewManual && (
                     <Dialog open={!!viewManual} onOpenChange={(open) => !open && setViewManual(null)}>
-                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="space-y-1">
-                                        <Badge variant="secondary" className="mb-2">{viewManual?.category}</Badge>
-                                        <DialogTitle className="text-2xl">{viewManual?.title}</DialogTitle>
-                                        {viewManual.tags && viewManual.tags.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                {viewManual.tags.map(tag => (
-                                                    <Badge key={tag} variant="outline" className="text-xs">
-                                                        <TagIcon className="h-3 w-3 mr-1" />
-                                                        {tag}
-                                                    </Badge>
-                                                ))}
-                                            </div>
+                        <DialogContent className="sm:max-w-[640px] max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-white dark:bg-slate-900">
+                            {/* Header tipo wiki */}
+                            <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-emerald-50 to-slate-50 dark:from-emerald-950/30 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                                            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-bold text-xs">
+                                                {viewManual.category}
+                                            </Badge>
+                                            {viewManual.room && (
+                                                <Badge variant="outline" className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                    {getRoomIcon(viewManual.room.icon)} {viewManual.room.name}
+                                                </Badge>
+                                            )}
+                                            {viewManual.warranty_expires && (
+                                                <Badge className={`text-xs font-bold ${isBefore(new Date(viewManual.warranty_expires), new Date()) ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                                                    🛡️ Garantía: {new Date(viewManual.warranty_expires).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                                            {viewManual.title}
+                                        </DialogTitle>
+                                        {viewManual.description && (
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                {viewManual.description}
+                                            </p>
                                         )}
                                     </div>
                                 </div>
-                            </DialogHeader>
 
-                            <div className="flex-1 overflow-y-auto py-4 space-y-6">
-                                {viewManual?.description && (
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold">Descripción</Label>
-                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                            {viewManual.description}
-                                        </p>
+                                {viewManual.tags && viewManual.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-3">
+                                        {viewManual.tags.map(tag => (
+                                            <Badge key={tag} variant="outline" className="text-[10px] font-medium bg-white dark:bg-slate-800">
+                                                <TagIcon className="h-2.5 w-2.5 mr-1" />
+                                                {tag}
+                                            </Badge>
+                                        ))}
                                     </div>
                                 )}
+                            </div>
 
-                                <div className="space-y-4">
-                                    <Label className="text-base font-semibold block mb-2">
-                                        Contenido Adjunto
-                                    </Label>
-
-                                    {(() => {
-                                        let contentData = { text: '', image: '', video: '', audio: '', link: '' };
-                                        let isMixed = false;
-                                        try {
-                                            if (viewManual?.content.startsWith('{')) {
-                                                contentData = JSON.parse(viewManual.content);
-                                                isMixed = true;
-                                            }
-                                        } catch { }
-
-                                        if (!isMixed && viewManual) {
-                                            if (viewManual.type === 'text') contentData.text = viewManual.content;
-                                            if (viewManual.type === 'image') contentData.image = viewManual.content;
-                                            if (viewManual.type === 'video') contentData.video = viewManual.content;
-                                            if (viewManual.type === 'audio') contentData.audio = viewManual.content;
-                                            if (viewManual.type === 'link') contentData.link = viewManual.content;
+                            <div className="flex-1 overflow-y-auto py-5 px-6 space-y-5">
+                                {/* 📖 Instrucciones / Contenido principal */}
+                                {(() => {
+                                    let contentData = { text: '', image: '', video: '', audio: '', link: '', pdf: '' };
+                                    let isMixed = false;
+                                    try {
+                                        if (viewManual?.content.startsWith('{')) {
+                                            contentData = JSON.parse(viewManual.content);
+                                            isMixed = true;
                                         }
+                                    } catch { }
 
-                                        return (
-                                            <div className="space-y-4">
-                                                {contentData.text && contentData.text.trim() && (
-                                                    <div className="p-4 bg-muted/50 rounded-lg border text-sm whitespace-pre-wrap">
-                                                        {contentData.text}
+                                    if (!isMixed && viewManual) {
+                                        if (viewManual.type === 'text') contentData.text = viewManual.content;
+                                        if (viewManual.type === 'image') contentData.image = viewManual.content;
+                                        if (viewManual.type === 'video') contentData.video = viewManual.content;
+                                        if (viewManual.type === 'audio') contentData.audio = viewManual.content;
+                                        if (viewManual.type === 'link') contentData.link = viewManual.content;
+                                    }
+
+                                    const hasInstructions = contentData.text && contentData.text.trim();
+                                    const hasMedia = contentData.image || contentData.video || contentData.audio || contentData.link;
+
+                                    return (
+                                        <div className="space-y-4">
+                                            {/* Instrucciones texto — parte principal */}
+                                            {hasInstructions ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                                                            <StickyNote className="h-4 w-4 text-emerald-500" />
+                                                        </div>
+                                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Instrucciones</span>
                                                     </div>
-                                                )}
-
-                                                {contentData.image && (
-                                                    <div>
-                                                        {!showFullMedia ? (
-                                                            <Card
-                                                                onClick={() => setShowFullMedia(true)}
-                                                                className="group relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-200/50 border-t-4 border-t-emerald-500 hover:scale-[1.02] cursor-pointer hover:ring-2 hover:ring-emerald-300 hover:ring-offset-2"
-                                                            >
-                                                                <img src={contentData.image} alt="Manual Image" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                                                    <ImageIcon className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md" />
-                                                                </div>
-                                                            </Card>
+                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+                                                        {/* Renderizar como pasos si hay líneas numeradas o guiones */}
+                                                        {contentData.text.includes('\n') ? (
+                                                            <div className="space-y-2">
+                                                                {contentData.text.split('\n').filter(Boolean).map((line, idx) => {
+                                                                    const isStep = /^(\d+\.|-|\*)/.test(line.trim());
+                                                                    return isStep ? (
+                                                                        <div key={idx} className="flex gap-3 items-start">
+                                                                            <div className="flex-shrink-0 w-5 h-5 bg-emerald-500 text-white text-[10px] font-black rounded-full flex items-center justify-center mt-0.5">{idx + 1}</div>
+                                                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{line.replace(/^(\d+\.|-|\*)\s*/, '')}</p>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p key={idx} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{line}</p>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         ) : (
-                                                            <div className="relative animate-in fade-in zoom-in-95 duration-200">
-                                                                <img src={contentData.image} alt="Manual Full Sized" className="w-full h-auto rounded-lg border shadow-sm" />
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    size="sm"
-                                                                    className="absolute top-2 right-2 opacity-90 hover:opacity-100"
-                                                                    onClick={(e) => { e.stopPropagation(); setShowFullMedia(false); }}
-                                                                >
-                                                                    Minimizar
-                                                                </Button>
+                                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{contentData.text}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-4 border border-amber-100 dark:border-amber-900/50 flex items-start gap-3">
+                                                    <StickyNote className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Sin instrucciones aún</p>
+                                                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Edita esta entrada para añadir cómo usar esto, qué hay que mantener...</p>
+                                                        <Button size="sm" variant="outline" className="mt-2 h-7 text-xs border-amber-200 hover:bg-amber-100 text-amber-700" onClick={() => { setViewManual(null); handleEdit(viewManual); }}>
+                                                            <Pencil className="h-3 w-3 mr-1" /> Añadir instrucciones
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Adjuntos multimedia */}
+                                            {hasMedia && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1.5 bg-slate-500/10 rounded-lg">
+                                                            <Images className="h-4 w-4 text-slate-500" />
+                                                        </div>
+                                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adjuntos</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-3">
+                                                        {contentData.image && (
+                                                            <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm">
+                                                                {!showFullMedia ? (
+                                                                    <img src={contentData.image} alt="Adjunto" className="w-full max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setShowFullMedia(true)} />
+                                                                ) : (
+                                                                    <div className="relative">
+                                                                        <img src={contentData.image} alt="Adjunto" className="w-full h-auto" />
+                                                                        <Button size="sm" variant="secondary" className="absolute top-2 right-2" onClick={() => setShowFullMedia(false)}>Reducir</Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {contentData.video && (
+                                                            <a href={contentData.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-100 dark:border-red-900/50 hover:bg-red-100 transition-colors">
+                                                                <div className="p-2 bg-red-500/10 rounded-lg"><Video className="h-4 w-4 text-red-500" /></div>
+                                                                <div><p className="text-sm font-bold text-red-700 dark:text-red-400">Vídeo de apoyo</p><p className="text-xs text-red-500">Abrir en YouTube</p></div>
+                                                                <ExternalLink className="h-4 w-4 text-red-400 ml-auto" />
+                                                            </a>
+                                                        )}
+                                                        {contentData.link && (
+                                                            <a href={contentData.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/50 hover:bg-blue-100 transition-colors">
+                                                                <div className="p-2 bg-blue-500/10 rounded-lg"><ExternalLink className="h-4 w-4 text-blue-500" /></div>
+                                                                <div><p className="text-sm font-bold text-blue-700 dark:text-blue-400">Enlace externo</p><p className="text-xs text-blue-500 truncate max-w-[280px]">{contentData.link}</p></div>
+                                                            </a>
+                                                        )}
+                                                        {contentData.audio && (
+                                                            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                                <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1"><Mic className="h-3 w-3" /> Nota de voz</p>
+                                                                <audio controls src={contentData.audio} className="w-full h-8" />
                                                             </div>
                                                         )}
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
 
-                                                {contentData.audio && (
-                                                    <div>
-                                                        {!showFullMedia ? (
-                                                            <div
-                                                                className="w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-4 group"
-                                                                onClick={() => setShowFullMedia(true)}
-                                                            >
-                                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                                                    <Mic className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <p className="font-medium text-sm">Nota de Voz</p>
-                                                                    <p className="text-xs text-muted-foreground">Click para escuchar</p>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-full bg-muted/30 p-4 rounded-xl border animate-in slide-in-from-top-2">
-                                                                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground ml-1">Reproductor</p>
-                                                                <audio controls src={contentData.audio} className="w-full" />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="mt-2 h-6 text-xs text-muted-foreground"
-                                                                    onClick={() => setShowFullMedia(false)}
-                                                                >
-                                                                    Ocultar reproductor
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {contentData.video && (
-                                                    <a
-                                                        href={contentData.video}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="block w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors group"
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform">
-                                                                <Video className="h-5 w-5" />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <p className="font-medium text-sm">Vídeo Externo</p>
-                                                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">Click para ver vídeo</p>
-                                                            </div>
-                                                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                                                        </div>
-                                                    </a>
-                                                )}
-
-                                                {contentData.link && (
-                                                    <a
-                                                        href={contentData.link}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="block w-full sm:w-64 p-4 border rounded-xl bg-card hover:bg-accent/50 cursor-pointer transition-colors group"
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                                                <ExternalLink className="h-5 w-5" />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <p className="font-medium text-sm">Enlace Externo</p>
-                                                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">Click para abrir</p>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                            {/* Footer de acciones */}
+                            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                                {/* Botón principal: Recordatorios */}
+                                <Button
+                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 mb-3 text-base"
+                                    onClick={(e) => { e.stopPropagation(); setReminderManual(viewManual); }}
+                                >
+                                    <Bell className="h-5 w-5 mr-2" />
+                                    Añadir / Ver Recordatorios de Mantenimiento
+                                </Button>
+                                {/* Acciones secundarias */}
+                                <div className="flex gap-2 flex-wrap">
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={(e) => { e.stopPropagation(); handleEdit(viewManual); setViewManual(null); }}>
+                                        <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={(e) => { e.stopPropagation(); setNotesManual(viewManual); }}>
+                                        <StickyNote className="h-3.5 w-3.5 mr-1.5" /> Notas
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1 bg-emerald-50/50 hover:bg-emerald-100 text-emerald-700 border-emerald-200" onClick={(e) => {
+                                        e.stopPropagation();
+                                        let cleanText = 'Sin instrucciones guardadas.';
+                                        if (viewManual?.content) {
+                                            try {
+                                                const parsed = JSON.parse(viewManual.content);
+                                                if (parsed.text) cleanText = parsed.text;
+                                            } catch {
+                                                cleanText = viewManual.content;
+                                            }
+                                        }
+                                        setPendingPrompt(`¿Me puedes explicar paso a paso cómo hacer el mantenimiento de: ${viewManual.title}? Aquí tienes las instrucciones de mi manual:\n\n${cleanText}`);
+                                        setIsOpen(true);
+                                    }}>
+                                        <Bot className="h-3.5 w-3.5 mr-1.5" /> ¿Cómo lo hago? (IA)
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={(e) => { e.stopPropagation(); setChecklistManual(viewManual); }}>
+                                        <ListChecks className="h-3.5 w-3.5 mr-1.5" /> Checklist
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={(e) => { e.stopPropagation(); setVersionManual(viewManual); }}>
+                                        <History className="h-3.5 w-3.5 mr-1.5" /> Historial
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setViewManual(null)}>
+                                        Cerrar
+                                    </Button>
                                 </div>
                             </div>
-                            <DialogFooter className="sm:justify-between items-center border-t pt-4 flex-row">
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); setReminderManual(viewManual); }}
-                                    >
-                                        <Bell className="h-4 w-4 mr-2" />
-                                        Recordatorios
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); setVersionManual(viewManual); }}
-                                    >
-                                        <History className="h-4 w-4 mr-2" />
-                                        Historial
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); setNotesManual(viewManual); }}
-                                    >
-                                        <StickyNote className="h-4 w-4 mr-2" />
-                                        Notas
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); setChecklistManual(viewManual); }}
-                                    >
-                                        <ListChecks className="h-4 w-4 mr-2" />
-                                        Checklist
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); setEnergyManual(viewManual); }}
-                                        className="border-yellow-200 hover:bg-yellow-50 text-yellow-700"
-                                    >
-                                        <Zap className="h-4 w-4 mr-2 fill-yellow-500" />
-                                        Consumo
-                                    </Button>
-                                </div>
-                                <Button onClick={() => setViewManual(null)}>Cerrar</Button>
-                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 )

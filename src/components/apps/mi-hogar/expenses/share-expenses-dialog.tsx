@@ -322,7 +322,7 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {folderId ? <Folder className="w-5 h-5 text-emerald-600" /> : <Users className="w-5 h-5 text-emerald-600" />}
@@ -335,7 +335,7 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4 space-y-6">
+                <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto px-1">
                     {/* Nickname Section */}
                     <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border">
                         <Label className="text-xs text-muted-foreground">Tu Nombre (Visible para el grupo)</Label>

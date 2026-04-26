@@ -117,6 +117,30 @@ body.barcode-scanner-active {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Safe area utilities for iOS notch / home bar */
+  .pb-safe {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Bottom spacing for content above the mobile bottom nav */
+  .pb-nav {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  /* Touch targets: minimum 44px per Apple HIG */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* Skeleton loading animation */

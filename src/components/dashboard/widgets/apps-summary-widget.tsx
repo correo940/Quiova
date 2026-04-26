@@ -187,6 +187,25 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
 
                     const { data: docs } = await supabase.from('documents').select('name, expiration_date').eq('user_id', user.id).eq('expiration_date', dateStr);
                     docs?.forEach(d => dailyEvents.push({ type: 'document', label: `Caduca: ${d.name}`, icon: 'FileText', color: 'text-red-600 bg-red-100 dark:bg-red-900/30' }));
+
+                    // Recordatorios de mantenimiento próximos (hoy + 7 días)
+                    const in7Days = new Date(selectedDate);
+                    in7Days.setDate(in7Days.getDate() + 7);
+                    const { data: reminders } = await supabase
+                        .from('manual_reminders')
+                        .select('title, next_date, manual_id, manuals!inner(title)')
+                        .eq('is_active', true)
+                        .gte('next_date', startOfDay.toISOString())
+                        .lte('next_date', in7Days.toISOString())
+                        .order('next_date');
+                    reminders?.forEach((r: any) => dailyEvents.push({
+                        type: 'maintenance',
+                        label: `🔧 ${r.title}`,
+                        sub: r.manuals?.title,
+                        time: new Date(r.next_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+                        icon: 'Wrench',
+                        color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    }));
                 }
                 setEvents(dailyEvents);
 
@@ -382,8 +401,8 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         <button
                             onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
                             className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
-                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                    : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
+                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
                                 }`}
                             title={isWakeWordEnabled ? "Micrófono IA activo (Toca para desactivar)" : "Micrófono IA desactivado (Toca para reactivar)"}
                         >
@@ -490,7 +509,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
 }
 
 // Helper for dynamic icons
-import { Briefcase, AlertTriangle } from 'lucide-react';
+import { Briefcase, AlertTriangle, Wrench } from 'lucide-react';
 function EventIcon({ iconName, className }: { iconName: string, className?: string }) {
     switch (iconName) {
         case 'Briefcase': return <Briefcase className={className} />;
@@ -498,6 +517,7 @@ function EventIcon({ iconName, className }: { iconName: string, className?: stri
         case 'Car': return <Car className={className} />;
         case 'Shield': return <Shield className={className} />;
         case 'FileText': return <FileText className={className} />;
+        case 'Wrench': return <Wrench className={className} />;
         default: return <CheckSquare className={className} />;
     }
 }

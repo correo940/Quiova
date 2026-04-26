@@ -20,7 +20,7 @@ export default function RosterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="min-h-screen bg-background p-4 md:p-8 pb-nav">
             <div className="max-w-6xl mx-auto space-y-6">
                 <header className="flex items-center space-x-4 mb-6 print:hidden">
                     <Link href="/apps/mi-hogar">

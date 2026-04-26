@@ -6,7 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, FileText, Lock, Sparkles, Tags, NotebookPen, Building2, FileBadge2, ScrollText, Flag } from 'lucide-react';
+import {
+    Loader2,
+    Save,
+    FileText,
+    Lock,
+    Sparkles,
+    Tags,
+    NotebookPen,
+    Building2,
+    FileBadge2,
+    ScrollText,
+    Flag,
+    Plus,
+    ShieldCheck,
+    AlertTriangle
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,63 +170,97 @@ export function DocumentDialog({
                 </DialogHeader>
 
                 <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label>Archivo</Label>
+                    <div className="flex flex-col gap-4 p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 relative overflow-hidden group hover:border-amber-500/50 transition-colors">
                         <Input
                             type="file"
                             id="file"
-                            className="cursor-pointer file:cursor-pointer file:text-primary"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                             onChange={handleFileChange}
                             accept="image/*,.pdf"
                         />
-                        {form.file_url && !selectedFile ? (
-                            <div className="text-xs text-green-600 flex items-center gap-1">
-                                <FileText className="w-3 h-3" /> Archivo actual guardado
+                        <div className="flex flex-col items-center justify-center gap-3 py-4 relative z-10">
+                            <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none group-hover:scale-110 transition-transform duration-500">
+                                <Plus className="w-8 h-8 text-amber-500" />
                             </div>
-                        ) : null}
-                        {analyzing ? (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-700 flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Analizando documento y extrayendo metadatos...
+                            <div className="text-center">
+                                <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg">Suelta tu archivo aquí</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Soporta PDF e Imágenes</p>
                             </div>
-                        ) : null}
-                        {analysisError ? (
-                            <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-sm text-rose-700 space-y-1">
-                                <div className="font-medium">El analisis automatico ha fallado</div>
-                                <p>{analysisError}</p>
-                                <p>Puedes guardar la foto o el PDF igualmente y completar todos los datos de forma manual.</p>
-                            </div>
-                        ) : null}
-                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600">
-                            Para documentos de identidad como DNI, NIE o carnet de conducir, sube un PDF con la parte delantera y la trasera, o una imagen donde se vean ambas caras.
                         </div>
+
+                        {analyzing && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="absolute inset-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4"
+                            >
+                                <div className="relative w-48 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <motion.div
+                                        animate={{ x: [-200, 200] }}
+                                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                        className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-amber-500 to-transparent"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2 font-black text-amber-600 dark:text-amber-400 text-xs uppercase tracking-widest animate-pulse">
+                                    <Sparkles className="w-4 h-4" /> Quioba IA Analizando...
+                                </div>
+                            </motion.div>
+                        )}
                     </div>
 
-                    {analysis ? (
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
-                            <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                                <Sparkles className="w-4 h-4" /> Sugerencias detectadas automaticamente
-                            </div>
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{analysis.summary}</p>
-                            <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline">Categoria: {analysis.category}</Badge>
-                                {analysis.document_type ? <Badge variant="outline">Tipo: {analysis.document_type}</Badge> : null}
-                                {analysis.issuer ? <Badge variant="outline">Emisor: {analysis.issuer}</Badge> : null}
-                                <Badge variant="outline">Confianza: {Math.round(analysis.confidence * 100)}%</Badge>
-                            </div>
-                            {analysis.tags.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1"><Tags className="w-3 h-3" /> Etiquetas</span>
-                                    {analysis.tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary">{tag}</Badge>
-                                    ))}
-                                </div>
-                            ) : null}
-                            {isIdentityDocument ? (
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                                    Si este documento es un DNI, NIE o carnet, conviene guardar la parte delantera y la trasera en el mismo archivo para extraer mas datos y verificar mejor la validez.
-                                </div>
-                            ) : null}
+                    {form.file_url && !selectedFile ? (
+                        <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 justify-center">
+                            <ShieldCheck className="w-4 h-4" /> ARCHIVO ACTUAL PROTEGIDO EN LA NUBE
                         </div>
+                    ) : null}
+
+                    {analysisError ? (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-2"
+                        >
+                            <div className="flex items-center gap-2 text-rose-600 font-black text-xs uppercase">
+                                <AlertTriangle className="w-4 h-4" /> Fallo en el análisis inteligente
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{analysisError}</p>
+                        </motion.div>
+                    ) : null}
+
+                    {analysis ? (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="rounded-3xl border border-amber-200/50 dark:border-amber-500/20 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6 relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <Sparkles className="w-16 h-16 text-amber-500" />
+                            </div>
+
+                            <div className="relative z-10 space-y-4">
+                                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-black text-sm uppercase tracking-widest">
+                                    <Sparkles className="w-5 h-5" /> Quioba Insights
+                                </div>
+
+                                <p className="text-base text-slate-800 dark:text-slate-200 font-semibold leading-relaxed">
+                                    {analysis.summary}
+                                </p>
+
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                    <Badge className="bg-amber-500 text-white border-none font-bold text-[10px] px-3 h-6">
+                                        CAT: {analysis.category}
+                                    </Badge>
+                                    {analysis.document_type && (
+                                        <Badge variant="outline" className="border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 font-bold text-[10px] px-3 h-6">
+                                            TIPO: {analysis.document_type}
+                                        </Badge>
+                                    )}
+                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px] px-3 h-6">
+                                        CONFIANZA: {Math.round(analysis.confidence * 100)}%
+                                    </Badge>
+                                </div>
+                            </div>
+                        </motion.div>
                     ) : null}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

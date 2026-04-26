@@ -31,7 +31,7 @@ interface Stats {
     favoritesCount: number;
     upcomingReminders: number;
     expiringWarranties: number;
-    manualsByRoom: { name: string; count: number; icon?: string }[];
+    manualsByRoom: { id: string | null; name: string; count: number; icon?: string }[];
     recentReminders: { title: string; manual_title: string; next_date: string }[];
 }
 
@@ -44,20 +44,18 @@ const EMPTY_STATS: Stats = {
     recentReminders: []
 };
 
-export function ManualsDashboard() {
+export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?: string | null; onSelectRoom?: (id: string | null) => void }) {
     const { user, loading: authLoading } = useAuth();
     const [stats, setStats] = useState<Stats>(EMPTY_STATS);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (authLoading) return;
-
         if (!user) {
             setStats(EMPTY_STATS);
             setLoading(false);
             return;
         }
-
         fetchStats();
     }, [user, authLoading]);
 
@@ -70,12 +68,12 @@ export function ManualsDashboard() {
                 .from('manuals')
                 .select(`
                     *,
-                    room:rooms(name, icon)
+                    room:rooms(id, name, icon)
                 `);
 
             if (manualsError) throw manualsError;
 
-            // Fetch rooms
+            // Fetch rooms explicitly to show all of them even with 0
             const { data: rooms } = await supabase
                 .from('rooms')
                 .select('*');
@@ -91,7 +89,7 @@ export function ManualsDashboard() {
                 .eq('is_active', true)
                 .lte('next_date', next30Days)
                 .order('next_date')
-                .limit(5);
+                .limit(4);
 
             // Calculate stats
             const totalManuals = manuals?.length || 0;
@@ -104,14 +102,19 @@ export function ManualsDashboard() {
                 m.warranty_expires && m.warranty_expires <= next60Days
             ).length || 0;
 
-            // Group by room
-            const roomCounts = new Map<string, { name: string; count: number; icon?: string }>();
+            // Group by room (preserving real ID)
+            const roomCounts = new Map<string, { id: string | null; name: string; count: number; icon?: string }>();
+
+            // initialize all rooms with 0
+            rooms?.forEach(r => {
+                roomCounts.set(r.id, { id: r.id, name: r.name, count: 0, icon: r.icon });
+            });
+
             manuals?.forEach(manual => {
-                const roomName = manual.room?.name || 'Sin asignar';
-                const roomIcon = manual.room?.icon;
-                const current = roomCounts.get(roomName) || { name: roomName, count: 0, icon: roomIcon };
+                const rID = manual.room?.id || 'unassigned';
+                const current = roomCounts.get(rID) || { id: manual.room?.id || null, name: manual.room?.name || 'Sin asignar', count: 0, icon: manual.room?.icon };
                 current.count++;
-                roomCounts.set(roomName, current);
+                roomCounts.set(rID, current);
             });
 
             setStats({
@@ -119,7 +122,7 @@ export function ManualsDashboard() {
                 favoritesCount,
                 upcomingReminders,
                 expiringWarranties,
-                manualsByRoom: Array.from(roomCounts.values()).sort((a, b) => b.count - a.count).slice(0, 6),
+                manualsByRoom: Array.from(roomCounts.values()).sort((a, b) => b.count - a.count), // show all
                 recentReminders: reminders?.map(r => ({
                     title: r.title,
                     manual_title: r.manual?.title || '',
@@ -135,159 +138,132 @@ export function ManualsDashboard() {
 
     if (loading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="animate-pulse">
-                        <CardHeader className="pb-2">
-                            <div className="h-4 bg-muted rounded w-1/2"></div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-8 bg-muted rounded w-1/3"></div>
-                        </CardContent>
-                    </Card>
+                    <Card key={i} className="animate-pulse h-32"></Card>
                 ))}
             </div>
         );
     }
 
     return (
-        <div className="space-y-4 mb-6">
-            {/* Main Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Manuals */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            Total Manuales
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{stats.totalManuals}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Documentados
-                        </p>
+        <div className="mb-10 space-y-6">
+
+            {/* Bento Grid: At a Glance */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-white dark:bg-slate-900 shadow-lg border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                    <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
+                        <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit mb-4">
+                            <FileText className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{stats.totalManuals}</div>
+                            <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest text-[10px] mt-1">Activos Protegidos</div>
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Favorites */}
-                <Card className="border-l-4 border-l-emerald-500 hover:shadow-md hover:shadow-emerald-100 transition-all">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Star className="h-4 w-4 text-emerald-600" />
-                            Favoritos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-emerald-600">{stats.favoritesCount}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Marcados como importantes
-                        </p>
+                <Card className={`border-none shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative ${stats.expiringWarranties > 0 ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800'}`}>
+                    <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
+                        <div className={`p-3 rounded-2xl w-fit mb-4 ${stats.expiringWarranties > 0 ? 'bg-white/20' : 'bg-rose-500/10 dark:bg-rose-500/20'}`}>
+                            <AlertCircle className={`w-6 h-6 ${stats.expiringWarranties > 0 ? 'text-white' : 'text-rose-500'}`} />
+                        </div>
+                        <div>
+                            <div className={`text-4xl font-black tracking-tight ${stats.expiringWarranties > 0 ? 'drop-shadow-md' : 'text-slate-800 dark:text-white'}`}>{stats.expiringWarranties}</div>
+                            <div className={`font-bold uppercase tracking-widest text-[10px] mt-1 ${stats.expiringWarranties > 0 ? 'text-rose-200' : 'text-muted-foreground'}`}>Garantías (60 días)</div>
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Upcoming Reminders */}
-                <Card className={`border-l-4 transition-all ${stats.upcomingReminders > 0 ? 'border-l-emerald-500 bg-emerald-50/50 hover:shadow-md hover:shadow-emerald-100' : 'border-l-slate-200'}`}>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Bell className="h-4 w-4" />
-                            Próximos Recordatorios
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-blue-600">{stats.upcomingReminders}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            En los próximos 30 días
-                        </p>
+                <Card className={`border-none shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative ${stats.upcomingReminders > 0 ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-amber-950' : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800'}`}>
+                    <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
+                        <div className={`p-3 rounded-2xl w-fit mb-4 ${stats.upcomingReminders > 0 ? 'bg-black/10' : 'bg-amber-500/10'}`}>
+                            <Bell className={`w-6 h-6 ${stats.upcomingReminders > 0 ? 'text-amber-950' : 'text-amber-500'}`} />
+                        </div>
+                        <div>
+                            <div className={`text-4xl font-black tracking-tight ${stats.upcomingReminders > 0 ? 'drop-shadow-md' : 'text-slate-800 dark:text-white'}`}>{stats.upcomingReminders}</div>
+                            <div className={`font-bold uppercase tracking-widest text-[10px] mt-1 ${stats.upcomingReminders > 0 ? 'text-amber-900/80' : 'text-muted-foreground'}`}>Mantenimientos</div>
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Expiring Warranties */}
-                <Card className={stats.expiringWarranties > 0 ? 'border-orange-200 bg-orange-50/50' : ''}>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4" />
-                            Garantías por Vencer
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-orange-600">{stats.expiringWarranties}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            En los próximos 60 días
-                        </p>
+                <Card className="bg-white dark:bg-slate-900 shadow-lg border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative">
+                    <div className="absolute bottom-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-5 -mb-5" />
+                    <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
+                        <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit mb-4">
+                            <Star className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        <div>
+                            <div className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{stats.favoritesCount}</div>
+                            <div className="font-bold text-muted-foreground uppercase tracking-widest text-[10px] mt-1">Activos VIP</div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Secondary Stats */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Manuals by Room */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5" />
-                            Distribución por Habitaciones
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {stats.manualsByRoom.length > 0 ? (
-                            <div className="space-y-3">
-                                {stats.manualsByRoom.map(room => (
-                                    <div key={room.name} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            {ICON_MAP[room.icon || ''] ? (
-                                                (() => {
-                                                    const Icon = ICON_MAP[room.icon || ''];
-                                                    return <Icon className="h-5 w-5 text-muted-foreground" />;
-                                                })()
-                                            ) : (
-                                                <span className="text-lg">{room.icon || '📦'}</span>
-                                            )}
-                                            <span className="text-sm font-medium">{room.name}</span>
-                                        </div>
-                                        <Badge variant="secondary">{room.count}</Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                                No hay manuales organizados por habitaciones
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
+            {/* Room Filters mimicking Folders */}
+            <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-3">Tus Espacios</h3>
+                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                    {/* All Rooms */}
+                    <div
+                        onClick={() => onSelectRoom && onSelectRoom(null)}
+                        className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${!selectedRoom ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105'}`}
+                    >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!selectedRoom ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                            <FolderOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-sm">Todos</h4>
+                            <p className={`text-xs ${!selectedRoom ? 'text-emerald-100' : 'text-slate-400'}`}>{stats.totalManuals} items</p>
+                        </div>
+                    </div>
 
-                {/* Upcoming Reminders Detail */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <Calendar className="h-5 w-5" />
-                            Próximas Tareas de Mantenimiento
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {stats.recentReminders.length > 0 ? (
-                            <div className="space-y-3">
-                                {stats.recentReminders.map((reminder, index) => (
-                                    <div key={index} className="flex items-start justify-between border-l-2 border-blue-500 pl-3 py-1">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{reminder.title}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{reminder.manual_title}</p>
-                                        </div>
-                                        <Badge variant="outline" className="ml-2 shrink-0 text-xs">
-                                            {formatDistanceToNow(new Date(reminder.next_date), { addSuffix: true, locale: es })}
-                                        </Badge>
-                                    </div>
-                                ))}
+                    {/* Specific Rooms */}
+                    {stats.manualsByRoom.filter(r => r.id !== null).map((room) => {
+                        const isSelected = selectedRoom === room.id;
+                        const Icon = ICON_MAP[room.icon || ''] || Home;
+                        return (
+                            <div
+                                key={room.name}
+                                onClick={() => onSelectRoom && onSelectRoom(room.id)}
+                                className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${isSelected ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                    <Icon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-sm truncate">{room.name}</h4>
+                                    <p className={`text-xs ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>{room.count} items</p>
+                                </div>
                             </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                                No hay recordatorios próximos
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
+                        );
+                    })}
+                </div>
             </div>
+
+            {/* Quick Next Actions if any alarms are active */}
+            {stats.recentReminders.length > 0 && (
+                <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/50 rounded-2xl p-4">
+                    <h3 className="text-sm font-bold text-amber-800 dark:text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Bell className="w-4 h-4" /> Alertas de Mantenimiento Requeridas
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                        {stats.recentReminders.map((reminder, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{reminder.title}</p>
+                                    <p className="text-xs text-muted-foreground">{reminder.manual_title}</p>
+                                </div>
+                                <Badge variant="destructive" className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none rounded-lg px-3 py-1 text-xs font-semibold">
+                                    {formatDistanceToNow(new Date(reminder.next_date), { addSuffix: true, locale: es })}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

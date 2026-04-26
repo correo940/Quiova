@@ -1,50 +1,42 @@
-export const CATEGORY_MAP: Record<string, { keywords: string[], emoji: string, defaultPrice: number, expiryDays: number }> = {
+export const CATEGORY_MAP: Record<string, { keywords: string[], emoji: string, expiryDays: number }> = {
     'Frutas y Verduras': {
         keywords: ['manzana', 'platano', 'tomate', 'lechuga', 'cebolla', 'ajo', 'patata', 'pimiento', 'zanahoria', 'naranja', 'limon', 'fresa', 'fruta', 'verdura', 'aguacate'],
         emoji: '🥬',
-        defaultPrice: 2.50,
         expiryDays: 7
     },
     'Carnes': {
         keywords: ['pollo', 'ternera', 'cerdo', 'carne', 'pechuga', 'lomo', 'chuleta', 'salchicha', 'hamburguesa', 'picada', 'pavo'],
         emoji: '🥩',
-        defaultPrice: 5.50,
         expiryDays: 4
     },
     'Pescados': {
         keywords: ['pescado', 'salmon', 'merluza', 'atun', 'bacalao', 'gamba', 'langostino', 'calamar', 'pulpo'],
         emoji: '🐟',
-        defaultPrice: 8.00,
         expiryDays: 2
     },
     'Lácteos y Huevos': {
         keywords: ['leche', 'queso', 'yogur', 'mantequilla', 'huevo', 'huevos', 'nata'],
         emoji: '🥛',
-        defaultPrice: 2.00,
         expiryDays: 14
     },
     'Limpieza': {
         keywords: ['friegaplatos', 'detergente', 'suavizante', 'lejia', 'limpiasuelos', 'fregona', 'escoba', 'papel higienico', 'servilletas', 'basura'],
         emoji: '🧼',
-        defaultPrice: 4.50,
         expiryDays: 999
     },
     'Snacks y Dulces': {
         keywords: ['galleta', 'chocolate', 'patatas fritas', 'snack', 'caramelo', 'helado', 'postre'],
         emoji: '🍫',
-        defaultPrice: 2.50,
         expiryDays: 180
     },
     'Bebidas': {
         keywords: ['agua', 'coca', 'refresco', 'cerveza', 'vino', 'zumo', 'cafe', 'te'],
         emoji: '🥤',
-        defaultPrice: 1.50,
         expiryDays: 365
     },
     'Despensa Básica': {
         keywords: ['arroz', 'pasta', 'macarron', 'aceite', 'sal', 'azucar', 'harina', 'legumbre', 'garbanzo', 'lenteja', 'pan'],
         emoji: '🥫',
-        defaultPrice: 1.80,
         expiryDays: 365
     }
 };
@@ -57,7 +49,6 @@ export function guessCategoryAndPrice(name: string) {
             return {
                 category,
                 emoji: data.emoji,
-                estimatedPrice: data.defaultPrice,
                 expiryDays: data.expiryDays
             };
         }
@@ -66,7 +57,6 @@ export function guessCategoryAndPrice(name: string) {
     return {
         category: 'General',
         emoji: '🛒',
-        estimatedPrice: 3.00,
         expiryDays: 90
     };
 }

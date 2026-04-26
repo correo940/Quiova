@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, Eye, EyeOff, Copy, RefreshCw, Download, Upload, Edit, Trash2, Lock, Unlock, ShieldCheck, Globe, Smartphone, MapPin, Users, Cloud, Film, ShoppingBag, Briefcase, CreditCard, Folder, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Eye, EyeOff, Copy, RefreshCw, Download, Upload, Edit, Trash2, Lock, Unlock, ShieldCheck, Globe, Smartphone, MapPin, Users, Cloud, Film, ShoppingBag, Briefcase, CreditCard, Folder, ArrowLeft, LayoutGrid, Fingerprint, QrCode, X, CheckCircle2, Loader2, ScanLine } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { QRCodeSVG } from 'qrcode.react';
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const POPULAR_SERVICES = [
   { name: 'Google', url: 'google.com', category: 'Correo/Nube', color: 'bg-red-500' },
@@ -37,7 +40,13 @@ const CATEGORY_CONFIG: Record<string, { icon: React.ElementType, color: string, 
 };
 
 export default function PasswordsClient() {
-  const { passwords, loading, addPassword, updatePassword, deletePassword, decryptPassword, importPasswords, isLocked, unlock, lock } = usePasswords();
+  const {
+    passwords, loading, isLocked, unlock, lock,
+    addPassword, updatePassword, deletePassword,
+    decryptPassword, importPasswords,
+    biometricsAvailable, isBiometricsEnabled, enableBiometrics, disableBiometrics, unlockWithBiometrics,
+    generateQrSession, authorizeQrSession, checkQrSession
+  } = usePasswords();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
@@ -50,6 +59,9 @@ export default function PasswordsClient() {
   const [masterPasswordInput, setMasterPasswordInput] = useState('');
   const [showMasterPassword, setShowMasterPassword] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [showQrScreen, setShowQrScreen] = useState(false);
+  const [currentQrSession, setCurrentQrSession] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -72,6 +84,44 @@ export default function PasswordsClient() {
       toast.success('Bóveda desbloqueada');
     } else {
       toast.error('Contraseña maestra incorrecta');
+    }
+  };
+
+  const handleBiometricUnlock = async () => {
+    setUnlocking(true);
+    const success = await unlockWithBiometrics();
+    setUnlocking(false);
+    if (!success) {
+      toast.error('Error al usar biometría o dispositivo no vinculado');
+    }
+  };
+
+  const startQrPolling = (sessionId: string) => {
+    const interval = setInterval(async () => {
+      const success = await checkQrSession(sessionId);
+      if (success) {
+        clearInterval(interval);
+        setShowQrScreen(false);
+        setCurrentQrSession(null);
+      }
+    }, 2000);
+
+    // Auto cleanup after 1 min
+    setTimeout(() => clearInterval(interval), 60000);
+  };
+
+  const handleShowQr = () => {
+    const session = generateQrSession();
+    setCurrentQrSession(session);
+    setShowQrScreen(true);
+    startQrPolling(session);
+  };
+
+  const handleScanSuccess = async (text: string) => {
+    if (text.startsWith('quioba-pass:')) {
+      const sessionId = text.split(':')[1];
+      setIsScanning(false);
+      await authorizeQrSession(sessionId);
     }
   };
 
@@ -238,159 +288,247 @@ export default function PasswordsClient() {
     const isFirstTime = passwords.length === 0;
 
     return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
-              {isFirstTime ? <ShieldCheck className="h-10 w-10 text-primary" /> : <Lock className="h-10 w-10 text-primary" />}
-            </div>
-            <CardTitle className="text-2xl font-bold">
-              {isFirstTime ? 'Configura tu Bóveda Segura' : 'Bóveda Bloqueada'}
-            </CardTitle>
-            <CardDescription className="text-base">
-              {isFirstTime
-                ? 'Tu seguridad es nuestra prioridad. Antes de empezar, necesitas crear una Llave Maestra.'
-                : 'Introduce tu Contraseña Maestra para descifrar y acceder a tus contraseñas.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isFirstTime && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4 mb-6 text-sm text-yellow-700 dark:text-yellow-200 rounded-r">
-                <p className="font-bold mb-2">⚠️ Información Importante:</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  <li>Esta contraseña será la <strong>única llave</strong> para ver tus datos.</li>
-                  <li><strong>Solo tú la conoces</strong>. Nosotros no la guardamos.</li>
-                  <li>Si la olvidas, <strong>perderás acceso</strong> a tus contraseñas para siempre.</li>
-                  <li>Debes usar <strong>siempre la misma</strong> para entrar.</li>
-                </ul>
-              </div>
-            )}
+      <div className="flex items-center justify-center min-h-[70vh] p-4">
+        <div className="w-full max-w-md relative">
+          {/* Decorative background glow */}
+          <div className="absolute inset-0 -z-10 bg-emerald-500/10 dark:bg-emerald-500/5 blur-3xl rounded-full translate-y-12 shrink-0"></div>
 
-            <form onSubmit={handleUnlock} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="master-password">
-                  {isFirstTime ? 'Crea tu Contraseña Maestra' : 'Contraseña Maestra'}
-                </Label>
-                <div className="relative">
+          <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-zinc-800 shadow-2xl rounded-3xl overflow-hidden">
+            <div className="p-8 pb-6 text-center">
+              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-950 flex items-center justify-center rounded-3xl shadow-inner mb-6 border border-emerald-200/50 dark:border-emerald-800/50 rotate-3 transition-transform hover:rotate-0 duration-500">
+                {isFirstTime ? <ShieldCheck className="h-10 w-10 text-emerald-600 dark:text-emerald-400 drop-shadow-md" /> : <Lock className="h-10 w-10 text-emerald-600 dark:text-emerald-400 drop-shadow-md" />}
+              </div>
+              <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">
+                {isFirstTime ? 'Configura tu Bóveda' : 'Bóveda Segura'}
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">
+                {isFirstTime
+                  ? 'Crea una Llave Maestra para cifrar tus contraseñas.'
+                  : 'Introduce tu Llave Maestra para descifrar tus datos.'}
+              </p>
+            </div>
+
+            <div className="p-8 pt-0 space-y-6">
+              {isFirstTime && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-900/50 p-4 text-sm text-amber-800 dark:text-amber-300 rounded-2xl flex gap-3 items-start">
+                  <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" /></div>
+                  <div>
+                    <p className="font-bold mb-1">Importante: Tu Llave es Única</p>
+                    <p className="opacity-90 leading-relaxed text-xs">Esta contraseña cifrará tus datos de forma local. Si la olvidas, es imposible recuperar el acceso. Nosotros no la guardamos.</p>
+                  </div>
+                </div>
+              )}
+
+              {!isFirstTime && (
+                <div className="flex flex-col items-center gap-6">
+                  <div className="flex items-center justify-between w-full max-w-sm px-2 gap-3">
+                    <Button
+                      variant="ghost"
+                      className="rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-500 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0"
+                      onClick={handleShowQr}
+                      title="Desbloquear con QR"
+                    >
+                      <QrCode className="w-6 h-6" />
+                    </Button>
+
+                    <div className="relative w-full group">
+                      <Input
+                        type={showMasterPassword ? "text" : "password"}
+                        placeholder="Contraseña"
+                        className="bg-slate-50 dark:bg-black/50 border-slate-200 dark:border-zinc-800/50 text-xl font-bold tracking-widest placeholder:tracking-normal placeholder:text-base text-center h-16 rounded-2xl focus-visible:ring-emerald-500 shadow-inner w-full pr-12"
+                        value={masterPasswordInput}
+                        onChange={(e) => setMasterPasswordInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUnlock(e as any)}
+                        autoFocus
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-12 w-12 hover:bg-transparent rounded-xl text-slate-400"
+                        onClick={() => setShowMasterPassword(!showMasterPassword)}
+                      >
+                        {showMasterPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </Button>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      disabled={!isBiometricsEnabled}
+                      className={`rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0 ${isBiometricsEnabled ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 hover:text-blue-600' : 'opacity-20 cursor-not-allowed text-slate-400'}`}
+                      onClick={handleBiometricUnlock}
+                      title={isBiometricsEnabled ? "Desbloquear con Huella" : "Biometría no activada"}
+                    >
+                      <Fingerprint className="w-6 h-6" />
+                    </Button>
+                  </div>
+
+                  {masterPasswordInput && (
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full">
+                      <Button
+                        onClick={handleUnlock as any}
+                        disabled={unlocking}
+                        className="w-full py-7 text-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                      >
+                        {unlocking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Descifrar Bóveda'}
+                      </Button>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              {isFirstTime && (
+                <form onSubmit={handleUnlock} className="space-y-4">
                   <Input
-                    id="master-password"
                     type={showMasterPassword ? "text" : "password"}
-                    placeholder={isFirstTime ? "Elige una contraseña fuerte..." : "••••••••"}
+                    placeholder="Escribe tu nueva llave maestra..."
+                    className="text-center py-7 bg-slate-50 dark:bg-black/50 rounded-2xl focus-visible:ring-emerald-500 border-slate-200 dark:border-zinc-800/50 font-medium"
                     value={masterPasswordInput}
                     onChange={(e) => setMasterPasswordInput(e.target.value)}
-                    autoFocus
-                    className="text-lg py-6 pr-10"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowMasterPassword(!showMasterPassword)}
-                  >
-                    {showMasterPassword ? (
-                      <EyeOff className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <Button type="submit" className="w-full py-6 text-lg" disabled={unlocking || !masterPasswordInput}>
-                {unlocking ? 'Procesando...' : (isFirstTime ? 'Crear Bóveda y Acceder' : 'Desbloquear Bóveda')}
-              </Button>
-            </form>
-          </CardContent>
-          <CardFooter className="justify-center text-xs text-muted-foreground text-center border-t pt-4 bg-muted/20">
-            <p>Cifrado de extremo a extremo (AES-256) • Tu privacidad está garantizada</p>
-          </CardFooter>
-        </Card>
+                  <Button type="submit" disabled={!masterPasswordInput} className="w-full py-7 font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg">Configurar y Entrar</Button>
+                </form>
+              )}
+            </div>
+
+            <div className="bg-slate-50 dark:bg-black/20 p-4 text-center border-t border-slate-100 dark:border-zinc-800/50">
+              <p className="text-[11px] font-semibold tracking-widest uppercase text-emerald-600 dark:text-emerald-500 flex items-center justify-center gap-1.5 opacity-80">
+                <Lock className="w-3 h-3" /> Protección Local Segura
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6 text-green-500" />
-              <CardTitle>Tus contraseñas</CardTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={lock} variant="ghost" className="text-muted-foreground hover:text-destructive">
-                <Lock className="mr-2 h-4 w-4" />
-                Bloquear
-              </Button>
-              <Button onClick={handleAddNewClick}>
-                <Plus className="mr-2 h-4 w-4" />
-                Añadir
-              </Button>
-              <Button onClick={handleImportClick} variant="outline" size="icon" title="Importar">
-                <Upload className="h-4 w-4" />
-              </Button>
-              <Button onClick={handleExportPasswords} variant="outline" size="icon" title="Exportar">
-                <Download className="h-4 w-4" />
-              </Button>
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="application/json" />
-            </div>
-          </div>
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Buscar por nombre, sitio web, dispositivo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardHeader >
-        <CardContent>
-          {filteredPasswords.length > 0 ? (
-            selectedCategory ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCategory(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
-                    <ArrowLeft className="h-4 w-4" /> Volver
-                  </Button>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    {(() => {
-                      const Config = CATEGORY_CONFIG[selectedCategory] || CATEGORY_CONFIG['Otros'];
-                      const Icon = Config.icon;
-                      return <Icon className={`h-6 w-6 ${Config.color}`} />;
-                    })()}
-                    {selectedCategory}
-                  </h2>
-                </div>
-                <ul className="space-y-3">
-                  {(groupedPasswords[selectedCategory] || []).map(p => (
-                    <li key={p.id} className="p-3 border rounded-md flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-accent/30 transition-colors gap-4">
-                      <div className="flex items-start gap-3 flex-grow">
-                        <Avatar className="h-10 w-10 rounded-md border bg-background">
-                          <AvatarImage src={`https://logo.clearbit.com/${p.website || 'example.com'}`} alt={p.name} />
-                          <AvatarImage src={`https://www.google.com/s2/favicons?domain=${p.website || 'example.com'}&sz=128`} alt={p.name} />
-                          <AvatarFallback className="rounded-md bg-primary/10 text-primary font-bold">
-                            {p.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="font-semibold text-base">{p.name}</h3>
-                          <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-2">
-                            <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> {p.username}</span>
-                            <span className="text-muted-foreground/40 hidden sm:inline">|</span>
-                            <div className="flex items-center gap-2 font-mono bg-muted/50 px-2 py-0.5 rounded text-xs">
-                              <span>{visiblePasswords[p.id] || '••••••••'}</span>
-                              <button onClick={() => handleTogglePasswordVisibility(p.id, p.passwordHash)} className="hover:text-primary transition-colors">
-                                {visiblePasswords[p.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                              </button>
-                            </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* ── Controles de Acciones y Búsqueda ── */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-4 rounded-3xl border border-slate-200/60 dark:border-zinc-800 shadow-sm">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="Buscar por nombre, cuenta o dispositivo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-11 py-6 bg-white dark:bg-black/50 border-transparent focus:border-emerald-500/50 rounded-2xl shadow-sm w-full font-medium"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="application/json" />
+
+          <Button
+            onClick={lock}
+            variant="outline"
+            className="rounded-xl border-slate-200 dark:border-zinc-800 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 whitespace-nowrap"
+          >
+            <Lock className="mr-2 h-4 w-4" /> Bloquear
+          </Button>
+
+          {biometricsAvailable && (
+            <Button
+              onClick={isBiometricsEnabled ? disableBiometrics : enableBiometrics}
+              variant="outline"
+              className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap ${isBiometricsEnabled ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-400'}`}
+              title={isBiometricsEnabled ? "Biometría Activa" : "Activar Biometría"}
+            >
+              <Fingerprint className="mr-2 h-4 w-4" />
+              <span className="hidden lg:inline">{isBiometricsEnabled ? 'Link Activo' : 'Vincular Huella'}</span>
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={() => setIsScanning(!isScanning)}
+            className={`rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap ${isScanning ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400'}`}
+            title="Autorizar PC vía QR"
+          >
+            <ScanLine className="mr-2 h-4 w-4" />
+            <span className="hidden lg:inline">Scanner QR</span>
+          </Button>
+
+          <Button
+            onClick={handleImportClick}
+            variant="outline"
+            size="icon"
+            className="rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap min-w-10"
+            title="Importar"
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+
+          <Button
+            onClick={handleExportPasswords}
+            variant="outline"
+            size="icon"
+            className="rounded-xl border-slate-200 dark:border-zinc-800 whitespace-nowrap min-w-10"
+            title="Exportar"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+
+          <Button
+            onClick={handleAddNewClick}
+            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 shadow-lg px-5 whitespace-nowrap"
+          >
+            <Plus className="mr-2 h-5 w-5" /> Nueva Clave
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Área de Listados ── */}
+      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-xl overflow-hidden min-h-[500px] p-6">
+        {filteredPasswords.length > 0 ? (
+          selectedCategory ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCategory(null)} className="gap-1 pl-0 hover:bg-transparent hover:text-primary">
+                  <ArrowLeft className="h-4 w-4" /> Volver
+                </Button>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {(() => {
+                    const Config = CATEGORY_CONFIG[selectedCategory] || CATEGORY_CONFIG['Otros'];
+                    const Icon = Config.icon;
+                    return <Icon className={`h-6 w-6 ${Config.color}`} />;
+                  })()}
+                  {selectedCategory}
+                </h2>
+              </div>
+              <ul className="space-y-4">
+                {(groupedPasswords[selectedCategory] || []).map(p => (
+                  <li key={p.id} className="p-4 bg-slate-50/50 dark:bg-black/20 border border-slate-100/50 dark:border-zinc-800/50 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-white dark:hover:bg-zinc-900 transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 group gap-4 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-100/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity -z-10 blur-xl"></div>
+                    <div className="flex items-start gap-4 flex-grow w-full">
+                      <Avatar className="h-12 w-12 rounded-2xl shadow-sm border border-slate-200/50 dark:border-zinc-800 bg-white">
+                        <AvatarImage src={`https://logo.clearbit.com/${p.website || 'example.com'}`} alt={p.name} />
+                        <AvatarImage src={`https://www.google.com/s2/favicons?domain=${p.website || 'example.com'}&sz=128`} alt={p.name} />
+                        <AvatarFallback className="rounded-2xl bg-emerald-50 text-emerald-700 font-bold text-lg">
+                          {p.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{p.name}</h3>
+                        <div className="flex items-center flex-wrap gap-2 mt-1">
+                          <span className="flex items-center gap-1.5 text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span className="truncate max-w-[120px]">{p.username}</span>
+                          </span>
+
+                          <div className="flex items-center gap-2 font-mono bg-slate-100 dark:bg-black/50 px-2.5 py-0.5 rounded-lg border border-slate-200/50 dark:border-zinc-800/50">
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tracking-widest">{visiblePasswords[p.id] || '••••••••'}</span>
+                            <button onClick={() => handleTogglePasswordVisibility(p.id, p.passwordHash)} className="text-slate-400 hover:text-emerald-600 transition-colors p-1">
+                              {visiblePasswords[p.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </button>
                           </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            {p.website && (
-                              <a href={p.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary hover:underline">
-                                <Globe className="h-3 w-3" />
+                        </div>
+                        <div className="flex items-center gap-3 mt-2.5 text-xs font-medium text-slate-500">
+                          {p.website && (
+                            <a href={p.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 transition-colors bg-slate-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-md">
+                              <Globe className="h-3.5 w-3.5" />
+                              <span className="truncate max-w-[100px]">
                                 {(() => {
                                   try {
                                     return new URL(p.website).hostname.replace('www.', '');
@@ -398,64 +536,70 @@ export default function PasswordsClient() {
                                     return p.website;
                                   }
                                 })()}
-                              </a>
-                            )}
-                            {p.device && <span className="flex items-center gap-1"><Smartphone className="h-3 w-3" /> {p.device}</span>}
-                            {p.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {p.location}</span>}
-                          </div>
+                              </span>
+                            </a>
+                          )}
+                          {p.device && <span className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-md truncate max-w-[100px]"><Smartphone className="h-3.5 w-3.5 shrink-0" /> {p.device}</span>}
+                          {p.location && <span className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-md truncate max-w-[100px]"><MapPin className="h-3.5 w-3.5 shrink-0" /> {p.location}</span>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 self-end sm:self-center ml-auto sm:ml-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyPassword(p.passwordHash)} title="Copiar contraseña"><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteClick(p.id)} title="Eliminar"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(groupedPasswords).map(([category, items]) => {
-                  const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG['Otros'];
-                  const Icon = config.icon;
-                  return (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`relative overflow-hidden p-6 rounded-xl border text-left transition-all hover:shadow-md hover:scale-[1.02] group bg-gradient-to-br ${config.gradient}`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`p-3 rounded-lg bg-background/80 backdrop-blur-sm shadow-sm ${config.color}`}>
-                          <Icon className="h-6 w-6" />
-                        </div>
-                        <span className="text-2xl font-bold opacity-20 group-hover:opacity-40 transition-opacity">{items.length}</span>
-                      </div>
-                      <h3 className="font-bold text-lg mb-1">{category}</h3>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                        {items.length} {items.length === 1 ? 'Contraseña' : 'Contraseñas'}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No tienes contraseñas guardadas.</p>
-              <p className="text-sm">Añade tu primera contraseña para empezar.</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 self-end sm:self-center ml-auto sm:ml-0 bg-slate-100/50 dark:bg-black/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-zinc-800 hover:text-emerald-600 hover:shadow-sm" onClick={() => handleCopyPassword(p.passwordHash)} title="Copiar contraseña"><Copy className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 hover:shadow-sm" onClick={() => handleEditClick(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 hover:shadow-sm" onClick={() => handleDeleteClick(p.id)} title="Eliminar"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          )}
-        </CardContent>
-      </Card >
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(groupedPasswords).map(([category, items]) => {
+                const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG['Otros'];
+                const Icon = config.icon;
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`relative overflow-hidden p-6 rounded-xl border text-left transition-all hover:shadow-md hover:scale-[1.02] group bg-gradient-to-br ${config.gradient}`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-3 rounded-lg bg-background/80 backdrop-blur-sm shadow-sm ${config.color}`}>
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <span className="text-2xl font-bold opacity-20 group-hover:opacity-40 transition-opacity">{items.length}</span>
+                    </div>
+                    <h3 className="font-bold text-lg mb-1">{category}</h3>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                      {items.length} {items.length === 1 ? 'Contraseña' : 'Contraseñas'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No tienes contraseñas guardadas.</p>
+            <p className="text-sm">Añade tu primera contraseña para empezar.</p>
+          </div>
+        )}
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingPassword ? 'Editar Contraseña' : 'Añadir Nueva Contraseña'}</DialogTitle>
-            <DialogDescription>Completa los detalles para guardar una nueva contraseña de forma segura.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+        <DialogContent className="sm:max-w-xl bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl border-slate-200/50 dark:border-zinc-800/50 shadow-2xl rounded-[2rem] gap-0 p-0 overflow-hidden">
+          <div className="p-6 pb-2 border-b border-slate-100 dark:border-zinc-900">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                {editingPassword ? <><Edit className="w-6 h-6 text-emerald-500" /> Editar Contraseña</> : <><Plus className="w-6 h-6 text-emerald-500" /> Nueva Contraseña</>}
+              </DialogTitle>
+              <DialogDescription>
+                Completa los detalles para guardar una nueva contraseña de forma segura.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="grid gap-5 p-6 overflow-y-auto max-h-[70vh]">
             {!editingPassword && (
               <div className="space-y-3 mb-2">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Servicios Populares</Label>
@@ -484,49 +628,120 @@ export default function PasswordsClient() {
                 </div>
               </div>
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nombre del Servicio</Label>
-              <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Google, Facebook..." />
+            <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider">Nombre del Servicio <span className="text-red-500">*</span></Label>
+              <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Google, Netflix..." className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-6 focus-visible:ring-emerald-500 shadow-inner text-lg font-medium" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="username">Usuario</Label>
-                <Input id="username" value={username} onChange={e => setUsername(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wider">Usuario / Correo <span className="text-red-500">*</span></Label>
+                <Input id="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="tu@email.com" className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-6 focus-visible:ring-emerald-500 shadow-inner" />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <div className="flex items-center gap-2">
-                  <Input id="password" type={isNewPasswordVisible ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} />
-                  <Button variant="ghost" size="icon" type="button" onClick={() => setIsNewPasswordVisible(prev => !prev)}>{isNewPasswordVisible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
-                  <Button variant="ghost" size="icon" type="button" onClick={generatePassword}><RefreshCw className="h-5 w-5" /></Button>
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider">Contraseña <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <Input id="password" type={isNewPasswordVisible ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-6 pr-24 focus-visible:ring-emerald-500 shadow-inner font-mono" />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" type="button" className="h-10 w-10 text-slate-400 hover:text-emerald-600 rounded-lg" onClick={() => setIsNewPasswordVisible(prev => !prev)}>{isNewPasswordVisible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</Button>
+                    <Button variant="ghost" size="icon" type="button" className="h-10 w-10 text-slate-400 hover:text-blue-600 rounded-lg" onClick={generatePassword} title="Generar"><RefreshCw className="h-5 w-5" /></Button>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="website">Sitio Web (Opcional)</Label>
-              <Input id="website" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="category">Categoría (Opcional)</Label>
-              <Input id="category" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ej: Trabajo, Personal..." />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="device">Dispositivo (Opcional)</Label>
-                <Input id="device" value={device} onChange={e => setDevice(e.target.value)} placeholder="Ej: Cámara, Router..." />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="website" className="text-xs font-bold uppercase tracking-wider text-slate-500">Sitio Web / IP</Label>
+                <Input id="website" value={website} onChange={e => setWebsite(e.target.value)} placeholder="Ej: router.local o https://..." className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-5 focus-visible:ring-emerald-500 shadow-inner" />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="location">Ubicación (Opcional)</Label>
-                <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Ej: Cocina, Salón..." />
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</Label>
+                <Input id="category" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ej: Trabajo, WiFi, Suscripciones..." className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-5 focus-visible:ring-emerald-500 shadow-inner" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="device" className="text-xs font-bold uppercase tracking-wider text-slate-500">Dispositivo</Label>
+                <Input id="device" value={device} onChange={e => setDevice(e.target.value)} placeholder="Ej: Cámara Xiaomi, Router..." className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-5 focus-visible:ring-emerald-500 shadow-inner" />
+              </div>
+              <div className="space-y-1.5 focus-within:text-emerald-600 transition-colors">
+                <Label htmlFor="location" className="text-xs font-bold uppercase tracking-wider text-slate-500">Ubicación física</Label>
+                <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Ej: Entrada balcón, Salón..." className="bg-slate-50 dark:bg-zinc-900 border-none rounded-xl py-5 focus-visible:ring-emerald-500 shadow-inner" />
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
-            <Button onClick={handleSavePassword}>Guardar</Button>
-          </DialogFooter>
+          <div className="p-4 bg-slate-50 dark:bg-black/50 border-t border-slate-100 dark:border-zinc-900 flex justify-end gap-3 rounded-b-[2rem]">
+            <Button variant="ghost" className="rounded-xl px-6 hover:bg-slate-200/50" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
+            <Button className="rounded-xl px-8 bg-emerald-600 shadow-lg shadow-emerald-500/20" onClick={handleSavePassword}>Guardar Clave</Button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* QR PC MODAL */}
+      <AnimatePresence>
+        {showQrScreen && (
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-zinc-950 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative border border-white/10"
+            >
+              <button onClick={() => setShowQrScreen(false)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600">
+                  <QrCode className="w-8 h-8" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">Accesibilidad Remota</h2>
+                <div className="bg-slate-50 dark:bg-zinc-900 rounded-xl p-4 mt-4 text-left border border-slate-100 dark:border-zinc-800 shadow-inner">
+                  <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 font-medium list-decimal list-inside">
+                    <li>Abre Quioba en tu móvil.</li>
+                    <li>Ve a <b>Mis Contraseñas</b> (y desbloquea).</li>
+                    <li>Pulsa el botón superior <b>&quot;Scanner QR&quot;</b>.</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-3xl shadow-inner inline-block mb-6 border-4 border-slate-50">
+                <QRCodeSVG value={`quioba-pass:${currentQrSession}`} size={200} level="H" />
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-emerald-600 text-sm font-bold animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Esperando al móvil...</span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* SCANNER MODAL */}
+      <AnimatePresence>
+        {isScanning && (
+          <div className="fixed inset-0 z-[101] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl max-w-md w-full relative border border-white/5 overflow-hidden"
+            >
+              <div className="mb-4 text-center">
+                <h3 className="text-xl font-bold">Escáner de Autorización</h3>
+                <p className="text-slate-500 text-xs">Apunta al código QR generado en tu PC.</p>
+              </div>
+
+              <div className="aspect-square rounded-3xl overflow-hidden border-2 border-emerald-500/20 bg-black mb-4">
+                <Scanner onScan={(result) => result[0]?.rawValue && handleScanSuccess(result[0].rawValue)} />
+              </div>
+
+              <Button variant="outline" className="w-full rounded-2xl py-6" onClick={() => setIsScanning(false)}>
+                Cancelar Escaneo
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div >
   );
 }

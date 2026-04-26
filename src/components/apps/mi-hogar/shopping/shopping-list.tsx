@@ -15,8 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
-import { ChefHat, Wand2, CalendarDays, Timer } from 'lucide-react';
-import { guessCategoryAndPrice, generatePlanItems, checkExpiration } from '@/lib/shopping-list-ai-helpers';
+import { ChefHat, Wand2, CalendarDays, Timer, Layers } from 'lucide-react';
+import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP } from '@/lib/shopping-list-ai-helpers';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ShoppingItem = {
     id: string;
@@ -48,6 +49,15 @@ export default function ShoppingList() {
     const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
     const [editName, setEditName] = useState("");
     const [editSupermarket, setEditSupermarket] = useState("");
+    const [isShopMode, setIsShopMode] = useState(false);
+    const [activeTab, setActiveTab] = useState("list");
+
+    const toggleShopMode = () => {
+        if (!isShopMode) {
+            setActiveTab("list");
+        }
+        setIsShopMode(!isShopMode);
+    };
 
     const openEditDialog = (item: ShoppingItem) => {
         setEditingItem(item);
@@ -242,6 +252,16 @@ export default function ShoppingList() {
         return () => clearTimeout(safetyTimer);
     }, [user]);
 
+    // Auto-reset filters and switch tab when entering Shop Mode
+    useEffect(() => {
+        if (isShopMode) {
+            setSearchTerm('');
+            setCategoryFilter(null);
+            // We can't directly set the Tab value here easily without a state for it
+            // but the user is likely on 'list'. If not, we should probably add a state for Tab.
+        }
+    }, [isShopMode]);
+
     const fetchItems = async () => {
         try {
             setLoading(true);
@@ -362,7 +382,12 @@ export default function ShoppingList() {
                 .eq('id', id);
 
             if (error) throw error;
-            // Opcional: toast.success(newStatus === 'to_buy' ? '¡Añadido a la lista!' : '¡Comprado!');
+
+            if (newStatus === 'in_stock') {
+                toast.success(`🛒 ¡${item.name} movido a la despensa!`);
+            } else {
+                toast.info(`📝 ${item.name} devuelto a la lista`);
+            }
         } catch (error) {
             console.error('Error updating item:', error);
             // 3. Rollback en caso de fallo
@@ -404,12 +429,35 @@ export default function ShoppingList() {
     const toBuyItems = filteredItems.filter(i => i.status === 'to_buy');
     const inStockItems = filteredItems.filter(i => i.status === 'in_stock');
 
-    // PRICE ESTIMATION MAGIC
-    const estimatedTotal = toBuyItems.reduce((acc, item) => acc + guessCategoryAndPrice(item.name).estimatedPrice, 0);
+    // AI SUGGESTIONS LOGIC
+    const suggestedItems = React.useMemo(() => {
+        if (items.length === 0) return [];
+        // Look for items that were 'in_stock' but maybe it's time to buy again
+        // For now, let's take the most frequent ones not in 'to_buy'
+        const stockItems = items.filter(i => i.status === 'in_stock');
+        const toBuyNames = new Set(toBuyItems.map(i => i.name.toLowerCase()));
+
+        // Simple heuristic: unique items in stock that are not in the list
+        const uniqueStock = Array.from(new Set(stockItems.map(i => i.name)))
+            .filter(name => !toBuyNames.has(name.toLowerCase()))
+            .slice(0, 3); // Max 3 suggestions
+
+        return uniqueStock;
+    }, [items, toBuyItems]);
 
     // ProgressBar info
     const totalFiltered = toBuyItems.length + inStockItems.length;
     const progressPercent = totalFiltered === 0 ? 0 : Math.round((inStockItems.length / totalFiltered) * 100);
+
+    // Grouping items by category for aisles
+    const groupedToBuyItems = React.useMemo(() => {
+        const groups: Record<string, ShoppingItem[]> = {};
+        toBuyItems.forEach(item => {
+            if (!groups[item.category]) groups[item.category] = [];
+            groups[item.category].push(item);
+        });
+        return groups;
+    }, [toBuyItems]);
 
     const getSupermarketBadgeColor = (supermarket?: string) => {
         if (!supermarket) return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
@@ -517,21 +565,11 @@ export default function ShoppingList() {
                         </p>
                     </div>
 
-                    <div className="flex-1 w-full flex sm:justify-center items-center">
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-3 flex items-center gap-3">
-                            <div className="p-2 bg-indigo-500/20 rounded-full">
-                                <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] uppercase tracking-wider font-bold text-indigo-600/80 dark:text-indigo-400/80">Coste Estimado Mágico</p>
-                                <p className="text-xl font-black text-indigo-700 dark:text-indigo-300">~{estimatedTotal.toFixed(2)}€</p>
-                            </div>
-                        </div>
-                    </div>
+
 
                     {/* Búsqueda y Filtros Compactos */}
-                    <div className="w-full sm:w-[260px] shrink-0 space-y-2">
-                        <div className="relative">
+                    <div className="w-full sm:w-[260px] shrink-0 flex items-center gap-2">
+                        <div className="relative flex-1">
                             <Input
                                 placeholder="🔍 Buscar..."
                                 value={searchTerm}
@@ -545,10 +583,19 @@ export default function ShoppingList() {
                                 </button>
                             )}
                         </div>
+                        <Button
+                            variant={isShopMode ? "default" : "outline"}
+                            size="icon"
+                            onClick={toggleShopMode}
+                            className={`rounded-xl h-10 w-10 shrink-0 transition-all ${isShopMode ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg' : 'border-slate-200 dark:border-slate-800'}`}
+                            title={isShopMode ? "Salir de modo tienda" : "Activar modo tienda"}
+                        >
+                            <Store className="h-5 w-5" />
+                        </Button>
                     </div>
                 </div>
 
-                {categories.length > 0 && (
+                {!isShopMode && categories.length > 0 && (
                     <div className="flex gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/50">
                         <button
                             onClick={() => setCategoryFilter(null)}
@@ -735,7 +782,7 @@ export default function ShoppingList() {
                 </DialogContent>
             </Dialog>
 
-            <Tabs defaultValue="list" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full max-w-sm mx-auto grid-cols-2 p-1.5 h-auto bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl mb-6">
                     <TabsTrigger value="list" className="rounded-xl py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all text-sm font-semibold">
                         <ShoppingCart className="w-4 h-4 mr-2 opacity-70" />
@@ -749,58 +796,115 @@ export default function ShoppingList() {
 
                 {/* ── PESTAÑA: POR COMPRAR ── */}
                 <TabsContent value="list" className="focus-visible:outline-none focus:ring-0">
+                    {/* AI SUGGESTIONS SECTION */}
+                    {suggestedItems.length > 0 && toBuyItems.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="mb-8 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl border border-indigo-500/20 backdrop-blur-sm"
+                        >
+                            <div className="flex items-center gap-2 mb-3">
+                                <Sparkles className="w-4 h-4 text-indigo-500" />
+                                <h3 className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Sugeridos para ti</h3>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                {suggestedItems.map((name, idx) => (
+                                    <Button
+                                        key={idx}
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => addItem(name)}
+                                        className="rounded-full bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 border-none shadow-sm text-xs font-bold py-0 h-8 flex items-center gap-2 group"
+                                    >
+                                        <Plus className="w-3 h-3 text-indigo-500 group-hover:scale-125 transition-transform" />
+                                        {name}
+                                    </Button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
                     {toBuyItems.length === 0 ? (
-                        <div className="text-center py-20 bg-white/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50 rounded-3xl">
-                            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-center py-20 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-slate-800/50 rounded-3xl"
+                        >
+                            <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
                                 <Sparkles className="h-8 w-8" />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">¡Todo al día!</h3>
-                            <p className="text-muted-foreground mt-2 text-sm max-w-[250px] mx-auto">No hay compras pendientes. Escribe o dicta algo para añadir.</p>
-                        </div>
+                            <p className="text-muted-foreground mt-2 text-sm max-w-[250px] mx-auto text-balance font-medium">No hay compras pendientes. Escribe o dicta algo para añadir.</p>
+                        </motion.div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {toBuyItems.map(item => {
-                                const aiData = guessCategoryAndPrice(item.name);
-                                return (
-                                    <div key={item.id} className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-start gap-3">
-                                        <button
-                                            onClick={() => toggleStatus(item.id)}
-                                            className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-200 dark:border-slate-700 group-hover:border-emerald-400 group-hover:bg-emerald-50/[0.3] flex items-center justify-center transition-all focus:outline-none"
-                                            title="Marcar como comprado"
-                                        >
-                                            <div className="w-full h-full rounded-full transition-transform scale-0 group-hover:scale-50 bg-emerald-400" />
-                                        </button>
-
-                                        <div className="flex-1 min-w-0 pr-6">
-                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight truncate mb-1">
-                                                {aiData.emoji} {item.name}
-                                            </h4>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                                {item.supermarket && (
-                                                    <Badge variant="outline" className={`text-[9px] uppercase tracking-wider font-bold border rounded-md px-1.5 py-0 ${getSupermarketBadgeColor(item.supermarket)}`}>
-                                                        {item.supermarket}
-                                                    </Badge>
-                                                )}
-                                                {item.created_at && (
-                                                    <span className="text-[10px] text-muted-foreground font-medium opacity-60">
-                                                        {formatDate(item.created_at)}
-                                                    </span>
-                                                )}
-                                            </div>
+                        <div className="space-y-8 pb-20">
+                            {Object.entries(groupedToBuyItems).map(([category, catItems]) => (
+                                <motion.div
+                                    key={category}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="space-y-4"
+                                >
+                                    <div className="flex items-center gap-2 pl-2">
+                                        <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                            <span className="text-base">{guessCategoryAndPrice(catItems[0].name).emoji}</span>
                                         </div>
-
-                                        {/* Action buttons (Absolute to float on hover right side) */}
-                                        <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-md transition-colors" title="Editar">
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button onClick={() => deleteItem(item.id)} className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-400 hover:text-red-600 dark:hover:text-red-300 rounded-md transition-colors" title="Eliminar definitivamente">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
+                                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500">{category}</h3>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800 to-transparent ml-2" />
                                     </div>
-                                );
-                            })}
+
+                                    <div className={`grid gap-3 ${isShopMode ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                                        <AnimatePresence mode="popLayout">
+                                            {catItems.map(item => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    layout
+                                                    initial={{ opacity: 0, scale: 0.9 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.9, x: 20 }}
+                                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                                    className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-emerald-400/50 dark:hover:border-emerald-500/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
+                                                >
+                                                    <button
+                                                        onClick={() => toggleStatus(item.id)}
+                                                        className={`mt-0.5 flex-shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700/50 group-hover:border-emerald-400/60 group-hover:bg-emerald-400/10 flex items-center justify-center transition-all focus:outline-none ${isShopMode ? 'w-10 h-10' : 'w-8 h-8'}`}
+                                                        title="Marcar como comprado"
+                                                    >
+                                                        <div className={`rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] ${isShopMode ? 'w-full h-full' : 'w-full h-full'}`} />
+                                                    </button>
+
+                                                    <div className="flex-1 min-w-0 pr-6">
+                                                        <h4 className={`font-bold text-slate-800 dark:text-slate-100 leading-tight subpixel-antialiased tracking-tight ${isShopMode ? 'text-lg' : 'text-base truncate mb-1'}`}>
+                                                            {item.name}
+                                                        </h4>
+                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                            {item.supermarket && (
+                                                                <Badge variant="outline" className={`text-[9px] uppercase tracking-wider font-extrabold border rounded-md px-1.5 py-0 shadow-sm ${getSupermarketBadgeColor(item.supermarket)}`}>
+                                                                    {item.supermarket}
+                                                                </Badge>
+                                                            )}
+                                                            {item.created_at && (
+                                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold opacity-80 italic">
+                                                                    {formatDate(item.created_at)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                                                        <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title="Editar">
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button onClick={() => deleteItem(item.id)} className="p-1.5 bg-rose-50/80 dark:bg-rose-950/20 text-rose-400 hover:text-rose-600 rounded-lg transition-colors border border-rose-100/50 dark:border-rose-900/30 shadow-sm" title="Eliminar definitivamente">
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
+                                </motion.div>
+                            ))}
                         </div>
                     )}
                 </TabsContent>

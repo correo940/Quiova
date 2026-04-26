@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, ArrowLeft, PiggyBank, Receipt, DollarSign, TrendingUp, Wallet, Trash2, FileText, UserPlus } from 'lucide-react';
+import { Plus, ArrowLeft, PiggyBank, Receipt, DollarSign, TrendingUp, Wallet, Trash2, FileText, UserPlus, Home, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, X, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { motion } from 'framer-motion';
 
 type Expense = {
     id: string;
@@ -41,6 +42,7 @@ type ExpenseForm = {
     date: string;
     receipt_url?: string;
     folder_id?: string;
+    source_account_id?: string;
 };
 
 type Category = {
@@ -55,6 +57,16 @@ type ExpenseFolder = {
     end_date?: string;
     status: 'active' | 'archived';
     created_by: string;
+};
+
+
+
+export type SavingsAccount = {
+    id: string;
+    name: string;
+    current_balance: number;
+    parent_account_id?: string | null;
+    envelope_spent?: number;
 };
 
 
@@ -78,7 +90,8 @@ const DEFAULT_FORM: ExpenseForm = {
     category: '',
     date: new Date().toISOString().split('T')[0],
     receipt_url: undefined,
-    folder_id: undefined
+    folder_id: undefined,
+    source_account_id: 'none'
 };
 
 
@@ -103,11 +116,15 @@ export default function ExpensesPage() {
     const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
     const [isManageFoldersOpen, setIsManageFoldersOpen] = useState(false);
 
+    // Savings Accounts for deducted spend
+    const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([]);
+
     // Folder Form State
     const [folderForm, setFolderForm] = useState({ name: '', start: '', end: '' });
 
     const [formData, setFormData] = useState<ExpenseForm>(DEFAULT_FORM);
     const [saving, setSaving] = useState(false);
+    const [analyzingReceipt, setAnalyzingReceipt] = useState(false);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [isCustomCategory, setIsCustomCategory] = useState(false);
 
@@ -126,6 +143,45 @@ export default function ExpensesPage() {
             setFormData(prev => ({ ...prev, paid_by: user.id }));
         }
     }, [user, formData.paid_by]);
+
+    const handleAnalyzeReceipt = async (file: File) => {
+        setAnalyzingReceipt(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+
+            const formInfo = new FormData();
+            formInfo.append('file', file);
+
+            const res = await fetch('/api/expenses/parse-receipt', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${session.access_token}` },
+                body: formInfo
+            });
+
+            if (!res.ok) throw new Error('Error al escanear el ticket');
+
+            const data = await res.json();
+            const analysis = data.analysis;
+
+            if (analysis) {
+                setFormData(prev => ({
+                    ...prev,
+                    title: analysis.title || prev.title,
+                    amount: analysis.amount ? analysis.amount.toString() : prev.amount,
+                    category: analysis.category || prev.category,
+                    date: analysis.date || prev.date
+                }));
+                setIsCustomCategory(false);
+                toast.success('Ticket analizado magnéticamente con IA ✨');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('No se pudo leer el ticket automáticamente.');
+        } finally {
+            setAnalyzingReceipt(false);
+        }
+    };
 
     const fetchExpenses = async () => {
         setLoading(true);
@@ -188,6 +244,15 @@ export default function ExpensesPage() {
 
             const { data: settlementData } = await settlementsQuery;
             setSettlements(settlementData || []);
+
+
+
+            // Fetch Savings Accounts for deduct
+            const { data: savingsData } = await supabase
+                .from('savings_accounts')
+                .select('*')
+                .eq('user_id', authUser.id);
+            setSavingsAccounts((savingsData as SavingsAccount[]) || []);
 
             // Fetch ALL Linked Partners for Potential Payers logic
             // (Crucial: Must include partners even if they haven't created expenses yet)
@@ -405,6 +470,31 @@ export default function ExpensesPage() {
             } else {
                 const { error } = await supabase.from('expenses').insert([payload]);
                 if (error) throw error;
+
+                // Trigger Direct Envelope/Account Deduction
+                if (formData.source_account_id && formData.source_account_id !== 'none') {
+                    const acc = savingsAccounts.find(a => a.id === formData.source_account_id);
+                    if (acc) {
+                        const expenseAmount = payload.amount;
+                        if (acc.parent_account_id) {
+                            await supabase.from('savings_accounts')
+                                .update({ envelope_spent: (acc.envelope_spent || 0) + expenseAmount })
+                                .eq('id', acc.id);
+                        } else {
+                            await supabase.from('savings_accounts')
+                                .update({ current_balance: (acc.current_balance || 0) - expenseAmount })
+                                .eq('id', acc.id);
+                        }
+                        await supabase.from('savings_account_transactions').insert({
+                            account_id: acc.id,
+                            amount: -expenseAmount,
+                            description: `Gasto: ${formData.title}`,
+                            is_envelope_spend: !!acc.parent_account_id
+                        });
+                        toast.success('Descontado del fondo de ahorros');
+                    }
+                }
+
                 toast.success('Gasto añadido');
             }
 
@@ -432,8 +522,11 @@ export default function ExpensesPage() {
         }
     };
 
+
+
     // Calculations
     const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+
     const myTotal = expenses
         .filter(e => {
             if (!user) return false;
@@ -558,33 +651,75 @@ export default function ExpensesPage() {
     }, {} as Record<string, number>)).map(([name, value]) => ({ name, value }));
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
-            <div className="max-w-5xl mx-auto space-y-6">
+        <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden font-sans">
+            {/* Premium Background Decor */}
+            <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-1/4 -left-20 w-80 h-80 bg-rose-500/5 blur-[100px] pointer-events-none" />
 
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <Link href="/apps/mi-hogar">
-                            <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+            <div className="max-w-6xl mx-auto space-y-8 relative z-10">
+                {/* Premium Navigation */}
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <Link href="/">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200 dark:border-slate-800 rounded-full px-4 h-9 shadow-sm hover:shadow-md transition-all flex items-center gap-2 group"
+                            >
+                                <Home className="h-4 w-4 text-slate-500 group-hover:text-emerald-500 transition-colors" />
+                                <span className="hidden sm:inline font-bold text-[10px] uppercase tracking-wider">Inicio</span>
                             </Button>
                         </Link>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <span className="bg-emerald-100 dark:bg-emerald-900/40 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
-                                <PiggyBank className="w-8 h-8" />
-                            </span>
-                            Gastos
-                        </h1>
+                        <Link href="/apps/mi-hogar">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="bg-slate-100/30 dark:bg-slate-800/20 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-full px-4 h-9 flex items-center gap-2 transition-all group"
+                            >
+                                <ArrowLeft className="h-4 w-4 text-slate-500 group-hover:-translate-x-1 transition-transform" />
+                                <span className="font-bold text-[10px] uppercase tracking-wider">Mi Hogar</span>
+                            </Button>
+                        </Link>
                     </div>
+                </motion.div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                        <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="w-full md:w-auto">
+                {/* Header Title & Actions */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-emerald-500 dark:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+                                <PiggyBank className="w-5 h-5 text-white" />
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+                                Mis <span className="text-emerald-500">Gastos</span>
+                            </h1>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-medium ml-[3.25rem]">
+                            Controla tu presupuesto y salda cuentas fácilmente.
+                        </p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="flex flex-col sm:flex-row gap-2 w-full md:w-auto"
+                    >
+                        <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="w-full md:w-auto bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                             <UserPlus className="w-4 h-4 mr-2" /> {activeFolderId ? 'Compartir Carpeta' : 'Compartir'}
                         </Button>
-                        <Button onClick={() => { setFormData(DEFAULT_FORM); setReceiptFile(null); setIsDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white w-full md:w-auto shadow-lg shadow-emerald-500/20">
+                        <Button onClick={() => { setFormData(DEFAULT_FORM); setReceiptFile(null); setIsDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white w-full md:w-auto shadow-lg shadow-emerald-500/20 rounded-xl">
                             <Plus className="w-4 h-4 mr-2" /> Añadir Gasto
                         </Button>
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Folders / Events Section */}
@@ -877,11 +1012,43 @@ export default function ExpensesPage() {
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{formData.id ? 'Editar Gasto' : 'Nuevo Gasto'}</DialogTitle>
-                        <DialogDescription>Rellena los detalles del gasto.</DialogDescription>
+                        <DialogDescription>Sube un ticket de compra para autorellenarlo, o escribe los datos.</DialogDescription>
                     </DialogHeader>
+
+                    <div className="mt-2 mb-4 p-4 border-2 border-dashed border-emerald-200 dark:border-emerald-900 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 relative cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-colors">
+                        <Input
+                            type="file"
+                            accept="image/*,.pdf"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    setReceiptFile(file);
+                                    handleAnalyzeReceipt(file);
+                                }
+                            }}
+                            disabled={analyzingReceipt}
+                        />
+                        <div className="flex flex-col items-center justify-center gap-2 text-center pointer-events-none">
+                            {analyzingReceipt ? (
+                                <>
+                                    <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Analizando ticket con Quioba IA...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full text-emerald-600 dark:text-emerald-400">
+                                        <Receipt className="w-6 h-6" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Haz clic o arrastra un Ticket (Foto/PDF)</span>
+                                    <span className="text-xs text-slate-500">Quioba lo leerá mágicamente ✨</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     <form onSubmit={handleSave} className="space-y-4 py-2">
                         <div className="space-y-2">
@@ -969,14 +1136,32 @@ export default function ExpensesPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Fecha</Label>
-                            <Input
-                                type="date"
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                required
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Fecha</Label>
+                                <Input
+                                    type="date"
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Descontar de...</Label>
+                                <Select value={formData.source_account_id || 'none'} onValueChange={(v) => setFormData({ ...formData, source_account_id: v })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Opcional" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">No descontar de mis ahorros</SelectItem>
+                                        {savingsAccounts.map(acc => (
+                                            <SelectItem key={acc.id} value={acc.id}>
+                                                {acc.parent_account_id ? `✉️ Sobre: ${acc.name}` : `🏦 Cuenta: ${acc.name}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
@@ -1001,7 +1186,7 @@ export default function ExpensesPage() {
 
             {/* Manage Categories Dialog */}
             <Dialog open={isManageCategoriesOpen} onOpenChange={setIsManageCategoriesOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] w-[95vw] rounded-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Gestionar Categorías</DialogTitle>
                         <DialogDescription>
@@ -1034,7 +1219,7 @@ export default function ExpensesPage() {
 
             {/* Settle Debt Dialog */}
             <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] w-[95vw] rounded-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Saldar Deuda</DialogTitle>
                         <DialogDescription>
@@ -1172,7 +1357,7 @@ export default function ExpensesPage() {
 
             {/* Manage Folders / New Folder Dialog */}
             <Dialog open={isManageFoldersOpen} onOpenChange={setIsManageFoldersOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Nueva Carpeta / Evento</DialogTitle>
                         <DialogDescription>

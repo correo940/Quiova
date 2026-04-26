@@ -1080,7 +1080,7 @@ export default function DocumentsPage() {
     const selectedMetadataEntries = useMemo(() => Object.entries(selectedDocument?.metadata || {}).filter(([, value]) => value !== null && value !== ''), [selectedDocument]);
 
     return (
-        <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 relative overflow-hidden font-sans">
+        <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden font-sans">
             {/* Premium Background Decor */}
             <div className="absolute top-0 right-0 w-2/3 h-2/3 bg-amber-500/5 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-1/4 -left-20 w-80 h-80 bg-indigo-500/5 blur-[100px] pointer-events-none" />

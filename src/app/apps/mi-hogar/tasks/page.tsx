@@ -25,7 +25,7 @@ export default function MiHogarTasksPage() {
     }, [sharedImageBase64, consumeSharedImage]);
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="min-h-screen bg-background p-4 md:p-8 pb-nav">
             <div className="max-w-6xl mx-auto mb-6">
                 <Link href="/apps/mi-hogar">
                     <Button variant="ghost" className="pl-0 hover:pl-2 transition-all">
@@ -33,7 +33,7 @@ export default function MiHogarTasksPage() {
                         Volver a Mi Hogar
                     </Button>
                 </Link>
-                <h1 className="text-3xl font-bold mt-4">Tareas y Alarmas</h1>
+                <h1 className="text-2xl md:text-3xl font-bold mt-4">Tareas y Alarmas</h1>
                 <p className="text-muted-foreground">Organiza las tareas del hogar y no olvides nada.</p>
             </div>
             <TaskManager />

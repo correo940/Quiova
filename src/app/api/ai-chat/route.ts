@@ -30,26 +30,60 @@ export async function POST(req: Request) {
       { data: shifts },
       { data: medicines },
       { data: expenses },
+      { data: manuals },
     ] = await Promise.all([
       supabase.from('tasks').select('title, is_completed, due_date').eq('user_id', userId).eq('is_completed', false).limit(10),
       supabase.from('shopping_items').select('name, quantity').eq('user_id', userId).eq('is_checked', false).limit(15),
       supabase.from('savings_accounts').select('name, current_balance').eq('user_id', userId),
       supabase.from('work_shifts').select('title, start_time, end_time').eq('user_id', userId).gte('start_time', today).limit(5),
       supabase.from('medicines').select('name, dosage, frequency').eq('user_id', userId).limit(10),
-      supabase.from('expenses').select('description, amount, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('expenses').select('title, amount, date').eq('user_id', userId).gte('date', `${new Date().toISOString().substring(0, 7)}-01`).order('date', { ascending: false }),
+      supabase.from('manuals').select('title, category, content').eq('user_id', userId).limit(20),
     ]);
 
+    // Conocimiento personalizado — consulta separada para no romper el chat si la tabla no existe aún
+    let knowledge: { title: string; content: string }[] = [];
+    try {
+      const { data: kData } = await supabase
+        .from('ai_knowledge')
+        .select('title, content')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      knowledge = kData || [];
+    } catch {
+      // La tabla aún no existe, ignorar
+    }
+
     const totalBalance = savings?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
+    const currentMonthSpent = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+
+    const knowledgeSection = knowledge.length > 0
+      ? `\n📚 CONOCIMIENTO PERSONALIZADO DEL USUARIO:\n${knowledge.map(k => `## ${k.title}\n${k.content}`).join('\n\n')}\n`
+      : '';
+
+    const formattedManuals = manuals?.map(m => {
+      let notes = m.content || '';
+      try {
+        const p = JSON.parse(m.content);
+        if (p.text) notes = p.text;
+      } catch { }
+      if (!notes.trim()) return '';
+      return `- [${m.category || 'General'}] ${m.title}: ${notes.substring(0, 500)}`;
+    }).filter(Boolean).join('\n') || '- Sin manuales registrados';
 
     const systemPrompt = `Eres la IA de Quioba, asistente personal inteligente y cercano del usuario.
 Tienes acceso a sus datos reales y puedes ayudarle con cualquier pregunta sobre su vida diaria.
 Responde siempre en español, de forma concisa y útil. Nunca menciones que eres Llama ni ningún modelo externo.
+Cuando el usuario pregunte sobre algún tema que aparezca en el CONOCIMIENTO PERSONALIZADO, úsalo como base principal de tu respuesta.
+${knowledgeSection}
 
 DATOS ACTUALES DEL USUARIO (${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}):
 
 💰 FINANZAS:
-- Saldo total: ${totalBalance.toLocaleString('es-ES')}€
-- Últimos gastos: ${expenses?.map(e => `${e.description} (${e.amount}€)`).join(', ') || 'Sin gastos recientes'}
+- Saldo Cuentas y Sobres: ${totalBalance.toLocaleString('es-ES')}€
+- Gastado este mes: ${currentMonthSpent.toLocaleString('es-ES')}€
+- Últimos gastos de este mes: ${expenses?.slice(0, 5).map(e => `${e.title} (${e.amount}€)`).join(', ') || 'Sin gastos recientes'}
 
 ✅ TAREAS PENDIENTES (${tasks?.length || 0}):
 ${tasks?.map(t => `- ${t.title}${t.due_date ? ` (vence: ${t.due_date})` : ''}`).join('\n') || '- Sin tareas pendientes'}
@@ -59,13 +93,16 @@ ${shopping?.map(s => `- ${s.name}${s.quantity ? ` x${s.quantity}` : ''}`).join('
 
 💼 PRÓXIMOS TURNOS:
 ${shifts?.map(s => {
-  const start = new Date(s.start_time);
-  const end = new Date(s.end_time);
-  return `- ${s.title}: ${start.toLocaleDateString('es-ES')} ${start.getHours()}:${String(start.getMinutes()).padStart(2,'0')}–${end.getHours()}:${String(end.getMinutes()).padStart(2,'0')}`;
-}).join('\n') || '- Sin turnos próximos'}
+      const start = new Date(s.start_time);
+      const end = new Date(s.end_time);
+      return `- ${s.title}: ${start.toLocaleDateString('es-ES')} ${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')}–${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`;
+    }).join('\n') || '- Sin turnos próximos'}
 
 💊 MEDICACIÓN:
 ${medicines?.map(m => `- ${m.name}${m.dosage ? ` (${m.dosage})` : ''}${m.frequency ? ` — ${m.frequency}` : ''}`).join('\n') || '- Sin medicación registrada'}
+
+📘 MANUALES Y MANTENIMIENTO DEL HOGAR:
+${formattedManuals}
 
 
 FORMATO DE RESPUESTA — MUY IMPORTANTE:

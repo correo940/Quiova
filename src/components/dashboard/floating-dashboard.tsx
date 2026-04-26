@@ -127,11 +127,12 @@ export default function FloatingDashboard() {
                             initial={{ opacity: 0, scale: 0.8, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                            className="absolute pointer-events-auto bg-white/90 dark:bg-black/90 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden w-72"
+                            className="absolute pointer-events-auto bg-white/90 dark:bg-black/90 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
                             style={{
                                 bottom: '100px',
-                                right: '20px',
-                                zIndex: 60
+                                right: '16px',
+                                zIndex: 60,
+                                width: 'min(288px, calc(100vw - 32px))',
                             }}
                         >
                             <div className="p-4 border-b border-white/10 flex justify-between items-center">

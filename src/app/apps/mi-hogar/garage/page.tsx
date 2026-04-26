@@ -272,7 +272,7 @@ export default function GaragePage() {
     if (selectedVehicle) {
         // DETAIL VIEW
         return (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 pb-nav">
                 <div className="max-w-5xl mx-auto space-y-6">
                     <Button variant="ghost" onClick={() => setSelectedVehicle(null)} className="pl-0 gap-2">
                         <ArrowLeft className="w-4 h-4" /> Volver al Garaje
@@ -560,7 +560,7 @@ export default function GaragePage() {
 
     // MAIN LIST
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 pb-nav">
             <div className="max-w-5xl mx-auto space-y-6">
                 <div>
                     <Link href="/apps/mi-hogar">

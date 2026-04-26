@@ -126,7 +126,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
     if (!allowed && pathname !== '/apps/mi-hogar/login') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 pb-nav text-center">
                 <Lock className="w-12 h-12 text-slate-300 mb-4" />
                 <h2 className="text-xl font-bold mb-2">Acceso Restringido</h2>
                 <p className="text-muted-foreground mb-6 max-w-md">

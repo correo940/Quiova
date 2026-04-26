@@ -1022,7 +1022,7 @@ export default function SavingsPage() {
     const totalGoalSaved = goals.reduce((acc, curr) => acc + (curr.current_amount || 0), 0);
 
     return (
-        <div className="container mx-auto p-4 max-w-6xl space-y-6 pb-24">
+        <div className="container mx-auto p-4 max-w-6xl space-y-6 pb-nav">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <Link href="/apps/mi-hogar">

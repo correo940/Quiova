@@ -6,7 +6,10 @@
     "server": {
         "url": "https://quioba.com",
         "cleartext": false,
-        "androidScheme": "https"
+        "androidScheme": "https",
+        "allowNavigation": [
+            "*"
+        ]
     },
     "plugins": {
         "SplashScreen": {

@@ -9,6 +9,8 @@ interface AiContextType {
     setWidth: (width: number) => void;
     isWakeWordEnabled: boolean;
     setIsWakeWordEnabled: (enabled: boolean) => void;
+    pendingPrompt: string | null;
+    setPendingPrompt: (prompt: string | null) => void;
 }
 
 const AiContext = createContext<AiContextType | undefined>(undefined);
@@ -17,6 +19,7 @@ export function AiProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [width, setWidth] = useState(33);
     const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(false);
+    const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
     React.useEffect(() => {
         try {
@@ -43,7 +46,9 @@ export function AiProvider({ children }: { children: React.ReactNode }) {
             width,
             setWidth,
             isWakeWordEnabled,
-            setIsWakeWordEnabled: toggleWakeWord
+            setIsWakeWordEnabled: toggleWakeWord,
+            pendingPrompt,
+            setPendingPrompt
         }}>
             {children}
         </AiContext.Provider>
