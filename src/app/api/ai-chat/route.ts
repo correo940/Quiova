@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       { data: medicines },
       { data: expenses },
       { data: manuals },
+      { data: passwords },
     ] = await Promise.all([
       supabase.from('tasks').select('title, is_completed, due_date').eq('user_id', userId).eq('is_completed', false).limit(10),
       supabase.from('shopping_items').select('name, quantity').eq('user_id', userId).eq('is_checked', false).limit(15),
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
       supabase.from('medicines').select('name, dosage, frequency').eq('user_id', userId).limit(10),
       supabase.from('expenses').select('title, amount, date').eq('user_id', userId).gte('date', `${new Date().toISOString().substring(0, 7)}-01`).order('date', { ascending: false }),
       supabase.from('manuals').select('title, category, content').eq('user_id', userId).limit(20),
+      supabase.from('passwords').select('id, name').eq('user_id', userId),
     ]);
 
     // Conocimiento personalizado — consulta separada para no romper el chat si la tabla no existe aún
@@ -104,6 +106,8 @@ ${medicines?.map(m => `- ${m.name}${m.dosage ? ` (${m.dosage})` : ''}${m.frequen
 📘 MANUALES Y MANTENIMIENTO DEL HOGAR:
 ${formattedManuals}
 
+🔑 BÓVEDA DE CONTRASEÑAS (SOLO NOMBRES):
+${passwords?.map(p => `- ${p.name} (ID: ${p.id})`).join('\n') || '- No hay contraseñas en la bóveda'}
 
 FORMATO DE RESPUESTA — MUY IMPORTANTE:
 Debes responder SIEMPRE y ÚNICAMENTE con JSON válido. Nunca texto plano.
@@ -111,12 +115,19 @@ Debes responder SIEMPRE y ÚNICAMENTE con JSON válido. Nunca texto plano.
 Para listas (compra, tareas, documentos, turnos, medicación):
 {"type":"list","title":"Título","icon":"emoji","items":[{"icon":"emoji","text":"texto"}]}
 
+Para solicitar revelación de una contraseña al usuario (si la pide usando la BÓVEDA DE CONTRASEÑAS):
+{"type":"password_request","name":"Nombre del servicio","id":"COPIA_EXACTA_DEL_ID_PROPORCIONADO"}
+Solo haz esto SI LA CONTRASEÑA ESTÁ EN LA LISTA ANTERIOR. Si no la encuentras en la bóveda, NO devuelvas un password_request, devuelve un "type": "text" diciendo que no la tienes guardada.
+
 Para texto normal:
 {"type":"text","content":"Tu respuesta aquí"}
 
 EJEMPLOS:
 Usuario: "¿qué tengo que comprar?"
 {"type":"list","title":"Lista de la compra","icon":"🛒","items":[{"icon":"🍞","text":"Pan x1"},{"icon":"🧀","text":"Queso x1"}]}
+
+Usuario: "dime la clave de netflix"
+{"type":"password_request","name":"Netflix","id":"123456"}
 
 Usuario: "¿cómo estás?"
 {"type":"text","content":"¡Todo bien! ¿En qué te ayudo hoy? 😊"}

@@ -2,15 +2,126 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAi } from '@/context/AiContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus } from 'lucide-react';
+import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus, Fingerprint, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { toast } from 'sonner';
 import { useWakeWord } from '@/hooks/use-wake-word';
+import { supabase } from '@/lib/supabase';
+import CryptoJS from 'crypto-js';
 
-function AiReply({ content }: { content: string }) {
+function EphemeralPasswordRequest({ passwordId, passwordName, userId }: { passwordId: string, passwordName: string, userId: string }) {
+    const [state, setState] = useState<'idle' | 'verifying' | 'unlocked' | 'faded'>('idle');
+    const [decryptedValue, setDecryptedValue] = useState('');
+    const [error, setError] = useState('');
+
+    const handleUnlock = async () => {
+        setState('verifying');
+        setError('');
+        try {
+            const storedKey = localStorage.getItem(`passwords_bio_key_${userId}`);
+            if (!storedKey) {
+                setError('No tienes biometría vinculada. Entra en tu Bóveda antes para vincular este dispositivo.');
+                setState('idle');
+                return;
+            }
+
+            if (!window.PublicKeyCredential) {
+                setError('Biometría de seguridad nativa no soportada en tu dispositivo.');
+                setState('idle');
+                return;
+            }
+
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    rpId: window.location.hostname,
+                    userVerification: "required"
+                }
+            });
+
+            const { data } = await supabase.from('passwords').select('password_hash').eq('id', passwordId).single();
+            if (!data) throw new Error("Contraseña no encontrada en la bóveda.");
+
+            const bytes = CryptoJS.AES.decrypt(data.password_hash, storedKey);
+            const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+            if (!decryptedStr) throw new Error("Error de descifrado local.");
+
+            setDecryptedValue(decryptedStr);
+            setState('unlocked');
+
+            setTimeout(() => {
+                setState('faded');
+                setDecryptedValue('');
+            }, 10000);
+
+        } catch (err) {
+            console.error(err);
+            setError('Fallo de Verificación Biométrica o Acción Cancelada.');
+            setState('idle');
+        }
+    };
+
+    if (state === 'faded') {
+        return (
+            <div className="bg-zinc-100 dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl p-4 text-center my-2 opacity-50">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                    <Lock className="w-3 h-3" /> Contraseña destruida por seguridad
+                </p>
+            </div>
+        );
+    }
+
+    if (state === 'unlocked') {
+        return (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl p-4 my-2 text-center shadow-inner relative overflow-hidden">
+                <div className="absolute top-0 left-0 h-1 bg-emerald-500 origin-left animate-timer" style={{ animation: 'shrik 10s linear forwards' }} />
+                <style>{`@keyframes shrik { from { width: 100%; } to { width: 0%; } }`}</style>
+                <p className="text-xs text-emerald-800 dark:text-emerald-400 font-bold mb-2 flex items-center justify-center gap-1">
+                    <Unlock className="w-3 h-3" /> Acceso Concedido - {passwordName}
+                </p>
+                <div className="relative group mx-auto inline-block">
+                    <p className="text-xl font-mono font-black tracking-widest text-emerald-950 dark:text-white bg-white dark:bg-black/50 px-4 py-2 rounded-lg border border-emerald-100 dark:border-zinc-800 custom-blur blur-md group-hover:blur-none transition-all duration-300 select-all cursor-pointer">
+                        {decryptedValue}
+                    </p>
+                </div>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-3 flex items-center justify-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin duration-1000" /> Se autodestruirá en 10s
+                </p>
+            </motion.div>
+        );
+    }
+
+    return (
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 my-2">
+            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300 flex items-center gap-2 mb-1">
+                <Lock className="w-4 h-4" /> Bóveda Local: {passwordName}
+            </h4>
+            <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed mb-4">
+                El sistema de IA no conoce tu contraseña. Para descifrarla en este momento, verifica tu biometría. (Desaparecerá a los 10 segundos).
+            </p>
+            <Button
+                onClick={handleUnlock}
+                disabled={state === 'verifying'}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md font-bold"
+            >
+                {state === 'verifying' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Fingerprint className="w-4 h-4 mr-2" />}
+                Autenticación Local Requerida
+            </Button>
+            {error && <p className="text-[10px] text-red-500 mt-2 text-center font-semibold">{error}</p>}
+        </div>
+    );
+}
+
+function AiReply({ content, userId }: { content: string, userId: string }) {
     try {
         const parsed = JSON.parse(content);
+        if (parsed.type === 'password_request') {
+            return <EphemeralPasswordRequest passwordId={parsed.id} passwordName={parsed.name} userId={userId} />;
+        }
         if (parsed.type === 'list' && Array.isArray(parsed.items)) {
             return (
                 <div>
@@ -524,7 +635,7 @@ export default function AiPanel() {
                                             : 'bg-muted text-foreground rounded-bl-sm'
                                             }`}>
                                             {msg.role === 'assistant' ? (
-                                                <AiReply content={msg.content} />
+                                                <AiReply content={msg.content} userId={user?.id || ''} />
                                             ) : (
                                                 msg.content
                                             )}
