@@ -139,17 +139,44 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
     if (!user || !encryptionKey) return;
 
     try {
-      // Mock / Real WebAuthn trigger to "link" the device
-      // In a real production app we would register a credential here.
-      // For this implementation, we'll use a pragmatic approach: 
-      // check user presence and store the key.
+      if (!window.PublicKeyCredential) {
+        toast.error('Este dispositivo no soporta biometría web');
+        return;
+      }
 
+      // 1. Forzamos un diálogo de creación de credencial WebAuthn (TouchID/FaceID/Windows Hello)
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      await navigator.credentials.create({
+        publicKey: {
+          challenge: challenge,
+          rp: { name: "Quioba Vault", id: window.location.hostname },
+          user: {
+            id: userId,
+            name: user.email || 'user',
+            displayName: user.email || 'user'
+          },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform", // Requerimos huella integrada en el dispositivo
+            userVerification: "required" // Obliga al SO a pedir la huella sí o sí
+          },
+          timeout: 60000,
+        }
+      });
+
+      // 2. Si el SO nos dio el OK (el usuario puso la huella con éxito para crear la llave), guardamos
       localStorage.setItem(`passwords_bio_enabled_${user.id}`, 'true');
       localStorage.setItem(`passwords_bio_key_${user.id}`, encryptionKey);
       setIsBiometricsEnabled(true);
-      toast.success('Biometría activada para este dispositivo');
+      toast.success('Bóveda vinculada a tu huella digital');
     } catch (e) {
-      toast.error('Error al activar biometría');
+      console.error('Error Biometría:', e);
+      toast.error('Operación biométrica cancelada o fallida');
     }
   };
 
@@ -165,15 +192,23 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
     if (!user || !biometricsAvailable || !isBiometricsEnabled) return false;
 
     try {
-      // Simulate/Trigger biometric prompt
-      // For Demo/Real WebAuthn interaction
       const storedKey = localStorage.getItem(`passwords_bio_key_${user.id}`);
       if (!storedKey) return false;
 
-      // Actual biometric prompt (simplified for demo but calling the API)
+      // 3. Forzamos un diálogo de obtención de credencial (TouchID/FaceID/Windows Hello)
       if (window.PublicKeyCredential) {
-        // En un móvil real, esto lanzaría el diálogo de Huella/Cara
-        // Aquí lo simulamos con éxito si el usuario confirma presencia
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            rpId: window.location.hostname,
+            userVerification: "required" // Obliga al SO a pedir la huella al sacar el dato
+          }
+        });
+
+        // 4. Solo llegamos aquí si la huella fue correcta
         setEncryptionKey(storedKey);
         setIsLocked(false);
         return true;
