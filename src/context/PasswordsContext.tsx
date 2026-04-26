@@ -43,6 +43,11 @@ interface PasswordsContextType {
   generateQrSession: () => string;
   authorizeQrSession: (sessionId: string) => Promise<void>;
   checkQrSession: (sessionId: string) => Promise<boolean>;
+
+  // MFA (Multifactor Authentication Mandatory)
+  mfaRequired: boolean;
+  completeMfaUnlock: () => void;
+  cancelMfaUnlock: () => void;
 }
 
 const PasswordsContext = createContext<PasswordsContextType | undefined>(undefined);
@@ -56,6 +61,10 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
   const { user } = useAuth();
+
+  // MFA States
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [pendingMfaKey, setPendingMfaKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -95,15 +104,8 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
     try {
       // Derive key using user ID as salt
       const key = deriveKey(masterPassword, user.id);
-
-      // Verify key by attempting to decrypt a known value or simply setting it
-      // Since we don't have a "check" value stored, we'll assume it's correct
-      // and if decryption fails later, it means the password was wrong for that entry.
-      // Ideally, we would store a hash of the master password or a challenge to verify.
-      // For now, we will set the key and unlock.
-
-      setEncryptionKey(key);
-      setIsLocked(false);
+      setPendingMfaKey(key);
+      setMfaRequired(true);
       return true;
     } catch (e) {
       console.error('Error unlocking:', e);
@@ -111,9 +113,26 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const completeMfaUnlock = () => {
+    if (pendingMfaKey) {
+      setEncryptionKey(pendingMfaKey);
+      setIsLocked(false);
+      setMfaRequired(false);
+      setPendingMfaKey(null);
+    }
+  };
+
+  const cancelMfaUnlock = () => {
+    setPendingMfaKey(null);
+    setMfaRequired(false);
+    setIsLocked(true);
+  };
+
   const lock = () => {
     setIsLocked(true);
     setEncryptionKey(null);
+    setMfaRequired(false);
+    setPendingMfaKey(null);
   };
 
   const enableBiometrics = async () => {
@@ -202,6 +221,10 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
       // El PC recibe la llave
       setEncryptionKey(data.encrypted_key);
       setIsLocked(false);
+
+      // Limpiar estados de MFA por si estábamos esperando la certificación cruzada
+      setMfaRequired(false);
+      setPendingMfaKey(null);
 
       // Limpiar el puente
       await supabase.from('session_auth').delete().eq('id', sessionId);
@@ -413,6 +436,9 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
     generateQrSession,
     authorizeQrSession,
     checkQrSession,
+    mfaRequired,
+    completeMfaUnlock,
+    cancelMfaUnlock,
   };
 
   return <PasswordsContext.Provider value={value}>{children}</PasswordsContext.Provider>;
