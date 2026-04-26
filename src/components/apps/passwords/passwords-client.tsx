@@ -1,7 +1,7 @@
 'use client';
 // Force rebuild
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePasswords, Password, PasswordInput } from '@/context/PasswordsContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,15 @@ export default function PasswordsClient() {
   const [isScanning, setIsScanning] = useState(false);
   const scanLock = useRef<boolean>(false);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // set initial
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -337,19 +346,23 @@ export default function PasswordsClient() {
                   <Fingerprint className="w-6 h-6 mr-3" /> Certificar con Huella
                 </Button>
 
-                <div className="relative flex items-center py-2">
-                  <div className="flex-grow border-t border-slate-200 dark:border-zinc-800"></div>
-                  <span className="flex-shrink-0 mx-4 text-xs font-bold uppercase text-slate-400">O bien</span>
-                  <div className="flex-grow border-t border-slate-200 dark:border-zinc-800"></div>
-                </div>
+                {!isMobile && (
+                  <div className="relative flex items-center py-2">
+                    <div className="flex-grow border-t border-slate-200 dark:border-zinc-800"></div>
+                    <span className="flex-shrink-0 mx-4 text-xs font-bold uppercase text-slate-400">O bien</span>
+                    <div className="flex-grow border-t border-slate-200 dark:border-zinc-800"></div>
+                  </div>
+                )}
 
-                <Button
-                  onClick={handleShowQr}
-                  variant="outline"
-                  className="w-full py-7 text-lg rounded-2xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800/50"
-                >
-                  <QrCode className="w-6 h-6 mr-3" /> Certificar con tu Móvil (QR)
-                </Button>
+                {!isMobile && (
+                  <Button
+                    onClick={handleShowQr}
+                    variant="outline"
+                    className="w-full py-7 text-lg rounded-2xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800/50"
+                  >
+                    <QrCode className="w-6 h-6 mr-3" /> Certificar con tu Móvil (QR)
+                  </Button>
+                )}
               </div>
 
               <Button variant="ghost" onClick={cancelMfaUnlock} className="mt-8 text-slate-400">
@@ -436,58 +449,76 @@ export default function PasswordsClient() {
 
               {!isFirstTime && (
                 <div className="flex flex-col items-center gap-6">
-                  <div className="flex items-center justify-between w-full max-w-sm px-2 gap-3">
-                    <Button
-                      variant="ghost"
-                      className="rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-500 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0"
-                      onClick={handleShowQr}
-                      title="Desbloquear con QR"
-                    >
-                      <QrCode className="w-6 h-6" />
-                    </Button>
-
-                    <div className="relative w-full group">
-                      <Input
-                        type={showMasterPassword ? "text" : "password"}
-                        placeholder="Contraseña"
-                        className="bg-slate-50 dark:bg-black/50 border-slate-200 dark:border-zinc-800/50 text-xl font-bold tracking-widest placeholder:tracking-normal placeholder:text-base text-center h-16 rounded-2xl focus-visible:ring-emerald-500 shadow-inner w-full pr-12"
-                        value={masterPasswordInput}
-                        onChange={(e) => setMasterPasswordInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleUnlock(e as any)}
-                        autoFocus
-                      />
+                  {isMobile && isBiometricsEnabled ? (
+                    <div className="w-full max-w-sm space-y-4">
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-12 w-12 hover:bg-transparent rounded-xl text-slate-400"
-                        onClick={() => setShowMasterPassword(!showMasterPassword)}
-                      >
-                        {showMasterPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </Button>
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      disabled={!isBiometricsEnabled}
-                      className={`rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0 ${isBiometricsEnabled ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 hover:text-blue-600' : 'opacity-20 cursor-not-allowed text-slate-400'}`}
-                      onClick={handleBiometricUnlock}
-                      title={isBiometricsEnabled ? "Desbloquear con Huella" : "Biometría no activada"}
-                    >
-                      <Fingerprint className="w-6 h-6" />
-                    </Button>
-                  </div>
-
-                  {masterPasswordInput && (
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full">
-                      <Button
-                        onClick={handleUnlock as any}
+                        onClick={handleBiometricUnlock}
                         disabled={unlocking}
-                        className="w-full py-7 text-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                        className="w-full py-10 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 h-auto"
                       >
-                        {unlocking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Descifrar Bóveda'}
+                        <Fingerprint className="w-10 h-10" />
+                        Abre tu Bóveda
                       </Button>
-                    </motion.div>
+                      <p className="text-xs text-slate-400 font-medium">Bóveda asegurada por biometría local</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between w-full max-w-sm px-2 gap-3">
+                        {!isMobile && (
+                          <Button
+                            variant="ghost"
+                            className="rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-500 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0"
+                            onClick={handleShowQr}
+                            title="Desbloquear con QR"
+                          >
+                            <QrCode className="w-6 h-6" />
+                          </Button>
+                        )}
+
+                        <div className="relative w-full group">
+                          <Input
+                            type={showMasterPassword ? "text" : "password"}
+                            placeholder="Contraseña"
+                            className="bg-slate-50 dark:bg-black/50 border-slate-200 dark:border-zinc-800/50 text-xl font-bold tracking-widest placeholder:tracking-normal placeholder:text-base text-center h-16 rounded-2xl focus-visible:ring-emerald-500 shadow-inner w-full pr-12"
+                            value={masterPasswordInput}
+                            onChange={(e) => setMasterPasswordInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleUnlock(e as any)}
+                            autoFocus
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-12 w-12 hover:bg-transparent rounded-xl text-slate-400"
+                            onClick={() => setShowMasterPassword(!showMasterPassword)}
+                          >
+                            {showMasterPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          disabled={!isBiometricsEnabled}
+                          className={`rounded-2xl p-4 h-14 w-14 bg-slate-50 dark:bg-zinc-800/50 transition-all border border-slate-200/50 dark:border-zinc-800/50 shrink-0 ${isBiometricsEnabled ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 hover:text-blue-600' : 'opacity-20 cursor-not-allowed text-slate-400'}`}
+                          onClick={handleBiometricUnlock}
+                          title={isBiometricsEnabled ? "Desbloquear con Huella" : "Biometría no activada"}
+                        >
+                          <Fingerprint className="w-6 h-6" />
+                        </Button>
+                      </div>
+
+                      {masterPasswordInput && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full">
+                          <Button
+                            onClick={handleUnlock as any}
+                            disabled={unlocking}
+                            className="w-full py-7 text-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                          >
+                            {unlocking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Descifrar Bóveda'}
+                          </Button>
+                        </motion.div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
