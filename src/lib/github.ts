@@ -22,6 +22,7 @@ export interface Article {
   slug: string;
   content: string;
   image?: string;
+  featured?: boolean;
 }
 
 // Obtener todos los artículos desde GitHub
@@ -81,6 +82,7 @@ export async function getArticlesFromGitHub(): Promise<Article[]> {
           slug: data.slug || file.name.replace('.md', ''),
           content: articleContent,
           image: data.image,
+          featured: data.featured === true,
         });
       }
     }

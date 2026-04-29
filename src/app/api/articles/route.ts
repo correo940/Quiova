@@ -22,6 +22,7 @@ export async function GET() {
         imageUrl: article.image || '/images/placeholder.png',
         author: article.author || 'Anónimo',
         date: article.date || '',
+        featured: article.featured === true,
       }))
     );
   } catch (error) {
