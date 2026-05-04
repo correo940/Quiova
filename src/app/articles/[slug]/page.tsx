@@ -28,9 +28,11 @@ export async function generateStaticParams() {
     if (!articles || articles.length === 0) {
       return [{ slug: 'placeholder' }];
     }
-    return articles.map((article) => ({
-      slug: article.name.replace('.md', ''),
-    }));
+    return articles
+      .map((article) => ({
+        slug: article.name.replace('.md', ''),
+      }))
+      .filter((param) => param.slug !== 'ciclos-circadianos');
   } catch (error) {
     console.warn('Failed to list articles for static params:', error);
     return [{ slug: 'placeholder' }];
