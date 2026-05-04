@@ -5,7 +5,7 @@ category: "salud física"
 author: "Quioba"
 date: "2026-04-28"
 slug: "ciclos-circadianos"
-image: ""
+image: "/images/ciclos-circadianos.png"
 featured: true
 ---
 
