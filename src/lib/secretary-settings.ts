@@ -4,9 +4,10 @@
 
 export type SecretaryPersonality = 'formal' | 'friendly' | 'sergeant';
 export type SecretaryAvatarId =
-  | 'secretary-f1' | 'secretary-f2' | 'secretary-f3'
-  | 'secretary-m1' | 'secretary-m2' | 'secretary-m3'
-  | 'robot-1';
+  | 'avatar-admin' | 'avatar-tech' | 'avatar-tutor'
+  | 'avatar-exec' | 'avatar-creative' | 'avatar-chef'
+  | 'avatar-robot' | 'avatar-ninja' | 'avatar-mage'
+  | 'avatar-detective' | 'avatar-pilot' | 'avatar-astronaut';
 
 export interface SecretaryModules {
   tasks: boolean;
@@ -37,6 +38,7 @@ export interface SecretarySettings {
   modules: SecretaryModules;
   weeklySync: WeeklySyncConfig;
   monthlySync: MonthlySyncConfig;
+  customName?: string;
 }
 
 
@@ -50,13 +52,18 @@ export interface AvatarOption {
 }
 
 export const SECRETARY_AVATARS: AvatarOption[] = [
-  { id: 'secretary-f1', label: 'Clara',   emoji: '👩‍💼', description: 'Profesional elegante' },
-  { id: 'secretary-f2', label: 'Marta',   emoji: '🧑‍💻', description: 'Tech & organizada'   },
-  { id: 'secretary-f3', label: 'Lucía',   emoji: '👩‍🏫', description: 'Docente y metódica'  },
-  { id: 'secretary-m1', label: 'Carlos',  emoji: '👨‍💼', description: 'Ejecutivo formal'    },
-  { id: 'secretary-m2', label: 'Álex',    emoji: '🧑‍🎤', description: 'Cool y moderno'      },
-  { id: 'secretary-m3', label: 'Pablo',   emoji: '👨‍🍳', description: 'Resolutivo y práctico'},
-  { id: 'robot-1',      label: 'Q-Bot',   emoji: '🤖', description: 'Asistente IA puro'   },
+  { id: 'avatar-admin', label: 'Elegante', emoji: '👩‍💼', description: 'Asistencia profesional y medida ' },
+  { id: 'avatar-tech', label: 'Techie', emoji: '🧑‍💻', description: 'Enfoque técnico y rápido' },
+  { id: 'avatar-tutor', label: 'Docente', emoji: '👩‍🏫', description: 'Metódico y educativo' },
+  { id: 'avatar-exec', label: 'Ejecutivo', emoji: '👨‍💼', description: 'Decisiones formales' },
+  { id: 'avatar-creative', label: 'Creativo', emoji: '🧑‍🎤', description: 'Inspiración moderna' },
+  { id: 'avatar-chef', label: 'Práctico', emoji: '👨‍🍳', description: 'Planes al punto' },
+  { id: 'avatar-ninja', label: 'Sigiloso', emoji: '🥷', description: 'Rápido, discreto y letal' },
+  { id: 'avatar-mage', label: 'Mago', emoji: '🧙‍♂️', description: 'Trucos y atajos increíbles' },
+  { id: 'avatar-detective', label: 'Analista', emoji: '🕵️‍♂️', description: 'Encuentra cualquier dato' },
+  { id: 'avatar-pilot', label: 'Piloto', emoji: '🚀', description: 'Altas velocidades de acción' },
+  { id: 'avatar-astronaut', label: 'Explorador', emoji: '👩‍🚀', description: 'Visión de largo plazo' },
+  { id: 'avatar-robot', label: 'IA Pura', emoji: '🤖', description: 'Lógica algorítmica fría' },
 ];
 
 // ── Textos por personalidad ──────────────────────────────────────────────────
@@ -112,7 +119,7 @@ export const DEFAULT_SECRETARY_SETTINGS: SecretarySettings = {
   syncTime: '21:30',
   briefingTime: '07:30',
   personality: 'friendly',
-  avatarId: 'secretary-f1',
+  avatarId: 'avatar-admin',
   modules: {
     tasks: true,
     shopping: true,
@@ -130,6 +137,7 @@ export const DEFAULT_SECRETARY_SETTINGS: SecretarySettings = {
     dayOfMonth: 1,
     time: '21:00',
   },
+  customName: 'Quioba',
 };
 
 export function getSecretarySettings(): SecretarySettings {

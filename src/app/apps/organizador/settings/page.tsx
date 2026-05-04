@@ -17,9 +17,9 @@ import {
 // ─── Secretary Settings Page ───────────────────────────────────────────────────
 
 const PERSONALITIES: { id: SecretaryPersonality; label: string; emoji: string; desc: string }[] = [
-  { id: 'friendly', label: 'Amistosa',  emoji: '😊', desc: 'Cálida, cercana y motivadora.' },
-  { id: 'formal',   label: 'Formal',    emoji: '💼', desc: 'Profesional y directa al grano.' },
-  { id: 'sergeant', label: 'Sargento',  emoji: '🎖️', desc: 'Sin rodeos. Hazte cargo.' },
+  { id: 'friendly', label: 'Amistosa', emoji: '😊', desc: 'Cálida, cercana y motivadora.' },
+  { id: 'formal', label: 'Formal', emoji: '💼', desc: 'Profesional y directa al grano.' },
+  { id: 'sergeant', label: 'Sargento', emoji: '🎖️', desc: 'Sin rodeos. Hazte cargo.' },
 ];
 
 export default function SecretarySettingsPage() {
@@ -53,18 +53,18 @@ export default function SecretarySettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
 
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-white/10">
-        <button onClick={() => router.back()} className="text-white/40 hover:text-white/70 transition-colors">
+      <div className="flex items-center gap-3 p-4 border-b border-border">
+        <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="font-bold flex-1">Configurar Secretaria</h1>
+        <h1 className="font-bold flex-1">Configurar Organizador</h1>
         <Button
           size="sm"
           onClick={handleSave}
-          className={`rounded-xl transition-all ${saved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-indigo-500 hover:bg-indigo-600'}`}
+          className={`rounded-xl transition-all ${saved ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : ''}`}
         >
           {saved ? <Check className="w-4 h-4 mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
           {saved ? 'Guardado' : 'Guardar'}
@@ -76,7 +76,7 @@ export default function SecretarySettingsPage() {
         {/* Enable / Disable */}
         <Section title="Estado" emoji="🔌">
           <Toggle
-            label="Secretaria activa"
+            label="Organizador activo"
             sub="Activa el asistente y sus notificaciones"
             value={settings.enabled}
             onChange={v => update({ enabled: v })}
@@ -85,27 +85,29 @@ export default function SecretarySettingsPage() {
 
         {/* Avatar */}
         <Section title="Asistente" emoji="🤖">
-          <div className="grid grid-cols-2 gap-2">
-            {SECRETARY_AVATARS.map(avatar => (
-              <button
-                key={avatar.id}
-                onClick={() => update({ avatarId: avatar.id as SecretaryAvatarId })}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                  settings.avatarId === avatar.id
-                    ? 'bg-indigo-500/30 border-indigo-400/50'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
-              >
-                <span className="text-2xl">{avatar.emoji}</span>
-                <div>
-                  <p className="text-sm font-semibold">{avatar.label}</p>
-                  <p className="text-white/40 text-xs">{avatar.description}</p>
-                </div>
-                {settings.avatarId === avatar.id && (
-                  <Check className="w-4 h-4 text-indigo-400 ml-auto flex-shrink-0" />
-                )}
-              </button>
-            ))}
+          <div className="space-y-4">
+
+            <div className="grid grid-cols-2 gap-2">
+              {SECRETARY_AVATARS.map(avatar => (
+                <button
+                  key={avatar.id}
+                  onClick={() => update({ avatarId: avatar.id as SecretaryAvatarId })}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${settings.avatarId === avatar.id
+                    ? 'bg-emerald-500/10 border-emerald-500/50'
+                    : 'bg-muted/50 border-border hover:bg-muted'
+                    }`}
+                >
+                  <span className="text-2xl">{avatar.emoji}</span>
+                  <div>
+                    <p className="text-sm font-semibold">{avatar.label}</p>
+                    <p className="text-muted-foreground text-xs">{avatar.description}</p>
+                  </div>
+                  {settings.avatarId === avatar.id && (
+                    <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 ml-auto flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </Section>
 
@@ -116,19 +118,18 @@ export default function SecretarySettingsPage() {
               <button
                 key={p.id}
                 onClick={() => update({ personality: p.id })}
-                className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
-                  settings.personality === p.id
-                    ? 'bg-purple-500/20 border-purple-400/40'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
+                className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${settings.personality === p.id
+                  ? 'bg-emerald-500/10 border-emerald-500/50'
+                  : 'bg-muted/50 border-border hover:bg-muted'
+                  }`}
               >
                 <span className="text-2xl">{p.emoji}</span>
                 <div className="flex-1">
                   <p className="font-semibold text-sm">{p.label}</p>
-                  <p className="text-white/40 text-xs">{p.desc}</p>
+                  <p className="text-muted-foreground text-xs">{p.desc}</p>
                 </div>
                 {settings.personality === p.id && (
-                  <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                 )}
               </button>
             ))}
@@ -165,21 +166,21 @@ export default function SecretarySettingsPage() {
           />
           {settings.weeklySync?.enabled && (
             <div className="space-y-3 mt-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
                 <div className="flex items-center gap-2.5">
                   <span>📆</span>
                   <div>
                     <p className="text-sm font-medium">Día de la semana</p>
-                    <p className="text-white/40 text-xs">¿Cuándo haces la revisión semanal?</p>
+                    <p className="text-muted-foreground text-xs">¿Cuándo haces la revisión semanal?</p>
                   </div>
                 </div>
                 <select
                   value={settings.weeklySync?.dayOfWeek ?? 0}
                   onChange={e => updateWeeklySync({ dayOfWeek: Number(e.target.value) })}
-                  className="bg-white/10 border border-white/20 text-white rounded-xl text-sm px-2 py-1 focus:outline-none"
+                  className="bg-muted border border-border text-foreground rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-emerald-500"
                 >
-                  {['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].map((d, i) => (
-                    <option key={i} value={i} className="bg-slate-900">{d}</option>
+                  {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((d, i) => (
+                    <option key={i} value={i} className="bg-background">{d}</option>
                   ))}
                 </select>
               </div>
@@ -204,19 +205,19 @@ export default function SecretarySettingsPage() {
           />
           {settings.monthlySync?.enabled && (
             <div className="space-y-3 mt-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
                 <div className="flex items-center gap-2.5">
                   <span>🗓️</span>
                   <div>
                     <p className="text-sm font-medium">Día del mes</p>
-                    <p className="text-white/40 text-xs">¿Qué día del mes haces la revisión?</p>
+                    <p className="text-muted-foreground text-xs">¿Qué día del mes haces la revisión?</p>
                   </div>
                 </div>
                 <input
                   type="number" min={1} max={28}
                   value={settings.monthlySync?.dayOfMonth ?? 1}
                   onChange={e => updateMonthlySync({ dayOfMonth: Number(e.target.value) })}
-                  className="w-16 bg-white/10 border border-white/20 text-white text-center rounded-xl text-sm px-2 py-1 focus:outline-none"
+                  className="w-16 bg-muted border border-border text-foreground text-center rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-emerald-500"
                 />
               </div>
               <TimeField
@@ -233,15 +234,15 @@ export default function SecretarySettingsPage() {
         {/* Modules */}
         <Section title="Módulos activos" emoji="🧩">
           <div className="space-y-1">
-            <Toggle label="Agenda & Turnos"  sub="Turnos de trabajo y tareas" emoji="💼"
+            <Toggle label="Agenda & Turnos" sub="Turnos de trabajo y tareas" emoji="💼"
               value={settings.modules.shifts} onChange={v => updateModule('shifts', v)} />
-            <Toggle label="Tareas"           sub="Lista de tareas pendientes" emoji="✅"
-              value={settings.modules.tasks}  onChange={v => updateModule('tasks', v)} />
-            <Toggle label="Lista de compra"  sub="Ítems pendientes de comprar" emoji="🛒"
+            <Toggle label="Tareas" sub="Lista de tareas pendientes" emoji="✅"
+              value={settings.modules.tasks} onChange={v => updateModule('tasks', v)} />
+            <Toggle label="Lista de compra" sub="Ítems pendientes de comprar" emoji="🛒"
               value={settings.modules.shopping} onChange={v => updateModule('shopping', v)} />
-            <Toggle label="Finanzas"         sub="Saldo y control de gastos" emoji="💶"
+            <Toggle label="Finanzas" sub="Saldo y control de gastos" emoji="💶"
               value={settings.modules.finances} onChange={v => updateModule('finances', v)} />
-            <Toggle label="Medicación"       sub="Tomas y recordatorios de salud" emoji="💊"
+            <Toggle label="Medicación" sub="Tomas y recordatorios de salud" emoji="💊"
               value={settings.modules.medicines} onChange={v => updateModule('medicines', v)} />
           </div>
         </Section>
@@ -250,11 +251,11 @@ export default function SecretarySettingsPage() {
         <Section title="Vista previa de mensajes" emoji="💬">
           {(() => {
             const avatar = SECRETARY_AVATARS.find(a => a.id === settings.avatarId) ?? SECRETARY_AVATARS[0];
-            const texts  = PERSONALITY_TEXTS[settings.personality];
+            const texts = PERSONALITY_TEXTS[settings.personality];
             return (
               <div className="space-y-2">
-                <PreviewBubble emoji={avatar.emoji} text={texts.syncWelcome('Nombre')} label="Sync" color="indigo" />
-                <PreviewBubble emoji={avatar.emoji} text={texts.briefingGreeting('Nombre')} label="Briefing" color="amber" />
+                <PreviewBubble emoji={avatar.emoji} text={texts.syncWelcome('Usuario')} label="Sync" color="indigo" />
+                <PreviewBubble emoji={avatar.emoji} text={texts.briefingGreeting('Usuario')} label="Briefing" color="amber" />
                 <PreviewBubble emoji={avatar.emoji} text={texts.victoriesPrompt} label="Victorias" color="yellow" />
               </div>
             );
@@ -272,7 +273,7 @@ export default function SecretarySettingsPage() {
 function Section({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold uppercase tracking-widest text-white/30 flex items-center gap-1.5">
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
         <span>{emoji}</span>{title}
       </p>
       {children}
@@ -284,18 +285,18 @@ function Toggle({ label, sub, emoji, value, onChange }: {
   label: string; sub?: string; emoji?: string; value: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
       <div className="flex items-center gap-2.5">
         {emoji && <span>{emoji}</span>}
         <div>
           <p className="text-sm font-medium">{label}</p>
-          {sub && <p className="text-white/40 text-xs">{sub}</p>}
+          {sub && <p className="text-muted-foreground text-xs">{sub}</p>}
         </div>
       </div>
       <Switch
         checked={value}
         onCheckedChange={onChange}
-        className="data-[state=checked]:bg-indigo-500"
+        className="data-[state=checked]:bg-emerald-500"
       />
     </div>
   );
@@ -305,19 +306,19 @@ function TimeField({ label, sub, emoji, value, onChange }: {
   label: string; sub: string; emoji: string; value: string; onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
       <div className="flex items-center gap-2.5">
         <span>{emoji}</span>
         <div>
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-white/40 text-xs">{sub}</p>
+          <p className="text-muted-foreground text-xs">{sub}</p>
         </div>
       </div>
       <Input
         type="time"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-24 bg-white/10 border-white/20 text-white text-center rounded-xl text-sm p-1 h-8"
+        className="w-24 bg-muted border-border text-foreground text-center rounded-xl text-sm p-1 h-8 focus-visible:ring-emerald-500"
       />
     </div>
   );
@@ -328,16 +329,16 @@ function PreviewBubble({ emoji, text, label, color }: {
   color: 'indigo' | 'amber' | 'yellow';
 }) {
   const colorMap = {
-    indigo: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-200',
-    amber:  'bg-amber-500/10 border-amber-500/20 text-amber-200',
-    yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-200',
+    indigo: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    amber: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
+    yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400',
   };
   return (
     <div className={`p-3 rounded-xl border ${colorMap[color]} text-sm`}>
       <div className="flex items-start gap-2">
         <span className="text-lg flex-shrink-0">{emoji}</span>
         <div>
-          <Badge className="text-[9px] mb-1 bg-white/10 text-white/40 border-white/10">{label}</Badge>
+          <Badge className="text-[9px] mb-1 bg-muted/50 text-muted-foreground border-border">{label}</Badge>
           <p>"{text}"</p>
         </div>
       </div>

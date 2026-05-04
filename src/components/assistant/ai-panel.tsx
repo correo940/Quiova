@@ -1,14 +1,18 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAi } from '@/context/AiContext';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus, Fingerprint, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
+import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus, Fingerprint, Lock, Unlock, Eye, EyeOff, Settings, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { toast } from 'sonner';
 import { useWakeWord } from '@/hooks/use-wake-word';
 import { supabase } from '@/lib/supabase';
 import CryptoJS from 'crypto-js';
+import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
+import { format } from 'date-fns';
 
 function EphemeralPasswordRequest({ passwordId, passwordName, userId }: { passwordId: string, passwordName: string, userId: string }) {
     const [state, setState] = useState<'idle' | 'verifying' | 'unlocked' | 'faded'>('idle');
@@ -151,6 +155,18 @@ function AiReply({ content, userId }: { content: string, userId: string }) {
                 </div>
             );
         }
+        if (parsed.type === 'summary') {
+            return (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 my-2">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-400 mb-2 flex items-center gap-1">
+                        ✨ Resumen del Día Completado
+                    </p>
+                    <p className="text-sm italic text-amber-900/80 dark:text-amber-200/80">
+                        "{parsed.text}"
+                    </p>
+                </div>
+            );
+        }
         if (parsed.type === 'text') {
             return <p className="text-sm">{parsed.content}</p>;
         }
@@ -172,13 +188,7 @@ interface KnowledgeItem {
     created_at: string;
 }
 
-function QuiobaEyes() {
-    return (
-        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-50">
-            <img src="/images/quioba-avatar.png" alt="IA de Quioba" className="w-full h-full object-contain" />
-        </div>
-    );
-}
+
 
 // Emite un pitido agradable y futurista al reconocer la palabra
 function playWakeBeep() {
@@ -336,6 +346,9 @@ function KnowledgeModal({ userId, onClose }: { userId: string; onClose: () => vo
 export default function AiPanel() {
     const { isOpen, setIsOpen, width, isWakeWordEnabled, pendingPrompt, setPendingPrompt } = useAi();
     const { user } = useAuth();
+    const pathname = usePathname();
+    const isSecretaryContext = pathname?.includes('/apps/organizador');
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -345,6 +358,12 @@ export default function AiPanel() {
     const [waitingForMic, setWaitingForMic] = useState(false);
     const [showKnowledge, setShowKnowledge] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    // Contexto de secretaria
+    const secretarySettings = getSecretarySettings();
+    const assistantProfile = getAvatarById(secretarySettings.avatarId);
+    const assistantName = 'Quioba';
+    const assistantEmoji = assistantProfile.emoji;
 
     const voiceModeRef = useRef(voiceMode);
     useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
@@ -366,10 +385,15 @@ export default function AiPanel() {
     // ── Pre-rellenar prompt desde contexto ─────────────────────────────
     useEffect(() => {
         if (pendingPrompt && isOpen) {
-            // Mandamos el texto al instante
-            sendMessageWithText(pendingPrompt);
-            setPendingPrompt(null);
+            const prompt = pendingPrompt;
+
+            // Un pequeño delay para asegurar que el panel ha terminado de montar/animar
+            setTimeout(() => {
+                sendMessageWithText(prompt);
+                setPendingPrompt(null);
+            }, 600);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingPrompt, isOpen]);
 
     // ── Enviar mensaje (acepta texto directo o usa el input) ──────────
@@ -377,21 +401,35 @@ export default function AiPanel() {
         if (!text.trim() || loading) return;
         const userMsg = text.trim();
         setInput('');
+
+        // Guardamos el historial actual ANTES de actualizar el estado para evitar duplicados
+        const currentHistory = [...messagesRef.current];
+
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setLoading(true);
 
         try {
+            toast.loading("Quioba está pensando...", { id: 'ai-loading' });
+
+            // Obtener contexto de secretaria
+            const settings = getSecretarySettings();
+
             const response = await fetch('/api/ai-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messagesRef.current, { role: 'user', content: userMsg }],
+                    messages: [...currentHistory, { role: 'user', content: userMsg }],
                     userId: user?.id,
+                    secretarySettings: settings
+                    // Eliminamos todaySyncStatus del cliente, la API lo consultará si es necesario o usaremos el userId
                 }),
             });
 
+            if (!response.ok) throw new Error("Error en la respuesta del servidor");
+
             const data = await response.json();
             const reply = data.reply;
+            toast.dismiss('ai-loading');
             setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
             // Leer en voz alta si voiceMode está activo
@@ -404,8 +442,9 @@ export default function AiPanel() {
                     speak(reply);
                 }
             }
-        } catch {
-            setMessages(prev => [...prev, { role: 'assistant', content: JSON.stringify({ type: 'text', content: 'Error al conectar. Inténtalo de nuevo.' }) }]);
+        } catch (err) {
+            console.error("AiPanel sendMessage error:", err);
+            setMessages(prev => [...prev, { role: 'assistant', content: JSON.stringify({ type: 'text', content: 'Lo siento, no he podido conectar con el cerebro de Quioba. Prueba de nuevo en un momento.' }) }]);
         } finally {
             setLoading(false);
         }
@@ -552,15 +591,19 @@ export default function AiPanel() {
                             exit={{ opacity: 0, y: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             style={{ '--ai-desktop-width': `${width}%` } as React.CSSProperties}
-                            className="fixed bottom-0 left-0 right-0 h-[60vh] md:h-full md:top-0 md:bottom-auto md:left-auto md:w-[var(--ai-desktop-width)] bg-background border-t md:border-t-0 md:border-l border-border shadow-2xl z-[60] flex flex-col rounded-t-[2rem] md:rounded-none overflow-hidden"
+                            className="fixed bottom-0 left-0 right-0 h-[60vh] md:h-full md:top-0 md:bottom-auto md:left-auto md:w-[var(--ai-desktop-width)] border-t md:border-t-0 md:border-l shadow-2xl z-[60] flex flex-col rounded-t-[2rem] md:rounded-none overflow-hidden bg-background border-border"
                         >
                             {/* Header */}
-                            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30 shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <QuiobaEyes />
-                                    <div>
-                                        <h2 className="font-bold text-base leading-tight">IA de Quioba</h2>
-                                        <p className="text-[10px] text-muted-foreground">Tu asistente personal</p>
+                            <div className="flex items-center justify-between p-4 border-b shrink-0 bg-muted/30 border-border">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-2xl shadow-sm shrink-0 bg-background border border-border">
+                                        {assistantEmoji}
+                                    </div>
+                                    <div className="min-w-0 pr-2">
+                                        <h2 className="font-bold text-sm leading-tight truncate">
+                                            {assistantName}
+                                        </h2>
+                                        <p className="text-[10px] text-muted-foreground truncate">Asistente IA</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -572,6 +615,15 @@ export default function AiPanel() {
                                         <BookOpen className="w-3 h-3" />
                                         Enseñar
                                     </button>
+                                    <Link
+                                        href="/apps/organizador"
+                                        title="Planificar con Quioba"
+                                        onClick={() => setIsOpen(false)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
+                                    >
+                                        <CalendarDays className="w-3 h-3" />
+                                        Planificar
+                                    </Link>
                                     {/* Toggle texto/voz */}
                                     <button
                                         onClick={() => {
@@ -601,28 +653,35 @@ export default function AiPanel() {
                                     )}
                                     <button
                                         onClick={() => {
-                                            if (confirm('¿Empezar nueva conversación?')) {
-                                                setMessages([]);
-                                                if (speaking) stopSpeaking();
-                                            }
+                                            if (confirm('¿Vaciar conversación?')) setMessages([]);
                                         }}
-                                        className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 dark:bg-zinc-800 dark:text-zinc-400 transition-colors"
+                                        className="w-7 h-7 flex items-center justify-center rounded-full transition-colors bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-rose-900/30"
                                         title="Nueva conversación"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>
-                                    <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="h-8 w-8">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setIsOpen(false)}
+                                        className="h-8 w-8"
+                                    >
                                         <X className="w-5 h-5" />
                                     </Button>
                                 </div>
                             </div>
 
                             {/* Mensajes */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            <div className={`flex-1 overflow-y-auto p-4 space-y-3 ${isSecretaryContext ? 'scrollbar-thin scrollbar-thumb-indigo-800' : ''}`}>
                                 {messages.length === 0 && (
                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-4">
-                                        <QuiobaEyes />
-                                        <p className="text-sm max-w-[200px]">¡Hola! Soy la IA de Quioba. ¿En qué te ayudo hoy?</p>
+                                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-4xl shadow-sm animate-bounce-subtle ${isSecretaryContext ? 'bg-indigo-900/40 border border-indigo-800' : 'bg-muted border border-border'
+                                            }`}>
+                                            {assistantEmoji}
+                                        </div>
+                                        <p className={`text-sm max-w-[200px] ${isSecretaryContext ? 'text-indigo-200/50' : ''}`}>
+                                            ¡Hola! Soy {assistantName}. ¿En qué te ayudo hoy?
+                                        </p>
                                         {voiceMode && (
                                             <p className="text-[10px] text-emerald-600 dark:text-emerald-400">🔊 Modo voz activo — te responderé en voz alta</p>
                                         )}
@@ -637,16 +696,16 @@ export default function AiPanel() {
                                             {msg.role === 'assistant' ? (
                                                 <AiReply content={msg.content} userId={user?.id || ''} />
                                             ) : (
-                                                msg.content
+                                                <p>{msg.content}</p>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                                 {loading && (
                                     <div className="flex justify-start">
-                                        <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-2">
-                                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Pensando...</span>
+                                        <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-2 text-muted-foreground">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span className="text-xs">Pensando...</span>
                                         </div>
                                     </div>
                                 )}
@@ -657,14 +716,14 @@ export default function AiPanel() {
                             <div className="p-3 border-t border-border shrink-0">
                                 {/* Indicador modo voz */}
                                 {listening && (
-                                    <div className="flex items-center justify-center gap-2 mb-2 text-xs text-red-500 font-medium animate-pulse">
-                                        <div className="w-2 h-2 bg-red-500 rounded-full" />
+                                    <div className="flex items-center justify-center gap-2 mb-2 text-xs font-medium animate-pulse text-red-500">
+                                        <div className="w-2 h-2 rounded-full bg-red-500" />
                                         Escuchando... habla ahora
                                     </div>
                                 )}
-                                <div className="flex gap-2 items-center bg-muted rounded-2xl px-3 py-2">
+                                <div className="flex gap-2 items-center rounded-2xl px-3 py-2 bg-muted">
                                     <input
-                                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground"
                                         placeholder={listening ? 'Escuchando...' : 'Escríbeme algo...'}
                                         value={input}
                                         onChange={e => setInput(e.target.value)}
@@ -692,7 +751,7 @@ export default function AiPanel() {
                                     <button
                                         onClick={sendMessage}
                                         disabled={loading || !input.trim() || listening}
-                                        className="w-7 h-7 flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 rounded-full transition-colors shrink-0"
+                                        className="w-7 h-7 flex items-center justify-center disabled:opacity-40 rounded-full transition-colors shrink-0 bg-emerald-500 hover:bg-emerald-600"
                                     >
                                         <Send className="w-3.5 h-3.5 text-white" />
                                     </button>
@@ -703,12 +762,6 @@ export default function AiPanel() {
                 )}
             </AnimatePresence>
 
-            {/* Modal de Conocimiento */}
-            <AnimatePresence>
-                {showKnowledge && user?.id && (
-                    <KnowledgeModal userId={user.id} onClose={() => setShowKnowledge(false)} />
-                )}
-            </AnimatePresence>
         </>
     );
 }

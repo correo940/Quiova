@@ -30,8 +30,8 @@ export default function SecretariaVidaPage() {
   const [savingsAchieved, setSavingsAchieved] = useState<number | null>(null);
 
   const settings = getSecretarySettings();
-  const profile  = getAvatarById(settings.avatarId);
-  const now      = new Date();
+  const profile = getAvatarById(settings.avatarId);
+  const now = new Date();
 
   useEffect(() => { loadData(); }, []);
 
@@ -65,9 +65,9 @@ export default function SecretariaVidaPage() {
       const monthsData: MonthData[] = [];
       for (let i = 3; i >= 0; i--) {
         const targetMonth = subMonths(now, i);
-        const monthStart  = startOfMonth(targetMonth);
-        const monthEnd    = endOfMonth(targetMonth);
-        const label       = format(targetMonth, 'MMM yyyy', { locale: es });
+        const monthStart = startOfMonth(targetMonth);
+        const monthEnd = endOfMonth(targetMonth);
+        const label = format(targetMonth, 'MMM yyyy', { locale: es });
 
         // Transacciones del mes
         const { data: txns } = await supabase
@@ -77,7 +77,7 @@ export default function SecretariaVidaPage() {
           .gte('transaction_date', monthStart.toISOString())
           .lte('transaction_date', monthEnd.toISOString());
 
-        const income   = (txns || []).filter((t: any) => t.amount > 0 && t.transaction_type !== 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const income = (txns || []).filter((t: any) => t.amount > 0 && t.transaction_type !== 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0);
         const expenses = (txns || []).filter((t: any) => t.amount < 0 || t.transaction_type === 'expense').reduce((s: number, t: any) => s + Math.abs(Number(t.amount)), 0);
 
         // Sync mensual del mes — para victories y completedTasksCount
@@ -130,17 +130,15 @@ export default function SecretariaVidaPage() {
   // Calcular máximo gasto para escalar las barras
   const maxExpense = Math.max(...months.map(m => m.expenses), 1);
   const currentMonth = months[months.length - 1];
-  const prevMonth    = months[months.length - 2];
+  const prevMonth = months[months.length - 2];
   const savingsTrend = currentMonth && prevMonth
     ? currentMonth.savings - prevMonth.savings
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white flex flex-col">
-
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
-        <button onClick={() => router.push('/apps/secretaria')} className="text-white/40 hover:text-white/70">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col p-6">
+      <div className="flex justify-between items-center mb-8">
+        <button onClick={() => router.push('/apps/organizador')} className="text-white/40 hover:text-white/70">
           <X className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
@@ -238,9 +236,8 @@ export default function SecretariaVidaPage() {
                   </p>
                   <div className="w-full flex items-end" style={{ height: '80px' }}>
                     <div
-                      className={`w-full rounded-t-lg transition-all duration-700 ${
-                        isLast ? 'bg-indigo-400' : 'bg-white/20'
-                      }`}
+                      className={`w-full rounded-t-lg transition-all duration-700 ${isLast ? 'bg-indigo-400' : 'bg-white/20'
+                        }`}
                       style={{ height: `${Math.max(heightPct, 4)}%` }}
                     />
                   </div>
@@ -267,9 +264,8 @@ export default function SecretariaVidaPage() {
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      m.taskRate >= 70 ? 'bg-emerald-400' : m.taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'
-                    }`}
+                    className={`h-full rounded-full transition-all duration-700 ${m.taskRate >= 70 ? 'bg-emerald-400' : m.taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'
+                      }`}
                     style={{ width: `${m.taskRate}%` }}
                   />
                 </div>

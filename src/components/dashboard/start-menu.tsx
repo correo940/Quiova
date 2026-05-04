@@ -46,7 +46,7 @@ const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.R
     { key: 'huerto', name: 'Mis Plantas/Huerto', route: '/apps/huerto', icon: <Leaf className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
     { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
     { key: 'assistant', name: 'Asistente', route: '/apps/mi-hogar/asistente', icon: <MessageCircle className="w-4 h-4" />, color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
-    { key: 'secretary', name: 'Secretaria', route: '/apps/secretaria', icon: <Bot className="w-4 h-4" />, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
+    { key: 'secretary', name: 'Organizador', route: '/apps/organizador', icon: <Bot className="w-4 h-4" />, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
 ];
 
 export default function StartMenu() {
@@ -173,7 +173,7 @@ export default function StartMenu() {
 
         fetchCounts(user.id);
         fetchMarketplace(user.id);
-        
+
         supabase.from('profiles').select('custom_avatar_url, nickname').eq('id', user.id).single()
             .then(({ data }) => {
                 if (data) {

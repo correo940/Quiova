@@ -14,6 +14,7 @@ import NotificationSettingsDialog from '@/components/dashboard/notifications/not
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import LogoLoader from '@/components/ui/logo-loader';
+import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 
 // Icon map for serialization
 const ICON_MAP: Record<string, any> = {
@@ -40,7 +41,6 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-teal-600', href: '/apps/mi-hogar/insurance' },
     { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-600', href: '/apps/mi-hogar/roster' },
     { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-violet-500', href: '/apps/resumen-diario' },
-    { key: 'secretary', label: 'Secretaria', iconKey: 'Bot', color: 'bg-indigo-600', href: '/apps/secretaria' },
 ];
 
 function getStorageKey(userId: string) {
@@ -253,7 +253,6 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
             case 'insurance': return `${stats.insuranceCount}`;
             case 'roster': return 'Ver';
             case 'summary': return 'Hoy';
-            case 'secretary': return 'Sync';
             default: return '0';
         }
     }, [stats]);
@@ -274,7 +273,6 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
             case 'manuals': return stats.manualCount;
             case 'passwords': return stats.passwordCount;
             case 'insurance': return stats.insuranceCount;
-            case 'secretary': return 1; // always active
             default: return 0;
         }
     }, [stats]);
@@ -413,8 +411,8 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                             className="relative w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 shadow-md hover:scale-110 transition-transform overflow-hidden"
                             title="IA de Quioba"
                         >
-                            <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200">
-                                <img src="/images/quioba-avatar.png" alt="IA" className="w-full h-full object-cover" />
+                            <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200 bg-white flex items-center justify-center text-sm">
+                                {typeof window !== 'undefined' ? getAvatarById(getSecretarySettings().avatarId).emoji : '🤖'}
                             </div>
                         </button>
                         <NotificationSettingsDialog />

@@ -95,18 +95,16 @@ export default function MobileDashboard() {
                 {secretaryStatus && secretaryStatus !== 'ok' && (
                     <div className="px-4 pt-3">
                         <button
-                            onClick={() => router.push(secretaryStatus === 'sync' ? '/apps/secretaria/sync' : '/apps/secretaria/briefing')}
-                            className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all active:scale-98 ${
-                                secretaryStatus === 'sync'
+                            onClick={() => router.push(secretaryStatus === 'sync' ? '/apps/organizador/sync' : '/apps/organizador/briefing')}
+                            className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all active:scale-98 ${secretaryStatus === 'sync'
                                     ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700/40'
                                     : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700/40'
-                            }`}
+                                }`}
                         >
                             <span className="text-2xl">{secretaryEmoji}</span>
                             <div className="flex-1 text-left">
-                                <p className={`text-sm font-semibold ${
-                                    secretaryStatus === 'sync' ? 'text-indigo-700 dark:text-indigo-300' : 'text-amber-700 dark:text-amber-300'
-                                }`}>
+                                <p className={`text-sm font-semibold ${secretaryStatus === 'sync' ? 'text-indigo-700 dark:text-indigo-300' : 'text-amber-700 dark:text-amber-300'
+                                    }`}>
                                     {secretaryStatus === 'sync' ? '🌙 Sync pendiente' : '📋 Briefing sin leer'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">

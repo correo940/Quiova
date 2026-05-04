@@ -17,8 +17,8 @@ const apps = [
     description: 'Meditacion breve, respiracion guiada y pensamiento personal con estilo Quioba.',
   },
   {
-    name: 'Quioba Secretaria',
-    href: '/apps/secretaria',
+    name: 'Quioba Organizador',
+    href: '/apps/organizador',
     icon: Bot,
     description: 'Tu asistente de vida diaria: planifica mañana, recibe tu briefing matinal y registra victorias.',
   },

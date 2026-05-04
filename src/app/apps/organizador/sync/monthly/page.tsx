@@ -41,14 +41,14 @@ export default function SecretariaMonthlySyncPage() {
   const [monthVictories, setMonthVictories] = useState<string[]>([]);
 
   const settings = getSecretarySettings();
-  const profile  = getAvatarById(settings.avatarId);
-  const texts    = PERSONALITY_TEXTS[settings.personality];
+  const profile = getAvatarById(settings.avatarId);
+  const texts = PERSONALITY_TEXTS[settings.personality];
 
-  const now          = new Date();
-  const prevMonth    = subMonths(now, 1);
+  const now = new Date();
+  const prevMonth = subMonths(now, 1);
   const prevMonthStr = format(prevMonth, "MMMM yyyy", { locale: es });
   const currMonthStr = format(now, "MMMM yyyy", { locale: es });
-  const monthYear    = format(now, 'yyyy-MM');
+  const monthYear = format(now, 'yyyy-MM');
 
   useEffect(() => { loadData(); }, []);
 
@@ -59,8 +59,8 @@ export default function SecretariaMonthlySyncPage() {
       setUser(u);
 
       const prevStart = startOfMonth(prevMonth);
-      const prevEnd   = endOfMonth(prevMonth);
-      const nowISO    = prevEnd.toISOString();
+      const prevEnd = endOfMonth(prevMonth);
+      const nowISO = prevEnd.toISOString();
 
       // Previous month transactions
       const { data: txns } = await supabase.from('savings_transactions')
@@ -144,8 +144,8 @@ export default function SecretariaMonthlySyncPage() {
         planned_expenses: monthlyBudget ? parseFloat(monthlyBudget) : null,
         completed_at: now.toISOString(),
       });
-      toast.success(`¡Mes planificado! A por ${currMonthStr} 💪`);
-      router.push('/apps/secretaria');
+      toast.success('¡Mes planificado! A por todas 🚀');
+      router.push('/apps/organizador');
     } catch (e) {
       console.error(e);
       toast.error('Error al guardar el sync mensual');
@@ -154,9 +154,9 @@ export default function SecretariaMonthlySyncPage() {
     }
   };
 
-  const totalBalance  = accounts.reduce((s, a) => s + Number(a.current_balance || 0), 0);
-  const prevSavings   = prevMonthIncome - prevMonthExpenses;
-  const taskRate      = prevTotalTasks > 0 ? Math.round((prevCompletedTasks / prevTotalTasks) * 100) : 0;
+  const totalBalance = accounts.reduce((s, a) => s + Number(a.current_balance || 0), 0);
+  const prevSavings = prevMonthIncome - prevMonthExpenses;
+  const taskRate = prevTotalTasks > 0 ? Math.round((prevCompletedTasks / prevTotalTasks) * 100) : 0;
 
   if (loading) {
     return (
@@ -171,7 +171,7 @@ export default function SecretariaMonthlySyncPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10">
-        <button onClick={() => router.push('/apps/secretaria')} className="text-white/40 hover:text-white/70">
+        <button onClick={() => router.push('/apps/organizador')} className="text-white/40 hover:text-white/70">
           <X className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">

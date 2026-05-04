@@ -665,17 +665,17 @@ function SecretariaSettingsCard() {
     };
 
     const personalities: { id: SecretaryPersonality; label: string; emoji: string; desc: string }[] = [
-        { id: 'formal',   label: 'Formal',   emoji: '🎩', desc: 'Tono profesional y ejecutivo' },
+        { id: 'formal', label: 'Formal', emoji: '🎩', desc: 'Tono profesional y ejecutivo' },
         { id: 'friendly', label: 'Amigable', emoji: '😊', desc: 'Cercana y motivadora' },
         { id: 'sergeant', label: 'Sargento', emoji: '💪', desc: 'Directa, al grano, sin rodeos' },
     ];
 
     const modulesList: { key: keyof SecretarySettings['modules']; label: string; emoji: string }[] = [
-        { key: 'tasks',     label: 'Tareas',    emoji: '✅' },
-        { key: 'shopping',  label: 'Compras',   emoji: '🛒' },
-        { key: 'medicines', label: 'Medicación',emoji: '💊' },
-        { key: 'finances',  label: 'Finanzas',  emoji: '💶' },
-        { key: 'shifts',    label: 'Turnos',    emoji: '💼' },
+        { key: 'tasks', label: 'Tareas', emoji: '✅' },
+        { key: 'shopping', label: 'Compras', emoji: '🛒' },
+        { key: 'medicines', label: 'Medicación', emoji: '💊' },
+        { key: 'finances', label: 'Finanzas', emoji: '💶' },
+        { key: 'shifts', label: 'Turnos', emoji: '💼' },
     ];
 
     return (
@@ -717,11 +717,10 @@ function SecretariaSettingsCard() {
                             <button
                                 key={av.id}
                                 onClick={() => update({ avatarId: av.id })}
-                                className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${
-                                    settings.avatarId === av.id
+                                className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${settings.avatarId === av.id
                                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
                                         : 'border-transparent hover:border-indigo-200 dark:hover:border-indigo-700'
-                                }`}
+                                    }`}
                             >
                                 <span className="text-2xl">{av.emoji}</span>
                                 <span className="text-[10px] font-medium text-muted-foreground">{av.label}</span>
@@ -760,11 +759,10 @@ function SecretariaSettingsCard() {
                             <button
                                 key={p.id}
                                 onClick={() => update({ personality: p.id })}
-                                className={`p-3 rounded-xl border-2 text-center transition-all ${
-                                    settings.personality === p.id
+                                className={`p-3 rounded-xl border-2 text-center transition-all ${settings.personality === p.id
                                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
                                         : 'border-muted hover:border-indigo-200 dark:hover:border-indigo-700'
-                                }`}
+                                    }`}
                             >
                                 <span className="text-xl block">{p.emoji}</span>
                                 <span className="text-xs font-medium mt-1 block">{p.label}</span>
@@ -808,7 +806,7 @@ function SecretariaSettingsCard() {
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => router.push('/apps/secretaria/sync')}
+                        onClick={() => router.push('/apps/organizador/sync')}
                         className="rounded-xl"
                     >
                         Probar Sync

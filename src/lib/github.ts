@@ -1,5 +1,7 @@
 import matter from 'gray-matter';
 import { Octokit } from 'octokit';
+import fs from 'fs';
+import path from 'path';
 
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -25,8 +27,54 @@ export interface Article {
   featured?: boolean;
 }
 
-// Obtener todos los artículos desde GitHub
+// Obtener artículos desde el sistema de archivos local
+export async function getArticlesFromLocal(): Promise<Article[]> {
+  try {
+    const articlesPath = path.join(process.cwd(), CONTENT_PATH);
+    if (!fs.existsSync(articlesPath)) {
+      console.warn(`⚠️ Carpeta local no encontrada: ${articlesPath}`);
+      return [];
+    }
+
+    const files = fs.readdirSync(articlesPath);
+    const articles: Article[] = [];
+
+    for (const fileName of files) {
+      if (fileName.endsWith('.md')) {
+        const filePath = path.join(articlesPath, fileName);
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const { data, content: articleContent } = matter(raw);
+
+        articles.push({
+          title: data.title || '',
+          description: data.description || '',
+          category: data.category || '',
+          date: data.date || '',
+          author: data.author || 'Anónimo',
+          slug: data.slug || fileName.replace('.md', ''),
+          content: articleContent,
+          image: data.image,
+          featured: data.featured === true,
+        });
+      }
+    }
+
+    console.log(`🏠 ${articles.length} artículos cargados desde el sistema local`);
+    return articles;
+  } catch (error) {
+    console.error('❌ Error leyendo artículos locales:', error);
+    return [];
+  }
+}
+
+// Obtener todos los artículos (con fallback local en desarrollo)
 export async function getArticlesFromGitHub(): Promise<Article[]> {
+  // 🚀 En desarrollo, prioritizar carga local para ver cambios al instante
+  if (process.env.NODE_ENV === 'development') {
+    const localArticles = await getArticlesFromLocal();
+    if (localArticles.length > 0) return localArticles;
+  }
+
   try {
     const response = await fetch(
       `${GITHUB_API}/repos/${owner}/${repo}/contents/${CONTENT_PATH}?ref=${branch}`,
@@ -122,9 +170,21 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
 // ===== FUNCIONES PARA CREAR/EDITAR/ELIMINAR =====
 
-export async function getArticleContent(path: string) {
+export async function getArticleContent(articlePath: string) {
   if (!GITHUB_TOKEN || !octokit) {
     console.warn('GITHUB_TOKEN no está configurado. No se puede cargar desde GitHub.');
+    // 🚀 Fallback local si no hay token (útil para desarrollo offline)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const filePath = path.join(process.cwd(), CONTENT_PATH, articlePath);
+        if (fs.existsSync(filePath)) {
+          console.log(`🏠 Cargando contenido local (sin token): ${articlePath}`);
+          return fs.readFileSync(filePath, 'utf-8');
+        }
+      } catch (localError) {
+        console.error('Error cargando fallback local:', localError);
+      }
+    }
     throw new Error('GITHUB_TOKEN_NOT_CONFIGURED');
   }
 
@@ -132,7 +192,7 @@ export async function getArticleContent(path: string) {
     const response = await octokit.rest.repos.getContent({
       owner,
       repo,
-      path: `${CONTENT_PATH}/${path}`,
+      path: `${CONTENT_PATH}/${articlePath}`,
     });
 
     if ('content' in response.data) {
@@ -141,6 +201,19 @@ export async function getArticleContent(path: string) {
     }
     throw new Error('No content found');
   } catch (error: any) {
+    // 🚀 Fallback local si falla GitHub
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const filePath = path.join(process.cwd(), CONTENT_PATH, articlePath);
+        if (fs.existsSync(filePath)) {
+          console.log(`🏠 Cargando contenido local (fallback): ${articlePath}`);
+          return fs.readFileSync(filePath, 'utf-8');
+        }
+      } catch (localError) {
+        console.error('Error cargando fallback local:', localError);
+      }
+    }
+
     if (error.status === 404 || error.message === 'Not Found') {
       throw new Error('Article not found');
     }

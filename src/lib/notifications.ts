@@ -168,7 +168,7 @@ export const NotificationManager = {
                             repeats: true,
                         },
                         actionTypeId: '',
-                        extra: { deeplink: '/apps/secretaria/sync' },
+                        extra: { deeplink: '/apps/organizador/sync' },
                     },
                     {
                         id: this.BRIEFING_NOTIFICATION_ID,
@@ -180,7 +180,7 @@ export const NotificationManager = {
                             repeats: true,
                         },
                         actionTypeId: '',
-                        extra: { deeplink: '/apps/secretaria/briefing' },
+                        extra: { deeplink: '/apps/organizador/briefing' },
                     },
                 ],
             });
@@ -210,8 +210,8 @@ export const NotificationManager = {
                 }, delay);
             };
 
-            scheduleWebNotif(sync.hour, sync.minute, texts.syncNotifTitle, texts.syncNotifBody, '/apps/secretaria/sync', '__quioba_sync_timeout');
-            scheduleWebNotif(briefing.hour, briefing.minute, texts.briefingNotifTitle, texts.briefingNotifBody, '/apps/secretaria/briefing', '__quioba_briefing_timeout');
+            scheduleWebNotif(sync.hour, sync.minute, texts.syncNotifTitle, texts.syncNotifBody, '/apps/organizador/sync', '__quioba_sync_timeout');
+            scheduleWebNotif(briefing.hour, briefing.minute, texts.briefingNotifTitle, texts.briefingNotifBody, '/apps/organizador/briefing', '__quioba_briefing_timeout');
             console.log('[Secretary] Web notifications scheduled (session-only):', syncTime, briefingTime);
         }
     },

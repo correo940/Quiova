@@ -14,9 +14,9 @@ type SyncType = 'daily' | 'weekly' | 'monthly';
 type FilterType = 'all' | SyncType;
 
 const TYPE_CONFIG: Record<SyncType, { label: string; color: string; bg: string; border: string; icon: React.ElementType; emoji: string }> = {
-  daily:   { label: 'Diario',   color: 'text-indigo-300', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: Zap,          emoji: '🌙' },
-  weekly:  { label: 'Semanal',  color: 'text-blue-300',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20',   icon: CalendarDays, emoji: '📅' },
-  monthly: { label: 'Mensual',  color: 'text-purple-300', bg: 'bg-purple-500/10', border: 'border-purple-500/20', icon: Calendar,     emoji: '📆' },
+  daily: { label: 'Diario', color: 'text-indigo-300', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: Zap, emoji: '🌙' },
+  weekly: { label: 'Semanal', color: 'text-blue-300', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: CalendarDays, emoji: '📅' },
+  monthly: { label: 'Mensual', color: 'text-purple-300', bg: 'bg-purple-500/10', border: 'border-purple-500/20', icon: Calendar, emoji: '📆' },
 };
 
 export default function SecretariaArchivoPage() {
@@ -80,7 +80,7 @@ export default function SecretariaArchivoPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-indigo-950/80 backdrop-blur-md z-10">
-        <button onClick={() => router.push('/apps/secretaria')} className="text-white/40 hover:text-white/70 transition-colors">
+        <button onClick={() => router.push('/apps/organizador')} className="text-white/40 hover:text-white/70 transition-colors">
           <X className="w-5 h-5" />
         </button>
         <h1 className="font-bold text-sm">Archivo de Syncs</h1>
@@ -111,11 +111,10 @@ export default function SecretariaArchivoPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  filter === f
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filter === f
                     ? 'bg-white text-slate-900 border-white'
                     : 'bg-white/10 text-white/60 border-white/10 hover:bg-white/20'
-                }`}
+                  }`}
               >
                 {f === 'all' ? 'Todos' : TYPE_CONFIG[f].label}
                 {f !== 'all' && filter !== f && <span className="ml-1 text-white/40">({totalByType(f)})</span>}
@@ -138,7 +137,7 @@ export default function SecretariaArchivoPage() {
                 <p className="text-white/30 text-xs uppercase tracking-widest font-bold mb-3 capitalize">{month}</p>
                 <div className="space-y-2">
                   {items.map(sync => {
-                    const cfg   = TYPE_CONFIG[(sync.sync_type || 'daily') as SyncType];
+                    const cfg = TYPE_CONFIG[(sync.sync_type || 'daily') as SyncType];
                     const isExp = expanded.has(sync.id);
                     const victories = sync.victories as string[] | null;
                     const hasDetails = !!sync.notes || (victories && victories.length > 0) || !!sync.planned_expenses;
@@ -178,7 +177,7 @@ export default function SecretariaArchivoPage() {
                           </div>
                           {hasDetails && (
                             isExp ? <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0" />
-                                  : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />
+                              : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />
                           )}
                         </button>
 

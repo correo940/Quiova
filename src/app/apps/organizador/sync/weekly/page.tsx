@@ -39,8 +39,8 @@ export default function SecretariaWeeklySyncPage() {
   const [weeklyGoal, setWeeklyGoal] = useState('');
 
   const settings = getSecretarySettings();
-  const profile  = getAvatarById(settings.avatarId);
-  const texts    = PERSONALITY_TEXTS[settings.personality];
+  const profile = getAvatarById(settings.avatarId);
+  const texts = PERSONALITY_TEXTS[settings.personality];
 
   useEffect(() => { loadData(); }, []);
 
@@ -57,7 +57,7 @@ export default function SecretariaWeeklySyncPage() {
       for (let i = 1; i <= 7; i++) {
         const d = addDays(today, i);
         const dStart = new Date(d); dStart.setHours(0, 0, 0, 0);
-        const dEnd   = new Date(d); dEnd.setHours(23, 59, 59, 999);
+        const dEnd = new Date(d); dEnd.setHours(23, 59, 59, 999);
 
         const [shifts, tasks] = await Promise.all([
           supabase.from('work_shifts').select('*').eq('user_id', u.id)
@@ -69,7 +69,7 @@ export default function SecretariaWeeklySyncPage() {
         ]);
 
         const shiftsData = shifts.data || [];
-        const tasksData  = tasks.data || [];
+        const tasksData = tasks.data || [];
         const load = calculateDayLoad({ tasks: tasksData, shifts: shiftsData, medicines: [], conflicts: [] });
         days.push({ date: d, shifts: shiftsData, tasks: tasksData, load });
       }
@@ -120,7 +120,7 @@ export default function SecretariaWeeklySyncPage() {
       });
 
       toast.success('¡Semana planificada! Que vaya todo bien 📅');
-      router.push('/apps/secretaria');
+      router.push('/apps/organizador');
     } catch (e) {
       console.error(e);
       toast.error('Error al guardar el sync semanal');
@@ -130,14 +130,14 @@ export default function SecretariaWeeklySyncPage() {
   };
 
   // Compute week stats
-  const totalTasks   = weeklyData.reduce((s, d) => s + d.tasks.length, 0);
-  const totalShifts  = weeklyData.reduce((s, d) => s + d.shifts.length, 0);
-  const heavyDays    = weeklyData.filter(d => d.load.level === 'heavy' || d.load.level === 'overloaded');
-  const weekScore    = Math.round(weeklyData.reduce((s, d) => s + d.load.score, 0) / 7);
-  const weekLabel    = weekScore <= 20 ? { label: 'Semana tranquila 😌', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
-                     : weekScore <= 45 ? { label: 'Semana equilibrada 🙂', color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20'    }
-                     : weekScore <= 70 ? { label: 'Semana cargada 😤',    color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20'   }
-                     :                  { label: 'Semana muy dura 🔥',    color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20'     };
+  const totalTasks = weeklyData.reduce((s, d) => s + d.tasks.length, 0);
+  const totalShifts = weeklyData.reduce((s, d) => s + d.shifts.length, 0);
+  const heavyDays = weeklyData.filter(d => d.load.level === 'heavy' || d.load.level === 'overloaded');
+  const weekScore = Math.round(weeklyData.reduce((s, d) => s + d.load.score, 0) / 7);
+  const weekLabel = weekScore <= 20 ? { label: 'Semana tranquila 😌', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
+    : weekScore <= 45 ? { label: 'Semana equilibrada 🙂', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
+      : weekScore <= 70 ? { label: 'Semana cargada 😤', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }
+        : { label: 'Semana muy dura 🔥', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' };
 
   if (loading || !settings) {
     return (
@@ -152,7 +152,7 @@ export default function SecretariaWeeklySyncPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10">
-        <button onClick={() => router.push('/apps/secretaria')} className="text-white/40 hover:text-white/70">
+        <button onClick={() => router.push('/apps/organizador')} className="text-white/40 hover:text-white/70">
           <X className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">

@@ -9,7 +9,12 @@ interface Message {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { messages, userId } = body as { messages: Message[]; userId: string };
+    let { messages, userId, secretarySettings, todaySyncStatus } = body as {
+      messages: Message[];
+      userId: string;
+      secretarySettings?: any;
+      todaySyncStatus?: any;
+    };
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) return NextResponse.json({ error: 'Falta GROQ_API_KEY' }, { status: 500 });
@@ -45,6 +50,22 @@ export async function POST(req: Request) {
 
     // Conocimiento personalizado — consulta separada para no romper el chat si la tabla no existe aún
     let knowledge: { title: string; content: string }[] = [];
+
+    // Si no viene del cliente, lo buscamos nosotros
+    if (!todaySyncStatus) {
+      try {
+        const { data: sData } = await supabase
+          .from('secretary_syncs')
+          .select('completed_at, victories')
+          .eq('user_id', userId)
+          .eq('sync_date', today)
+          .maybeSingle();
+        todaySyncStatus = sData;
+      } catch (e) {
+        console.error('Error fetching sync status in route:', e);
+      }
+    }
+
     try {
       const { data: kData } = await supabase
         .from('ai_knowledge')
@@ -74,13 +95,27 @@ export async function POST(req: Request) {
       return `- [${m.category || 'General'}] ${m.title}: ${notes.substring(0, 500)}`;
     }).filter(Boolean).join('\n') || '- Sin manuales registrados';
 
-    const systemPrompt = `Eres la IA de Quioba, asistente personal inteligente y cercano del usuario.
-Tienes acceso a sus datos reales y puedes ayudarle con cualquier pregunta sobre su vida diaria.
-Responde siempre en español, de forma concisa y útil. Nunca menciones que eres Llama ni ningún modelo externo.
-Cuando el usuario pregunte sobre algún tema que aparezca en el CONOCIMIENTO PERSONALIZADO, úsalo como base principal de tu respuesta.
+    const personality = secretarySettings?.personality || 'friendly';
+    const traitsMap = {
+      formal: "Eres una asistente profesional, elegante y respetuosa. Usas un lenguaje cuidado y evitas el exceso de emojis. Te diriges al usuario con deferencia pero cercanía.",
+      friendly: "Eres una asistente muy amable, cercana y positiva. Usas emojis para dar calidez y te enfocas en motivar al usuario. Tu tono es informal (tú).",
+      sergeant: "Eres una asistente extremadamente directa, disciplinada y breve. Tu objetivo es la eficiencia. No andas con rodeos y exiges cumplimiento de objetivos. Tono seco y autoritario.",
+    };
+    const personalityTraits = traitsMap[personality as keyof typeof traitsMap] || traitsMap.friendly;
+
+    const syncStatusSection = todaySyncStatus
+      ? `\nESTADO DEL SYNC DE HOY: ${todaySyncStatus.completed_at ? 'Completado ✅' : 'Pendiente 🌙'}. Victories: ${todaySyncStatus.victories?.join(', ') || 'Ninguna aún'}`
+      : '\nESTADO DEL SYNC DE HOY: Pendiente 🌙';
+
+    const systemPrompt = `Eres la IA de Quioba, asistente personal total. Has absorbido las funciones del Organizador Personal.
+${personalityTraits}
+Tienes acceso a los datos reales del usuario y le ayudas con cualquier pregunta sobre su vida diaria.
+Responde siempre en español. Nunca menciones que eres un modelo de lenguaje ni menciones a Groq/Llama.
+
 ${knowledgeSection}
 
 DATOS ACTUALES DEL USUARIO (${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}):
+${syncStatusSection}
 
 💰 FINANZAS:
 - Saldo Cuentas y Sobres: ${totalBalance.toLocaleString('es-ES')}€
@@ -109,28 +144,29 @@ ${formattedManuals}
 🔑 BÓVEDA DE CONTRASEÑAS (SOLO NOMBRES):
 ${passwords?.map(p => `- ${p.name} (ID: ${p.id})`).join('\n') || '- No hay contraseñas en la bóveda'}
 
+REGLAS DEL ORGANIZADOR (SYNC NOCTURNO):
+- Si el usuario quiere hacer el "sync" o "balance del día", guíale de forma conversacional.
+- Pregunta sobre sus victorias del día y si queda algo para mañana.
+- Tras 3-4 mensajes de sync, genera un resumen final usando el tipo "summary".
+
 FORMATO DE RESPUESTA — MUY IMPORTANTE:
 Debes responder SIEMPRE y ÚNICAMENTE con JSON válido. Nunca texto plano.
 
 Para listas (compra, tareas, documentos, turnos, medicación):
 {"type":"list","title":"Título","icon":"emoji","items":[{"icon":"emoji","text":"texto"}]}
 
-Para solicitar revelación de una contraseña al usuario (si la pide usando la BÓVEDA DE CONTRASEÑAS):
+Para solicitar revelación de una contraseña al usuario:
 {"type":"password_request","name":"Nombre del servicio","id":"COPIA_EXACTA_DEL_ID_PROPORCIONADO"}
-Solo haz esto SI LA CONTRASEÑA ESTÁ EN LA LISTA ANTERIOR. Si no la encuentras en la bóveda, NO devuelvas un password_request, devuelve un "type": "text" diciendo que no la tienes guardada.
 
 Para texto normal:
 {"type":"text","content":"Tu respuesta aquí"}
 
+Para cerrar un Sync Nocturno:
+{"type":"summary","text":"[Resumen de 2 frases del día]","readyToClose":true}
+
 EJEMPLOS:
-Usuario: "¿qué tengo que comprar?"
-{"type":"list","title":"Lista de la compra","icon":"🛒","items":[{"icon":"🍞","text":"Pan x1"},{"icon":"🧀","text":"Queso x1"}]}
-
-Usuario: "dime la clave de netflix"
-{"type":"password_request","name":"Netflix","id":"123456"}
-
-Usuario: "¿cómo estás?"
-{"type":"text","content":"¡Todo bien! ¿En qué te ayudo hoy? 😊"}
+Usuario: "hazme el sync"
+{"type":"text","content":"¡Hola! Claro, vamos a cerrar el día. Cuéntame, ¿cuál ha sido tu mayor victoria hoy? 😊"}
 
 NUNCA uses markdown, viñetas ni texto fuera del JSON.`;
 

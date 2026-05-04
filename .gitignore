@@ -56,3 +56,10 @@ catch_errors_pw.js
 playwright_logs.txt
 pw_logs_full.txt
 test-results/
+scratch/
+*.log
+build_attempt_*.log
+build_*.log
+tsc_output.txt
+results.json
+available_groq_models.txt

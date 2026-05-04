@@ -201,7 +201,7 @@ export default function FloatingDashboard() {
                                             </button>
 
                                             <Link
-                                                href="/apps/secretaria"
+                                                href="/apps/organizador"
                                                 onClick={() => setIsOpen(false)}
                                                 className="flex items-center gap-3 p-4 rounded-xl hover:bg-primary/10 transition-colors bg-white/50 dark:bg-zinc-900/50 shadow-sm group text-left"
                                             >

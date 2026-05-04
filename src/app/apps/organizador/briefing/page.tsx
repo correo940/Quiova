@@ -58,7 +58,7 @@ export default function SecretariaBriefingPage() {
       setUser(u);
 
       const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-      const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
+      const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 
       const [shifts, tasks, shopping, meds, accs, todaySync] = await Promise.all([
         supabase.from('work_shifts').select('*').eq('user_id', u.id)
@@ -78,12 +78,12 @@ export default function SecretariaBriefingPage() {
           .maybeSingle(),
       ]);
 
-      const shiftsData  = shifts.data  || [];
-      const tasksData   = tasks.data   || [];
+      const shiftsData = shifts.data || [];
+      const tasksData = tasks.data || [];
       const medsFiltered = (meds.data || []).filter((m: any) => m.alarm_times?.length > 0);
-      const accsData    = accs.data    || [];
-      const balance     = accsData.reduce((s: number, a: any) => s + Number(a.current_balance || 0), 0);
-      const plannedExp  = todaySync.data?.planned_expenses ?? null;
+      const accsData = accs.data || [];
+      const balance = accsData.reduce((s: number, a: any) => s + Number(a.current_balance || 0), 0);
+      const plannedExp = todaySync.data?.planned_expenses ?? null;
 
       setTodayShifts(shiftsData);
       setTodayTasks(tasksData);
@@ -160,13 +160,13 @@ export default function SecretariaBriefingPage() {
     );
   }
 
-  const profile   = getAvatarById(settings.avatarId);
-  const texts     = PERSONALITY_TEXTS[settings.personality];
+  const profile = getAvatarById(settings.avatarId);
+  const texts = PERSONALITY_TEXTS[settings.personality];
   const firstName = getUserFirstName(user);
-  const now       = new Date();
+  const now = new Date();
 
   const criticalConflicts = conflicts.filter(c => c.severity === 'critical');
-  const warningConflicts  = conflicts.filter(c => c.severity === 'warning');
+  const warningConflicts = conflicts.filter(c => c.severity === 'warning');
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
@@ -184,7 +184,7 @@ export default function SecretariaBriefingPage() {
         : dayLoad?.level === 'heavy'
           ? 'bg-gradient-to-r from-amber-900/60 to-indigo-900'
           : 'bg-gradient-to-r from-indigo-900 to-purple-900'
-      }`}>
+        }`}>
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-3xl shadow-inner">
             {profile.emoji}
@@ -209,11 +209,10 @@ export default function SecretariaBriefingPage() {
             </div>
             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-700 ${
-                  dayLoad.level === 'overloaded' ? 'bg-red-400' :
-                  dayLoad.level === 'heavy'      ? 'bg-amber-400' :
-                  dayLoad.level === 'moderate'   ? 'bg-blue-400' : 'bg-emerald-400'
-                }`}
+                className={`h-full rounded-full transition-all duration-700 ${dayLoad.level === 'overloaded' ? 'bg-red-400' :
+                    dayLoad.level === 'heavy' ? 'bg-amber-400' :
+                      dayLoad.level === 'moderate' ? 'bg-blue-400' : 'bg-emerald-400'
+                  }`}
                 style={{ width: `${dayLoad.score}%` }}
               />
             </div>
@@ -370,7 +369,7 @@ export default function SecretariaBriefingPage() {
 
         {/* Quick links */}
         <div className="grid grid-cols-2 gap-3">
-          <QuickLink label="Hacer Sync" href="/apps/secretaria/sync" />
+          <QuickLink label="Hacer Sync" href="/apps/organizador/sync" />
           <QuickLink label="Resumen completo" href="/apps/resumen-diario" />
         </div>
 
@@ -409,12 +408,12 @@ export default function SecretariaBriefingPage() {
 type Accent = 'blue' | 'pink' | 'emerald' | 'orange' | 'amber' | 'red';
 
 const ACCENT_STYLES: Record<Accent, string> = {
-  blue:    'border-l-blue-500   bg-blue-500/5',
-  pink:    'border-l-pink-500   bg-pink-500/5',
+  blue: 'border-l-blue-500   bg-blue-500/5',
+  pink: 'border-l-pink-500   bg-pink-500/5',
   emerald: 'border-l-emerald-500 bg-emerald-500/5',
-  orange:  'border-l-orange-500  bg-orange-500/5',
-  amber:   'border-l-amber-500   bg-amber-500/5',
-  red:     'border-l-red-500     bg-red-500/8',
+  orange: 'border-l-orange-500  bg-orange-500/5',
+  amber: 'border-l-amber-500   bg-amber-500/5',
+  red: 'border-l-red-500     bg-red-500/8',
 };
 
 function BriefingCard({ title, emoji, accent, children }: {

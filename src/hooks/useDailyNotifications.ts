@@ -8,19 +8,19 @@ import { NotificationManager } from '@/lib/notifications';
 import { getSecretarySettings } from '@/lib/secretary-settings';
 
 // ── Notification IDs ──────────────────────────────────────────────────────────
-const NOTIF_DAILY_SUMMARY  = 1001; // legacy / resumen diario
-const NOTIF_BRIEFING       = 1002; // secretary briefing matutino
-const NOTIF_SYNC           = 1003; // secretary sync nocturno
-const NOTIF_BUDGET_ALERT   = 1004; // alerta 18h desviación presupuestaria
-const NOTIF_WEEKLY_SYNC    = 1005; // secretary sync semanal
-const NOTIF_MONTHLY_SYNC   = 1006; // secretary sync mensual
+const NOTIF_DAILY_SUMMARY = 1001; // legacy / resumen diario
+const NOTIF_BRIEFING = 1002; // secretary briefing matutino
+const NOTIF_SYNC = 1003; // secretary sync nocturno
+const NOTIF_BUDGET_ALERT = 1004; // alerta 18h desviación presupuestaria
+const NOTIF_WEEKLY_SYNC = 1005; // secretary sync semanal
+const NOTIF_MONTHLY_SYNC = 1006; // secretary sync mensual
 
 export function useDailyNotifications() {
     const router = useRouter();
 
     useEffect(() => {
         const checkPermissions = async () => {
-            const oldSettings   = getOldSettings();
+            const oldSettings = getOldSettings();
             const secretarySettings = getSecretarySettings();
 
             const needsNotif = oldSettings.enabled || secretarySettings.enabled;
@@ -62,12 +62,12 @@ export function useDailyNotifications() {
         // Tap handler — navigate based on notification ID
         const handleNotificationAction = (notification: any) => {
             const id = notification.notification.id;
-            if (id === NOTIF_DAILY_SUMMARY)  router.push('/apps/resumen-diario');
-            if (id === NOTIF_BRIEFING)       router.push('/apps/secretaria/briefing');
-            if (id === NOTIF_SYNC)           router.push('/apps/secretaria/sync');
-            if (id === NOTIF_BUDGET_ALERT)   router.push('/apps/secretaria/briefing');
-            if (id === NOTIF_WEEKLY_SYNC)    router.push('/apps/secretaria/sync/weekly');
-            if (id === NOTIF_MONTHLY_SYNC)   router.push('/apps/secretaria/sync/monthly');
+            if (id === NOTIF_DAILY_SUMMARY) router.push('/apps/resumen-diario');
+            if (id === NOTIF_BRIEFING) router.push('/apps/organizador/briefing');
+            if (id === NOTIF_SYNC) router.push('/apps/organizador/sync');
+            if (id === NOTIF_BUDGET_ALERT) router.push('/apps/organizador/briefing');
+            if (id === NOTIF_WEEKLY_SYNC) router.push('/apps/organizador/sync/weekly');
+            if (id === NOTIF_MONTHLY_SYNC) router.push('/apps/organizador/sync/monthly');
         };
 
         LocalNotifications.addListener('localNotificationActionPerformed', handleNotificationAction);
@@ -155,7 +155,7 @@ export function useDailyNotifications() {
                 sound: 'beep.wav',
                 smallIcon: 'ic_stat_icon_config_sample',
                 actionTypeId: '',
-                extra: { url: '/apps/secretaria/briefing' }
+                extra: { url: '/apps/organizador/briefing' }
             }]
         });
 
@@ -171,7 +171,7 @@ export function useDailyNotifications() {
                 sound: 'beep.wav',
                 smallIcon: 'ic_stat_icon_config_sample',
                 actionTypeId: '',
-                extra: { url: '/apps/secretaria/sync' }
+                extra: { url: '/apps/organizador/sync' }
             }]
         });
 
@@ -192,7 +192,7 @@ export function useDailyNotifications() {
                     sound: 'beep.wav',
                     smallIcon: 'ic_stat_icon_config_sample',
                     actionTypeId: '',
-                    extra: { url: '/apps/secretaria/sync/weekly' }
+                    extra: { url: '/apps/organizador/sync/weekly' }
                 }]
             });
         }
@@ -210,7 +210,7 @@ export function useDailyNotifications() {
                     sound: 'beep.wav',
                     smallIcon: 'ic_stat_icon_config_sample',
                     actionTypeId: '',
-                    extra: { url: '/apps/secretaria/sync/monthly' }
+                    extra: { url: '/apps/organizador/sync/monthly' }
                 }]
             });
         }
@@ -233,7 +233,7 @@ export function useDailyNotifications() {
                 sound: 'beep.wav',
                 smallIcon: 'ic_stat_icon_config_sample',
                 actionTypeId: '',
-                extra: { url: '/apps/secretaria/briefing' }
+                extra: { url: '/apps/organizador/briefing' }
             }]
         });
     };
