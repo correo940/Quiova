@@ -653,7 +653,7 @@ export default function ExpensesPage() {
     return (
         <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden font-sans">
             {/* Premium Background Decor */}
-            <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 blur-[120px] pointer-events-none" />
+            <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-green-500/5 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-1/4 -left-20 w-80 h-80 bg-rose-500/5 blur-[100px] pointer-events-none" />
 
             <div className="max-w-6xl mx-auto space-y-8 relative z-10">
@@ -670,7 +670,7 @@ export default function ExpensesPage() {
                                 size="sm"
                                 className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200 dark:border-slate-800 rounded-full px-4 h-9 shadow-sm hover:shadow-md transition-all flex items-center gap-2 group"
                             >
-                                <Home className="h-4 w-4 text-slate-500 group-hover:text-emerald-500 transition-colors" />
+                                <Home className="h-4 w-4 text-slate-500 group-hover:text-green-500 transition-colors" />
                                 <span className="hidden sm:inline font-bold text-[10px] uppercase tracking-wider">Inicio</span>
                             </Button>
                         </Link>
@@ -695,11 +695,11 @@ export default function ExpensesPage() {
                         transition={{ delay: 0.1 }}
                     >
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-emerald-500 dark:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+                            <div className="p-2 bg-green-500 dark:bg-green-800 rounded-xl shadow-lg shadow-green-500/20">
                                 <PiggyBank className="w-5 h-5 text-white" />
                             </div>
                             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                                Mis <span className="text-emerald-500">Gastos</span>
+                                Mis <span className="text-green-500">Gastos</span>
                             </h1>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-medium ml-[3.25rem]">
@@ -716,7 +716,7 @@ export default function ExpensesPage() {
                         <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="w-full md:w-auto bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                             <UserPlus className="w-4 h-4 mr-2" /> {activeFolderId ? 'Compartir Carpeta' : 'Compartir'}
                         </Button>
-                        <Button onClick={() => { setFormData(DEFAULT_FORM); setReceiptFile(null); setIsDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white w-full md:w-auto shadow-lg shadow-emerald-500/20 rounded-xl">
+                        <Button onClick={() => { setFormData(DEFAULT_FORM); setReceiptFile(null); setIsDialogOpen(true); }} className="bg-green-800 hover:bg-green-900 text-white w-full md:w-auto shadow-lg shadow-green-500/20 rounded-xl">
                             <Plus className="w-4 h-4 mr-2" /> Añadir Gasto
                         </Button>
                     </motion.div>
@@ -726,7 +726,7 @@ export default function ExpensesPage() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <Receipt className="w-5 h-5 text-emerald-600" />
+                            <Receipt className="w-5 h-5 text-green-800" />
                             Eventos y Carpetas
                         </h2>
                         <Button variant="outline" size="sm" onClick={() => setIsManageFoldersOpen(true)}>
@@ -741,11 +741,11 @@ export default function ExpensesPage() {
                             className={cn(
                                 "cursor-pointer rounded-xl border p-4 text-center transition-all hover:scale-105",
                                 activeFolderId === null
-                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-lg dark:bg-emerald-600 dark:border-emerald-600"
-                                    : "bg-white border-slate-200 hover:border-emerald-500 dark:bg-slate-900 dark:border-slate-800"
+                                    ? "bg-green-800 text-white border-green-800 shadow-lg dark:bg-green-800 dark:border-green-800"
+                                    : "bg-white border-slate-200 hover:border-green-500 dark:bg-slate-900 dark:border-slate-800"
                             )}
                         >
-                            <PiggyBank className={cn("w-6 h-6 mx-auto mb-2", activeFolderId === null ? "text-emerald-400" : "text-emerald-600")} />
+                            <PiggyBank className={cn("w-6 h-6 mx-auto mb-2", activeFolderId === null ? "text-green-400" : "text-green-800")} />
                             <div className="font-bold text-sm">General</div>
                             <div className="text-[10px] opacity-70">Gastos Globales</div>
                         </div>
@@ -764,8 +764,8 @@ export default function ExpensesPage() {
                                     className={cn(
                                         "relative group cursor-pointer rounded-xl border p-4 text-center transition-all hover:scale-105",
                                         isActive
-                                            ? "bg-emerald-600 text-white border-emerald-600 shadow-lg dark:bg-emerald-600 dark:border-emerald-600"
-                                            : "bg-white border-slate-200 hover:border-emerald-500 dark:bg-slate-900 dark:border-slate-800"
+                                            ? "bg-green-800 text-white border-green-800 shadow-lg dark:bg-green-800 dark:border-green-800"
+                                            : "bg-white border-slate-200 hover:border-green-500 dark:bg-slate-900 dark:border-slate-800"
                                     )}
                                 >
                                     {isActive && (
@@ -787,7 +787,7 @@ export default function ExpensesPage() {
                                         <div className={cn(
                                             "mt-2 text-[10px] px-2 py-0.5 rounded-full inline-block",
                                             daysLeft > 0
-                                                ? (isActive ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300")
+                                                ? (isActive ? "bg-white/20 text-white" : "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-300")
                                                 : (isActive ? "bg-rose-500/50 text-white" : "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300")
                                         )}>
                                             {daysLeft > 0 ? `${daysLeft} días` : 'Terminado'}
@@ -820,7 +820,7 @@ export default function ExpensesPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-emerald-600 mb-2">{myTotal.toFixed(2)}€</div>
+                            <div className="text-2xl font-bold text-green-800 mb-2">{myTotal.toFixed(2)}€</div>
 
                             <div className="space-y-1">
                                 {potentialPayers.map(p => {
@@ -853,7 +853,7 @@ export default function ExpensesPage() {
 
                     <Card className={cn(
                         "border-l-4",
-                        netBalance > 0 ? "border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10" :
+                        netBalance > 0 ? "border-l-green-500 bg-green-50/50 dark:bg-green-950/10" :
                             netBalance < 0 ? "border-l-rose-500 bg-rose-50/50 dark:bg-rose-900/10" :
                                 "border-l-slate-300"
                     )}>
@@ -863,7 +863,7 @@ export default function ExpensesPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className={cn("text-2xl font-bold mb-2", netBalance >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400")}>
+                            <div className={cn("text-2xl font-bold mb-2", netBalance >= 0 ? "text-green-900 dark:text-green-400" : "text-rose-700 dark:text-rose-400")}>
                                 {netBalance > 0 ? "+" : ""}{netBalance.toFixed(2)}€
                             </div>
 
@@ -879,7 +879,7 @@ export default function ExpensesPage() {
                                                     debes <span className="font-bold">{d.netOwed.toFixed(2)}€</span>
                                                 </span>
                                             ) : (
-                                                <span className="text-emerald-600 flex items-center gap-1">
+                                                <span className="text-green-800 flex items-center gap-1">
                                                     te debe <span className="font-bold">{Math.abs(d.netOwed).toFixed(2)}€</span>
                                                 </span>
                                             )}
@@ -953,7 +953,7 @@ export default function ExpensesPage() {
                                                 <div className="flex flex-col items-center gap-1">
                                                     <div className={cn(
                                                         "w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-colors",
-                                                        iPaid ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                                                        iPaid ? "bg-green-100 text-green-900 dark:bg-green-950/30 dark:text-green-400" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
                                                     )}>
                                                         {iPaid ? 'YO' : 'OTRO'}
                                                     </div>
@@ -1018,7 +1018,7 @@ export default function ExpensesPage() {
                         <DialogDescription>Sube un ticket de compra para autorellenarlo, o escribe los datos.</DialogDescription>
                     </DialogHeader>
 
-                    <div className="mt-2 mb-4 p-4 border-2 border-dashed border-emerald-200 dark:border-emerald-900 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 relative cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-colors">
+                    <div className="mt-2 mb-4 p-4 border-2 border-dashed border-green-200 dark:border-green-950 rounded-2xl bg-green-50/50 dark:bg-green-800-950/20 relative cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/40 transition-colors">
                         <Input
                             type="file"
                             accept="image/*,.pdf"
@@ -1035,12 +1035,12 @@ export default function ExpensesPage() {
                         <div className="flex flex-col items-center justify-center gap-2 text-center pointer-events-none">
                             {analyzingReceipt ? (
                                 <>
-                                    <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Analizando ticket con Quioba IA...</span>
+                                    <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+                                    <span className="text-sm font-semibold text-green-800 dark:text-green-400">Analizando ticket con Quioba IA...</span>
                                 </>
                             ) : (
                                 <>
-                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full text-emerald-600 dark:text-emerald-400">
+                                    <div className="p-2 bg-green-100 dark:bg-green-950 rounded-full text-green-800 dark:text-green-400">
                                         <Receipt className="w-6 h-6" />
                                     </div>
                                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Haz clic o arrastra un Ticket (Foto/PDF)</span>
@@ -1229,7 +1229,7 @@ export default function ExpensesPage() {
                     <div className="space-y-4 py-4">
                         <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border text-center">
                             <span className="text-sm text-muted-foreground">Tu Balance</span>
-                            <div className={cn("text-2xl font-bold", netBalance < 0 ? "text-rose-500" : "text-emerald-500")}>
+                            <div className={cn("text-2xl font-bold", netBalance < 0 ? "text-rose-500" : "text-green-500")}>
                                 {Math.abs(netBalance).toFixed(2)} €
                                 <span className="text-sm font-normal text-muted-foreground block">
                                     {netBalance < 0 ? "Debes en total" : "Te deben en total"}
@@ -1246,7 +1246,7 @@ export default function ExpensesPage() {
                                         <ul className="space-y-1">
                                             {/* Who Owes Me */}
                                             {mySpecificDebts.filter(d => d.netOwed < 0).map(d => (
-                                                <li key={d.id} className="text-emerald-600 dark:text-emerald-400">
+                                                <li key={d.id} className="text-green-800 dark:text-green-400">
                                                     Te debe {d.name}: <strong>{Math.abs(d.netOwed).toFixed(2)}€</strong>
                                                 </li>
                                             ))}
@@ -1395,10 +1395,11 @@ export default function ExpensesPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsManageFoldersOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleCreateFolder} className="bg-emerald-600 hover:bg-emerald-700">Crear Carpeta</Button>
+                        <Button onClick={handleCreateFolder} className="bg-green-800 hover:bg-green-900">Crear Carpeta</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
     );
 }
+

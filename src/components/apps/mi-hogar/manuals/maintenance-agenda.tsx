@@ -110,7 +110,7 @@ export function MaintenanceAgendaPanel() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-green-200 border-t-green-500 rounded-full animate-spin" />
             </div>
         );
     }
@@ -129,11 +129,11 @@ export function MaintenanceAgendaPanel() {
                 </button>
                 <button
                     onClick={() => setFilter('upcoming')}
-                    className={`p-4 rounded-2xl border text-left transition-all ${filter === 'upcoming' ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-emerald-200'}`}
+                    className={`p-4 rounded-2xl border text-left transition-all ${filter === 'upcoming' ? 'bg-green-500 text-white border-green-500 shadow-lg shadow-green-200' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-green-200'}`}
                 >
-                    <Clock className={`h-5 w-5 mb-1 ${filter === 'upcoming' ? 'text-white' : 'text-emerald-500'}`} />
-                    <p className={`text-2xl font-black ${filter === 'upcoming' ? 'text-white' : 'text-emerald-600'}`}>{upcoming.length}</p>
-                    <p className={`text-xs font-bold ${filter === 'upcoming' ? 'text-emerald-100' : 'text-slate-500'}`}>Próximos 30d</p>
+                    <Clock className={`h-5 w-5 mb-1 ${filter === 'upcoming' ? 'text-white' : 'text-green-500'}`} />
+                    <p className={`text-2xl font-black ${filter === 'upcoming' ? 'text-white' : 'text-green-800'}`}>{upcoming.length}</p>
+                    <p className={`text-xs font-bold ${filter === 'upcoming' ? 'text-green-100' : 'text-slate-500'}`}>Próximos 30d</p>
                 </button>
                 <button
                     onClick={() => setFilter('all')}
@@ -148,7 +148,7 @@ export function MaintenanceAgendaPanel() {
             {/* Lista de recordatorios */}
             {displayReminders.length === 0 ? (
                 <div className="text-center py-16">
-                    <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-emerald-300" />
+                    <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-green-300" />
                     <p className="font-black text-slate-700 dark:text-slate-300 text-lg">¡Todo al día!</p>
                     <p className="text-slate-500 text-sm mt-1">No hay recordatorios pendientes en este período.</p>
                 </div>
@@ -162,8 +162,8 @@ export function MaintenanceAgendaPanel() {
                                 key={reminder.id}
                                 className={`p-4 rounded-2xl border bg-white dark:bg-slate-900 flex items-start gap-4 transition-all hover:shadow-md ${isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'}`}
                             >
-                                <div className={`p-2.5 rounded-xl shrink-0 ${isOverdue ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-                                    <Wrench className={`h-5 w-5 ${isOverdue ? 'text-rose-500' : 'text-emerald-500'}`} />
+                                <div className={`p-2.5 rounded-xl shrink-0 ${isOverdue ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-green-100 dark:bg-green-950/30'}`}>
+                                    <Wrench className={`h-5 w-5 ${isOverdue ? 'text-rose-500' : 'text-green-500'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -188,7 +188,7 @@ export function MaintenanceAgendaPanel() {
                                 </div>
                                 <Button
                                     size="sm"
-                                    className="shrink-0 h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm"
+                                    className="shrink-0 h-8 px-3 bg-green-500 hover:bg-green-800 text-white rounded-xl text-xs font-bold shadow-sm"
                                     onClick={() => markAsDone(reminder)}
                                     title="Marcar como hecho"
                                 >
@@ -203,3 +203,4 @@ export function MaintenanceAgendaPanel() {
         </div>
     );
 }
+

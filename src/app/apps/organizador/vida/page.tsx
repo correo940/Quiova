@@ -167,19 +167,19 @@ export default function SecretariaVidaPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
             <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Saldo total</p>
-            <p className={`text-2xl font-extrabold ${totalBalance < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+            <p className={`text-2xl font-extrabold ${totalBalance < 0 ? 'text-red-300' : 'text-green-300'}`}>
               {totalBalance.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
             </p>
           </div>
           {savingsTrend !== null && (
-            <div className={`p-4 rounded-2xl border ${savingsTrend >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+            <div className={`p-4 rounded-2xl border ${savingsTrend >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
               <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Tendencia ahorro</p>
               <div className="flex items-center gap-1.5">
                 {savingsTrend >= 0
-                  ? <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  ? <TrendingUp className="w-4 h-4 text-green-400" />
                   : <TrendingDown className="w-4 h-4 text-red-400" />
                 }
-                <p className={`text-2xl font-extrabold ${savingsTrend >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                <p className={`text-2xl font-extrabold ${savingsTrend >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                   {savingsTrend >= 0 ? '+' : ''}{savingsTrend.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
                 </p>
               </div>
@@ -203,12 +203,12 @@ export default function SecretariaVidaPage() {
                   <>
                     <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${savingsAchieved >= savingsGoal ? 'bg-emerald-400' : 'bg-indigo-400'}`}
+                        className={`h-full rounded-full transition-all duration-700 ${savingsAchieved >= savingsGoal ? 'bg-green-400' : 'bg-indigo-400'}`}
                         style={{ width: `${Math.min((savingsAchieved / savingsGoal) * 100, 100)}%` }}
                       />
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className={savingsAchieved >= savingsGoal ? 'text-emerald-300' : 'text-indigo-300'}>
+                      <span className={savingsAchieved >= savingsGoal ? 'text-green-300' : 'text-indigo-300'}>
                         Real: {savingsAchieved.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
                       </span>
                       <span className="text-white/30">
@@ -258,13 +258,13 @@ export default function SecretariaVidaPage() {
               <div key={i} className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-white/50 capitalize">{m.label}</span>
-                  <span className={`font-semibold ${m.taskRate >= 70 ? 'text-emerald-300' : m.taskRate >= 40 ? 'text-amber-300' : 'text-red-300'}`}>
+                  <span className={`font-semibold ${m.taskRate >= 70 ? 'text-green-300' : m.taskRate >= 40 ? 'text-amber-300' : 'text-red-300'}`}>
                     {m.taskRate}%
                   </span>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${m.taskRate >= 70 ? 'bg-emerald-400' : m.taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'
+                    className={`h-full rounded-full transition-all duration-700 ${m.taskRate >= 70 ? 'bg-green-400' : m.taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'
                       }`}
                     style={{ width: `${m.taskRate}%` }}
                   />
@@ -296,3 +296,4 @@ export default function SecretariaVidaPage() {
     </div>
   );
 }
+

@@ -190,7 +190,7 @@ export default function ApiLimitsManager() {
                                             <TableCell className="font-mono text-xs font-semibold">{l.endpoint}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{l.description}</TableCell>
                                             <TableCell>
-                                                {l.enabled ? <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
+                                                {l.enabled ? <Badge variant="default" className="bg-green-500 hover:bg-green-800">Activo</Badge> : <Badge variant="secondary">Inactivo</Badge>}
                                             </TableCell>
                                             <TableCell>
                                                 {editingGlobalId === l.id ? (
@@ -287,3 +287,4 @@ export default function ApiLimitsManager() {
         </Card>
     );
 }
+

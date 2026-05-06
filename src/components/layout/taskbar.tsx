@@ -48,10 +48,10 @@ export default function Taskbar() {
         switch (id) {
             case 'home':
                 return {
-                    bg: 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30',
+                    bg: 'bg-gradient-to-br from-green-600 to-green-800 shadow-lg shadow-green-900/30',
                     icon: 'text-white drop-shadow-sm',
-                    border: 'border-emerald-300/50',
-                    glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-emerald-400/20 after:rounded-3xl after:blur-md after:-z-10'
+                    border: 'border-green-500/50',
+                    glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-green-600/20 after:rounded-3xl after:blur-md after:-z-10'
                 };
             case 'articles':
                 return {
@@ -84,7 +84,7 @@ export default function Taskbar() {
                     {/* Glass backdrop for logo */}
                     <div className={cn(
                         "w-full h-full bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center p-0.5 shadow-md border overflow-hidden",
-                        active ? "border-emerald-400 shadow-emerald-400/20" : "border-slate-200/60"
+                        active ? "border-green-800 shadow-green-800/20" : "border-slate-200/60"
                     )}>
                         <img src="/images/logo.png" alt="Quioba" className="w-full h-full object-contain" />
                     </div>
@@ -92,7 +92,7 @@ export default function Taskbar() {
                     {active && (
                         <motion.div
                             layoutId="logoRing"
-                            className="absolute -inset-0.5 border-2 border-emerald-400/40 rounded-2xl"
+                            className="absolute -inset-0.5 border-2 border-green-800/40 rounded-2xl"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.3 }}
@@ -213,7 +213,7 @@ export default function Taskbar() {
                                 {isActive && !app.isStart && (
                                     <motion.div
                                         layoutId="activeIndicator"
-                                        className="absolute -bottom-3 w-8 h-1 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-full shadow-[0_0_12px_rgba(16,185,129,1)]"
+                                        className="absolute -bottom-3 w-8 h-1 bg-gradient-to-r from-green-800 to-blue-500 rounded-full shadow-[0_0_12px_rgba(22,101,52,1)]"
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}

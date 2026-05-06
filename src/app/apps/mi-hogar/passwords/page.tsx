@@ -12,7 +12,7 @@ export default function MiHogarPasswordsPage() {
         <PasswordsProvider>
             <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden">
                 {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-500/5 blur-[120px] pointer-events-none" />
+                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-green-500/5 blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-1/4 -left-20 w-80 h-80 bg-indigo-500/5 blur-[100px] pointer-events-none" />
 
                 <div className="max-w-4xl mx-auto mb-10 relative z-10">
@@ -28,7 +28,7 @@ export default function MiHogarPasswordsPage() {
                                 size="sm"
                                 className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-200 dark:border-slate-800 rounded-full px-4 h-9 shadow-sm hover:shadow-md transition-all flex items-center gap-2 group"
                             >
-                                <Home className="h-4 w-4 text-slate-500 group-hover:text-emerald-500 transition-colors" />
+                                <Home className="h-4 w-4 text-slate-500 group-hover:text-green-500 transition-colors" />
                                 <span className="hidden sm:inline font-bold text-xs uppercase tracking-wider">Inicio</span>
                             </Button>
                         </Link>
@@ -51,11 +51,11 @@ export default function MiHogarPasswordsPage() {
                             transition={{ delay: 0.1 }}
                         >
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-500 dark:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+                                <div className="p-2 bg-green-500 dark:bg-green-800 rounded-xl shadow-lg shadow-green-500/20">
                                     <ShieldCheck className="w-5 h-5 text-white" />
                                 </div>
                                 <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                                    Mis <span className="text-emerald-500">Contraseñas</span>
+                                    Mis <span className="text-green-500">Contraseñas</span>
                                 </h1>
                             </div>
                             <p className="text-slate-500 dark:text-slate-400 text-base font-medium ml-12">
@@ -69,3 +69,4 @@ export default function MiHogarPasswordsPage() {
         </PasswordsProvider>
     );
 }
+

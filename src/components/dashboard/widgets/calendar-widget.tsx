@@ -126,10 +126,10 @@ export default function CalendarWidget({ date, onDateSelect, user }: CalendarWid
 
     return (
         <Card className="h-full flex flex-col overflow-hidden border-none shadow-md">
-            <CardHeader className="space-y-0 py-3 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
+            <CardHeader className="space-y-0 py-3 px-4 bg-green-50/50 dark:bg-green-800-950/10 border-b border-green-100 dark:border-green-950/30">
                 <div className="flex items-center justify-between gap-3">
                     <div>
-                        <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">
+                        <CardTitle className="text-green-950 dark:text-green-400 font-headline text-lg">
                             Calendario
                         </CardTitle>
                         <div className="text-xs text-muted-foreground flex items-center gap-2 pt-1">
@@ -203,10 +203,10 @@ export default function CalendarWidget({ date, onDateSelect, user }: CalendarWid
                     className="rounded-lg"
                     classNames={{
                         caption: 'hidden',
-                        head_cell: 'text-emerald-600 dark:text-emerald-500 rounded-md w-9 font-bold text-[0.8rem]',
+                        head_cell: 'text-green-800 dark:text-green-500 rounded-md w-9 font-bold text-[0.8rem]',
                         day_selected:
-                            'bg-emerald-600 text-white hover:bg-emerald-700 focus:bg-emerald-700 shadow-lg transition-transform z-10 font-bold rounded-lg',
-                        day_today: 'bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-500/50 rounded-lg',
+                            'bg-green-800 text-white hover:bg-green-900 focus:bg-green-900 shadow-lg transition-transform z-10 font-bold rounded-lg',
+                        day_today: 'bg-green-50 text-green-950 font-bold ring-1 ring-green-500/50 rounded-lg',
                     }}
                     modifiers={{
                         hasTask: taskDates,
@@ -233,9 +233,10 @@ export default function CalendarWidget({ date, onDateSelect, user }: CalendarWid
 
             <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-slate-100 dark:border-slate-800 flex justify-around text-[10px] text-muted-foreground shrink-0">
                 <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-purple-500"></div><span>Tarea</span></div>
-                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-200 border border-emerald-600"></div><span>Turno</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-200 border border-green-800"></div><span>Turno</span></div>
                 <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span>Diario</span></div>
             </div>
         </Card>
     );
 }
+

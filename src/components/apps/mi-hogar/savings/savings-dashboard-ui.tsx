@@ -276,7 +276,7 @@ export default function SavingsDashboardUI({
     if (loading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-800"></div>
             </div>
         );
     }
@@ -289,15 +289,15 @@ export default function SavingsDashboardUI({
             animate="visible"
         >
             {/* HERO SECTION - Glassmorphism Card */}
-            <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 p-8 text-white shadow-2xl shadow-emerald-900/30 border border-emerald-600/20">
+            <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-700 via-green-800 to-green-950 p-8 text-white shadow-2xl shadow-green-900/30 border border-green-700/20">
                 {/* Decorative Background Elements */}
                 <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-50" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full translate-y-1/2 -translate-x-1/3 blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-500/10 rounded-full translate-y-1/2 -translate-x-1/3 blur-3xl" />
 
                 <div className="relative z-10 flex flex-col md:flex-row justify-between gap-8">
                     {/* Left: Main Balance */}
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-emerald-100/80">
+                        <div className="flex items-center gap-2 text-green-100/80">
                             <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-md">
                                 <Wallet className="w-4 h-4" />
                             </div>
@@ -312,7 +312,7 @@ export default function SavingsDashboardUI({
                                     className="p-1 hover:bg-white/10 rounded-full transition-colors ml-1"
                                     title="Sincronizar todo"
                                 >
-                                    <Repeat className="w-3 h-3 text-emerald-100/60" />
+                                    <Repeat className="w-3 h-3 text-green-100/60" />
                                 </button>
                             )}
                         </div>
@@ -320,9 +320,9 @@ export default function SavingsDashboardUI({
                             <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white drop-shadow-sm">
                                 {totalBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                             </h1>
-                            <div className="flex items-center gap-2 text-emerald-100/80 text-sm">
-                                <span className="bg-emerald-600/40 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 text-white">
-                                    <TrendingUp className="w-3 h-3 text-emerald-300" />
+                            <div className="flex items-center gap-2 text-green-100/80 text-sm">
+                                <span className="bg-green-700/40 px-2 py-0.5 rounded-full border border-green-600/30 flex items-center gap-1 text-white">
+                                    <TrendingUp className="w-3 h-3 text-green-300" />
                                     +2.4% este mes
                                 </span>
                                 <span className="opacity-70">vs mes anterior</span>
@@ -334,9 +334,9 @@ export default function SavingsDashboardUI({
                     <div className="grid grid-cols-2 gap-3 min-w-[280px]">
                         {/* Stat 1: Monthly Income */}
                         <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-2 text-emerald-100/80 mb-2">
-                                <div className="p-1 bg-emerald-500/30 rounded-full border border-emerald-400/20">
-                                    <ArrowUpRight className="w-3 h-3 text-emerald-200" />
+                            <div className="flex items-center gap-2 text-green-100/80 mb-2">
+                                <div className="p-1 bg-green-600/30 rounded-full border border-green-500/20">
+                                    <ArrowUpRight className="w-3 h-3 text-green-200" />
                                 </div>
                                 <span className="text-xs font-medium">Ingresos</span>
                             </div>
@@ -345,7 +345,7 @@ export default function SavingsDashboardUI({
 
                         {/* Stat 2: Monthly Expense */}
                         <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-2 text-emerald-100/80 mb-2">
+                            <div className="flex items-center gap-2 text-green-100/80 mb-2">
                                 <div className="p-1 bg-rose-500/30 rounded-full border border-rose-400/20">
                                     <ArrowDownRight className="w-3 h-3 text-rose-200" />
                                 </div>
@@ -357,13 +357,13 @@ export default function SavingsDashboardUI({
                         {/* Stat 3: Active Goals */}
                         <div className="col-span-2 bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/5 hover:bg-white/15 transition-colors flex justify-between items-center group cursor-pointer" onClick={() => setActiveTab('goals')}>
                             <div>
-                                <div className="flex items-center gap-2 text-emerald-100 mb-1">
+                                <div className="flex items-center gap-2 text-green-100 mb-1">
                                     <Target className="w-3.5 h-3.5" />
                                     <span className="text-xs font-medium">Metas Activas</span>
                                 </div>
                                 <p className="text-lg font-bold">
                                     {totalGoalSaved.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-                                    <span className="text-sm font-normal text-emerald-200/70 ml-2">en {goals.length} objetivos</span>
+                                    <span className="text-sm font-normal text-green-200/70 ml-2">en {goals.length} objetivos</span>
                                 </p>
                             </div>
                             <div className="bg-white/20 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1">
@@ -389,7 +389,7 @@ export default function SavingsDashboardUI({
                             {activeTab === tab && (
                                 <motion.div
                                     layoutId="activeTab"
-                                    className={`absolute inset-0 rounded-xl ${tab === 'overview' ? 'bg-emerald-700' :
+                                    className={`absolute inset-0 rounded-xl ${tab === 'overview' ? 'bg-green-800' :
                                         tab === 'accounts' ? 'bg-blue-600' :
                                             tab === 'goals' ? 'bg-amber-600' :
                                                 tab === 'recurring' ? 'bg-purple-600' :
@@ -432,16 +432,16 @@ export default function SavingsDashboardUI({
                             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 <motion.div variants={itemVariants}>
                                     <Card className="border-none shadow-lg bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl hover:shadow-xl transition-shadow relative overflow-hidden group">
-                                        <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
+                                        <div className="absolute right-0 top-0 w-24 h-24 bg-green-100/30 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
                                         <CardContent className="p-5 flex flex-col justify-center relative">
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">Ingresos ({format(selectedMonth, 'MMMM', { locale: es })})</span>
-                                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 flex items-center justify-center">
                                                     <ArrowDownRight className="w-4 h-4" />
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{monthlyStats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> +12% vs anterior</span>
+                                            <span className="text-xs text-green-800 dark:text-green-300 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> +12% vs anterior</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -456,7 +456,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{monthlyStats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Reducción del 5%</span>
+                                            <span className="text-xs text-green-800 dark:text-green-300 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Reducción del 5%</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -471,7 +471,7 @@ export default function SavingsDashboardUI({
                                                 </div>
                                             </div>
                                             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Gran desempeño</span>
+                                            <span className="text-xs text-green-800 dark:text-green-300 flex items-center gap-1 mt-2 font-medium"><TrendingUp className="w-3 h-3" /> Gran desempeño</span>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -503,7 +503,7 @@ export default function SavingsDashboardUI({
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <CardTitle className="flex items-center gap-2">
-                                                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                                                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-800 dark:text-green-300">
                                                             <TrendingUp className="w-5 h-5" />
                                                         </div>
                                                         Evolución Patrimonial
@@ -514,7 +514,7 @@ export default function SavingsDashboardUI({
                                                     {['1M', '3M', '6M', 'YTD', '1A'].map((period) => (
                                                         <button
                                                             key={period}
-                                                            className={`text-[11px] px-3 py-1.5 rounded-md font-bold transition-all ${period === '1M' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-700 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                                                            className={`text-[11px] px-3 py-1.5 rounded-md font-bold transition-all ${period === '1M' ? 'bg-white dark:bg-slate-700 shadow-sm text-green-800 dark:text-green-300' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'}`}
                                                         >
                                                             {period}
                                                         </button>
@@ -527,8 +527,8 @@ export default function SavingsDashboardUI({
                                                 <AreaChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                                     <defs>
                                                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.6} />
-                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                            <stop offset="5%" stopColor="#166534" stopOpacity={0.6} />
+                                                            <stop offset="95%" stopColor="#166534" stopOpacity={0} />
                                                         </linearGradient>
                                                     </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.3} />
@@ -558,13 +558,13 @@ export default function SavingsDashboardUI({
                                                             color: '#0f172a'
                                                         }}
                                                         itemStyle={{ color: '#0f172a', fontWeight: '800', fontSize: '1.1rem' }}
-                                                        cursor={{ stroke: '#10b981', strokeWidth: 2, strokeDasharray: '4 4' }}
+                                                        cursor={{ stroke: '#166534', strokeWidth: 2, strokeDasharray: '4 4' }}
                                                         formatter={(value: number) => [`${value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}`, 'Patrimonio']}
                                                     />
                                                     <Area
                                                         type="monotone"
                                                         dataKey="value"
-                                                        stroke="#10b981"
+                                                        stroke="#166534"
                                                         strokeWidth={4}
                                                         fillOpacity={1}
                                                         fill="url(#colorValue)"
@@ -580,8 +580,8 @@ export default function SavingsDashboardUI({
                                     <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
                                         <CardHeader className="pb-3">
                                             <CardTitle className="text-base font-semibold flex items-center justify-between">
-                                                <span><span className="text-emerald-600 mr-2">●</span>Últimos Movimientos</span>
-                                                <Button variant="ghost" size="sm" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 h-6 flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+                                                <span><span className="text-green-800 mr-2">●</span>Últimos Movimientos</span>
+                                                <Button variant="ghost" size="sm" className="text-xs font-semibold text-green-800 dark:text-green-300 h-6 flex items-center gap-1 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors">
                                                     Ver extracto <ArrowUpRight className="w-3 h-3" />
                                                 </Button>
                                             </CardTitle>
@@ -599,15 +599,15 @@ export default function SavingsDashboardUI({
                                                                     <div className="w-11 h-11 rounded-2xl bg-white shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
                                                                         <img src={bankLogoUrl} alt={account?.bank_name} className="w-7 h-7 object-contain" />
                                                                     </div>
-                                                                ) : account ? (
+                                                                 ) : account ? (
                                                                     <div
                                                                         className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 text-white font-bold text-lg"
-                                                                        style={{ backgroundColor: account.color || (tx.amount > 0 ? '#10b981' : '#64748b') }}
+                                                                        style={{ backgroundColor: account.color || (tx.amount > 0 ? '#166534' : '#64748b') }}
                                                                     >
                                                                         {account.bank_name ? account.bank_name.charAt(0).toUpperCase() : <Landmark className="w-5 h-5" />}
                                                                     </div>
                                                                 ) : (
-                                                                    <div className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-transform group-hover:scale-110 shrink-0 ${tx.amount > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                                                                    <div className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-transform group-hover:scale-110 shrink-0 ${tx.amount > 0 ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
                                                                         {tx.amount > 0 ? <ArrowUpRight className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
                                                                     </div>
                                                                 )}
@@ -621,7 +621,7 @@ export default function SavingsDashboardUI({
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                            <span className={`text-base font-bold tracking-tight shrink-0 ml-4 ${tx.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                                            <span className={`text-base font-bold tracking-tight shrink-0 ml-4 ${tx.amount > 0 ? 'text-green-800 dark:text-green-300' : 'text-slate-900 dark:text-slate-100'}`}>
                                                                 {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                                             </span>
                                                         </div>
@@ -657,7 +657,7 @@ export default function SavingsDashboardUI({
                                                     ) : (
                                                         <Sparkles className="w-5 h-5 text-indigo-200" />
                                                     )}
-                                                    <div className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-indigo-900 ${aiLoading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                                                    <div className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-indigo-900 ${aiLoading ? 'bg-amber-400 animate-pulse' : 'bg-green-500'}`} />
                                                 </div>
                                                 <span className="font-semibold text-indigo-100 text-sm tracking-wide">Quioba IA</span>
                                             </div>
@@ -675,7 +675,7 @@ export default function SavingsDashboardUI({
                                                     </p>
                                                     {aiInsight.metricHighlight && (
                                                         <div className="bg-black/20 rounded-xl p-3 flex gap-3 items-center">
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${aiInsight.type === 'warning' ? 'bg-amber-500/20 text-amber-300' : aiInsight.type === 'neutral' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${aiInsight.type === 'warning' ? 'bg-amber-500/20 text-amber-300' : aiInsight.type === 'neutral' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-green-800/20 text-green-300'}`}>
                                                                 {aiInsight.type === 'warning' ? '!' : aiInsight.type === 'neutral' ? 'i' : '+'}
                                                             </div>
                                                             <p className="text-xs text-indigo-200 font-medium leading-loose whitespace-pre-line">{aiInsight.metricHighlight}</p>
@@ -696,8 +696,8 @@ export default function SavingsDashboardUI({
                                             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide">Operaciones Rápidas</h3>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
-                                                    <Button variant="outline" className="w-full h-auto py-5 flex flex-col items-center gap-3 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 bg-transparent transition-all hover:border-emerald-300" onClick={onAddTransaction}>
-                                                        <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/60 rounded-xl text-emerald-600 shadow-sm">
+                                                    <Button variant="outline" className="w-full h-auto py-5 flex flex-col items-center gap-3 border-green-200 dark:border-green-900 hover:bg-green-50 dark:hover:bg-green-900/50 bg-transparent transition-all hover:border-green-700" onClick={onAddTransaction}>
+                                                        <div className="p-2.5 bg-green-100 dark:bg-green-900/60 rounded-xl text-green-800 shadow-sm">
                                                             <Plus className="w-5 h-5" />
                                                         </div>
                                                         <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Ingresar</span>
@@ -736,7 +736,7 @@ export default function SavingsDashboardUI({
                                                             stroke="none"
                                                         >
                                                             {accounts.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={entry.color || '#10b981'} />
+                                                                <Cell key={`cell-${index}`} fill={entry.color || '#166534'} />
                                                             ))}
                                                         </Pie>
                                                         <Tooltip
@@ -783,12 +783,12 @@ export default function SavingsDashboardUI({
                                 onClick={onAddAccount}
                                 whileHover={{ scale: 1.02, y: -4 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="cursor-pointer group relative overflow-hidden rounded-[1.5rem] border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 flex flex-col items-center justify-center gap-4 hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10 transition-colors min-h-[220px]"
+                                className="cursor-pointer group relative overflow-hidden rounded-[1.5rem] border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 flex flex-col items-center justify-center gap-4 hover:border-green-800/50 hover:bg-green-50/50 dark:hover:bg-green-950/10 transition-colors min-h-[220px]"
                             >
-                                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900 transition-colors">
-                                    <Plus className="w-8 h-8 text-slate-400 group-hover:text-emerald-600 dark:text-slate-500 dark:group-hover:text-emerald-400" />
+                                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:bg-green-100 dark:group-hover:bg-green-900 transition-colors">
+                                    <Plus className="w-8 h-8 text-slate-400 group-hover:text-green-800 dark:text-slate-500 dark:group-hover:text-green-300" />
                                 </div>
-                                <p className="font-medium text-slate-500 group-hover:text-emerald-700 dark:text-slate-400">Añadir Nueva Cuenta</p>
+                                <p className="font-medium text-slate-500 group-hover:text-green-800 dark:text-slate-400">Añadir Nueva Cuenta</p>
                             </motion.div>
 
                             {groupedAccounts.map(([bankName, bankAccounts]) => {
@@ -796,7 +796,7 @@ export default function SavingsDashboardUI({
                                 const totalBalance = bankAccounts.reduce((sum, acc) => sum + acc.current_balance, 0);
                                 const totalAccounts = bankAccounts.length;
                                 const firstLogo = bankAccounts.find(a => a.logo_url)?.logo_url;
-                                const firstColor = bankAccounts.find(a => a.color)?.color || '#10b981';
+                                const firstColor = bankAccounts.find(a => a.color)?.color || '#166534';
 
                                 const currentMonth = selectedMonth.getMonth();
                                 const currentYear = selectedMonth.getFullYear();
@@ -862,7 +862,7 @@ export default function SavingsDashboardUI({
                                                     <div className="flex justify-between items-center bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
                                                         <div>
                                                             <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Ingresos Tot.</p>
-                                                            <p className="font-bold text-emerald-300">{currencyFormatter.format(bankIncome)}</p>
+                                                            <p className="font-bold text-green-300">{currencyFormatter.format(bankIncome)}</p>
                                                         </div>
                                                         <div className="h-6 w-px bg-white/20" />
                                                         <div>
@@ -891,7 +891,7 @@ export default function SavingsDashboardUI({
                                                                 if (owedToAdd > 0) {
                                                                     return (
                                                                         <div className="flex flex-col mt-1.5">
-                                                                            <p className="text-[11px] font-bold text-emerald-300">
+                                                                            <p className="text-[11px] font-bold text-green-300">
                                                                                 ✨ Patrimonio Real: {currencyFormatter.format(totalBalance + owedToAdd)}
                                                                             </p>
                                                                         </div>
@@ -913,7 +913,7 @@ export default function SavingsDashboardUI({
                                                                     bankAccounts[0];
                                                                 if (principal && onViewAccount) onViewAccount(principal);
                                                             }}
-                                                            className="flex-1 bg-emerald-500/80 hover:bg-emerald-500 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-emerald-400/30"
+                                                            className="flex-1 bg-green-800/80 hover:bg-green-800 text-white text-[11px] uppercase tracking-wider font-bold py-2.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-green-700/30"
                                                         >
                                                             <Plus className="w-4 h-4 shrink-0" />
                                                             <span className="truncate">Operar</span>
@@ -967,7 +967,7 @@ export default function SavingsDashboardUI({
                                                                             >
                                                                                 <div className="flex justify-between items-center text-xs">
                                                                                     <span className="text-white/90 font-medium truncate pr-2 flex items-center gap-1.5 transition-colors group-hover:text-white">
-                                                                                        {isEnv ? <span className="text-amber-300">🗂</span> : <span className="text-emerald-300">💳</span>}
+                                                                                        {isEnv ? <span className="text-amber-300">🗂</span> : <span className="text-green-300">💳</span>}
                                                                                         {acc.name}
                                                                                     </span>
                                                                                     <span className="font-bold text-white group-hover:scale-105 transition-transform">
@@ -976,7 +976,7 @@ export default function SavingsDashboardUI({
                                                                                 </div>
                                                                                 {isEnv && (
                                                                                     <div className="flex justify-between items-center text-[10px] pl-6 pb-0.5">
-                                                                                        <span className="text-emerald-200 opacity-90">Disp. a gastar: {currencyFormatter.format(disp)}</span>
+                                                                                        <span className="text-green-200 opacity-90">Disp. a gastar: {currencyFormatter.format(disp)}</span>
                                                                                         {envSpent > 0 && <span className="text-rose-300 font-medium opacity-90">Adeudado: {currencyFormatter.format(envSpent)}</span>}
                                                                                     </div>
                                                                                 )}
@@ -1024,7 +1024,7 @@ export default function SavingsDashboardUI({
                                                         whileHover={{ scale: 1.02, y: -4 }}
                                                         whileTap={{ scale: 0.98 }}
                                                         className="relative overflow-hidden rounded-[1.5rem] text-white shadow-lg group cursor-pointer transition-shadow hover:shadow-xl border-2 border-white/20 dark:border-white/10"
-                                                        style={{ background: `linear-gradient(135deg, ${account.color || '#10b981'}, ${account.color ? account.color : '#059669'})` }}
+                                                        style={{ background: `linear-gradient(135deg, ${account.color || '#166534'}, ${account.color ? account.color : '#14532d'})` }}
                                                     >
                                                         <div className="absolute inset-0 bg-black/20 pointer-events-none" />
                                                         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent pointer-events-none" />
@@ -1059,7 +1059,7 @@ export default function SavingsDashboardUI({
                                                                 <div className="flex justify-between items-center bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
                                                                     <div>
                                                                         <p className="text-[10px] text-white/60 uppercase tracking-widest mb-0.5">Ingresos ({format(selectedMonth, 'MMM', { locale: es })})</p>
-                                                                        <p className="font-bold text-emerald-300">{currencyFormatter.format(accIncome)}</p>
+                                                                        <p className="font-bold text-green-300">{currencyFormatter.format(accIncome)}</p>
                                                                     </div>
                                                                     <div className="h-6 w-px bg-white/20" />
                                                                     <div>
@@ -1086,8 +1086,8 @@ export default function SavingsDashboardUI({
 
                                                                         <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-white/10">
                                                                             <div className="flex justify-between items-center text-sm">
-                                                                                <p className="text-emerald-200/90 font-medium">✨ Disponible para gastar</p>
-                                                                                <p className="font-bold text-emerald-300">{currencyFormatter.format(account.current_balance - envelopeSpent)}</p>
+                                                                                <p className="text-green-200/90 font-medium">✨ Disponible para gastar</p>
+                                                                                <p className="font-bold text-green-300">{currencyFormatter.format(account.current_balance - envelopeSpent)}</p>
                                                                             </div>
                                                                             {envelopeSpent > 0 && (
                                                                                 <div className="flex justify-between items-center text-sm">
@@ -1124,7 +1124,7 @@ export default function SavingsDashboardUI({
                                                                                 ))}
                                                                                 <div className="border-t border-white/10 pt-1 flex justify-between items-center text-xs">
                                                                                     <span className="text-white/80 font-semibold">Patrimonio real</span>
-                                                                                    <span className="font-bold text-emerald-300">{currencyFormatter.format(account.current_balance + totalOwedByEnvelopes)}</span>
+                                                                                    <span className="font-bold text-green-300">{currencyFormatter.format(account.current_balance + totalOwedByEnvelopes)}</span>
                                                                                 </div>
                                                                             </div>
                                                                         )}
@@ -1149,11 +1149,11 @@ export default function SavingsDashboardUI({
                             animate="visible"
                             className="grid grid-cols-1 md:grid-cols-2 gap-6"
                         >
-                            <motion.div variants={itemVariants} onClick={onAddGoal} className="cursor-pointer group relative overflow-hidden rounded-[1.5rem] border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 flex flex-col items-center justify-center gap-4 hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/10 transition-all min-h-[200px]">
-                                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:bg-amber-100 dark:group-hover:bg-amber-900 transition-colors">
-                                    <Plus className="w-8 h-8 text-slate-400 group-hover:text-amber-600 dark:text-slate-500 dark:group-hover:text-amber-400" />
+                            <motion.div variants={itemVariants} onClick={onAddGoal} className="cursor-pointer group relative overflow-hidden rounded-[1.5rem] border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 flex flex-col items-center justify-center gap-4 hover:border-green-800/50 hover:bg-green-50/50 dark:hover:bg-green-950/10 transition-all min-h-[200px]">
+                                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:bg-green-100 dark:group-hover:bg-green-900 transition-colors">
+                                    <Plus className="w-8 h-8 text-slate-400 group-hover:text-green-800 dark:text-slate-500 dark:group-hover:text-green-400" />
                                 </div>
-                                <p className="font-medium text-slate-500 group-hover:text-amber-700 dark:text-slate-400">Crear Nueva Meta</p>
+                                <p className="font-medium text-slate-500 group-hover:text-green-800 dark:text-slate-400">Crear Nueva Meta</p>
                             </motion.div>
 
                             {goals.map(goal => (
@@ -1202,9 +1202,9 @@ export default function SavingsDashboardUI({
                             >
                                 {/* Summary Card */}
                                 <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <Card className="border-none shadow-lg shadow-purple-200/40 dark:shadow-none bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 backdrop-blur-xl">
+                                    <Card className="border-none shadow-lg shadow-green-200/40 dark:shadow-none bg-gradient-to-br from-green-50 to-green-50 dark:from-green-950/20 dark:to-green-800-950/20 backdrop-blur-xl">
                                         <CardContent className="p-6 flex flex-col justify-between h-full">
-                                            <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                                            <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
                                                 <CalendarClock className="w-5 h-5" />
                                                 <h3 className="font-semibold">Flujo Mensual Estimado</h3>
                                             </div>
@@ -1217,10 +1217,10 @@ export default function SavingsDashboardUI({
                                         </CardContent>
                                     </Card>
 
-                                    <Card className="border-none shadow-none bg-emerald-50/50 dark:bg-emerald-950/10">
+                                    <Card className="border-none shadow-none bg-green-50/50 dark:bg-green-950/10">
                                         <CardContent className="p-6">
-                                            <p className="text-sm text-emerald-600 font-medium mb-1">Ingresos Fijos</p>
-                                            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                                            <p className="text-sm text-green-800 font-medium mb-1">Ingresos Fijos</p>
+                                            <p className="text-2xl font-bold text-green-800 dark:text-green-300">
                                                 {recurringIncome.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                             </p>
                                         </CardContent>
@@ -1238,7 +1238,7 @@ export default function SavingsDashboardUI({
 
                                 {/* Add Button */}
                                 <div className="flex justify-end">
-                                    <Button onClick={onAddRecurring} className="bg-purple-600 hover:bg-purple-700 text-white gap-2 rounded-full px-6 shadow-lg shadow-purple-500/20">
+                                    <Button onClick={onAddRecurring} className="bg-green-800 hover:bg-green-900 text-white gap-2 rounded-full px-6 shadow-lg shadow-green-500/20">
                                         <Plus className="w-5 h-5" /> Añadir Fijo
                                     </Button>
                                 </div>
@@ -1247,14 +1247,14 @@ export default function SavingsDashboardUI({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {/* Incomes List */}
                                     <div className="space-y-4">
-                                        <h4 className="font-semibold text-emerald-600 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Ingresos Recurrentes</h4>
+                                        <h4 className="font-semibold text-green-800 flex items-center gap-2"><ArrowUpRight className="w-4 h-4" /> Ingresos Recurrentes</h4>
                                         {recurringItems.filter(i => i.type === 'income').length === 0 ? (
-                                            <div className="p-4 border border-dashed border-emerald-200 rounded-xl text-center text-sm text-muted-foreground">No tienes ingresos fijos</div>
+                                            <div className="p-4 border border-dashed border-green-200 rounded-xl text-center text-sm text-muted-foreground">No tienes ingresos fijos</div>
                                         ) : (
                                             recurringItems.filter(i => i.type === 'income').map(item => (
                                                 <motion.div variants={itemVariants} key={item.id} className="flex justify-between items-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 text-xs font-bold">
+                                                        <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-800 text-xs font-bold">
                                                             {item.day_of_month || 1}
                                                         </div>
                                                         <div>
@@ -1263,7 +1263,7 @@ export default function SavingsDashboardUI({
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="font-bold text-emerald-600">+{item.amount}€</span>
+                                                        <span className="font-bold text-green-800">+{item.amount}€</span>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => onDeleteRecurring && onDeleteRecurring(item.id)}>
                                                             <Trash2 className="w-4 h-4" />
                                                         </Button>
@@ -1320,4 +1320,5 @@ export default function SavingsDashboardUI({
         </motion.div >
     );
 }
+
 

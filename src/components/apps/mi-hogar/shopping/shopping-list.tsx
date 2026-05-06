@@ -462,7 +462,7 @@ export default function ShoppingList() {
     const getSupermarketBadgeColor = (supermarket?: string) => {
         if (!supermarket) return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
         const lower = supermarket.toLowerCase();
-        if (lower.includes('mercadona')) return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50";
+        if (lower.includes('mercadona')) return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800/50";
         if (lower.includes('carrefour')) return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50";
         if (lower.includes('lidl')) return "bg-yellow-100/80 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50";
         if (lower.includes('dia')) return "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/50";
@@ -481,7 +481,7 @@ export default function ShoppingList() {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+                <Loader2 className="h-10 w-10 animate-spin text-green-800" />
                 <p className="text-sm font-medium text-muted-foreground animate-pulse">Sincronizando listas...</p>
             </div>
         );
@@ -493,7 +493,7 @@ export default function ShoppingList() {
             <div className="sticky top-4 z-40">
                 <div className="relative group">
                     {/* Efecto resplandor */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-green-800 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
                     <div className="relative flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-1.5 shadow-lg">
                         <div className="flex-1 px-3">
                             <Input
@@ -539,12 +539,12 @@ export default function ShoppingList() {
                                     className="rounded-full w-10 h-10 transition-transform hover:scale-105 mr-1"
                                     title="Sugerir Receta Inteligente"
                                 >
-                                    <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                    <ChefHat className="h-4 w-4 text-green-800" />
                                 </Button>
                             </Link>
                             <Button
                                 onClick={() => addItem()}
-                                className="rounded-full px-5 h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold tracking-wide shadow-md transition-all hover:shadow-lg active:scale-95"
+                                className="rounded-full px-5 h-10 bg-green-800 hover:bg-green-900 text-white font-bold tracking-wide shadow-md transition-all hover:shadow-lg active:scale-95"
                             >
                                 Añadir
                             </Button>
@@ -558,7 +558,7 @@ export default function ShoppingList() {
                 <div className="flex flex-col sm:flex-row gap-5 items-center justify-between">
                     <div className="flex-1 w-full">
                         <h1 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2">
-                            <ShoppingCart className="w-6 h-6 text-emerald-500" /> Lista de Compra
+                            <ShoppingCart className="w-6 h-6 text-green-800" /> Lista de Compra
                         </h1>
                         <p className="text-sm font-semibold text-muted-foreground mt-1">
                             Tienes {toBuyItems.length} artículos pendientes
@@ -611,7 +611,7 @@ export default function ShoppingList() {
                                 key={cat}
                                 onClick={() => setCategoryFilter(prev => prev === cat ? null : cat)}
                                 className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all ${categoryFilter === cat
-                                    ? 'bg-emerald-500 text-white shadow-sm'
+                                    ? 'bg-green-800 text-white shadow-sm'
                                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
                                     }`}
                             >
@@ -627,7 +627,7 @@ export default function ShoppingList() {
                 <DialogContent className="sm:max-w-md border-0 bg-slate-950 p-0 overflow-hidden text-white shadow-xl rounded-2xl">
                     <DialogHeader className="p-4 bg-slate-900/50 backdrop-blur border-b border-white/10 relative z-10">
                         <DialogTitle className="flex items-center gap-2 tracking-tight text-lg">
-                            <Sparkles className="w-5 h-5 text-emerald-400" /> Identificar Producto
+                            <Sparkles className="w-5 h-5 text-green-800" /> Identificar Producto
                         </DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center bg-black min-h-[350px] relative">
@@ -650,8 +650,8 @@ export default function ShoppingList() {
                                 <img src={capturedImage} alt="Captura" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" />
                                 <img src={capturedImage} alt="Captura Focus" className="z-10 max-w-[80%] max-h-[80%] object-contain rounded-lg shadow-2xl border border-white/10" />
                                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                                    <div className="bg-emerald-500/20 p-4 rounded-full mb-4">
-                                        <Loader2 className="h-10 w-10 text-emerald-400 animate-spin" />
+                                    <div className="bg-green-800/20 p-4 rounded-full mb-4">
+                                        <Loader2 className="h-10 w-10 text-green-800 animate-spin" />
                                     </div>
                                     <p className="text-white font-bold tracking-wider text-sm animate-pulse">ANALIZANDO CON IA...</p>
                                 </div>
@@ -663,7 +663,7 @@ export default function ShoppingList() {
                             <button
                                 onClick={captureAndIdentify}
                                 disabled={isProcessing}
-                                className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all transform active:scale-95"
+                                className="w-16 h-16 rounded-full bg-green-800 hover:bg-green-700 flex items-center justify-center shadow-[0_0_20px_rgba(22,101,52,0.3)] transition-all transform active:scale-95"
                             >
                                 <Camera className="h-6 w-6 text-white" />
                             </button>
@@ -700,7 +700,7 @@ export default function ShoppingList() {
                         </div>
                         <div className="flex gap-2 pt-4">
                             <Button variant="outline" className="h-11 rounded-xl flex-1 font-semibold" onClick={() => setEditingItem(null)}>Cancelar</Button>
-                            <Button onClick={updateItem} className="h-11 rounded-xl flex-1 bg-emerald-500 hover:bg-emerald-600 font-bold">Guardar Cambios</Button>
+                            <Button onClick={updateItem} className="h-11 rounded-xl flex-1 bg-green-800 hover:bg-green-900 font-bold">Guardar Cambios</Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -771,7 +771,7 @@ export default function ShoppingList() {
                                     <Button
                                         onClick={confirmPlan}
                                         disabled={isProcessing || proposedItems.length === 0}
-                                        className="flex-[2] bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold shadow-lg"
+                                        className="flex-[2] bg-gradient-to-r from-green-700 to-green-800 hover:from-green-800 hover:to-green-900 text-white font-bold shadow-lg"
                                     >
                                         {isProcessing ? "Añadiendo..." : `¡Añadir los ${proposedItems.length}!`}
                                     </Button>
@@ -830,7 +830,7 @@ export default function ShoppingList() {
                             animate={{ opacity: 1, y: 0 }}
                             className="text-center py-20 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-slate-800/50 rounded-3xl"
                         >
-                            <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                            <div className="w-20 h-20 bg-green-800/10 text-green-800 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
                                 <Sparkles className="h-8 w-8" />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">¡Todo al día!</h3>
@@ -863,14 +863,14 @@ export default function ShoppingList() {
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     exit={{ opacity: 0, scale: 0.9, x: 20 }}
                                                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                                    className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-emerald-400/50 dark:hover:border-emerald-500/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
+                                                    className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-800/50 dark:hover:border-green-800/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
                                                 >
                                                     <button
                                                         onClick={() => toggleStatus(item.id)}
-                                                        className={`mt-0.5 flex-shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700/50 group-hover:border-emerald-400/60 group-hover:bg-emerald-400/10 flex items-center justify-center transition-all focus:outline-none ${isShopMode ? 'w-10 h-10' : 'w-8 h-8'}`}
+                                                        className={`mt-0.5 flex-shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700/50 group-hover:border-green-800 group-hover:bg-green-50 flex items-center justify-center transition-all focus:outline-none ${isShopMode ? 'w-10 h-10' : 'w-8 h-8'}`}
                                                         title="Marcar como comprado"
                                                     >
-                                                        <div className={`rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] ${isShopMode ? 'w-full h-full' : 'w-full h-full'}`} />
+                                                        <div className={`rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-green-800 shadow-[0_0_12px_rgba(22,101,52,0.5)] ${isShopMode ? 'w-full h-full' : 'w-full h-full'}`} />
                                                     </button>
 
                                                     <div className="flex-1 min-w-0 pr-6">
@@ -947,7 +947,7 @@ export default function ShoppingList() {
                                                 </div>
                                                 <button
                                                     onClick={() => toggleStatus(item.id)}
-                                                    className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-emerald-500 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all hover:scale-110 active:scale-95"
+                                                    className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-green-800 hover:border-green-800 transition-all hover:scale-110 active:scale-95"
                                                     title="Reagregar a la lista"
                                                 >
                                                     <RefreshCw className="w-4 h-4" />

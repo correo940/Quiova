@@ -57,9 +57,9 @@ export default function MobileDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-white to-green-50/30 dark:from-slate-950 dark:to-green-950/10">
+        <div className="min-h-screen bg-gradient-to-b from-white to-green-100/20 dark:from-slate-950 dark:to-green-950/10">
             {/* Mobile Header con branding verde */}
-            <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-green-100 dark:border-green-900/30 shadow-sm">
+            <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-green-800/10 dark:border-green-900/30 shadow-sm">
                 <div className="px-4 py-3 flex items-center justify-between">
                     <div>
                         <h1 className="text-lg font-bold text-primary font-headline">
@@ -78,7 +78,7 @@ export default function MobileDashboard() {
                     <button
                         onClick={handleRefresh}
                         disabled={refreshing}
-                        className="p-2 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20 active:scale-95 transition-all"
+                        className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-900/20 active:scale-95 transition-all"
                         aria-label="Actualizar"
                     >
                         <RefreshCw
@@ -126,7 +126,7 @@ export default function MobileDashboard() {
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
                             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <span className="text-primary">📅</span>
+                                <span className="text-green-800">📅</span>
                                 Calendario
                             </h2>
                         </div>
@@ -145,7 +145,7 @@ export default function MobileDashboard() {
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
                             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <span className="text-primary">📋</span>
+                                <span className="text-green-800">📋</span>
                                 Agenda del Día
                             </h2>
                         </div>
@@ -160,7 +160,7 @@ export default function MobileDashboard() {
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
                             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <span className="text-primary">🧲</span>
+                                <span className="text-green-800">🧲</span>
                                 Nevera
                             </h2>
                         </div>

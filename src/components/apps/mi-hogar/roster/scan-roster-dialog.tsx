@@ -467,11 +467,11 @@ rawContext: "${result.rawContext || '(vacío)'}"`);
                                 {/* Camera Option */}
                                 <button
                                     onClick={handleCameraCapture}
-                                    className="group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600"
+                                    className="group relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-800"
                                 >
-                                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-emerald-400/20 to-green-400/20 rounded-bl-[60px] -mr-4 -mt-4 group-hover:scale-125 transition-transform duration-300" />
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-400/20 to-green-400/20 rounded-bl-[60px] -mr-4 -mt-4 group-hover:scale-125 transition-transform duration-300" />
                                     <div className="relative z-10">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center mb-4 shadow-md group-hover:scale-110 transition-transform duration-300">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-500 rounded-xl flex items-center justify-center mb-4 shadow-md group-hover:scale-110 transition-transform duration-300">
                                             <Camera className="h-7 w-7 text-white" />
                                         </div>
                                         <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Hacer Foto</h3>
@@ -706,3 +706,4 @@ rawContext: "${result.rawContext || '(vacío)'}"`);
         </Dialog>
     );
 }
+

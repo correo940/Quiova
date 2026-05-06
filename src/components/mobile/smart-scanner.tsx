@@ -317,7 +317,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                         <div className="flex items-center gap-3">
                             <h2 className="text-xl font-bold text-slate-900">Añadir Productos</h2>
                             {scanCount > 0 && (
-                                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-bold flex items-center gap-1">
                                     <ShoppingCart className="w-4 h-4" /> {scanCount}
                                 </span>
                             )}
@@ -332,10 +332,10 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2"
+                            className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2"
                         >
-                            <CheckCircle className="w-5 h-5 text-emerald-600" />
-                            <span className="text-emerald-700 font-medium truncate">{lastScanned}</span>
+                            <CheckCircle className="w-5 h-5 text-green-800" />
+                            <span className="text-green-800 font-medium truncate">{lastScanned}</span>
                         </motion.div>
                     )}
 
@@ -390,7 +390,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             whileTap={{ scale: 0.98 }}
                             onClick={startContinuousMode}
                             disabled={loading || isListening}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all shadow-lg shadow-emerald-500/30 disabled:opacity-50"
+                            className="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-800 hover:to-green-900 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all shadow-lg shadow-green-800/30 disabled:opacity-50"
                         >
                             <Zap className="w-6 h-6" />
                             Escaneo Rápido
@@ -437,7 +437,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                     {/* Loading Overlay */}
                     {loading && (
                         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-3xl">
-                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-2" />
+                            <Loader2 className="w-10 h-10 text-green-800 animate-spin mb-2" />
                             <p className="font-medium text-slate-600">Escaneando...</p>
                         </div>
                     )}

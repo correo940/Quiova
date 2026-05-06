@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 const COLORS = [
-    '#10b981', // Emerald 500
+    '#10b981', // green-800 500
     '#3b82f6', // Blue 500
     '#8b5cf6', // Violet 500
     '#f59e0b', // Amber 500
@@ -57,7 +57,7 @@ export function ExpensesBreakdown({ data, totalAmount, currency = '€' }: Expen
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0 pb-4">
                 <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+                    <TrendingUp className="w-5 h-5 text-green-800" />
                     Desglose de Gastos
                 </CardTitle>
             </CardHeader>
@@ -148,3 +148,4 @@ export function ExpensesBreakdown({ data, totalAmount, currency = '€' }: Expen
         </Card>
     );
 }
+

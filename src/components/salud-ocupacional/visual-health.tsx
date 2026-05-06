@@ -121,7 +121,7 @@ export default function VisualHealth() {
                 <Card className="border-border bg-slate-50 dark:bg-slate-900/50">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2">
-                            <Glasses className="w-5 h-5 text-emerald-500" />
+                            <Glasses className="w-5 h-5 text-green-500" />
                             Parpadeo y Entorno
                         </CardTitle>
                     </CardHeader>
@@ -138,3 +138,4 @@ export default function VisualHealth() {
         </div>
     )
 }
+

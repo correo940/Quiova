@@ -103,7 +103,7 @@ function DebateContent() {
                 {/* SIDEBAR IZQUIERDO */}
                 <div style={sidebarStyle} className="md:!flex bg-background">
                     {/* Header del Sidebar */}
-                    <div className="flex-none p-4 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+                    <div className="flex-none p-4 border-b bg-gradient-to-r from-green-500 to-teal-600 text-white">
                         <div className="flex items-center gap-2 mb-4">
                             <MessageCircle className="w-6 h-6" />
                             <h1 className="text-2xl font-black">El Debate</h1>
@@ -111,7 +111,7 @@ function DebateContent() {
 
                         <div className="flex gap-2 mb-4">
                             <CreateDebateDialog onDebateCreated={handleRoomSelect}>
-                                <Button size="sm" className="flex-1 bg-white text-emerald-600 hover:bg-emerald-50 font-bold shadow-lg">
+                                <Button size="sm" className="flex-1 bg-white text-green-800 hover:bg-green-50 font-bold shadow-lg">
                                     <MessageCircle className="w-4 h-4 mr-2" />
                                     Nuevo
                                 </Button>
@@ -165,17 +165,17 @@ function DebateContent() {
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                            <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-full mb-6 shadow-xl">
+                            <div className="bg-gradient-to-br from-green-500 to-teal-500 p-6 rounded-full mb-6 shadow-xl">
                                 <MessageSquare className="w-16 h-16 text-white" />
                             </div>
-                            <h2 className="text-3xl font-black mb-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                            <h2 className="text-3xl font-black mb-3 bg-gradient-to-r from-green-800 to-teal-600 bg-clip-text text-transparent">
                                 Bienvenido a El Debate
                             </h2>
                             <p className="text-muted-foreground max-w-md mb-6">
                                 Selecciona un debate de la lista o crea uno nuevo para comenzar.
                             </p>
                             <CreateDebateDialog onDebateCreated={handleRoomSelect}>
-                                <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold shadow-lg">
+                                <Button className="bg-gradient-to-r from-green-800 to-teal-600 text-white font-bold shadow-lg">
                                     <MessageCircle className="w-5 h-5 mr-2" />
                                     Crear Nuevo Debate
                                 </Button>
@@ -187,3 +187,4 @@ function DebateContent() {
         </>
     );
 }
+

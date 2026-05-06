@@ -77,7 +77,7 @@ export default function PurchaseDialog({ app, open, onClose, onPurchaseComplete 
                         className="fixed inset-4 m-auto w-[calc(100%-2rem)] max-w-[380px] h-fit max-h-[85vh] bg-white dark:bg-slate-900 rounded-[24px] shadow-2xl z-[70] overflow-hidden border border-white/20 flex flex-col"
                     >
                         {/* Header - compact */}
-                        <div className="h-28 sm:h-32 bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center relative shrink-0">
+                        <div className="h-28 sm:h-32 bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center relative shrink-0">
                             <button
                                 onClick={onClose}
                                 className="absolute top-3 right-3 p-1.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors backdrop-blur-md"
@@ -102,12 +102,12 @@ export default function PurchaseDialog({ app, open, onClose, onPurchaseComplete 
                                 </p>
                             </div>
 
-                            <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/40">
+                            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-100 dark:border-green-950/40">
                                 <div>
                                     <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Suscripción anual</span>
                                     <p className="text-[10px] text-slate-400">Se renueva cada 12 meses</p>
                                 </div>
-                                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                                <span className="text-xl font-extrabold text-green-800 dark:text-green-400">
                                     {app.price === 0 ? 'GRATIS' : `${app.price}€/año`}
                                 </span>
                             </div>
@@ -116,9 +116,9 @@ export default function PurchaseDialog({ app, open, onClose, onPurchaseComplete 
                                 <motion.div
                                     initial={{ scale: 0.8, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    className="flex flex-col items-center justify-center py-2 text-emerald-600"
+                                    className="flex flex-col items-center justify-center py-2 text-green-800"
                                 >
-                                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
                                         <Check className="w-5 h-5" />
                                     </div>
                                     <p className="font-bold">¡Suscripción activada!</p>
@@ -128,7 +128,7 @@ export default function PurchaseDialog({ app, open, onClose, onPurchaseComplete 
                                 <Button
                                     onClick={handlePurchase}
                                     disabled={loading}
-                                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:active:scale-100"
+                                    className="w-full h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-800 hover:to-green-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:active:scale-100"
                                 >
                                     {loading ? (
                                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -151,4 +151,5 @@ export default function PurchaseDialog({ app, open, onClose, onPurchaseComplete 
         </AnimatePresence>
     );
 }
+
 

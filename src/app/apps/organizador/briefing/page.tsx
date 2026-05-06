@@ -211,7 +211,7 @@ export default function SecretariaBriefingPage() {
               <div
                 className={`h-full rounded-full transition-all duration-700 ${dayLoad.level === 'overloaded' ? 'bg-red-400' :
                     dayLoad.level === 'heavy' ? 'bg-amber-400' :
-                      dayLoad.level === 'moderate' ? 'bg-blue-400' : 'bg-emerald-400'
+                      dayLoad.level === 'moderate' ? 'bg-blue-400' : 'bg-green-400'
                   }`}
                 style={{ width: `${dayLoad.score}%` }}
               />
@@ -225,7 +225,7 @@ export default function SecretariaBriefingPage() {
 
         {/* Archived state */}
         {archived && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-emerald-300 text-sm">
+          <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-green-300 text-sm">
             <CalendarCheck className="w-4 h-4 flex-shrink-0" />
             Briefing archivado. Ya tienes el día en la mano.
           </div>
@@ -317,9 +317,9 @@ export default function SecretariaBriefingPage() {
 
         {/* FINANZAS */}
         {settings.modules.finances && (
-          <BriefingCard title="Estado financiero" emoji="💶" accent="emerald">
+          <BriefingCard title="Estado financiero" emoji="💶" accent="green-800">
             <div className="flex items-baseline gap-2 py-2">
-              <span className={`text-3xl font-extrabold ${totalBalance < 0 ? 'text-red-400' : totalBalance < 200 ? 'text-amber-300' : 'text-emerald-300'}`}>
+              <span className={`text-3xl font-extrabold ${totalBalance < 0 ? 'text-red-400' : totalBalance < 200 ? 'text-amber-300' : 'text-green-300'}`}>
                 {totalBalance.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
               </span>
               <span className="text-white/40 text-sm">disponibles</span>
@@ -405,12 +405,12 @@ export default function SecretariaBriefingPage() {
 
 // ── Reusable BriefingCard ─────────────────────────────────────────────────────
 
-type Accent = 'blue' | 'pink' | 'emerald' | 'orange' | 'amber' | 'red';
+type Accent = 'blue' | 'pink' | 'green-800' | 'orange' | 'amber' | 'red';
 
 const ACCENT_STYLES: Record<Accent, string> = {
   blue: 'border-l-blue-500   bg-blue-500/5',
   pink: 'border-l-pink-500   bg-pink-500/5',
-  emerald: 'border-l-emerald-500 bg-emerald-500/5',
+  green-800: 'border-l-green-500 bg-green-500/5',
   orange: 'border-l-orange-500  bg-orange-500/5',
   amber: 'border-l-amber-500   bg-amber-500/5',
   red: 'border-l-red-500     bg-red-500/8',
@@ -455,3 +455,4 @@ function QuickLink({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+

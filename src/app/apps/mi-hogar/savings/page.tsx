@@ -1185,7 +1185,7 @@ export default function SavingsPage() {
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+                        <div className="flex items-center justify-between rounded-2xl border border-green-100 bg-green-50/70 px-4 py-3">
                             <div className="space-y-1">
                                 <Label htmlFor="include-in-total" className="text-sm font-semibold text-slate-900">Incluir en balance general</Label>
                                 <p className="text-xs text-slate-500">Esta cuenta sumará al total principal de Mi Economía.</p>
@@ -1232,7 +1232,7 @@ export default function SavingsPage() {
                     <div className="space-y-4 py-4">
                         <div className="space-y-2"><Label>Nombre</Label><Input placeholder="Ej: Alquiler, Nómina..." value={newRecurring.name} onChange={(e) => setNewRecurring({ ...newRecurring, name: e.target.value })} /></div>
                         <div className="flex gap-4">
-                            <Button variant={newRecurring.type === 'income' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'income' })} className={newRecurring.type === 'income' ? 'bg-emerald-600 hover:bg-emerald-700 w-full' : 'w-full'}>Ingreso</Button>
+                            <Button variant={newRecurring.type === 'income' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'income' })} className={newRecurring.type === 'income' ? 'bg-green-800 hover:bg-green-900 w-full' : 'w-full'}>Ingreso</Button>
                             <Button variant={newRecurring.type === 'expense' ? 'default' : 'outline'} onClick={() => setNewRecurring({ ...newRecurring, type: 'expense' })} className={newRecurring.type === 'expense' ? 'bg-rose-600 hover:bg-rose-700 w-full' : 'w-full'}>Gasto</Button>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -1241,8 +1241,8 @@ export default function SavingsPage() {
                         </div>
 
                         {newRecurring.type === 'income' && (
-                            <div className="space-y-2 p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-900">
-                                <Label className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-2">
+                            <div className="space-y-2 p-3 bg-green-50 dark:bg-green-950/10 rounded-lg border border-green-100 dark:border-green-950">
+                                <Label className="text-green-900 dark:text-green-400 font-semibold flex items-center gap-2">
                                     <Landmark className="w-4 h-4" /> Ingreso Automático (Opcional)
                                 </Label>
                                 <p className="text-xs text-muted-foreground mb-2">Si seleccionas una cuenta, el dinero se sumará automáticamente el día elegido.</p>
@@ -1285,13 +1285,13 @@ export default function SavingsPage() {
                                     <Repeat className="w-3 h-3 text-slate-400" />
                                 </button>
                             </p>
-                            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{selectedGoal?.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
+                            <div className="text-3xl font-bold text-green-800 dark:text-green-400">{selectedGoal?.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
                             <p className="text-xs text-muted-foreground mt-1">Meta: {selectedGoal?.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
-                            {selectedGoal?.interest_rate ? <div className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">{selectedGoal.interest_rate}% Interés</div> : null}
+                            {selectedGoal?.interest_rate ? <div className="absolute top-2 right-2 bg-green-100 text-green-900 text-xs px-2 py-1 rounded-full font-bold">{selectedGoal.interest_rate}% Interés</div> : null}
                         </div>
                         <div className="space-y-3 border-t pt-4">
                             <div className="flex justify-center gap-4 mb-2">
-                                <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />Aportación</Button>
+                                <Button variant={transType === 'deposit' ? 'default' : 'outline'} onClick={() => setTransType('deposit')} className={transType === 'deposit' ? 'bg-green-800 hover:bg-green-900 text-white' : ''} size="sm"><TrendingUp className="w-4 h-4 mr-2" />Aportación</Button>
                                 <Button variant={transType === 'expense' ? 'default' : 'outline'} onClick={() => setTransType('expense')} className={transType === 'expense' ? 'bg-red-600 hover:bg-red-700 text-white' : ''} size="sm"><Wallet className="w-4 h-4 mr-2" />Gasto</Button>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -1310,7 +1310,7 @@ export default function SavingsPage() {
                                     <div key={tx.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-900/50">
                                         <div><p className="font-medium">{tx.description || 'Movimiento'}</p><p className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}</p></div>
                                         <div className="flex items-center gap-3">
-                                            <span className={tx.amount >= 0 ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
+                                            <span className={tx.amount >= 0 ? 'text-green-800 font-bold' : 'text-red-600 font-bold'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}€</span>
                                             <button
                                                 onClick={() => {
                                                     if (window.confirm('¿Eliminar este movimiento de la meta?')) {
@@ -1352,6 +1352,7 @@ export default function SavingsPage() {
         </div>
     );
 }
+
 
 
 

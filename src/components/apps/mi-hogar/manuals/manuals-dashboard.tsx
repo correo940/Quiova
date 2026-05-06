@@ -152,14 +152,14 @@ export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?
             {/* Bento Grid: At a Glance */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card className="bg-white dark:bg-slate-900 shadow-lg border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
                     <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit mb-4">
-                            <FileText className="w-6 h-6 text-emerald-500" />
+                        <div className="p-3 bg-green-500/10 rounded-2xl w-fit mb-4">
+                            <FileText className="w-6 h-6 text-green-500" />
                         </div>
                         <div>
                             <div className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{stats.totalManuals}</div>
-                            <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest text-[10px] mt-1">Activos Protegidos</div>
+                            <div className="font-bold text-green-800 dark:text-green-400 uppercase tracking-widest text-[10px] mt-1">Activos Protegidos</div>
                         </div>
                     </CardContent>
                 </Card>
@@ -189,10 +189,10 @@ export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?
                 </Card>
 
                 <Card className="bg-white dark:bg-slate-900 shadow-lg border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-all duration-500 hover:scale-[1.02] rounded-[2rem] overflow-hidden relative">
-                    <div className="absolute bottom-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-5 -mb-5" />
+                    <div className="absolute bottom-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-2xl -mr-5 -mb-5" />
                     <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit mb-4">
-                            <Star className="w-6 h-6 text-emerald-500" />
+                        <div className="p-3 bg-green-500/10 rounded-2xl w-fit mb-4">
+                            <Star className="w-6 h-6 text-green-500" />
                         </div>
                         <div>
                             <div className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{stats.favoritesCount}</div>
@@ -209,14 +209,14 @@ export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?
                     {/* All Rooms */}
                     <div
                         onClick={() => onSelectRoom && onSelectRoom(null)}
-                        className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${!selectedRoom ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105'}`}
+                        className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${!selectedRoom ? 'bg-green-800 text-white shadow-xl shadow-green-800/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105'}`}
                     >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!selectedRoom ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
                             <FolderOpen className="w-5 h-5" />
                         </div>
                         <div>
                             <h4 className="font-bold text-sm">Todos</h4>
-                            <p className={`text-xs ${!selectedRoom ? 'text-emerald-100' : 'text-slate-400'}`}>{stats.totalManuals} items</p>
+                            <p className={`text-xs ${!selectedRoom ? 'text-green-100' : 'text-slate-400'}`}>{stats.totalManuals} items</p>
                         </div>
                     </div>
 
@@ -228,14 +228,14 @@ export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?
                             <div
                                 key={room.name}
                                 onClick={() => onSelectRoom && onSelectRoom(room.id)}
-                                className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${isSelected ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                className={`cursor-pointer flex-shrink-0 w-32 h-32 rounded-3xl p-4 flex flex-col justify-between transition-all ${isSelected ? 'bg-green-800 text-white shadow-xl shadow-green-800/20 scale-100' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:scale-105 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                     <Icon className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-sm truncate">{room.name}</h4>
-                                    <p className={`text-xs ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>{room.count} items</p>
+                                    <p className={`text-xs ${isSelected ? 'text-green-100' : 'text-slate-400'}`}>{room.count} items</p>
                                 </div>
                             </div>
                         );
@@ -267,3 +267,4 @@ export function ManualsDashboard({ selectedRoom, onSelectRoom }: { selectedRoom?
         </div>
     );
 }
+

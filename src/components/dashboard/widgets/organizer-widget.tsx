@@ -252,8 +252,8 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
 
     return (
         <Card className="h-full flex flex-col border-none shadow-md overflow-hidden dark:bg-slate-950">
-            <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30">
-                <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg flex items-center justify-between">
+            <CardHeader className="py-2 px-4 bg-green-100/50 dark:bg-green-950/10 border-b border-green-200 dark:border-green-900/30">
+                <CardTitle className="text-green-800 dark:text-green-400 font-headline text-lg flex items-center justify-between">
                     <span>
                         {selectedDate
                             ? `Organizador: ${format(selectedDate, "d MMMM", { locale: es })}`
@@ -265,21 +265,21 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
             <CardContent className="flex-1 min-h-0 p-0 sm:p-4 sm:pt-4 bg-white dark:bg-slate-950">
                 <Tabs defaultValue="agenda" className="h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-4 mb-3 h-auto bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
-                        <TabsTrigger value="agenda" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                        <TabsTrigger value="agenda" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-green-800 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
                             <CalendarIcon className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Agenda</span>
                         </TabsTrigger>
-                        <TabsTrigger value="tasks" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                        <TabsTrigger value="tasks" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-green-800 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Tareas</span>
                             <span className="sm:hidden">({tasks.length})</span>
                         </TabsTrigger>
-                        <TabsTrigger value="shifts" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                        <TabsTrigger value="shifts" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-green-800 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
                             <Clock className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Turnos</span>
                             <span className="sm:hidden">({shifts.length})</span>
                         </TabsTrigger>
-                        <TabsTrigger value="journal" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
+                        <TabsTrigger value="journal" className="flex items-center justify-center gap-2 text-xs sm:text-sm py-1.5 data-[state=active]:bg-green-800 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg transition-all font-medium">
                             <Book className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Apuntes</span>
                             <span className="sm:hidden">({journalEntries.length})</span>
@@ -293,7 +293,7 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                             ) : smartBlocks.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <p>Agenda vacía</p>
-                                    <Button variant="link" asChild className="text-emerald-600 p-0 h-auto">
+                                    <Button variant="link" asChild className="text-green-800 p-0 h-auto">
                                         <Link href="/apps/organizador-vital">Generar ahora &rarr;</Link>
                                     </Button>
                                 </div>
@@ -303,7 +303,7 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                                         const isFixed = block.type === 'fixed';
                                         return (
                                             <div key={block.id} className="relative pl-6">
-                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${isFixed ? 'bg-blue-500 border-blue-100' : 'bg-green-500 border-green-100'}`} />
+                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${isFixed ? 'bg-blue-500 border-blue-100' : 'bg-green-800 border-green-100'}`} />
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between group">
                                                     <div>
                                                         <div className="text-xs font-bold text-muted-foreground flex items-center gap-2 mb-0.5">

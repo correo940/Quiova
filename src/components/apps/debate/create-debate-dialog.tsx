@@ -122,7 +122,7 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <MessageCircle className="w-5 h-5 text-emerald-500" />
+                        <MessageCircle className="w-5 h-5 text-green-500" />
                         Crear Nuevo Debate
                     </DialogTitle>
                     <DialogDescription>
@@ -162,7 +162,7 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
                                 type="button"
                                 variant={debateMode === 'text' ? 'default' : 'outline'}
                                 onClick={() => setDebateMode('text')}
-                                className={debateMode === 'text' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                                className={debateMode === 'text' ? 'bg-green-500 hover:bg-green-800' : ''}
                             >
                                 <Type className="w-4 h-4 mr-1" />
                                 Texto
@@ -171,7 +171,7 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
                                 type="button"
                                 variant={debateMode === 'voice' ? 'default' : 'outline'}
                                 onClick={() => setDebateMode('voice')}
-                                className={debateMode === 'voice' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                                className={debateMode === 'voice' ? 'bg-green-500 hover:bg-green-800' : ''}
                             >
                                 <Mic className="w-4 h-4 mr-1" />
                                 Voz
@@ -180,7 +180,7 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
                                 type="button"
                                 variant={debateMode === 'both' ? 'default' : 'outline'}
                                 onClick={() => setDebateMode('both')}
-                                className={debateMode === 'both' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                                className={debateMode === 'both' ? 'bg-green-500 hover:bg-green-800' : ''}
                             >
                                 <MessageSquare className="w-4 h-4 mr-1" />
                                 Ambos
@@ -256,7 +256,7 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
                     <Button
                         onClick={handleCreate}
                         disabled={loading || !topic.trim()}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                        className="bg-gradient-to-r from-green-800 to-teal-600 text-white"
                     >
                         {loading ? (
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -270,3 +270,4 @@ export function CreateDebateDialog({ children, onDebateCreated }: CreateDebateDi
         </Dialog>
     );
 }
+

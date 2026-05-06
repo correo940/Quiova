@@ -81,18 +81,18 @@ function EphemeralPasswordRequest({ passwordId, passwordName, userId }: { passwo
 
     if (state === 'unlocked') {
         return (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl p-4 my-2 text-center shadow-inner relative overflow-hidden">
-                <div className="absolute top-0 left-0 h-1 bg-emerald-500 origin-left animate-timer" style={{ animation: 'shrik 10s linear forwards' }} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-green-50 dark:bg-green-800-950/20 border border-green-200 dark:border-green-950/50 rounded-xl p-4 my-2 text-center shadow-inner relative overflow-hidden">
+                <div className="absolute top-0 left-0 h-1 bg-green-500 origin-left animate-timer" style={{ animation: 'shrik 10s linear forwards' }} />
                 <style>{`@keyframes shrik { from { width: 100%; } to { width: 0%; } }`}</style>
-                <p className="text-xs text-emerald-800 dark:text-emerald-400 font-bold mb-2 flex items-center justify-center gap-1">
+                <p className="text-xs text-green-950 dark:text-green-400 font-bold mb-2 flex items-center justify-center gap-1">
                     <Unlock className="w-3 h-3" /> Acceso Concedido - {passwordName}
                 </p>
                 <div className="relative group mx-auto inline-block">
-                    <p className="text-xl font-mono font-black tracking-widest text-emerald-950 dark:text-white bg-white dark:bg-black/50 px-4 py-2 rounded-lg border border-emerald-100 dark:border-zinc-800 custom-blur blur-md group-hover:blur-none transition-all duration-300 select-all cursor-pointer">
+                    <p className="text-xl font-mono font-black tracking-widest text-green-800-950 dark:text-white bg-white dark:bg-black/50 px-4 py-2 rounded-lg border border-green-100 dark:border-zinc-800 custom-blur blur-md group-hover:blur-none transition-all duration-300 select-all cursor-pointer">
                         {decryptedValue}
                     </p>
                 </div>
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-3 flex items-center justify-center gap-1">
+                <p className="text-[10px] text-green-800 dark:text-green-500 mt-3 flex items-center justify-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin duration-1000" /> Se autodestruirá en 10s
                 </p>
             </motion.div>
@@ -631,7 +631,7 @@ export default function AiPanel() {
                                             if (speaking) stopSpeaking();
                                         }}
                                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${voiceMode
-                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                            ? 'bg-green-100 text-green-900 dark:bg-green-950/40 dark:text-green-300'
                                             : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400'
                                             }`}
                                         title={voiceMode ? 'Modo voz activo — pulsa para desactivar' : 'Activar respuestas por voz'}
@@ -683,14 +683,14 @@ export default function AiPanel() {
                                             ¡Hola! Soy {assistantName}. ¿En qué te ayudo hoy?
                                         </p>
                                         {voiceMode && (
-                                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400">🔊 Modo voz activo — te responderé en voz alta</p>
+                                            <p className="text-[10px] text-green-800 dark:text-green-400">🔊 Modo voz activo — te responderé en voz alta</p>
                                         )}
                                     </div>
                                 )}
                                 {messages.map((msg, i) => (
                                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${msg.role === 'user'
-                                            ? 'bg-emerald-500 text-white rounded-br-sm'
+                                            ? 'bg-green-500 text-white rounded-br-sm'
                                             : 'bg-muted text-foreground rounded-bl-sm'
                                             }`}>
                                             {msg.role === 'assistant' ? (
@@ -751,7 +751,7 @@ export default function AiPanel() {
                                     <button
                                         onClick={sendMessage}
                                         disabled={loading || !input.trim() || listening}
-                                        className="w-7 h-7 flex items-center justify-center disabled:opacity-40 rounded-full transition-colors shrink-0 bg-emerald-500 hover:bg-emerald-600"
+                                        className="w-7 h-7 flex items-center justify-center disabled:opacity-40 rounded-full transition-colors shrink-0 bg-green-500 hover:bg-green-800"
                                     >
                                         <Send className="w-3.5 h-3.5 text-white" />
                                     </button>
@@ -765,4 +765,5 @@ export default function AiPanel() {
         </>
     );
 }
+
 

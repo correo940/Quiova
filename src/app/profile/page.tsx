@@ -214,9 +214,9 @@ export default function ProfilePage() {
 
         if (months > 0) {
             const remainingDays = days % 30;
-            return { text: `${months} mes${months > 1 ? 'es' : ''} y ${remainingDays}d`, color: 'text-emerald-600', expired: false };
+            return { text: `${months} mes${months > 1 ? 'es' : ''} y ${remainingDays}d`, color: 'text-green-800', expired: false };
         }
-        if (days > 7) return { text: `${days} días`, color: 'text-emerald-600', expired: false };
+        if (days > 7) return { text: `${days} días`, color: 'text-green-800', expired: false };
         if (days > 0) return { text: `${days} día${days > 1 ? 's' : ''}`, color: 'text-amber-500', expired: false };
 
         const hours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -427,7 +427,7 @@ export default function ProfilePage() {
                                                     'Cancela cuando quieras',
                                                 ].map((benefit, i) => (
                                                     <li key={i} className="flex items-center gap-2 text-sm">
-                                                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                        <Check className="w-4 h-4 text-green-500 shrink-0" />
                                                         <span>{benefit}</span>
                                                     </li>
                                                 ))}
@@ -463,7 +463,7 @@ export default function ProfilePage() {
                             </Button>
                         ) : (
                             <Button
-                                className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                                className="w-full gap-2 bg-green-800 hover:bg-green-900 font-bold"
                                 onClick={() => router.push('/login')}
                             >
                                 <UserPlus className="w-4 h-4" />
@@ -491,7 +491,7 @@ export default function ProfilePage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-lg flex items-center gap-2">
-                                    <Package className="w-5 h-5 text-emerald-600" />
+                                    <Package className="w-5 h-5 text-green-800" />
                                     Mis Suscripciones
                                 </CardTitle>
                                 <CardDescription>Gestiona tus apps activas y su renovación</CardDescription>
@@ -506,7 +506,7 @@ export default function ProfilePage() {
                                                     key={sub.id}
                                                     className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${timeInfo.expired
                                                         ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'
-                                                        : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30'
+                                                        : 'bg-green-50/50 dark:bg-green-950/10 border-green-100 dark:border-green-950/30'
                                                         }`}
                                                 >
                                                     <div className="flex-1 min-w-0">
@@ -529,7 +529,7 @@ export default function ProfilePage() {
                                                         title={sub.auto_renew ? 'Desactivar renovación' : 'Activar renovación'}
                                                     >
                                                         {sub.auto_renew ? (
-                                                            <ToggleRight className="w-8 h-8 text-emerald-500" />
+                                                            <ToggleRight className="w-8 h-8 text-green-500" />
                                                         ) : (
                                                             <ToggleLeft className="w-8 h-8 text-slate-300" />
                                                         )}
@@ -817,3 +817,4 @@ function SecretariaSettingsCard() {
         </Card>
     );
 }
+

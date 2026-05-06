@@ -24,7 +24,7 @@ const allQuotes: Quote[] = [
         text: "Comer es una necesidad, pero comer de forma inteligente es un arte.",
         author: "La Rochefoucauld",
         category: "physical",
-        color: "bg-emerald-200",
+        color: "bg-green-200",
     },
     {
         text: "La primera riqueza es la salud.",
@@ -154,8 +154,8 @@ export default function PostItQuotes({ compact = false }: { compact?: boolean })
     if (compact) {
         return (
             <Card className="h-full flex flex-col border-none shadow-md overflow-hidden dark:bg-slate-950">
-                <CardHeader className="py-2 px-4 bg-emerald-50/50 dark:bg-emerald-950/10 border-b border-emerald-100 dark:border-emerald-900/30 shrink-0">
-                    <CardTitle className="text-emerald-800 dark:text-emerald-400 font-headline text-lg">
+                <CardHeader className="py-2 px-4 bg-green-50/50 dark:bg-green-800-950/10 border-b border-green-100 dark:border-green-950/30 shrink-0">
+                    <CardTitle className="text-green-950 dark:text-green-400 font-headline text-lg">
                         Nevera de la Sabiduría
                     </CardTitle>
                 </CardHeader>
@@ -244,3 +244,4 @@ export default function PostItQuotes({ compact = false }: { compact?: boolean })
         </section>
     );
 }
+

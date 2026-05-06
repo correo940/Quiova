@@ -83,7 +83,7 @@ export default function MobileNav() {
 
     const getAppStyle = (appKey: string) => {
         switch (appKey) {
-            case 'desktop': return { text: 'text-emerald-600', bg: 'bg-emerald-50' };
+            case 'desktop': return { text: 'text-green-800', bg: 'bg-green-100' };
             case 'shopping': return { text: 'text-orange-600', bg: 'bg-orange-50' };
             case 'chef-ia': return { text: 'text-red-600', bg: 'bg-red-50' };
             case 'tasks': return { text: 'text-purple-600', bg: 'bg-purple-50' };
@@ -111,7 +111,7 @@ export default function MobileNav() {
             {pathname !== '/' && (
                 <button
                     onClick={() => router.back()}
-                    className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-2xl border border-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
+                    className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-2xl border border-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:text-green-800 hover:bg-green-100 transition-all active:scale-90"
                     title="Volver"
                 >
                     <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
@@ -163,7 +163,7 @@ export default function MobileNav() {
                 <div className="w-full max-w-md h-16 bg-white/95 backdrop-blur-[32px] rounded-[24px] border border-slate-200/80 shadow-[0_12px_40px_rgba(0,0,0,0.12)] flex items-center justify-around px-4 pointer-events-auto">
                     {/* Home - always first */}
                     <Link href="/">
-                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/' ? 'text-emerald-600 bg-emerald-50 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/' ? 'text-green-800 bg-green-100 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                             <LayoutGrid className="w-6 h-6" />
                         </button>
                     </Link>
@@ -205,7 +205,7 @@ export default function MobileNav() {
 
                     {/* Settings - always last */}
                     <Link href="/profile">
-                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/profile' ? 'text-emerald-600 bg-emerald-50 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/profile' ? 'text-green-800 bg-green-100 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                             <Settings className="w-6 h-6" />
                         </button>
                     </Link>

@@ -134,7 +134,7 @@ export default function SecretariaWeeklySyncPage() {
   const totalShifts = weeklyData.reduce((s, d) => s + d.shifts.length, 0);
   const heavyDays = weeklyData.filter(d => d.load.level === 'heavy' || d.load.level === 'overloaded');
   const weekScore = Math.round(weeklyData.reduce((s, d) => s + d.load.score, 0) / 7);
-  const weekLabel = weekScore <= 20 ? { label: 'Semana tranquila 😌', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
+  const weekLabel = weekScore <= 20 ? { label: 'Semana tranquila 😌', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' }
     : weekScore <= 45 ? { label: 'Semana equilibrada 🙂', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
       : weekScore <= 70 ? { label: 'Semana cargada 😤', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }
         : { label: 'Semana muy dura 🔥', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' };
@@ -185,7 +185,7 @@ export default function SecretariaWeeklySyncPage() {
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
             <div
-              className={`h-full rounded-full ${weekScore <= 20 ? 'bg-emerald-400' : weekScore <= 45 ? 'bg-blue-400' : weekScore <= 70 ? 'bg-amber-400' : 'bg-red-400'}`}
+              className={`h-full rounded-full ${weekScore <= 20 ? 'bg-green-400' : weekScore <= 45 ? 'bg-blue-400' : weekScore <= 70 ? 'bg-amber-400' : 'bg-red-400'}`}
               style={{ width: `${weekScore}%` }}
             />
           </div>
@@ -239,11 +239,11 @@ export default function SecretariaWeeklySyncPage() {
         </div>
 
         {/* Week finances snapshot */}
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+        <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 space-y-2">
           <p className="text-white/40 text-xs uppercase tracking-wider">💶 Estado financiero del mes</p>
           <div className="flex justify-between items-center">
             <span className="text-white/60 text-sm">Gasto acumulado</span>
-            <span className="font-bold text-emerald-300">{monthExpenses.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€</span>
+            <span className="font-bold text-green-300">{monthExpenses.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€</span>
           </div>
           {shoppingCount > 0 && (
             <div className="flex items-center gap-2 text-orange-300 text-xs">
@@ -323,3 +323,4 @@ export default function SecretariaWeeklySyncPage() {
     </div>
   );
 }
+

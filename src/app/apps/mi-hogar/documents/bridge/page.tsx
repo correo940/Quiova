@@ -114,7 +114,7 @@ function BridgeContent() {
                         <div className="flex items-center justify-between">
                             <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-none px-3 py-1 font-bold">SESIÓN: {sessionCode}</Badge>
                             <div className="flex gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                                 <span className="text-[10px] font-black uppercase text-slate-400">Canal Seguro</span>
                             </div>
                         </div>
@@ -128,8 +128,8 @@ function BridgeContent() {
                                     animate={{ scale: 1, opacity: 1 }}
                                     className="text-center py-8 space-y-4"
                                 >
-                                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
-                                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                                        <CheckCircle2 className="w-10 h-10 text-green-500" />
                                     </div>
                                     <h2 className="text-xl font-bold dark:text-white">¡Enviado con éxito!</h2>
                                     <p className="text-sm text-slate-500 dark:text-slate-400">Ya puedes cerrar esta ventana. Tu ordenador está procesando el archivo.</p>
@@ -225,3 +225,4 @@ export default function MobileBridgePage() {
         </Suspense>
     );
 }
+

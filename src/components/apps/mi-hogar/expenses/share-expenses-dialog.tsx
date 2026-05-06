@@ -325,7 +325,7 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
             <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        {folderId ? <Folder className="w-5 h-5 text-emerald-600" /> : <Users className="w-5 h-5 text-emerald-600" />}
+                        {folderId ? <Folder className="w-5 h-5 text-green-800" /> : <Users className="w-5 h-5 text-green-800" />}
                         {folderName ? `Compartir "${folderName}"` : 'Vincular Gastos Globales'}
                     </DialogTitle>
                     <DialogDescription>
@@ -354,10 +354,10 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
 
                     {/* Partners List (if any) */}
                     {partners.length > 0 && (
-                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800 mb-6">
+                        <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-xl border border-green-100 dark:border-green-950 mb-6">
                             <div className="flex items-center gap-3 mb-3">
-                                <ShieldCheck className="w-6 h-6 text-emerald-600" />
-                                <h3 className="font-bold text-emerald-900 dark:text-emerald-100">
+                                <ShieldCheck className="w-6 h-6 text-green-800" />
+                                <h3 className="font-bold text-green-950 dark:text-green-100">
                                     {folderId ? 'Miembros de la Carpeta' : 'Personas Conectadas'}
                                 </h3>
                             </div>
@@ -379,7 +379,7 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-3 text-center">
+                            <p className="text-xs text-green-900 dark:text-green-300 mt-3 text-center">
                                 {folderId
                                     ? `Total: ${partners.length + 1} miembros.`
                                     : `Compartís gastos entre ${partners.length + 1} personas.`}
@@ -454,3 +454,4 @@ export function ShareExpensesDialog({ open, onOpenChange, folderId, folderName }
         </Dialog>
     );
 }
+

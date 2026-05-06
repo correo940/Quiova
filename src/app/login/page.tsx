@@ -134,7 +134,7 @@ export default function LoginPage() {
                     boxShadow: '0 20px 40px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
                 }}
             >
-                {/* Logo with emerald glow */}
+                {/* Logo with green-800 glow */}
                 <div className="flex justify-center mb-8">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
@@ -355,4 +355,5 @@ export default function LoginPage() {
         </div>
     )
 }
+
 

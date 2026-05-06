@@ -228,7 +228,7 @@ export default function SavingsNotificationSettings() {
                                 <div className="space-y-2">
                                     <div
                                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${settings.channels.includes('app')
-                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                            ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
                                             : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'
                                             }`}
                                         onClick={() => toggleChannel('app')}
@@ -237,7 +237,7 @@ export default function SavingsNotificationSettings() {
                                             checked={settings.channels.includes('app')}
                                             onCheckedChange={() => toggleChannel('app')}
                                         />
-                                        <Smartphone className={`h-5 w-5 ${settings.channels.includes('app') ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                                        <Smartphone className={`h-5 w-5 ${settings.channels.includes('app') ? 'text-green-800' : 'text-muted-foreground'}`} />
                                         <div>
                                             <p className="font-medium text-sm">APK (Android / iOS)</p>
                                             <p className="text-xs text-muted-foreground">
@@ -285,3 +285,4 @@ export default function SavingsNotificationSettings() {
         </Dialog>
     );
 }
+

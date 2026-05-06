@@ -442,7 +442,7 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
                                 <Button
                                     onClick={handleSendMessage}
                                     disabled={!newMessage.trim() || sending}
-                                    className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                                    className="bg-gradient-to-r from-green-800 to-teal-600 text-white"
                                 >
                                     {sending ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -458,3 +458,4 @@ export function DebateRoomChat({ roomId, onBack }: DebateRoomChatProps) {
         </div >
     );
 }
+

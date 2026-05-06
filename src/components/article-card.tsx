@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Article } from '@/types';
 import { cn } from '@/lib/utils';
@@ -41,16 +40,6 @@ export default function ArticleCard({ article, className }: ArticleCardProps) {
               {article.excerpt}
             </p>
           </CardContent>
-          <CardFooter className="p-4 pt-0 flex items-center space-x-3">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={article.authorImageUrl} alt={article.author} data-ai-hint={article.authorImageHint} />
-              <AvatarFallback>{article.author.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="text-sm">
-              <p className="font-semibold text-foreground/90">{article.author}</p>
-              <p className="text-muted-foreground">{article.date}</p>
-            </div>
-          </CardFooter>
         </div>
       </Link>
     </Card>

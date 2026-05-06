@@ -161,8 +161,8 @@ function DebateRoomListItem({
             className={cn(
                 "p-3 cursor-pointer transition-all hover:bg-accent border-l-4 relative",
                 isSelected
-                    ? "bg-accent border-l-emerald-500 shadow-sm"
-                    : "border-l-transparent hover:border-l-emerald-300"
+                    ? "bg-accent border-l-green-500 shadow-sm"
+                    : "border-l-transparent hover:border-l-green-300"
             )}
         >
             <div className="flex items-start justify-between gap-2">
@@ -226,3 +226,4 @@ function StatusBadge({ status }: { status: string }) {
             return null;
     }
 }
+

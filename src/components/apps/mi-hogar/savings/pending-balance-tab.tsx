@@ -305,13 +305,13 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20">
+                <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-green-50 dark:from-green-800-950/20 dark:to-green-950/20">
                     <CardContent className="p-5">
-                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
+                        <div className="flex items-center gap-2 text-green-800 dark:text-green-400 mb-2">
                             <CheckCircle2 className="w-4 h-4" />
                             <span className="text-sm font-medium">Ya Repuesto</span>
                         </div>
-                        <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+                        <p className="text-3xl font-bold text-green-900 dark:text-green-300">
                             {totalRepaid.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                         </p>
                     </CardContent>
@@ -387,7 +387,7 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                                         <span className="font-bold">{stats.pending.toFixed(0)}€</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-emerald-600">Repuesto</span>
+                                                        <span className="text-green-800">Repuesto</span>
                                                         <span className="font-bold">{stats.repaid.toFixed(0)}€</span>
                                                     </div>
                                                     {stats.total > 0 && (
@@ -422,7 +422,7 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                 <button key={s} onClick={() => setFilterStatus(s)}
                                     className={`px-3 py-1.5 rounded-md font-medium transition-colors ${filterStatus === s
                                         ? s === 'pending' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                                            : s === 'repaid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                            : s === 'repaid' ? 'bg-green-100 text-green-900 dark:bg-green-950/30 dark:text-green-300'
                                                 : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                         : 'text-muted-foreground hover:bg-slate-50 dark:hover:bg-slate-800'
                                         }`}
@@ -472,13 +472,13 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                             return (
                                 <motion.div key={expense.id} variants={itemVariants}
                                     className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${expense.status === 'repaid'
-                                        ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30'
+                                        ? 'bg-green-50/50 dark:bg-green-800-950/10 border-green-100 dark:border-green-950/30'
                                         : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-sm'
                                         }`}
                                 >
                                     {/* Icon */}
                                     <div className={`p-2.5 rounded-xl shrink-0 ${expense.status === 'repaid'
-                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+                                        ? 'bg-green-100 dark:bg-green-950/30 text-green-800'
                                         : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
                                         }`}>
                                         {expense.status === 'repaid'
@@ -505,20 +505,20 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                             {expense.merchant && <span>• {expense.merchant}</span>}
                                             {account && <span>• {account.name}</span>}
                                             {expense.status === 'repaid' && expense.repaid_date && (
-                                                <span className="text-emerald-600">• Repuesto el {format(new Date(expense.repaid_date), 'd MMM', { locale: es })}</span>
+                                                <span className="text-green-800">• Repuesto el {format(new Date(expense.repaid_date), 'd MMM', { locale: es })}</span>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Amount */}
-                                    <span className={`font-bold text-base shrink-0 ${expense.status === 'repaid' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                    <span className={`font-bold text-base shrink-0 ${expense.status === 'repaid' ? 'text-green-800' : 'text-orange-600'}`}>
                                         {expense.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                     </span>
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-1 shrink-0">
                                         {expense.status === 'pending' && (
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:text-green-900 hover:bg-green-50"
                                                 onClick={() => handleMarkRepaid(expense)} title="Marcar como repuesto">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
@@ -677,3 +677,4 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
         </motion.div>
     );
 }
+

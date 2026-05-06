@@ -7,13 +7,14 @@ import {
 } from 'recharts';
 
 const newHormoneData = [
-    { time: "00:00 Medianoche", cortisol: 10, melatonina: 90 },
-    { time: "04:00 Madrugada", cortisol: 30, melatonina: 80 },
-    { time: "08:00 Despertar", cortisol: 100, melatonina: 5 },
-    { time: "12:00 Mediodía", cortisol: 60, melatonina: 2 },
-    { time: "16:00 Tarde", cortisol: 40, melatonina: 5 },
-    { time: "20:00 Anochecer", cortisol: 20, melatonina: 40 },
-    { time: "24:00 Medianoche", cortisol: 10, melatonina: 90 }
+    { time: "00:00", cortisol: 10, melatonina: 90 },
+    { time: "04:00", cortisol: 30, melatonina: 80 },
+    { time: "06:00", cortisol: 60, melatonina: 40 },
+    { time: "08:00", cortisol: 100, melatonina: 5 },
+    { time: "12:00", cortisol: 60, melatonina: 2 },
+    { time: "16:00", cortisol: 40, melatonina: 5 },
+    { time: "20:00", cortisol: 20, melatonina: 40 },
+    { time: "00:00", cortisol: 10, melatonina: 90 }
 ];
 
 const chronotypeData = [
@@ -24,23 +25,23 @@ const chronotypeData = [
 ];
 
 const newRiskData = [
-    { name: "Obesidad", value: 65, fill: "#22c55e" },
-    { name: "S. Metabólico", value: 50, fill: "#22c55e" },
-    { name: "Cardiovasculares", value: 40, fill: "#22c55e" },
-    { name: "Depresión", value: 35, fill: "#22c55e" },
-    { name: "Det. Inmune", value: 25, fill: "#22c55e" }
+    { name: "Obesidad", value: 65, fill: "#166534" },
+    { name: "S. Metabólico", value: 50, fill: "#166534" },
+    { name: "Cardiovasculares", value: 40, fill: "#166534" },
+    { name: "Depresión", value: 35, fill: "#166534" },
+    { name: "Det. Inmune", value: 25, fill: "#166534" }
 ];
 
 export function InfografiaInteractiva() {
     return (
         <div className="font-sans antialiased text-[#0f172a] mt-24">
-            <header className="bg-[#0f172a] text-white py-20 px-6 border-b-8 border-cyan-500 relative overflow-hidden rounded-3xl shadow-xl">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none text-[20rem] leading-none select-none">⏳</div>
+            <header className="bg-white text-black py-20 px-6 border-b-8 border-green-800 relative overflow-hidden rounded-3xl shadow-sm border border-zinc-100">
+                <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none text-[20rem] leading-none select-none text-zinc-200">⏳</div>
                 <div className="max-w-6xl mx-auto relative z-10 text-center">
-                    <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-                        Los Ciclos <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-orange-500">Circadianos</span>
+                    <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-center text-yellow-500">
+                        Los Ciclos Circadianos
                     </h1>
-                    <p className="text-xl md:text-2xl font-light text-slate-300 max-w-3xl mx-auto">
+                    <p className="text-xl md:text-2xl font-light text-zinc-500 max-w-3xl mx-auto">
                         La investigación científica revela cómo nuestro reloj biológico maestro controla cada aspecto de nuestra fisiología, desde el sueño y el metabolismo hasta la salud mental y celular.
                     </p>
                 </div>
@@ -50,7 +51,7 @@ export function InfografiaInteractiva() {
                 {/* Métricas */}
                 <section>
                     <div className="mb-10 text-center max-w-4xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">El Reloj Maestro en Números</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-4 text-center">El Reloj Maestro en Números</h2>
                         <p className="text-slate-600 text-lg">
                             El Núcleo Supraquiasmático (NSQ) en el hipotálamo sincroniza trillones de células en nuestro cuerpo. A continuación, las métricas fundamentales descubiertas por la cronobiología moderna.
                         </p>
@@ -58,7 +59,7 @@ export function InfografiaInteractiva() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="bg-white/95 backdrop-blur border border-white/20 shadow-sm p-8 rounded-2xl text-center border-t-4 border-t-cyan-500 transition-transform hover:-translate-y-2">
                             <div className="text-5xl mb-4">⏱️</div>
-                            <div className="text-5xl font-black text-slate-900 mb-2">24.2h</div>
+                            <div className="text-5xl font-black text-green-900 mb-2">24.2h</div>
                             <h3 className="text-lg font-bold text-slate-800 uppercase tracking-wide">Ciclo Intrínseco</h3>
                             <p className="text-sm text-slate-500 mt-3">Duración promedio del reloj interno humano en ausencia de luz solar externa.</p>
                         </div>
@@ -80,7 +81,7 @@ export function InfografiaInteractiva() {
                 {/* Gráfico 1: Cortisol vs Melatonina */}
                 <section className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-slate-100">
                     <div className="mb-10 text-center max-w-4xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">La Danza Hormonal: Melatonina vs Cortisol</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-yellow-500 mb-4 text-center">La Danza Hormonal: Melatonina vs Cortisol</h2>
                         <p className="text-slate-600 text-lg">La interacción entre la luz y nuestro cerebro regula dos hormonas críticas. El cortisol nos prepara para el estrés y la actividad matutina, mientras que la melatonina facilita el inicio y mantenimiento del sueño profundo celular nocturno.</p>
                     </div>
                     <div className="w-full h-[350px] md:h-[400px]">
@@ -103,7 +104,7 @@ export function InfografiaInteractiva() {
                 {/* Gráfico 2: Cronotipos */}
                 <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">Diversidad Fenotípica: Los Cronotipos</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-6 text-center">Diversidad Fenotípica: Los Cronotipos</h2>
                         <p className="text-slate-600 text-lg mb-6">No todos los relojes biológicos son idénticos. La genética determina nuestro "cronotipo", el cual dicta nuestra preferencia natural por las horas de sueño y nuestros picos de energía cognitiva y física durante el día.</p>
                         <div className="space-y-4">
                             <div className="flex items-center p-4 bg-slate-50 rounded-lg border-l-4 border-cyan-500">
@@ -157,7 +158,7 @@ export function InfografiaInteractiva() {
                 {/* Gráfico 3: Cronodisrupción */}
                 <section className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-slate-100">
                     <div className="mb-10 text-center max-w-4xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">El Costo de la Cronodisrupción</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-yellow-500 mb-4 text-center">El Costo de la Cronodisrupción</h2>
                         <p className="text-slate-600 text-lg">La desalineación crónica entre nuestro reloj interno y el entorno (debido al trabajo por turnos, jet lag social, o luz artificial nocturna) se correlaciona fuertemente con el desarrollo de severas patologías sistémicas.</p>
                     </div>
                     <div className="w-full h-[350px]">
@@ -184,7 +185,7 @@ export function InfografiaInteractiva() {
                 {/* Zeitgebers */}
                 <section>
                     <div className="mb-10 text-center max-w-4xl mx-auto">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Sincronizadores Ambientales (Zeitgebers)</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-4 text-center">Sincronizadores Ambientales (Zeitgebers)</h2>
                         <p className="text-slate-600 text-lg">Para mantener la salud fisiológica, debemos alinear nuestro reloj interno utilizando "dadores de tiempo" externos. Aquí se detallan los factores más influyentes en orden de prioridad científica.</p>
                     </div>
 

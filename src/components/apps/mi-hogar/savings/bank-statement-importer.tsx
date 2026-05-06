@@ -120,7 +120,7 @@ export default function BankStatementImporter({
 
     const getFileIcon = (fileName: string) => {
         if (fileName.endsWith('.pdf')) return <FileText className="w-8 h-8 text-red-500" />;
-        return <FileSpreadsheet className="w-8 h-8 text-emerald-500" />;
+        return <FileSpreadsheet className="w-8 h-8 text-green-500" />;
     };
 
     const handleFileSelect = (f: File) => {
@@ -417,7 +417,7 @@ export default function BankStatementImporter({
                         Importar Extracto Bancario con IA
                         {!usageLoading && (
                             <div className={`ml-auto text-xs px-2 py-0.5 rounded-full border ${isAdmin ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30' :
-                                remaining > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30' :
+                                remaining > 0 ? 'bg-green-50 text-green-900 border-green-200 dark:bg-green-950/30' :
                                     'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30'
                                 }`}>
                                 {isAdmin ? '∞ Admin' : `Usos IA: ${remaining}/${limit}`}
@@ -492,7 +492,7 @@ export default function BankStatementImporter({
                                         className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragOver
                                             ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 scale-[1.02]'
                                             : file
-                                                ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
+                                                ? 'border-green-400 bg-green-50/50 dark:bg-green-950/10'
                                                 : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900/30'
                                             }`}
                                     >
@@ -593,7 +593,7 @@ export default function BankStatementImporter({
                                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleAll(false)}>Ninguno</Button>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs">
-                                        <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                                        <span className="text-green-800 font-semibold flex items-center gap-1">
                                             <ArrowUpRight className="w-3 h-3" /> +{selectedIncome.toFixed(2)}€
                                         </span>
                                         <span className="text-red-500 font-semibold flex items-center gap-1">
@@ -623,7 +623,7 @@ export default function BankStatementImporter({
                                                 <p className="text-sm font-medium truncate">{tx.description}</p>
                                                 <p className="text-xs text-muted-foreground">{tx.date}</p>
                                             </div>
-                                            <span className={`text-sm font-bold whitespace-nowrap ${tx.amount >= 0 ? 'text-emerald-600' : 'text-red-500'
+                                            <span className={`text-sm font-bold whitespace-nowrap ${tx.amount >= 0 ? 'text-green-800' : 'text-red-500'
                                                 }`}>
                                                 {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(2)}€
                                             </span>
@@ -642,7 +642,7 @@ export default function BankStatementImporter({
                                 exit={{ opacity: 0, y: -10 }}
                                 className="flex flex-col items-center justify-center py-12 gap-4"
                             >
-                                <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+                                <Loader2 className="w-10 h-10 text-green-500 animate-spin" />
                                 <p className="font-semibold">Importando {selectedCount} movimientos...</p>
                             </motion.div>
                         )}
@@ -656,8 +656,8 @@ export default function BankStatementImporter({
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className="flex flex-col items-center justify-center py-12 gap-4"
                             >
-                                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                    <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center">
+                                    <CheckCircle2 className="w-10 h-10 text-green-500" />
                                 </div>
                                 <div className="text-center">
                                     <p className="font-bold text-lg">¡Importación completada!</p>
@@ -693,7 +693,7 @@ export default function BankStatementImporter({
                             <Button
                                 onClick={importTransactions}
                                 disabled={selectedCount === 0}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                                className="bg-green-800 hover:bg-green-900 text-white gap-2"
                             >
                                 <Check className="w-4 h-4" />
                                 Importar {selectedCount} movimientos
@@ -710,3 +710,4 @@ export default function BankStatementImporter({
         </Dialog>
     );
 }
+

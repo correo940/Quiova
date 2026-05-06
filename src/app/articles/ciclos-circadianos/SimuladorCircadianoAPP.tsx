@@ -119,7 +119,7 @@ export function SimuladorCircadianoAPP() {
             if (fromSleep >= 3 && fromSleep < 6) return {
                 title: "Reparación Inmunológica",
                 desc: "Linfocitos activados. El cuerpo detecta y elimina patógenos consolidando tu defensa celular.",
-                icon: "🦠", color: "text-emerald-500",
+                icon: "🦠", color: "text-green-800",
                 hack: "Oscuridad total. Incluso un poco de luz puede frenar esta feroz reparación del sistema inmune."
             };
             return {
@@ -162,7 +162,7 @@ export function SimuladorCircadianoAPP() {
                 <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 bg-white shadow-sm px-4 py-2.5 rounded-2xl border border-zinc-100">
                     <div className="flex items-center gap-3">
                         <h1 className="text-lg font-black text-slate-800 tracking-tight">
-                            Simulador <span className="text-green-600">Circadiano</span>
+                            Simulador <span className="text-green-800">Circadiano</span>
                         </h1>
                         <div className="flex items-center gap-1 border-l pl-3 border-zinc-200">
                             <button onClick={() => setSeason("verano")}
@@ -183,7 +183,7 @@ export function SimuladorCircadianoAPP() {
                             <div key={inp.label} className="flex flex-col items-center">
                                 <span className="text-[10px] font-bold text-zinc-400 uppercase">{inp.label}</span>
                                 <input type="time" value={inp.val} onChange={e => inp.set(e.target.value)}
-                                    className={`bg-zinc-50 border ${inp.color} rounded-lg px-2 py-1 text-sm font-bold text-slate-700 outline-none focus:ring-1 focus:ring-green-500`} />
+                                    className={`bg-zinc-50 border ${inp.color} rounded-lg px-2 py-1 text-sm font-bold text-slate-700 outline-none focus:ring-1 focus:ring-green-800`} />
                             </div>
                         ))}
                     </div>
@@ -215,11 +215,11 @@ export function SimuladorCircadianoAPP() {
                                 value={simulatedTime}
                                 onChange={(e) => setSimulatedTime(Number(e.target.value))}
                                 className={`w-full appearance-none h-5 rounded-full outline-none cursor-grab active:cursor-grabbing border border-white/30
-                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-green-500 [&::-webkit-slider-thumb]:shadow-lg
+                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-green-800 [&::-webkit-slider-thumb]:shadow-lg
                                 ${season === 'verano' ? 'bg-white/20' : 'bg-white/15'}`}
                             />
                             <div className="flex justify-between mt-1 text-white/50 font-mono text-[9px] font-bold pointer-events-none">
-                                <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+                                <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>00:00</span>
                             </div>
                         </div>
 
@@ -240,7 +240,7 @@ export function SimuladorCircadianoAPP() {
                         </div>
 
                         {/* Tierra / hora */}
-                        <div className={`absolute bottom-0 w-full h-[55px] md:h-[75px] bg-gradient-to-t ${season === 'verano' ? 'from-green-900 via-green-800 to-emerald-600 border-emerald-400' : 'from-emerald-950 via-teal-900 to-cyan-900 border-teal-600'} z-10 rounded-t-[50%] flex justify-center items-start pt-2 md:pt-4 border-t-[3px] transition-colors duration-1000`}>
+                        <div className={`absolute bottom-0 w-full h-[55px] md:h-[75px] bg-gradient-to-t ${season === 'verano' ? 'from-green-900 via-green-800 to-green-800 border-green-400' : 'from-green-800-950 via-teal-900 to-cyan-900 border-teal-600'} z-10 rounded-t-[50%] flex justify-center items-start pt-2 md:pt-4 border-t-[3px] transition-colors duration-1000`}>
                             <div className="font-mono text-xl md:text-2xl tracking-widest font-black text-white bg-black/40 px-4 py-1 rounded-full border border-white/20 drop-shadow">
                                 {formatTime(simulatedTime)}
                             </div>
@@ -276,9 +276,9 @@ export function SimuladorCircadianoAPP() {
                         </div>
 
                         {/* Panel Hack Científico */}
-                        <div className="flex-1 bg-gradient-to-br from-indigo-50 to-blue-50/70 rounded-[1.2rem] md:rounded-[1.8rem] p-4 shadow-sm border border-indigo-100 flex flex-col justify-center">
-                            <div className="text-[9px] font-black tracking-widest text-indigo-400 uppercase mb-2 flex items-center gap-1.5">
-                                <Lightbulb size={12} className="text-indigo-400" />
+                        <div className="flex-1 bg-gradient-to-br from-green-50 to-yellow-50/70 rounded-[1.2rem] md:rounded-[1.8rem] p-4 shadow-sm border border-green-100 flex flex-col justify-center">
+                            <div className="text-[9px] font-black tracking-widest text-green-800 uppercase mb-2 flex items-center gap-1.5">
+                                <Lightbulb size={12} className="text-yellow-600" />
                                 Hack Científico
                             </div>
                             <AnimatePresence mode="wait">
@@ -290,8 +290,8 @@ export function SimuladorCircadianoAPP() {
                                     transition={{ duration: 0.2 }}
                                     className="flex items-start gap-2"
                                 >
-                                    <CheckCircle2 size={16} className="text-indigo-500 shrink-0 mt-0.5" strokeWidth={3} />
-                                    <p className="text-[11px] md:text-[12px] text-indigo-900 font-bold leading-snug">
+                                    <CheckCircle2 size={16} className="text-green-800 shrink-0 mt-0.5" strokeWidth={3} />
+                                    <p className="text-[11px] md:text-[12px] text-green-900 font-bold leading-snug">
                                         {bioState.hack}
                                     </p>
                                 </motion.div>
@@ -304,4 +304,5 @@ export function SimuladorCircadianoAPP() {
         </div>
     );
 }
+
 

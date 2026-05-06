@@ -39,11 +39,11 @@ function SummaryPill({
     icon: any;
     label: string;
     value: string | number;
-    accent: 'emerald' | 'amber' | 'blue' | 'rose' | 'violet';
+    accent: 'green-800' | 'amber' | 'blue' | 'rose' | 'violet';
     onClick?: () => void;
 }) {
     const colors = {
-        emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+        green-800: 'bg-green-500/10 border-green-500/20 text-green-800 dark:text-green-400',
         amber: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
         blue: 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400',
         rose: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400',
@@ -74,12 +74,12 @@ function MainActionCard({
     badgeColor?: 'amber' | 'indigo';
     done?: boolean;
     onClick: () => void;
-    accent?: 'amber' | 'indigo' | 'emerald';
+    accent?: 'amber' | 'indigo' | 'green-800';
 }) {
     const accentStyles = {
         amber: 'border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20',
         indigo: 'border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20',
-        emerald: 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20',
+        green-800: 'border-green-200 dark:border-green-950/50 bg-green-50/50 dark:bg-green-800-950/20',
     };
 
     return (
@@ -301,7 +301,7 @@ export default function SecretariaPage() {
                             <SummaryPill
                                 icon={Wallet} label="Saldo"
                                 value={summary.totalBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-                                accent="emerald"
+                                accent="green-800"
                                 onClick={() => router.push('/apps/mi-hogar/savings')}
                             />
                         </motion.div>
@@ -343,9 +343,9 @@ export default function SecretariaPage() {
                         <p className="text-muted-foreground/50 text-[10px] uppercase tracking-widest font-semibold ml-1">Victorias de hoy ✨</p>
                         <div className="space-y-1.5">
                             {todaySync.victories.slice(0, 3).map((v: string, i: number) => (
-                                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/15">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span className="text-sm text-emerald-700 dark:text-emerald-300">{v}</span>
+                                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-green-500/10 border border-green-500/15">
+                                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                    <span className="text-sm text-green-900 dark:text-green-300">{v}</span>
                                 </div>
                             ))}
                         </div>
@@ -405,3 +405,4 @@ export default function SecretariaPage() {
         </div>
     );
 }
+

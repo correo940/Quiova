@@ -65,8 +65,8 @@ export default function VideoPhantomPage() {
                             Render Node API
                         </h2>
                         {svdApiUrl ? (
-                            <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1.5 border border-emerald-500/20">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                            <span className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-full flex items-center gap-1.5 border border-green-500/20">
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                 NODO ENLAZADO
                             </span>
                         ) : (
@@ -276,3 +276,4 @@ export default function VideoPhantomPage() {
         </div>
     );
 }
+

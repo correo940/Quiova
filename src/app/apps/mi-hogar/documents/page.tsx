@@ -502,7 +502,7 @@ export default function DocumentsPage() {
             setVaultPin('');
             toast.success("Bóveda Desbloqueada", {
                 description: "Acceso a documentos sensibles concedido.",
-                icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                icon: <ShieldCheck className="w-4 h-4 text-green-500" />
             });
         } else {
             toast.error("PIN Incorrecto", { description: "Prueba con '1234' para la demo." });
@@ -1123,7 +1123,7 @@ export default function DocumentsPage() {
                             className={cn(
                                 "rounded-full px-4 h-9 flex items-center gap-2 transition-all group overflow-hidden relative",
                                 isVaultUnlocked
-                                    ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20"
+                                    ? "bg-green-500/10 text-green-800 hover:bg-green-500/20 border border-green-500/20"
                                     : "bg-slate-100/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800"
                             )}
                         >
@@ -1200,7 +1200,7 @@ export default function DocumentsPage() {
                         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 relative z-10">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                     <CardTitle className="text-sm font-black uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400">
                                         Sincronización Activa de IA
                                     </CardTitle>
@@ -1371,7 +1371,7 @@ export default function DocumentsPage() {
                                                             "border-none px-3 font-bold text-[10px] tracking-wider uppercase",
                                                             state.tone === 'expired' ? "bg-rose-500 text-white" :
                                                                 state.tone === 'warning' ? "bg-amber-500 text-white" :
-                                                                    state.tone === 'active' ? "bg-emerald-500 text-white" :
+                                                                    state.tone === 'active' ? "bg-green-500 text-white" :
                                                                         "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                                                         )}>
                                                             {state.label}
@@ -1539,7 +1539,7 @@ export default function DocumentsPage() {
                                                 <h4 className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
                                                     <Plus className="w-3 h-3" /> Chatear con el documento
                                                 </h4>
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                             </div>
 
                                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -1654,7 +1654,7 @@ export default function DocumentsPage() {
                                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actualizado el {selectedDocument.created_at ? format(parseISO(selectedDocument.created_at), 'dd/MM/yyyy') : 'Hoy'}</p>
                                                             </div>
                                                         </div>
-                                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 border-none">Vigente</Badge>
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-green-500/10 text-green-800 border-none">Vigente</Badge>
                                                     </div>
 
                                                     <p className="text-center py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-50">
@@ -1768,8 +1768,8 @@ export default function DocumentsPage() {
 
                         {alerts.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center p-10 space-y-4">
-                                <div className="p-6 bg-emerald-500/10 rounded-full">
-                                    <ShieldCheck className="w-10 h-10 text-emerald-500" />
+                                <div className="p-6 bg-green-500/10 rounded-full">
+                                    <ShieldCheck className="w-10 h-10 text-green-500" />
                                 </div>
                                 <h4 className="text-lg font-black text-slate-900 dark:text-white">¡Todo al día!</h4>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -1957,11 +1957,11 @@ export default function DocumentsPage() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         className="flex flex-col items-center space-y-6"
                                     >
-                                        <div className="w-32 h-32 bg-emerald-500 rounded-[2.5rem] flex items-center justify-center shadow-xl shadow-emerald-500/30 rotate-12">
+                                        <div className="w-32 h-32 bg-green-500 rounded-[2.5rem] flex items-center justify-center shadow-xl shadow-green-500/30 rotate-12">
                                             <CheckCircle2 className="w-16 h-16 text-white -rotate-12" />
                                         </div>
                                         <div className="text-center">
-                                            <h4 className="font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">¡RECIBIDO!</h4>
+                                            <h4 className="font-black text-green-800 dark:text-green-400 uppercase tracking-widest mb-1">¡RECIBIDO!</h4>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronizado con tu bóveda</p>
                                         </div>
                                     </motion.div>
@@ -2000,6 +2000,7 @@ export default function DocumentsPage() {
         </div >
     );
 }
+
 
 
 

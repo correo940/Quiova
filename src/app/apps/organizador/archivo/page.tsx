@@ -171,7 +171,7 @@ export default function SecretariaArchivoPage() {
                                 <span className="text-xs text-white/40">{sync.planned_expenses}€ planeado</span>
                               )}
                               {sync.completed_tasks_count != null && (
-                                <span className="text-xs text-emerald-300">✅ {sync.completed_tasks_count} tareas</span>
+                                <span className="text-xs text-green-300">✅ {sync.completed_tasks_count} tareas</span>
                               )}
                             </div>
                           </div>
@@ -203,7 +203,7 @@ export default function SecretariaArchivoPage() {
                             {sync.savings_achieved != null && (
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-white/40">Ahorro del mes</span>
-                                <span className={sync.savings_achieved >= 0 ? 'text-emerald-300 font-bold' : 'text-red-300 font-bold'}>
+                                <span className={sync.savings_achieved >= 0 ? 'text-green-300 font-bold' : 'text-red-300 font-bold'}>
                                   {sync.savings_achieved >= 0 ? '+' : ''}{sync.savings_achieved}€
                                 </span>
                               </div>
@@ -222,3 +222,4 @@ export default function SecretariaArchivoPage() {
     </div>
   );
 }
+

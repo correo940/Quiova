@@ -237,7 +237,7 @@ export function calculateDayLoad(data: {
   score += conflicts.filter(c => c.severity === 'warning').length * 5;   // 5pts por warning
   score = Math.min(score, 100);
 
-  if (score <= 20) return { level: 'relaxed',    score, label: 'Día tranquilo',       emoji: '😌', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' };
+  if (score <= 20) return { level: 'relaxed',    score, label: 'Día tranquilo',       emoji: '😌', color: 'text-green-400', bgColor: 'bg-green-500/10' };
   if (score <= 45) return { level: 'moderate',   score, label: 'Día equilibrado',     emoji: '🙂', color: 'text-blue-400',    bgColor: 'bg-blue-500/10'    };
   if (score <= 70) return { level: 'heavy',      score, label: 'Día cargado',         emoji: '😤', color: 'text-amber-400',  bgColor: 'bg-amber-500/10'   };
   return              { level: 'overloaded', score, label: 'Día muy cargado 🔥',   emoji: '🔥', color: 'text-red-400',    bgColor: 'bg-red-500/10'     };
@@ -282,3 +282,4 @@ export function getPendingRescheduleItems(
 ): any[] {
   return todayTasks.filter(t => !completedTaskIds.has(t.id) && !t.is_completed);
 }
+

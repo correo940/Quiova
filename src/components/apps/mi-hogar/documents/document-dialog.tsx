@@ -1,4 +1,4 @@
-Ôªø'use client';
+'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -183,8 +183,8 @@ export function DocumentDialog({
                                 <Plus className="w-8 h-8 text-amber-500" />
                             </div>
                             <div className="text-center">
-                                <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg">Suelta tu archivo aqu√≠</p>
-                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Soporta PDF e Im√°genes</p>
+                                <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg">Suelta tu archivo aquÌ</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Soporta PDF e Im·genes</p>
                             </div>
                         </div>
 
@@ -209,7 +209,7 @@ export function DocumentDialog({
                     </div>
 
                     {form.file_url && !selectedFile ? (
-                        <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 justify-center">
+                        <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-800 dark:text-green-400 text-xs font-bold flex items-center gap-2 justify-center">
                             <ShieldCheck className="w-4 h-4" /> ARCHIVO ACTUAL PROTEGIDO EN LA NUBE
                         </div>
                     ) : null}
@@ -221,7 +221,7 @@ export function DocumentDialog({
                             className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-2"
                         >
                             <div className="flex items-center gap-2 text-rose-600 font-black text-xs uppercase">
-                                <AlertTriangle className="w-4 h-4" /> Fallo en el an√°lisis inteligente
+                                <AlertTriangle className="w-4 h-4" /> Fallo en el an·lisis inteligente
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{analysisError}</p>
                         </motion.div>
@@ -255,7 +255,7 @@ export function DocumentDialog({
                                             TIPO: {analysis.document_type}
                                         </Badge>
                                     )}
-                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px] px-3 h-6">
+                                    <Badge className="bg-green-500/10 text-green-800 border-none font-bold text-[10px] px-3 h-6">
                                         CONFIANZA: {Math.round(analysis.confidence * 100)}%
                                     </Badge>
                                 </div>
@@ -415,4 +415,5 @@ export function DocumentDialog({
         </Dialog>
     );
 }
+
 

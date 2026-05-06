@@ -32,7 +32,7 @@ export default function LogoLoader({ size = 'md', className }: LogoLoaderProps) 
                         ease: "easeInOut",
                     }}
                     className={cn(
-                        "absolute inset-0 bg-emerald-400/20 blur-xl rounded-full",
+                        "absolute inset-0 bg-green-800/20 blur-xl rounded-full",
                         sizeClasses[size]
                     )}
                 />

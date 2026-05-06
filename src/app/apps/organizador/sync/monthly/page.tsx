@@ -201,20 +201,20 @@ export default function SecretariaMonthlySyncPage() {
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-400" />
+              <Check className="w-4 h-4 text-green-400" />
               <span className="text-sm font-medium">Tareas completadas</span>
             </div>
-            <Badge className={`${taskRate >= 70 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'}`}>
+            <Badge className={`${taskRate >= 70 ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'}`}>
               {prevCompletedTasks}/{prevTotalTasks} ({taskRate}%)
             </Badge>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full ${taskRate >= 70 ? 'bg-emerald-400' : taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'}`}
+              className={`h-full rounded-full ${taskRate >= 70 ? 'bg-green-400' : taskRate >= 40 ? 'bg-amber-400' : 'bg-red-400'}`}
               style={{ width: `${taskRate}%` }}
             />
           </div>
-          {taskRate >= 80 && <p className="text-emerald-300 text-xs">🌟 ¡Mes excepcional! Más del 80% de tareas completadas.</p>}
+          {taskRate >= 80 && <p className="text-green-300 text-xs">🌟 ¡Mes excepcional! Más del 80% de tareas completadas.</p>}
           {taskRate < 40 && <p className="text-amber-300 text-xs">⚠️ Menos del 40% de tareas completadas. ¿Demasiado cargado?</p>}
         </div>
 
@@ -231,19 +231,19 @@ export default function SecretariaMonthlySyncPage() {
                 {prevMonthExpenses.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
               </p>
             </div>
-            <div className={`p-3 rounded-xl ${prevSavings >= 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+            <div className={`p-3 rounded-xl ${prevSavings >= 0 ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
               <div className="flex items-center gap-1.5 mb-1">
-                <PiggyBank className={`w-3.5 h-3.5 ${prevSavings >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
-                <p className={`text-xs ${prevSavings >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>Ahorro neto</p>
+                <PiggyBank className={`w-3.5 h-3.5 ${prevSavings >= 0 ? 'text-green-400' : 'text-red-400'}`} />
+                <p className={`text-xs ${prevSavings >= 0 ? 'text-green-300' : 'text-red-300'}`}>Ahorro neto</p>
               </div>
-              <p className={`text-xl font-bold ${prevSavings >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+              <p className={`text-xl font-bold ${prevSavings >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                 {prevSavings >= 0 ? '+' : ''}{prevSavings.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
               </p>
             </div>
           </div>
           <div className="flex justify-between items-center pt-1 border-t border-white/10">
             <span className="text-white/40 text-sm">Saldo total actual</span>
-            <span className={`font-bold ${totalBalance < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+            <span className={`font-bold ${totalBalance < 0 ? 'text-red-300' : 'text-green-300'}`}>
               {totalBalance.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€
             </span>
           </div>
@@ -359,3 +359,4 @@ function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
     </p>
   );
 }
+

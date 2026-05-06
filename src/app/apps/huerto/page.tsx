@@ -456,7 +456,7 @@ export default function HuertoPage() {
         if (diff < 0) return { text: `Vencido (hace ${Math.abs(diff)} días)`, color: 'text-red-500 font-bold', bg: 'bg-red-100 dark:bg-red-900/30' };
         if (diff === 0) return { text: '¡Toca hoy!', color: 'text-orange-500 font-bold', bg: 'bg-orange-100 dark:bg-orange-900/30' };
         if (diff === 1) return { text: 'Mañana', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20' };
-        return { text: `En ${diff} días`, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' };
+        return { text: `En ${diff} días`, color: 'text-green-800 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/20' };
     };
 
     const parseCareInstructionsToSteps = (care?: string | null) => {
@@ -472,7 +472,7 @@ export default function HuertoPage() {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center bg-green-50/30 dark:bg-emerald-950/20"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>;
+        return <div className="min-h-screen flex items-center justify-center bg-green-50/30 dark:bg-green-800-950/20"><Loader2 className="w-8 h-8 animate-spin text-green-500" /></div>;
     }
 
     const plantsDueNow = plants.filter(p => {
@@ -514,7 +514,7 @@ export default function HuertoPage() {
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-700 via-emerald-800 to-teal-900 p-8 text-white shadow-2xl shadow-emerald-900/30 border border-emerald-500/20"
+                    className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-700 via-green-950 to-teal-900 p-8 text-white shadow-2xl shadow-green-950/30 border border-green-500/20"
                 >
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-50" />
                     
@@ -525,7 +525,7 @@ export default function HuertoPage() {
                                 <span>Mi Huerto Inteligente</span>
                             </div>
                             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Cuidemos tus Plantas.</h1>
-                            <p className="text-emerald-100 max-w-xl text-lg opacity-90">
+                            <p className="text-green-100 max-w-xl text-lg opacity-90">
                                 Sube una foto de tu maceta u hoja enferma. Nuestra IA botánica identificará la especie y creará un plan de cuidados perfecto al instante.
                             </p>
                         </div>
@@ -543,7 +543,7 @@ export default function HuertoPage() {
                                 size="lg" 
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={analyzing}
-                                className="w-full md:w-auto h-16 rounded-2xl bg-white text-emerald-900 hover:bg-green-50 hover:scale-105 active:scale-95 transition-all text-lg font-bold shadow-xl flex gap-3"
+                                className="w-full md:w-auto h-16 rounded-2xl bg-white text-green-950 hover:bg-green-50 hover:scale-105 active:scale-95 transition-all text-lg font-bold shadow-xl flex gap-3"
                             >
                                 {analyzing ? (
                                     <><Loader2 className="w-6 h-6 animate-spin" /> Analizando ADN...</>
@@ -560,7 +560,7 @@ export default function HuertoPage() {
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <button
                             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
-                                tab === 'jardin' ? 'bg-white/70 border-white/60 text-emerald-800' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
+                                tab === 'jardin' ? 'bg-white/70 border-white/60 text-green-950' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
                             }`}
                             onClick={() => setTab('jardin')}
                         >
@@ -568,7 +568,7 @@ export default function HuertoPage() {
                         </button>
                         <button
                             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
-                                tab === 'hoy' ? 'bg-white/70 border-white/60 text-emerald-800' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
+                                tab === 'hoy' ? 'bg-white/70 border-white/60 text-green-950' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
                             }`}
                             onClick={() => setTab('hoy')}
                         >
@@ -576,7 +576,7 @@ export default function HuertoPage() {
                         </button>
                         <button
                             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
-                                tab === 'consejos' ? 'bg-white/70 border-white/60 text-emerald-800' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
+                                tab === 'consejos' ? 'bg-white/70 border-white/60 text-green-950' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
                             }`}
                             onClick={() => setTab('consejos')}
                         >
@@ -584,7 +584,7 @@ export default function HuertoPage() {
                         </button>
                         <button
                             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
-                                tab === 'historial' ? 'bg-white/70 border-white/60 text-emerald-800' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
+                                tab === 'historial' ? 'bg-white/70 border-white/60 text-green-950' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
                             }`}
                             onClick={() => setTab('historial')}
                             disabled={plants.length === 0}
@@ -593,7 +593,7 @@ export default function HuertoPage() {
                         </button>
                         <button
                             className={`px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
-                                tab === 'galeria' ? 'bg-white/70 border-white/60 text-emerald-800' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
+                                tab === 'galeria' ? 'bg-white/70 border-white/60 text-green-950' : 'bg-white/35 border-white/20 text-slate-700 hover:bg-white/60'
                             }`}
                             onClick={() => setTab('galeria')}
                         >
@@ -604,16 +604,16 @@ export default function HuertoPage() {
                     {tab === 'jardin' && (
                         <>
                             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                <Leaf className="text-emerald-500" /> Tu Jardín Botánico
+                                <Leaf className="text-green-500" /> Tu Jardín Botánico
                             </h2>
 
                             {plants.length === 0 ? (
-                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
-                                    <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Sprout className="w-10 h-10 text-emerald-500" />
+                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/10">
+                                    <div className="w-20 h-20 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Sprout className="w-10 h-10 text-green-500" />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-emerald-900 dark:text-emerald-100 mb-2">Aún no hay plantas</h3>
-                                    <p className="text-emerald-700/70 dark:text-emerald-300/70 max-w-md mx-auto">
+                                    <h3 className="text-xl font-semibold text-green-950 dark:text-green-100 mb-2">Aún no hay plantas</h3>
+                                    <p className="text-green-900/70 dark:text-green-300/70 max-w-md mx-auto">
                                         Toca en "Escanear Planta" para añadir tu primera compañera verde. Identificaremos qué cuidados necesita.
                                     </p>
                                 </div>
@@ -670,7 +670,7 @@ export default function HuertoPage() {
                                                         <CardContent className="p-5 flex-1 space-y-4">
                                                             <div>
                                                                 <h3 className="text-xl font-bold line-clamp-1">{plant.name}</h3>
-                                                                <p className="text-sm font-mono text-emerald-600 dark:text-emerald-400 italic line-clamp-1">{plant.species}</p>
+                                                                <p className="text-sm font-mono text-green-800 dark:text-green-400 italic line-clamp-1">{plant.species}</p>
                                                             </div>
 
                                                             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -688,12 +688,12 @@ export default function HuertoPage() {
                                                                 </div>
                                                             </div>
 
-                                                            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+                                                            <div className="bg-green-50/50 dark:bg-green-950/10 p-3 rounded-xl border border-green-100 dark:border-green-950/50">
                                                                 <div className="flex gap-2 items-start">
                                                                     {plant.health_status?.toLowerCase().includes('enferm') || plant.health_status?.toLowerCase().includes('sec') ? (
                                                                         <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
                                                                     ) : (
-                                                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                                                                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                                                                     )}
                                                                     <div className="text-sm">
                                                                         <span className="font-semibold block mb-0.5 text-slate-700 dark:text-slate-200">Estado</span>
@@ -746,7 +746,7 @@ export default function HuertoPage() {
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        className="h-7 px-2 text-muted-foreground hover:text-emerald-700"
+                                                                        className="h-7 px-2 text-muted-foreground hover:text-green-900"
                                                                         onClick={() => setNotesExpanded(prev => ({ ...prev, [plant.id]: !prev[plant.id] }))}
                                                                     >
                                                                         <PencilLine className="w-4 h-4 mr-1" />
@@ -760,12 +760,12 @@ export default function HuertoPage() {
                                                                             value={noteDrafts[plant.id] ?? ''}
                                                                             onChange={(ev) => setNoteDrafts(prev => ({ ...prev, [plant.id]: ev.target.value }))}
                                                                             rows={3}
-                                                                            className="w-full rounded-xl border border-white/60 bg-white/60 dark:bg-black/20 p-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-200"
+                                                                            className="w-full rounded-xl border border-white/60 bg-white/60 dark:bg-black/20 p-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-green-200"
                                                                         />
                                                                         <div className="flex items-center gap-2">
                                                                             <Button
                                                                                 size="sm"
-                                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                                className="bg-green-800 hover:bg-green-900 text-white"
                                                                                 disabled={savingNotesForPlantId === plant.id}
                                                                                 onClick={() => handleSaveNotes(plant.id)}
                                                                             >
@@ -792,7 +792,7 @@ export default function HuertoPage() {
                                                         <CardFooter className="p-5 pt-0">
                                                             <div className="space-y-2 w-full">
                                                                 <Button
-                                                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                                                                    className="w-full bg-green-800 hover:bg-green-900 text-white shadow-lg shadow-green-500/20"
                                                                     onClick={() => handleWaterPlant(plant)}
                                                                 >
                                                                     <Droplets className="w-4 h-4 mr-2" /> Regar Planta
@@ -833,11 +833,11 @@ export default function HuertoPage() {
                     {tab === 'hoy' && (
                         <div>
                             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                <Droplets className="text-emerald-500" /> Hoy y esta semana
+                                <Droplets className="text-green-500" /> Hoy y esta semana
                             </h2>
 
                             {plants.length === 0 ? (
-                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
+                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/10">
                                     <p className="text-slate-700 dark:text-slate-200 font-semibold">Escanea tu primera planta para empezar.</p>
                                 </div>
                             ) : (
@@ -850,7 +850,7 @@ export default function HuertoPage() {
                                             </div>
                                             <Button
                                                 size="sm"
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                className="bg-green-800 hover:bg-green-900 text-white"
                                                 disabled={bulkWatering || plantsDueNow.length === 0}
                                                 onClick={() => handleWaterPlantsBulk(plantsDueNow)}
                                             >
@@ -956,11 +956,11 @@ export default function HuertoPage() {
                     {tab === 'consejos' && (
                         <div>
                             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                <HistoryIcon className="text-emerald-500" /> Consejos de Quioba
+                                <HistoryIcon className="text-green-500" /> Consejos de Quioba
                             </h2>
 
                             {plants.length === 0 ? (
-                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
+                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/10">
                                     <p className="text-slate-700 dark:text-slate-200 font-semibold">Escanea una planta y te saldrán planes de cuidados.</p>
                                 </div>
                             ) : (
@@ -1052,7 +1052,7 @@ export default function HuertoPage() {
                                                         <div className="flex gap-2">
                                                             <Button
                                                                 size="sm"
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+                                                                className="bg-green-800 hover:bg-green-900 text-white flex-1"
                                                                 onClick={() => handleWaterPlant(p)}
                                                             >
                                                                 <Droplets className="w-4 h-4 mr-1" /> Regar
@@ -1079,11 +1079,11 @@ export default function HuertoPage() {
                     {tab === 'historial' && (
                         <div>
                             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                <HistoryIcon className="text-emerald-500" /> Historial de re-escaneos
+                                <HistoryIcon className="text-green-500" /> Historial de re-escaneos
                             </h2>
 
                             {plants.length === 0 ? (
-                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
+                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/10">
                                     <p className="text-slate-700 dark:text-slate-200 font-semibold">Aún no tienes plantas.</p>
                                 </div>
                             ) : (
@@ -1097,7 +1097,7 @@ export default function HuertoPage() {
                                         <select
                                             value={historyPlantId ?? ''}
                                             onChange={(e) => setHistoryPlantId(e.target.value)}
-                                            className="rounded-xl border border-white/50 bg-white/40 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                                            className="rounded-xl border border-white/50 bg-white/40 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-200"
                                         >
                                             {plants.map((p) => (
                                                 <option key={p.id} value={p.id}>
@@ -1109,7 +1109,7 @@ export default function HuertoPage() {
 
                                     {historyLoading ? (
                                         <div className="rounded-3xl border border-white/30 bg-white/30 p-6 flex items-center justify-center">
-                                            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                                            <Loader2 className="w-8 h-8 animate-spin text-green-500" />
                                         </div>
                                     ) : historyEntries.length === 0 ? (
                                         <div className="rounded-3xl border border-white/30 bg-white/30 p-6 text-sm text-slate-700 dark:text-slate-300">
@@ -1157,11 +1157,11 @@ export default function HuertoPage() {
                     {tab === 'galeria' && (
                         <div>
                             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                <ImageIcon className="text-emerald-500" /> Galería
+                                <ImageIcon className="text-green-500" /> Galería
                             </h2>
 
                             {plants.length === 0 ? (
-                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
+                                <div className="text-center py-20 px-4 rounded-3xl border-2 border-dashed border-green-200 dark:border-green-950 bg-green-50/50 dark:bg-green-950/10">
                                     <p className="text-slate-700 dark:text-slate-200 font-semibold">Añade una planta para ver su galería.</p>
                                 </div>
                             ) : (
@@ -1191,7 +1191,7 @@ export default function HuertoPage() {
                                                     <Button
                                                         type="button"
                                                         size="sm"
-                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+                                                        className="bg-green-800 hover:bg-green-900 text-white flex-1"
                                                         onClick={(ev) => {
                                                             ev.stopPropagation();
                                                             handleWaterPlant(p);
@@ -1269,7 +1269,7 @@ export default function HuertoPage() {
 
                                     <div className="space-y-4">
                                         <Button
-                                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-14 rounded-2xl"
+                                            className="w-full bg-green-800 hover:bg-green-900 text-white h-14 rounded-2xl"
                                             disabled={rescanAnalyzing}
                                             onClick={() => rescanFileInputRef.current?.click()}
                                         >
@@ -1313,3 +1313,4 @@ export default function HuertoPage() {
         </div>
     );
 }
+

@@ -44,7 +44,7 @@ export function ExpenseDialog({ open, onOpenChange, form, setForm, onSave, savin
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <PiggyBank className="w-5 h-5 text-emerald-500" />
+                        <PiggyBank className="w-5 h-5 text-green-500" />
                         {form.id ? 'Editar Gasto' : 'Nuevo Gasto'}
                     </DialogTitle>
                 </DialogHeader>
@@ -92,7 +92,7 @@ export function ExpenseDialog({ open, onOpenChange, form, setForm, onSave, savin
                             <Button
                                 type="button"
                                 variant={form.paid_by === 'Mi' ? 'default' : 'outline'}
-                                className={form.paid_by === 'Mi' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                className={form.paid_by === 'Mi' ? 'bg-green-800 hover:bg-green-900' : ''}
                                 onClick={() => setForm({ ...form, paid_by: 'Mi' })}
                             >
                                 Yo pagué
@@ -130,7 +130,7 @@ export function ExpenseDialog({ open, onOpenChange, form, setForm, onSave, savin
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                         Cancelar
                     </Button>
-                    <Button onClick={handleSubmit} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button onClick={handleSubmit} disabled={saving} className="bg-green-800 hover:bg-green-900">
                         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                         Guardar Gasto
                     </Button>
@@ -139,3 +139,4 @@ export function ExpenseDialog({ open, onOpenChange, form, setForm, onSave, savin
         </Dialog>
     );
 }
+

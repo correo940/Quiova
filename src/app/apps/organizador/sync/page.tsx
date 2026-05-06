@@ -587,12 +587,12 @@ function ModeSelectionScreen({ settings, profile, firstName, texts, tomorrowLoad
           </button>
           <button
             onClick={() => onSelect('conversational')}
-            className="w-full p-5 rounded-2xl bg-white/10 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-400/40 transition-all text-left group"
+            className="w-full p-5 rounded-2xl bg-white/10 hover:bg-green-500/20 border border-white/10 hover:border-green-400/40 transition-all text-left group"
           >
             <div className="flex items-center gap-3 mb-1">
               <span className="text-xl">🤖</span>
               <span className="font-semibold text-lg">Sync Conversacional</span>
-              <Badge className="bg-emerald-400/20 text-emerald-300 border-emerald-400/30 text-xs ml-auto">IA</Badge>
+              <Badge className="bg-green-400/20 text-green-300 border-green-400/30 text-xs ml-auto">IA</Badge>
             </div>
             <p className="text-white/50 text-sm">Habla con la IA de Quioba y ella organiza tu mañana por ti. Solo cuéntale cómo ha ido el día.</p>
           </button>
@@ -633,9 +633,9 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
   if (todayIncompleteTasks.length === 0) {
     return (
       <div className="space-y-3">
-        <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+        <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-center">
           <span className="text-4xl">ðŸŽ‰</span>
-          <p className="text-emerald-300 font-bold mt-2">Â¡Cumpliste todo lo de hoy!</p>
+          <p className="text-green-300 font-bold mt-2">Â¡Cumpliste todo lo de hoy!</p>
           <p className="text-white/50 text-sm mt-1">No quedan tareas pendientes. MagnÃ­fico.</p>
         </div>
       </div>
@@ -684,8 +684,8 @@ function FollowUpBlock({ todayIncompleteTasks, rescheduledTasks, skippedTasks, o
       )}
 
       {pending.length === 0 && todayIncompleteTasks.length > 0 && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-          <p className="text-emerald-300 font-semibold">Todo gestionado ðŸ‘</p>
+        <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 text-center">
+          <p className="text-green-300 font-semibold">Todo gestionado ðŸ‘</p>
           <p className="text-white/40 text-sm mt-1">Pulsa Siguiente para continuar.</p>
         </div>
       )}
@@ -899,9 +899,9 @@ function FinancesBlock({ balance, plannedExpense, setPlannedExpense, notes, setN
   const negative = balance < 0;
   return (
     <div className="space-y-4">
-      <div className={`p-5 rounded-2xl border text-center ${negative ? 'bg-red-500/10 border-red-500/20' : low ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+      <div className={`p-5 rounded-2xl border text-center ${negative ? 'bg-red-500/10 border-red-500/20' : low ? 'bg-amber-500/10 border-amber-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
         <p className="text-white/50 text-sm">Saldo total disponible</p>
-        <p className={`text-4xl font-extrabold mt-1 ${negative ? 'text-red-300' : low ? 'text-amber-300' : 'text-emerald-300'}`}>
+        <p className={`text-4xl font-extrabold mt-1 ${negative ? 'text-red-300' : low ? 'text-amber-300' : 'text-green-300'}`}>
           {balance.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
         </p>
         {low && !negative && <p className="text-amber-400 text-xs mt-1">âš ï¸ Saldo bajo</p>}
@@ -946,9 +946,9 @@ function VictoriesBlock({ todayTasks, victories, setVictories, newVictory, setNe
         <div className="space-y-2">
           <p className="text-white/40 text-xs uppercase tracking-wider">Tareas completadas hoy</p>
           {todayTasks.map((t: any) => (
-            <div key={t.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-              <Check className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-emerald-200">{t.title}</span>
+            <div key={t.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
+              <Check className="w-4 h-4 text-green-400" />
+              <span className="text-sm text-green-200">{t.title}</span>
             </div>
           ))}
         </div>
@@ -1081,7 +1081,7 @@ function ConversationalSyncScreen({
         <div className="flex items-center gap-2">
           <span className="text-xl">{profile?.emoji ?? '🤖'}</span>
           <span className="text-white/60 text-sm font-medium">Sync Conversacional</span>
-          <Badge className="bg-emerald-400/20 text-emerald-300 border-emerald-400/30 text-xs">IA</Badge>
+          <Badge className="bg-green-400/20 text-green-300 border-green-400/30 text-xs">IA</Badge>
         </div>
         <div className="w-5" />
       </div>
@@ -1134,8 +1134,8 @@ function ConversationalSyncScreen({
 
         {/* Resumen final */}
         {chatReady && chatSummary && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-            <p className="text-emerald-300 text-xs font-bold uppercase tracking-wider mb-2">✅ Resumen del día listo</p>
+          <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+            <p className="text-green-300 text-xs font-bold uppercase tracking-wider mb-2">✅ Resumen del día listo</p>
             <p className="text-white/80 text-sm">{chatSummary}</p>
           </div>
         )}
@@ -1183,7 +1183,7 @@ function ConversationalSyncScreen({
           <Button
             onClick={onSave}
             disabled={saving}
-            className="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-emerald-500/20"
+            className="w-full h-14 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-800 hover:to-teal-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-green-500/20"
           >
             {saving ? 'Guardando...' : '✅ Guardar Sync Conversacional'}
           </Button>
@@ -1192,5 +1192,6 @@ function ConversationalSyncScreen({
     </div>
   );
 }
+
 
 

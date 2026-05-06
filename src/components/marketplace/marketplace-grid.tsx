@@ -58,7 +58,7 @@ function withLocalMeditationApp(apps: AppWithStatus[]) {
 // Color styles per app key
 const getAppStyle = (appKey: string) => {
     switch (appKey) {
-        case 'desktop': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500' };
+        case 'desktop': return { bg: 'bg-green-50', text: 'text-green-800', decoration: 'bg-green-500' };
         case 'shopping': return { bg: 'bg-orange-50', text: 'text-orange-600', decoration: 'bg-orange-500' };
         case 'chef-ia': return { bg: 'bg-red-50', text: 'text-red-600', decoration: 'bg-red-500' };
         case 'tasks': return { bg: 'bg-purple-50', text: 'text-purple-600', decoration: 'bg-purple-500' };
@@ -66,8 +66,8 @@ const getAppStyle = (appKey: string) => {
         case 'documents': return { bg: 'bg-blue-50', text: 'text-blue-600', decoration: 'bg-blue-500' };
         case 'passwords': return { bg: 'bg-amber-50', text: 'text-amber-600', decoration: 'bg-amber-500' };
         case 'assistant': return { bg: 'bg-violet-50', text: 'text-violet-600', decoration: 'bg-violet-500' };
-        case 'huerto': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500' };
-        case 'meditation': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500' };
+        case 'huerto': return { bg: 'bg-green-50', text: 'text-green-800', decoration: 'bg-green-500' };
+        case 'meditation': return { bg: 'bg-green-50', text: 'text-green-800', decoration: 'bg-green-500' };
         default: return { bg: 'bg-slate-50', text: 'text-slate-600', decoration: 'bg-slate-500' };
     }
 };
@@ -298,3 +298,4 @@ export default function MarketplaceGrid({
         </>
     );
 }
+

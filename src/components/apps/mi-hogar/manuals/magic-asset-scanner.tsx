@@ -72,8 +72,8 @@ export function MagicAssetScanner({ onScanComplete }: MagicAssetScannerProps) {
         <div className="w-full">
             <Card
                 className={`relative overflow-hidden border-2 border-dashed transition-all duration-300 ${isScanning
-                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
-                        : 'border-slate-300 hover:border-emerald-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer'
+                        ? 'border-green-500 bg-green-50/50 dark:bg-green-800-950/20'
+                        : 'border-slate-300 hover:border-green-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer'
                     }`}
                 onClick={() => !isScanning && fileInputRef.current?.click()}
             >
@@ -83,21 +83,21 @@ export function MagicAssetScanner({ onScanComplete }: MagicAssetScannerProps) {
                             <div className="relative">
                                 <ScanSpinner />
                             </div>
-                            <h3 className="mt-6 text-lg font-bold text-emerald-600">Escáner IA Trabajando</h3>
-                            <p className="text-sm text-emerald-600/80 mt-1 font-medium animate-pulse">{progressStep}</p>
+                            <h3 className="mt-6 text-lg font-bold text-green-800">Escáner IA Trabajando</h3>
+                            <p className="text-sm text-green-800/80 mt-1 font-medium animate-pulse">{progressStep}</p>
                         </div>
                     ) : (
                         <>
-                            <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-2 shadow-inner">
-                                <Wand2 className="w-8 h-8 text-emerald-600 drop-shadow-sm" />
+                            <div className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-950/50 flex items-center justify-center mb-2 shadow-inner">
+                                <Wand2 className="w-8 h-8 text-green-800 drop-shadow-sm" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">Bóveda Mágica</h3>
                                 <p className="text-sm text-slate-500 max-w-sm mt-2">
-                                    Sube un <strong className="text-emerald-600">ticket de compra</strong>, foto de caja o <strong className="text-emerald-600">pegatina de características</strong>. La IA extraerá la marca, modelo y calculará las garantías.
+                                    Sube un <strong className="text-green-800">ticket de compra</strong>, foto de caja o <strong className="text-green-800">pegatina de características</strong>. La IA extraerá la marca, modelo y calculará las garantías.
                                 </p>
                             </div>
-                            <Button className="mt-4 bg-slate-900 text-white hover:bg-emerald-600 shadow-md">
+                            <Button className="mt-4 bg-slate-900 text-white hover:bg-green-800 shadow-md">
                                 <UploadCloud className="mr-2 h-4 w-4" /> Seleccionar Archivo
                             </Button>
                         </>
@@ -106,7 +106,7 @@ export function MagicAssetScanner({ onScanComplete }: MagicAssetScannerProps) {
 
                 {/* Visual Scanner Line Effect */}
                 {isScanning && (
-                    <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)] animate-scanner-beam" />
+                    <div className="absolute top-0 left-0 w-full h-1 bg-green-400 shadow-[0_0_15px_rgba(52,211,153,0.8)] animate-scanner-beam" />
                 )}
             </Card>
 
@@ -138,9 +138,10 @@ export function MagicAssetScanner({ onScanComplete }: MagicAssetScannerProps) {
 function ScanSpinner() {
     return (
         <div className="relative flex items-center justify-center w-24 h-24">
-            <div className="absolute inset-0 rounded-full border-t-4 border-emerald-500 animate-spin opacity-80" />
-            <div className="absolute inset-2 rounded-full border-r-4 border-emerald-400 animate-spin opacity-60" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
-            <Wand2 className="w-8 h-8 text-emerald-600 animate-pulse" />
+            <div className="absolute inset-0 rounded-full border-t-4 border-green-500 animate-spin opacity-80" />
+            <div className="absolute inset-2 rounded-full border-r-4 border-green-400 animate-spin opacity-60" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+            <Wand2 className="w-8 h-8 text-green-800 animate-pulse" />
         </div>
     );
 }
+

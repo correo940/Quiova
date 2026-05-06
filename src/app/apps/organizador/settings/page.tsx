@@ -64,7 +64,7 @@ export default function SecretarySettingsPage() {
         <Button
           size="sm"
           onClick={handleSave}
-          className={`rounded-xl transition-all ${saved ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : ''}`}
+          className={`rounded-xl transition-all ${saved ? 'bg-green-500 hover:bg-green-800 text-white' : ''}`}
         >
           {saved ? <Check className="w-4 h-4 mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
           {saved ? 'Guardado' : 'Guardar'}
@@ -93,7 +93,7 @@ export default function SecretarySettingsPage() {
                   key={avatar.id}
                   onClick={() => update({ avatarId: avatar.id as SecretaryAvatarId })}
                   className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${settings.avatarId === avatar.id
-                    ? 'bg-emerald-500/10 border-emerald-500/50'
+                    ? 'bg-green-500/10 border-green-500/50'
                     : 'bg-muted/50 border-border hover:bg-muted'
                     }`}
                 >
@@ -103,7 +103,7 @@ export default function SecretarySettingsPage() {
                     <p className="text-muted-foreground text-xs">{avatar.description}</p>
                   </div>
                   {settings.avatarId === avatar.id && (
-                    <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 ml-auto flex-shrink-0" />
+                    <Check className="w-4 h-4 text-green-500 dark:text-green-400 ml-auto flex-shrink-0" />
                   )}
                 </button>
               ))}
@@ -119,7 +119,7 @@ export default function SecretarySettingsPage() {
                 key={p.id}
                 onClick={() => update({ personality: p.id })}
                 className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${settings.personality === p.id
-                  ? 'bg-emerald-500/10 border-emerald-500/50'
+                  ? 'bg-green-500/10 border-green-500/50'
                   : 'bg-muted/50 border-border hover:bg-muted'
                   }`}
               >
@@ -129,7 +129,7 @@ export default function SecretarySettingsPage() {
                   <p className="text-muted-foreground text-xs">{p.desc}</p>
                 </div>
                 {settings.personality === p.id && (
-                  <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-green-500 dark:text-green-400 flex-shrink-0" />
                 )}
               </button>
             ))}
@@ -177,7 +177,7 @@ export default function SecretarySettingsPage() {
                 <select
                   value={settings.weeklySync?.dayOfWeek ?? 0}
                   onChange={e => updateWeeklySync({ dayOfWeek: Number(e.target.value) })}
-                  className="bg-muted border border-border text-foreground rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-emerald-500"
+                  className="bg-muted border border-border text-foreground rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-green-500"
                 >
                   {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((d, i) => (
                     <option key={i} value={i} className="bg-background">{d}</option>
@@ -217,7 +217,7 @@ export default function SecretarySettingsPage() {
                   type="number" min={1} max={28}
                   value={settings.monthlySync?.dayOfMonth ?? 1}
                   onChange={e => updateMonthlySync({ dayOfMonth: Number(e.target.value) })}
-                  className="w-16 bg-muted border border-border text-foreground text-center rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-emerald-500"
+                  className="w-16 bg-muted border border-border text-foreground text-center rounded-xl text-sm px-2 py-1 focus:outline-none focus:border-green-500"
                 />
               </div>
               <TimeField
@@ -296,7 +296,7 @@ function Toggle({ label, sub, emoji, value, onChange }: {
       <Switch
         checked={value}
         onCheckedChange={onChange}
-        className="data-[state=checked]:bg-emerald-500"
+        className="data-[state=checked]:bg-green-500"
       />
     </div>
   );
@@ -318,7 +318,7 @@ function TimeField({ label, sub, emoji, value, onChange }: {
         type="time"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-24 bg-muted border-border text-foreground text-center rounded-xl text-sm p-1 h-8 focus-visible:ring-emerald-500"
+        className="w-24 bg-muted border-border text-foreground text-center rounded-xl text-sm p-1 h-8 focus-visible:ring-green-500"
       />
     </div>
   );
@@ -329,7 +329,7 @@ function PreviewBubble({ emoji, text, label, color }: {
   color: 'indigo' | 'amber' | 'yellow';
 }) {
   const colorMap = {
-    indigo: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    indigo: 'bg-green-500/10 border-green-500/20 text-green-800 dark:text-green-400',
     amber: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
     yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400',
   };
@@ -345,3 +345,4 @@ function PreviewBubble({ emoji, text, label, color }: {
     </div>
   );
 }
+

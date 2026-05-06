@@ -534,7 +534,7 @@ export default function AccountDetailDialog({
                                                         onChange={(e) => setManualBalanceValue(e.target.value)}
                                                         autoFocus
                                                     />
-                                                    <Button size="sm" className="h-8 bg-emerald-500 hover:bg-emerald-600" onClick={handleManualBalanceSave}>
+                                                    <Button size="sm" className="h-8 bg-green-500 hover:bg-green-800" onClick={handleManualBalanceSave}>
                                                         <Save className="w-3 h-3" />
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-8 text-white/60 hover:text-white" onClick={() => setIsEditingBalance(false)}>
@@ -563,7 +563,7 @@ export default function AccountDetailDialog({
                                                 className={cn(
                                                     'flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition-all',
                                                     transactionKind === 'deposit'
-                                                        ? 'bg-emerald-500 text-white shadow-md'
+                                                        ? 'bg-green-500 text-white shadow-md'
                                                         : 'text-white/50 hover:text-white/80'
                                                 )}
                                             >
@@ -611,7 +611,7 @@ export default function AccountDetailDialog({
                                                     type="button"
                                                     onClick={handleSubmit}
                                                     disabled={isSubmitting || !form.amount}
-                                                    className="h-8 rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-40"
+                                                    className="h-8 rounded-lg bg-green-500 px-3 text-xs font-semibold text-white hover:bg-green-800 disabled:opacity-40"
                                                 >
                                                     <Save className="mr-1 h-3 w-3" />
                                                     {editingTransactionId ? 'Guardar' : 'Añadir'}
@@ -675,7 +675,7 @@ export default function AccountDetailDialog({
                                             <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur-xl">
                                                 <CardContent className="p-2">
                                                     <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Ingresos</p>
-                                                    <p className="mt-1 text-base font-bold text-emerald-300">{compactCurrencyFormatter.format(monthlyIncome)}</p>
+                                                    <p className="mt-1 text-base font-bold text-green-300">{compactCurrencyFormatter.format(monthlyIncome)}</p>
                                                 </CardContent>
                                             </Card>
                                             <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur-xl">
@@ -686,13 +686,13 @@ export default function AccountDetailDialog({
                                             </Card>
                                             <Card className={cn(
                                                 'border-white/10 text-white shadow-none backdrop-blur-xl',
-                                                netFlow >= 0 ? 'bg-emerald-500/15' : 'bg-rose-500/15'
+                                                netFlow >= 0 ? 'bg-green-500/15' : 'bg-rose-500/15'
                                             )}>
                                                 <CardContent className="p-2">
                                                     <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Diferencia</p>
                                                     <p className={cn(
                                                         'mt-1 text-base font-bold',
-                                                        netFlow >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                                                        netFlow >= 0 ? 'text-green-300' : 'text-rose-300'
                                                     )}>
                                                         {netFlow >= 0 ? '+' : ''}{compactCurrencyFormatter.format(netFlow)}
                                                     </p>
@@ -723,7 +723,7 @@ export default function AccountDetailDialog({
                                     <Card className="flex flex-1 flex-col overflow-hidden rounded-[1.75rem] border-white/70 bg-white/80 shadow-xl shadow-slate-200/50">
                                         <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100/80 pb-3 shrink-0">
                                             <CardTitle className="flex items-center gap-2 text-lg">
-                                                <PiggyBank className="h-5 w-5 text-emerald-600" />
+                                                <PiggyBank className="h-5 w-5 text-green-800" />
                                                 Evolución del saldo
                                             </CardTitle>
                                             <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
@@ -912,7 +912,7 @@ export default function AccountDetailDialog({
                                                                         onSyncBalance(account.id);
                                                                     }
                                                                 }}
-                                                                className="text-slate-400 hover:text-emerald-600 transition-colors"
+                                                                className="text-slate-400 hover:text-green-800 transition-colors"
                                                                 title="Sincronizar saldo con el historial"
                                                             >
                                                                 <RefreshCw className="h-4 w-4" />
@@ -1001,7 +1001,7 @@ export default function AccountDetailDialog({
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                             <div>
                                                 <CardTitle className="flex items-center gap-2 text-lg">
-                                                    <ReceiptText className="h-5 w-5 text-emerald-600" />
+                                                    <ReceiptText className="h-5 w-5 text-green-800" />
                                                     Historial de movimientos
                                                 </CardTitle>
                                                 <p className="mt-2 text-sm text-muted-foreground">
@@ -1098,7 +1098,7 @@ export default function AccountDetailDialog({
                                                         <Checkbox
                                                             checked={filteredTransactions.length > 0 && selectedTxIds.size >= filteredTransactions.length}
                                                             onCheckedChange={toggleAllVisible}
-                                                            className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-none"
+                                                            className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none"
                                                         />
                                                     </TableHead>
                                                     <TableHead>Movimiento</TableHead>
@@ -1120,14 +1120,14 @@ export default function AccountDetailDialog({
                                                     filteredTransactions.map((tx) => (
                                                         <TableRow
                                                             key={tx.id}
-                                                            className={cn("hover:bg-slate-50/70 transition-colors cursor-pointer", selectedTxIds.has(tx.id) && "bg-emerald-50/40 hover:bg-emerald-50/60")}
+                                                            className={cn("hover:bg-slate-50/70 transition-colors cursor-pointer", selectedTxIds.has(tx.id) && "bg-green-50/40 hover:bg-green-50/60")}
                                                             onClick={() => toggleSelection(tx.id)}
                                                         >
                                                             <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                                                                 <Checkbox
                                                                     checked={selectedTxIds.has(tx.id)}
                                                                     onCheckedChange={() => toggleSelection(tx.id)}
-                                                                    className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-none"
+                                                                    className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
@@ -1136,7 +1136,7 @@ export default function AccountDetailDialog({
                                                                         className={cn(
                                                                             'flex h-10 w-10 items-center justify-center rounded-2xl',
                                                                             tx.amount >= 0
-                                                                                ? 'bg-emerald-100 text-emerald-700'
+                                                                                ? 'bg-green-100 text-green-900'
                                                                                 : 'bg-rose-100 text-rose-700'
                                                                         )}
                                                                     >
@@ -1164,7 +1164,7 @@ export default function AccountDetailDialog({
                                                                     className={cn(
                                                                         'rounded-full px-3 py-1 font-semibold',
                                                                         tx.amount >= 0
-                                                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                                                            ? 'bg-green-100 text-green-900 hover:bg-green-100'
                                                                             : 'bg-rose-100 text-rose-700 hover:bg-rose-100'
                                                                     )}
                                                                 >
@@ -1174,7 +1174,7 @@ export default function AccountDetailDialog({
                                                             <TableCell
                                                                 className={cn(
                                                                     'text-right font-bold',
-                                                                    tx.amount >= 0 ? 'text-emerald-600' : 'text-slate-900'
+                                                                    tx.amount >= 0 ? 'text-green-800' : 'text-slate-900'
                                                                 )}
                                                             >
                                                                 {tx.amount >= 0 ? '+' : '-'}{currencyFormatter.format(Math.abs(tx.amount))}
@@ -1256,10 +1256,10 @@ export default function AccountDetailDialog({
                                                     {account.include_in_total === false ? 'Oculta del balance total' : 'Visible en balance total'}
                                                 </p>
                                             </div>
-                                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 md:col-span-2">
+                                            <div className="rounded-2xl border border-green-100 bg-green-50/70 p-4 md:col-span-2">
                                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                                     <div>
-                                                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">Balance general</p>
+                                                        <p className="text-xs uppercase tracking-[0.25em] text-green-900">Balance general</p>
                                                         <p className="mt-2 text-lg font-bold text-slate-900">
                                                             {account.include_in_total === false ? 'Excluida del computo global' : 'Incluida en el computo global'}
                                                         </p>
@@ -1327,7 +1327,7 @@ export default function AccountDetailDialog({
                                         <Card className="rounded-[1.75rem] border-white/70 bg-white/85 shadow-xl shadow-slate-200/50">
                                             <CardHeader className="border-b border-slate-100/80 pb-4">
                                                 <CardTitle className="flex items-center gap-2 text-lg">
-                                                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                                                    <ShieldCheck className="h-5 w-5 text-green-800" />
                                                     Vinculacion y acceso
                                                 </CardTitle>
                                             </CardHeader>
@@ -1392,3 +1392,4 @@ export default function AccountDetailDialog({
         </Dialog>
     );
 }
+

@@ -28,10 +28,10 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-blue-500', href: '/apps/mi-hogar/shopping' },
     { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-purple-500', href: '/apps/mi-hogar/tasks' },
     { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
-    { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: 'bg-emerald-500', href: '/apps/mi-hogar/meditation' },
+    { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: 'bg-green-800', href: '/apps/mi-hogar/meditation' },
     { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-red-500', href: '/apps/debate' },
     { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
-    { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-emerald-500', href: '/apps/mi-hogar/pharmacy' },
+    { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-green-800', href: '/apps/mi-hogar/pharmacy' },
     { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-orange-500', href: '/apps/mi-hogar/documents' },
     { key: 'expenses', label: 'Gastos Compartidos', iconKey: 'Receipt', color: 'bg-pink-500', href: '/apps/mi-hogar/expenses' },
     { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties' },
@@ -39,7 +39,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'manuals', label: 'Manual y Mantenimiento', iconKey: 'Book', color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals' },
     { key: 'passwords', label: 'Claves', iconKey: 'Key', color: 'bg-zinc-600', href: '/apps/mi-hogar/passwords' },
     { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-teal-600', href: '/apps/mi-hogar/insurance' },
-    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-600', href: '/apps/mi-hogar/roster' },
+    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-800', href: '/apps/mi-hogar/roster' },
     { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-violet-500', href: '/apps/resumen-diario' },
 ];
 
@@ -204,7 +204,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         sub: r.manuals?.title,
                         time: new Date(r.next_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
                         icon: 'Wrench',
-                        color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        color: 'text-green-800 bg-green-50 dark:bg-green-900/30 dark:text-green-400'
                     }));
                 }
                 setEvents(dailyEvents);
@@ -399,7 +399,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         <button
                             onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
                             className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
-                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400'
                                 : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
                                 }`}
                             title={isWakeWordEnabled ? "Micrófono IA activo (Toca para desactivar)" : "Micrófono IA desactivado (Toca para reactivar)"}
@@ -408,7 +408,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         </button>
                         <button
                             onClick={() => setAiPanelOpen(true)}
-                            className="relative w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 shadow-md hover:scale-110 transition-transform overflow-hidden"
+                            className="relative w-8 h-8 flex items-center justify-center rounded-full bg-green-800 shadow-md hover:scale-110 transition-transform overflow-hidden"
                             title="IA de Quioba"
                         >
                             <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200 bg-white flex items-center justify-center text-sm">

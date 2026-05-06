@@ -34,16 +34,16 @@ interface StartMenuApp {
 // All possible apps (hardcoded icons for the desktop menu)
 const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.ReactNode; color: string; bgColor: string }[] = [
     { key: 'shopping', name: 'Compras', route: '/apps/mi-hogar/shopping', icon: <ShoppingCart className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-    { key: 'tasks', name: 'Tareas', route: '/apps/mi-hogar/tasks', icon: <Bell className="w-4 h-4" />, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { key: 'tasks', name: 'Tareas', route: '/apps/mi-hogar/tasks', icon: <Bell className="w-4 h-4" />, color: 'text-green-800', bgColor: 'bg-green-800/10' },
     { key: 'passwords', name: 'Claves', route: '/apps/mi-hogar/passwords', icon: <Shield className="w-4 h-4" />, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
     { key: 'pharmacy', name: 'Salud', route: '/apps/mi-hogar/pharmacy', icon: <Pill className="w-4 h-4" />, color: 'text-red-500', bgColor: 'bg-red-500/10' },
     { key: 'garage', name: 'Garaje', route: '/apps/mi-hogar/garage', icon: <Car className="w-4 h-4" />, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-    { key: 'expenses', name: 'Gastos Compartidos', route: '/apps/mi-hogar/expenses', icon: <Wallet className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+    { key: 'expenses', name: 'Gastos Compartidos', route: '/apps/mi-hogar/expenses', icon: <Wallet className="w-4 h-4" />, color: 'text-green-800', bgColor: 'bg-green-800/10' },
     { key: 'savings', name: 'Mi Economía', route: '/apps/mi-hogar/savings', icon: <PiggyBank className="w-4 h-4" />, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
-    { key: 'meditation', name: 'Pausa', route: '/apps/mi-hogar/meditation', icon: <Brain className="w-4 h-4" />, color: 'text-emerald-600', bgColor: 'bg-emerald-500/10' },
+    { key: 'meditation', name: 'Pausa', route: '/apps/mi-hogar/meditation', icon: <Brain className="w-4 h-4" />, color: 'text-green-800', bgColor: 'bg-green-800/10' },
     { key: 'roster', name: 'Turnos', route: '/apps/mi-hogar/roster', icon: <Calendar className="w-4 h-4" />, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
     { key: 'chef-ia', name: 'Chef IA', route: '/apps/mi-hogar/chef', icon: <ChefHat className="w-4 h-4" />, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-    { key: 'huerto', name: 'Mis Plantas/Huerto', route: '/apps/huerto', icon: <Leaf className="w-4 h-4" />, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+    { key: 'huerto', name: 'Mis Plantas/Huerto', route: '/apps/huerto', icon: <Leaf className="w-4 h-4" />, color: 'text-green-800', bgColor: 'bg-green-800/10' },
     { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
     { key: 'assistant', name: 'Asistente', route: '/apps/mi-hogar/asistente', icon: <MessageCircle className="w-4 h-4" />, color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
     { key: 'secretary', name: 'Organizador', route: '/apps/organizador', icon: <Bot className="w-4 h-4" />, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
@@ -345,7 +345,7 @@ export default function StartMenu() {
                                                 onClick={() => closeStartMenu()}
                                                 className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors bg-white/40 dark:bg-zinc-800/40 shadow-sm text-center"
                                             >
-                                                <div className="p-2 bg-green-500/10 rounded-full text-green-500">
+                                                <div className="p-2 bg-green-800/10 rounded-full text-green-800">
                                                     <MessageCircle className="w-6 h-6" />
                                                 </div>
                                                 <span className="text-xs font-medium">Debate</span>
@@ -408,7 +408,7 @@ export default function StartMenu() {
                                                                 {app.key === 'shopping' && shoppingCount > 0 && <Badge className="ml-auto h-4 px-1">{shoppingCount}</Badge>}
                                                                 {app.key === 'tasks' && taskCount > 0 && <Badge className="ml-auto h-4 px-1">{taskCount}</Badge>}
                                                                 {app.key !== 'shopping' && app.key !== 'tasks' && (
-                                                                    <LockOpen className="ml-auto w-3 h-3 text-emerald-400" />
+                                                                    <LockOpen className="ml-auto w-3 h-3 text-green-800" />
                                                                 )}
                                                             </>
                                                         )}

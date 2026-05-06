@@ -769,17 +769,17 @@ export default function ManualsGallery() {
             {/* Search and Filters Bar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="relative flex-1 max-w-md group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 group-focus-within:scale-110 transition-transform" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500 group-focus-within:scale-110 transition-transform" />
                     <Input
                         placeholder="Buscar en manuales..."
-                        className="pl-11 h-12 border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all shadow-sm"
+                        className="pl-11 h-12 border-2 border-slate-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all shadow-sm"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <Button
                         variant="ghost"
                         size="icon"
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 hover:bg-emerald-50 ${isListening ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 hover:bg-green-50 ${isListening ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}
                         onClick={startVoiceSearch}
                         title="Búsqueda por voz"
                     >
@@ -794,7 +794,7 @@ export default function ManualsGallery() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setViewMode('grid')}
-                            className={`h-8 px-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                            className={`h-8 px-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-green-800 shadow-sm' : 'text-slate-500 hover:text-green-800'}`}
                             title="Vista Cuadrícula"
                         >
                             <Grid3x3 className="h-4 w-4" />
@@ -803,7 +803,7 @@ export default function ManualsGallery() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setViewMode('list')}
-                            className={`h-8 px-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                            className={`h-8 px-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-green-800 shadow-sm' : 'text-slate-500 hover:text-green-800'}`}
                             title="Vista Lista"
                         >
                             <List className="h-4 w-4" />
@@ -900,15 +900,15 @@ export default function ManualsGallery() {
                     {/* Add Asset Modal */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button onClick={resetForm} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transition-all">
+                            <Button onClick={resetForm} className="bg-green-800 hover:bg-green-900 text-white shadow-lg shadow-green-200 hover:shadow-xl hover:shadow-green-300 transition-all">
                                 <Plus className="mr-2 h-4 w-4" /> Añadir a tu Guía
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 border-none shadow-2xl rounded-3xl">
                             <DialogHeader className="px-6 pt-6 pb-2">
                                 <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900 dark:text-white">
-                                    <div className="p-2 bg-emerald-500/10 rounded-xl">
-                                        <BookOpen className="h-6 w-6 text-emerald-500" />
+                                    <div className="p-2 bg-green-500/10 rounded-xl">
+                                        <BookOpen className="h-6 w-6 text-green-500" />
                                     </div>
                                     {editingId ? 'Editar entrada' : '¿Qué quieres documentar?'}
                                 </DialogTitle>
@@ -923,7 +923,7 @@ export default function ManualsGallery() {
                                 <Tabs value={addModalTab} onValueChange={(val: any) => setAddModalTab(val)}>
                                     {!editingId && (
                                         <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl">
-                                            <TabsTrigger value="magic" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 font-bold transition-all data-[state=active]:shadow-sm">
+                                            <TabsTrigger value="magic" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-green-800 font-bold transition-all data-[state=active]:shadow-sm">
                                                 <Wand2 className="h-4 w-4 mr-2" /> Tengo el ticket/factura
                                             </TabsTrigger>
                                             <TabsTrigger value="manual" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 font-bold transition-all data-[state=active]:shadow-sm">
@@ -979,7 +979,7 @@ export default function ManualsGallery() {
                                                                 return (
                                                                     <SelectItem key={room.id} value={room.id}>
                                                                         <div className="flex items-center gap-2">
-                                                                            <Icon className="h-4 w-4 text-emerald-600" />
+                                                                            <Icon className="h-4 w-4 text-green-800" />
                                                                             {room.name}
                                                                         </div>
                                                                     </SelectItem>
@@ -1008,8 +1008,8 @@ export default function ManualsGallery() {
                                                     <Input value={purchaseStore} onChange={(e) => setPurchaseStore(e.target.value)} placeholder="MediaMarkt, Amazon..." className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner" />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold text-emerald-600">Fin de Garantía</Label>
-                                                    <Input type="date" value={warrantyExpires} onChange={(e) => setWarrantyExpires(e.target.value)} className="bg-emerald-50 dark:bg-emerald-900/20 border-none shadow-inner text-emerald-700" />
+                                                    <Label className="text-slate-600 dark:text-slate-400 font-bold text-green-800">Fin de Garantía</Label>
+                                                    <Input type="date" value={warrantyExpires} onChange={(e) => setWarrantyExpires(e.target.value)} className="bg-green-50 dark:bg-green-950/20 border-none shadow-inner text-green-900" />
                                                 </div>
                                             </div>
 
@@ -1023,7 +1023,7 @@ export default function ManualsGallery() {
                                                         placeholder="Cargador, A+++, Regalo..."
                                                         className="bg-slate-50 dark:bg-slate-900 border-none shadow-inner flex-1"
                                                     />
-                                                    <Button type="button" onClick={addTag} size="icon" className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 shrink-0">
+                                                    <Button type="button" onClick={addTag} size="icon" className="bg-green-100 hover:bg-green-200 text-green-900 shrink-0">
                                                         <Plus className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -1046,7 +1046,7 @@ export default function ManualsGallery() {
 
                                         <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                                             <div className="flex items-center gap-2">
-                                                <StickyNote className="h-4 w-4 text-emerald-500" />
+                                                <StickyNote className="h-4 w-4 text-green-500" />
                                                 <Label className="text-sm font-black text-slate-700 dark:text-slate-300">Instrucciones / Cómo funciona</Label>
                                             </div>
                                             <p className="text-xs text-slate-500">
@@ -1071,7 +1071,7 @@ export default function ManualsGallery() {
 
                                                 <TabsContent value="image" className="pt-4 space-y-4">
                                                     <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
-                                                        <ImageIcon className="mx-auto h-12 w-12 text-slate-400 group-hover:text-emerald-500 transition-colors mb-3" />
+                                                        <ImageIcon className="mx-auto h-12 w-12 text-slate-400 group-hover:text-green-500 transition-colors mb-3" />
                                                         <p className="text-sm text-slate-500 font-medium">Click para adjuntar Ticket o Manual 📸</p>
                                                         <input
                                                             type="file"
@@ -1116,10 +1116,10 @@ export default function ManualsGallery() {
                                                         {!isRecording ? (
                                                             <Button
                                                                 variant="outline"
-                                                                className="h-16 w-16 rounded-full border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 shadow-md"
+                                                                className="h-16 w-16 rounded-full border-green-500 hover:bg-green-50 hover:text-green-800 shadow-md"
                                                                 onClick={startRecording}
                                                             >
-                                                                <Mic className="h-8 w-8 text-emerald-500" />
+                                                                <Mic className="h-8 w-8 text-green-500" />
                                                             </Button>
                                                         ) : (
                                                             <div className="flex flex-col items-center gap-2">
@@ -1165,7 +1165,7 @@ export default function ManualsGallery() {
                                 {addModalTab === 'manual' ? (
                                     <div className="flex w-full justify-between items-center">
                                         <Button variant="ghost" className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl px-6 font-bold" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 rounded-xl px-8 font-bold text-md" onClick={addManual}>
+                                        <Button className="bg-green-800 hover:bg-green-900 text-white shadow-lg shadow-green-200 rounded-xl px-8 font-bold text-md" onClick={addManual}>
                                             <Zap className="h-4 w-4 mr-2" />
                                             {editingId ? 'Guardar Cambios' : 'Guardar en mi Guía'}
                                         </Button>
@@ -1186,14 +1186,14 @@ export default function ManualsGallery() {
                 loading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="flex flex-col items-center gap-4">
-                            <div className="h-16 w-16 rounded-full border-4 border-emerald-200 border-t-emerald-600 animate-spin"></div>
+                            <div className="h-16 w-16 rounded-full border-4 border-green-200 border-t-green-800 animate-spin"></div>
                             <p className="text-muted-foreground font-medium">Cargando manuales...</p>
                         </div>
                     </div>
                 ) : filteredManuals.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 px-4">
-                        <div className="rounded-full bg-emerald-50 p-6 mb-6">
-                            <FileText className="h-16 w-16 text-emerald-500" />
+                        <div className="rounded-full bg-green-50 p-6 mb-6">
+                            <FileText className="h-16 w-16 text-green-500" />
                         </div>
                         <h3 className="text-2xl font-bold text-slate-800 mb-2">No hay manuales</h3>
                         <p className="text-muted-foreground text-center mb-6 max-w-md">
@@ -1204,7 +1204,7 @@ export default function ManualsGallery() {
                         {!search && !selectedRoom && selectedTypes.length === 0 && (
                             <Button
                                 onClick={() => setIsDialogOpen(true)}
-                                className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-200 hover:shadow-xl transition-all"
+                                className="bg-gradient-to-r from-green-800 to-green-500 hover:from-green-900 hover:to-green-800 text-white shadow-lg shadow-green-200 hover:shadow-xl transition-all"
                                 size="lg"
                             >
                                 <Plus className="mr-2 h-5 w-5" />
@@ -1225,7 +1225,7 @@ export default function ManualsGallery() {
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                        className="group relative rounded-3xl overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-emerald-400/50 dark:hover:border-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex flex-col"
+                                        className="group relative rounded-3xl overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-400/50 dark:hover:border-green-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex flex-col"
                                     >
                                         <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 group/image flex items-center justify-center overflow-hidden">
                                             {/* Preview Content */}
@@ -1239,7 +1239,7 @@ export default function ManualsGallery() {
                                                     }}
                                                 />
                                             ) : (
-                                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover/image:text-emerald-500/50 transition-colors drop-shadow-sm">
+                                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover/image:text-green-500/50 transition-colors drop-shadow-sm">
                                                     {manual.type === 'video' && <Video className="h-16 w-16" />}
                                                     {manual.type === 'audio' && <Mic className="h-16 w-16" />}
                                                     {(manual.type === 'text' || manual.type === 'link') && <FileText className="h-16 w-16" />}
@@ -1255,7 +1255,7 @@ export default function ManualsGallery() {
                                                 <Button
                                                     variant="secondary"
                                                     size="icon"
-                                                    className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-800/95 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 hover:text-emerald-600 shadow-xl backdrop-blur transition-transform hover:scale-110 border-none"
+                                                    className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-800/95 hover:bg-green-50 dark:hover:bg-green-950/50 hover:text-green-800 shadow-xl backdrop-blur transition-transform hover:scale-110 border-none"
                                                     onClick={(e) => { e.stopPropagation(); handleEdit(manual); }}
                                                 >
                                                     <Pencil className="h-4 w-4" />
@@ -1273,7 +1273,7 @@ export default function ManualsGallery() {
                                             {/* Badges Overlay Top Left */}
                                             <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
                                                 {manual.warranty_expires && (
-                                                    <Badge className={`shadow-md px-2.5 py-0.5 text-[10px] uppercase font-black tracking-wider backdrop-blur border border-white/20 ${isExpiredWarranty ? 'bg-rose-500/90 hover:bg-rose-500 text-white shadow-rose-500/20' : 'bg-emerald-500/90 hover:bg-emerald-500 text-white shadow-emerald-500/20'}`}>
+                                                    <Badge className={`shadow-md px-2.5 py-0.5 text-[10px] uppercase font-black tracking-wider backdrop-blur border border-white/20 ${isExpiredWarranty ? 'bg-rose-500/90 hover:bg-rose-500 text-white shadow-rose-500/20' : 'bg-green-500/90 hover:bg-green-500 text-white shadow-green-500/20'}`}>
                                                         {isExpiredWarranty ? 'Garantía Expirada' : `Garantía: ${new Date(manual.warranty_expires).getFullYear()}`}
                                                     </Badge>
                                                 )}
@@ -1302,7 +1302,7 @@ export default function ManualsGallery() {
 
                                         <div className="p-5 flex-1 flex flex-col relative z-20">
                                             <div className="flex justify-between items-start gap-4 mb-2">
-                                                <h3 className="font-black text-[1.1rem] leading-tight line-clamp-1 text-slate-800 dark:text-white group-hover:text-emerald-500 transition-colors drop-shadow-sm tracking-tight">
+                                                <h3 className="font-black text-[1.1rem] leading-tight line-clamp-1 text-slate-800 dark:text-white group-hover:text-green-500 transition-colors drop-shadow-sm tracking-tight">
                                                     {manual.title}
                                                 </h3>
                                                 <Badge variant="outline" className="shrink-0 bg-slate-100/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold tracking-wider text-[9px] uppercase shadow-sm">
@@ -1317,7 +1317,7 @@ export default function ManualsGallery() {
 
                                             <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/50 flex gap-2">
                                                 <Button
-                                                    className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 font-bold shadow-sm transition-all h-10 border border-slate-100 dark:border-slate-700 active:scale-95"
+                                                    className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-green-50 dark:hover:bg-green-950/40 text-slate-700 dark:text-slate-300 hover:text-green-900 dark:hover:text-green-400 font-bold shadow-sm transition-all h-10 border border-slate-100 dark:border-slate-700 active:scale-95"
                                                     onClick={() => setViewManual(manual)}
                                                 >
                                                     Visualizar
@@ -1326,7 +1326,7 @@ export default function ManualsGallery() {
                                                     <Button
                                                         variant="secondary"
                                                         size="icon"
-                                                        className="shrink-0 h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 border border-emerald-100 dark:border-emerald-800"
+                                                        className="shrink-0 h-10 w-10 rounded-xl bg-green-50 dark:bg-green-950/30 text-green-800 dark:text-green-400 hover:bg-green-100 border border-green-100 dark:border-green-950"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setGalleryImages(manualContentImages[manual.id].map((img, idx) => ({
@@ -1339,7 +1339,7 @@ export default function ManualsGallery() {
                                                             setShowGallery(true);
                                                         }}
                                                     >
-                                                        <Images className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                        <Images className="h-4 w-4 text-green-800 dark:text-green-400" />
                                                     </Button>
                                                 )}
                                             </div>
@@ -1366,7 +1366,7 @@ export default function ManualsGallery() {
                                 {filteredManuals.map((manual) => (
                                     <TableRow key={manual.id} className="hover:bg-slate-50/50">
                                         <TableCell>
-                                            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 w-fit">
+                                            <div className="p-2 rounded-lg bg-green-50 text-green-800 w-fit">
                                                 {getContentTypeIcon(manual.type)}
                                             </div>
                                         </TableCell>
@@ -1390,7 +1390,7 @@ export default function ManualsGallery() {
                                         </TableCell>
                                         <TableCell className="hidden lg:table-cell">
                                             {manual.warranty_expires ? (
-                                                <div className={`flex items-center gap-1.5 text-sm ${isBefore(new Date(manual.warranty_expires), new Date()) ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                <div className={`flex items-center gap-1.5 text-sm ${isBefore(new Date(manual.warranty_expires), new Date()) ? 'text-red-600' : 'text-green-800'}`}>
                                                     <ShieldCheck className="h-4 w-4" />
                                                     <span>{new Date(manual.warranty_expires).toLocaleDateString()}</span>
                                                 </div>
@@ -1420,7 +1420,7 @@ export default function ManualsGallery() {
                                                     size="icon"
                                                     onClick={() => setViewManual(manual)}
                                                 >
-                                                    <FileText className="h-4 w-4 text-emerald-600" />
+                                                    <FileText className="h-4 w-4 text-green-800" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -1448,11 +1448,11 @@ export default function ManualsGallery() {
                     <Dialog open={!!viewManual} onOpenChange={(open) => !open && setViewManual(null)}>
                         <DialogContent className="sm:max-w-[640px] max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-white dark:bg-slate-900">
                             {/* Header tipo wiki */}
-                            <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-emerald-50 to-slate-50 dark:from-emerald-950/30 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
+                            <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-green-50 to-slate-50 dark:from-green-800-950/30 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap mb-2">
-                                            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-bold text-xs">
+                                            <Badge className="bg-green-500/10 text-green-900 dark:text-green-400 border-green-200 dark:border-green-950 font-bold text-xs">
                                                 {viewManual.category}
                                             </Badge>
                                             {viewManual.room && (
@@ -1461,7 +1461,7 @@ export default function ManualsGallery() {
                                                 </Badge>
                                             )}
                                             {viewManual.warranty_expires && (
-                                                <Badge className={`text-xs font-bold ${isBefore(new Date(viewManual.warranty_expires), new Date()) ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                                                <Badge className={`text-xs font-bold ${isBefore(new Date(viewManual.warranty_expires), new Date()) ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-green-100 text-green-900 border-green-200'}`}>
                                                     🛡️ Garantía: {new Date(viewManual.warranty_expires).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </Badge>
                                             )}
@@ -1518,8 +1518,8 @@ export default function ManualsGallery() {
                                             {hasInstructions ? (
                                                 <div className="space-y-2">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-                                                            <StickyNote className="h-4 w-4 text-emerald-500" />
+                                                        <div className="p-1.5 bg-green-500/10 rounded-lg">
+                                                            <StickyNote className="h-4 w-4 text-green-500" />
                                                         </div>
                                                         <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Instrucciones</span>
                                                     </div>
@@ -1531,7 +1531,7 @@ export default function ManualsGallery() {
                                                                     const isStep = /^(\d+\.|-|\*)/.test(line.trim());
                                                                     return isStep ? (
                                                                         <div key={idx} className="flex gap-3 items-start">
-                                                                            <div className="flex-shrink-0 w-5 h-5 bg-emerald-500 text-white text-[10px] font-black rounded-full flex items-center justify-center mt-0.5">{idx + 1}</div>
+                                                                            <div className="flex-shrink-0 w-5 h-5 bg-green-500 text-white text-[10px] font-black rounded-full flex items-center justify-center mt-0.5">{idx + 1}</div>
                                                                             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{line.replace(/^(\d+\.|-|\*)\s*/, '')}</p>
                                                                         </div>
                                                                     ) : (
@@ -1610,7 +1610,7 @@ export default function ManualsGallery() {
                             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                                 {/* Botón principal: Recordatorios */}
                                 <Button
-                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 mb-3 text-base"
+                                    className="w-full h-12 bg-green-800 hover:bg-green-900 text-white font-bold rounded-2xl shadow-md shadow-green-200 dark:shadow-green-950/30 mb-3 text-base"
                                     onClick={(e) => { e.stopPropagation(); setReminderManual(viewManual); }}
                                 >
                                     <Bell className="h-5 w-5 mr-2" />
@@ -1624,7 +1624,7 @@ export default function ManualsGallery() {
                                     <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={(e) => { e.stopPropagation(); setNotesManual(viewManual); }}>
                                         <StickyNote className="h-3.5 w-3.5 mr-1.5" /> Notas
                                     </Button>
-                                    <Button variant="outline" size="sm" className="rounded-xl flex-1 bg-emerald-50/50 hover:bg-emerald-100 text-emerald-700 border-emerald-200" onClick={(e) => {
+                                    <Button variant="outline" size="sm" className="rounded-xl flex-1 bg-green-50/50 hover:bg-green-100 text-green-900 border-green-200" onClick={(e) => {
                                         e.stopPropagation();
                                         let cleanText = 'Sin instrucciones guardadas.';
                                         if (viewManual?.content) {
@@ -1788,3 +1788,4 @@ export default function ManualsGallery() {
         </div >
     );
 }
+

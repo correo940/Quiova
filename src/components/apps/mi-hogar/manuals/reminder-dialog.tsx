@@ -261,10 +261,10 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[620px] max-h-[90vh] flex flex-col rounded-3xl p-0 overflow-hidden">
-                <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-emerald-50 to-slate-50 dark:from-emerald-950/30 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
+                <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-green-50 to-slate-50 dark:from-green-800-950/30 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
                     <DialogTitle className="flex items-center gap-3 text-lg font-black text-slate-900 dark:text-white">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl">
-                            <Bell className="h-5 w-5 text-emerald-500" />
+                        <div className="p-2 bg-green-500/10 rounded-xl">
+                            <Bell className="h-5 w-5 text-green-500" />
                         </div>
                         Recordatorios de Mantenimiento
                     </DialogTitle>
@@ -277,7 +277,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                     {/* Recordatorios existentes */}
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                            <Loader2 className="h-6 w-6 animate-spin text-green-500" />
                         </div>
                     ) : reminders.length > 0 && (
                         <div className="space-y-2">
@@ -309,7 +309,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                                            className="h-8 w-8 rounded-lg text-green-500 hover:text-green-900 hover:bg-green-50"
                                             onClick={() => markAsDone(reminder)}
                                             title="Marcar como hecho (avanza fecha)"
                                         >
@@ -318,7 +318,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                                            className="h-8 w-8 rounded-lg text-slate-500 hover:text-green-900 hover:bg-green-50"
                                             onClick={() => openEditForm(reminder)}
                                             title="Editar"
                                         >
@@ -341,7 +341,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                         <>
                             <Button
                                 variant="outline"
-                                className="w-full rounded-2xl border-dashed border-2 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-12 font-bold"
+                                className="w-full rounded-2xl border-dashed border-2 border-green-200 dark:border-green-950 text-green-800 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-800-950/30 h-12 font-bold"
                                 onClick={() => { resetForm(); setShowForm(true); }}
                             >
                                 <Plus className="h-4 w-4 mr-2" />
@@ -356,7 +356,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                             )}
                         </>
                     ) : (
-                        <div className="space-y-4 p-5 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20">
+                        <div className="space-y-4 p-5 border border-green-100 dark:border-green-950/50 rounded-2xl bg-green-50/40 dark:bg-green-800-950/20">
                             <div className="flex items-center justify-between">
                                 <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">
                                     {editingReminderId ? 'Editar Recordatorio' : 'Nuevo Recordatorio'}
@@ -425,10 +425,10 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
 
                             {/* Toggle crear tarea — solo en modo nuevo */}
                             {!editingReminderId && (
-                                <div className={`p-4 rounded-2xl border transition-colors ${createTask ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
+                                <div className={`p-4 rounded-2xl border transition-colors ${createTask ? 'bg-green-50 dark:bg-green-800-950/30 border-green-200 dark:border-green-950' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2.5">
-                                            <CheckSquare className={`h-5 w-5 ${createTask ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                            <CheckSquare className={`h-5 w-5 ${createTask ? 'text-green-500' : 'text-slate-400'}`} />
                                             <div>
                                                 <p className="font-bold text-sm text-slate-800 dark:text-white">Crear tarea automática</p>
                                                 <p className="text-xs text-muted-foreground">Aparecerá en tu app de Tareas con alarma</p>
@@ -439,9 +439,9 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
 
                                     {createTask && taskLists.length > 0 && (
                                         <div className="flex items-center gap-2">
-                                            <ArrowRight className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                            <ArrowRight className="h-3.5 w-3.5 text-green-500 shrink-0" />
                                             <Select value={selectedListId} onValueChange={setSelectedListId}>
-                                                <SelectTrigger className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-800">
+                                                <SelectTrigger className="h-8 text-xs rounded-lg bg-white dark:bg-slate-900 border-green-200 dark:border-green-950">
                                                     <SelectValue placeholder="Elige lista de tareas..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -461,7 +461,7 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
                                 <Button variant="ghost" className="rounded-xl" onClick={() => { setShowForm(false); resetForm(); }}>
                                     Cancelar
                                 </Button>
-                                <Button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-200" onClick={saveReminder} disabled={saving}>
+                                <Button className="rounded-xl bg-green-800 hover:bg-green-900 text-white font-bold shadow-md shadow-green-200" onClick={saveReminder} disabled={saving}>
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     {saving ? 'Guardando...' : editingReminderId ? 'Actualizar' : 'Guardar Recordatorio'}
                                 </Button>
@@ -479,3 +479,4 @@ export function ReminderDialog({ manualId, manualTitle, open, onOpenChange }: Re
         </Dialog>
     );
 }
+

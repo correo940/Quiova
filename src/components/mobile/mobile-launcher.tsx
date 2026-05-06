@@ -169,7 +169,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
 
     const getQuickActionData = (id: string) => {
         switch (id) {
-            case 'escanear': return { id, icon: ScanLine, label: 'Escanear', sublabel: 'Producto', colorClass: 'bg-emerald-50 text-emerald-600', action: () => setShowScanner(true) };
+            case 'escanear': return { id, icon: ScanLine, label: 'Escanear', sublabel: 'Producto', colorClass: 'bg-green-100 text-green-800', action: () => setShowScanner(true) };
             case 'cuadrante': return { id, icon: Calendar, label: 'Cuadrante', sublabel: 'Subir Foto', colorClass: 'bg-indigo-50 text-indigo-600', action: () => setShowScanRoster(true) };
             case 'asistente': return { id, icon: Sparkles, label: 'Asistente', sublabel: 'Consultar IA', colorClass: 'bg-violet-50 text-violet-600', action: () => { triggerHaptic(ImpactStyle.Light); setShowAssistant(true); } };
             case 'tareas': return { id, icon: CheckSquare, label: 'Tareas', sublabel: 'Añadir Nueva', colorClass: 'bg-purple-50 text-purple-600', route: '/apps/mi-hogar/tasks' };
@@ -554,7 +554,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
 
     const getAppStyle = (appKey: string) => {
         switch (appKey) {
-            case 'desktop': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500', shadow: 'emerald' };
+            case 'desktop': return { bg: 'bg-green-100', text: 'text-green-800', decoration: 'bg-green-800', shadow: 'green' };
             case 'shopping': return { bg: 'bg-orange-50', text: 'text-orange-600', decoration: 'bg-orange-500', shadow: 'orange' };
             case 'chef-ia': return { bg: 'bg-red-50', text: 'text-red-600', decoration: 'bg-red-500', shadow: 'red' };
             case 'tasks': return { bg: 'bg-purple-50', text: 'text-purple-600', decoration: 'bg-purple-500', shadow: 'purple' };
@@ -562,7 +562,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             case 'documents': return { bg: 'bg-blue-50', text: 'text-blue-600', decoration: 'bg-blue-500', shadow: 'blue' };
             case 'passwords': return { bg: 'bg-amber-50', text: 'text-amber-600', decoration: 'bg-amber-500', shadow: 'amber' };
             case 'assistant': return { bg: 'bg-violet-50', text: 'text-violet-600', decoration: 'bg-violet-500', shadow: 'violet' };
-            case 'huerto': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500', shadow: 'emerald' };
+            case 'huerto': return { bg: 'bg-green-100', text: 'text-green-800', decoration: 'bg-green-800', shadow: 'green' };
             default: return { bg: 'bg-slate-50', text: 'text-slate-600', decoration: 'bg-slate-500', shadow: 'slate' };
         }
     };
@@ -631,7 +631,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
 
     return (
         <div 
-            className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans relative overflow-x-hidden selection:bg-emerald-100 pb-24"
+            className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans relative overflow-x-hidden selection:bg-green-100 pb-24"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -651,7 +651,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     >
                         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md mx-auto flex flex-col max-h-[80vh]">
                             <div className="p-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-                                <Search className="w-5 h-5 text-emerald-500" />
+                                <Search className="w-5 h-5 text-green-800" />
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -743,7 +743,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                         key={index}
                                         className={`w-4 h-4 rounded-full transition-all duration-200 ${
                                             pinInput.length > index 
-                                                ? 'bg-emerald-500 scale-110 shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
+                                                ? 'bg-green-800 scale-110 shadow-[0_0_10px_rgba(22,101,52,0.3)]' 
                                                 : 'bg-slate-200'
                                         }`}
                                     />
@@ -756,7 +756,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                     <button
                                         key={num}
                                         onClick={() => handlePinKeypad(num.toString())}
-                                        className="w-16 h-16 rounded-full text-2xl font-semibold text-slate-700 hover:bg-slate-100 hover:text-emerald-600 active:bg-slate-200 active:scale-95 transition-all flex items-center justify-center"
+                                        className="w-16 h-16 rounded-full text-2xl font-semibold text-slate-700 hover:bg-slate-100 hover:text-green-800 active:bg-slate-200 active:scale-95 transition-all flex items-center justify-center"
                                     >
                                         {num}
                                     </button>
@@ -764,7 +764,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                 <div className="col-start-2">
                                     <button
                                         onClick={() => handlePinKeypad('0')}
-                                        className="w-16 h-16 rounded-full text-2xl font-semibold text-slate-700 hover:bg-slate-100 hover:text-emerald-600 active:bg-slate-200 active:scale-95 transition-all flex items-center justify-center"
+                                        className="w-16 h-16 rounded-full text-2xl font-semibold text-slate-700 hover:bg-slate-100 hover:text-green-800 active:bg-slate-200 active:scale-95 transition-all flex items-center justify-center"
                                     >
                                         0
                                     </button>
@@ -827,10 +827,10 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             >
                 <div className="bg-white rounded-full p-2.5 shadow-md border border-slate-100">
                     {isRefreshing ? (
-                        <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-green-800 border-t-transparent rounded-full animate-spin" />
                     ) : (
                         <ArrowDown 
-                            className="w-5 h-5 text-emerald-500 transition-transform" 
+                            className="w-5 h-5 text-green-800 transition-transform" 
                             style={{ transform: `rotate(${pullProgress * 180}deg)` }} 
                         />
                     )}
@@ -840,7 +840,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             {/* Ambient Background Elements */}
             <div className={`absolute top-[-10%] left-[-10%] w-[40%] h-[30%] blur-[100px] rounded-full pointer-events-none transition-colors duration-1000 ${
                 timeTheme === 'morning' ? 'bg-amber-100/40' : 
-                timeTheme === 'afternoon' ? 'bg-emerald-100/40' : 'bg-indigo-300/20'
+                timeTheme === 'afternoon' ? 'bg-green-100/40' : 'bg-indigo-300/20'
             }`} />
             <div className={`absolute bottom-[10%] right-[-10%] w-[50%] h-[40%] blur-[120px] rounded-full pointer-events-none transition-colors duration-1000 ${
                 timeTheme === 'morning' ? 'bg-orange-100/30' : 
@@ -859,7 +859,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     <p className="text-xs font-medium text-slate-400 tracking-wide">
                         {currentDate}
                     </p>
-                    <p className="text-xs font-bold text-emerald-600 tabular-nums">
+                    <p className="text-xs font-bold text-green-800 tabular-nums">
                         {currentTime}
                     </p>
                 </motion.div>
@@ -885,13 +885,13 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                         if (e.key === 'Enter') saveNickname();
                                         if (e.key === 'Escape') cancelEditingName();
                                     }}
-                                    className="text-2xl font-extrabold text-slate-900 tracking-tight bg-white border-2 border-emerald-400 rounded-xl px-3 py-1 outline-none focus:ring-2 focus:ring-emerald-200 w-full max-w-[200px]"
+                                    className="text-2xl font-extrabold text-slate-900 tracking-tight bg-white border-2 border-green-800 rounded-xl px-3 py-1 outline-none focus:ring-2 focus:ring-green-100 w-full max-w-[200px]"
                                     maxLength={20}
                                 />
                                 <button
                                     onClick={saveNickname}
                                     disabled={savingName}
-                                    className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-sm"
+                                    className="p-2 bg-green-800 text-white rounded-xl hover:bg-green-900 transition-colors shadow-sm"
                                 >
                                     <Check className="w-4 h-4" />
                                 </button>
@@ -908,14 +908,14 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                     {user ? (
                                         profile?.nickname || user?.email?.split('@')[0] || 'Usuario'
                                     ) : (
-                                        <Link href="/login" className="text-emerald-600 font-bold decoration-emerald-200 underline underline-offset-4">
+                                        <Link href="/login" className="text-green-800 font-bold decoration-green-100 underline underline-offset-4">
                                             Iniciar Sesión
                                         </Link>
                                     )}
                                 </h1>
                                 <button
                                     onClick={startEditingName}
-                                    className="p-1.5 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
+                                    className="p-1.5 text-slate-300 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all"
                                     title="Cambiar nombre"
                                 >
                                     <Pencil className="w-4 h-4" />
@@ -930,7 +930,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                 triggerHaptic(ImpactStyle.Light);
                                 setShowSpotlight(true);
                             }}
-                            className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-full transition-all active:scale-90"
+                            className="p-2 text-slate-400 hover:text-green-800 hover:bg-green-50 rounded-full transition-all active:scale-90"
                         >
                             <Search className="w-6 h-6" />
                         </button>
@@ -940,7 +940,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                 triggerHaptic(ImpactStyle.Light);
                                 setShowNotifications(!showNotifications);
                             }}
-                            className="relative p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-full transition-all active:scale-90"
+                            className="relative p-2 text-slate-400 hover:text-green-800 hover:bg-green-50 rounded-full transition-all active:scale-90"
                         >
                             <Bell className="w-6 h-6" />
                             {notifications.length > 0 && (
@@ -961,7 +961,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                 >
                                     <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                         <h3 className="font-bold text-slate-800 text-sm">Notificaciones</h3>
-                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
                                             {notifications.length} Nuevas
                                         </span>
                                     </div>
@@ -1005,7 +1005,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                             >
                                 <Avatar className="w-14 h-14 ring-4 ring-white shadow-xl cursor-pointer">
                                     <AvatarImage src={profile?.custom_avatar_url || user?.user_metadata?.avatar_url} className="object-cover" />
-                                    <AvatarFallback className="bg-emerald-500 text-white font-bold text-xl">
+                                    <AvatarFallback className="bg-green-800 text-white font-bold text-xl">
                                         {profile?.nickname?.[0]?.toUpperCase() || 'Q'}
                                     </AvatarFallback>
                                 </Avatar>
@@ -1116,7 +1116,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                             setShowAssistant(true);
                         }
                     }}>
-                        <div className="relative flex items-center shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] bg-white border border-slate-100 overflow-hidden group focus-within:ring-2 focus-within:ring-emerald-200 transition-all">
+                        <div className="relative flex items-center shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] bg-white border border-slate-100 overflow-hidden group focus-within:ring-2 focus-within:ring-green-100 transition-all">
                             <div className="pl-4 pr-2 text-violet-500">
                                 <Sparkles className="w-5 h-5 animate-pulse" />
                             </div>
@@ -1147,14 +1147,14 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                 >
                     <div className={`p-4 rounded-[24px] flex items-start gap-4 shadow-sm relative overflow-hidden group border transition-colors duration-500 ${
                         timeTheme === 'morning' ? 'bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-100' :
-                        timeTheme === 'afternoon' ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-100' :
+                        timeTheme === 'afternoon' ? 'bg-gradient-to-br from-green-700/10 to-green-800/5 border-green-100' :
                         'bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border-indigo-100'
                     }`}>
                         <div className="absolute inset-0 bg-white/40 group-hover:bg-white/60 transition-colors pointer-events-none" />
                         
                         <div className={`relative z-10 p-2.5 rounded-[16px] shadow-sm transition-colors duration-500 ${
                             timeTheme === 'morning' ? 'bg-amber-100 text-amber-600' :
-                            timeTheme === 'afternoon' ? 'bg-emerald-100 text-emerald-600' :
+                            timeTheme === 'afternoon' ? 'bg-green-100 text-green-800' :
                             'bg-indigo-100 text-indigo-600'
                         }`}>
                             <Sparkles className="w-5 h-5 animate-pulse" />

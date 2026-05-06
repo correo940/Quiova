@@ -176,10 +176,10 @@ export function EnergyDialog({ manualId, manualTitle, open, onOpenChange }: Ener
                                     <p className="text-lg font-bold text-slate-700">{costs.daily.toFixed(2)}€</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-emerald-50 border-emerald-200">
+                            <Card className="bg-green-50 border-green-200">
                                 <CardContent className="p-3 text-center">
                                     <p className="text-[10px] text-muted-foreground uppercase font-bold">Mensual</p>
-                                    <p className="text-lg font-bold text-emerald-700">{costs.monthly.toFixed(2)}€</p>
+                                    <p className="text-lg font-bold text-green-900">{costs.monthly.toFixed(2)}€</p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-blue-50 border-blue-200">
@@ -209,3 +209,4 @@ export function EnergyDialog({ manualId, manualTitle, open, onOpenChange }: Ener
         </Dialog>
     );
 }
+

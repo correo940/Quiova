@@ -155,8 +155,8 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader className="bg-gradient-to-r from-emerald-50 to-white pb-4 border-b">
-                    <DialogTitle className="flex items-center gap-2 text-emerald-800">
+                <DialogHeader className="bg-gradient-to-r from-green-50 to-white pb-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-green-950">
                         <ListChecks className="h-5 w-5" />
                         Checklist de Mantenimiento
                     </DialogTitle>
@@ -173,7 +173,7 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
                                 <span>Progreso</span>
                                 <span>{calculateProgress()}%</span>
                             </div>
-                            <Progress value={calculateProgress()} className="h-2 bg-emerald-100" />
+                            <Progress value={calculateProgress()} className="h-2 bg-green-100" />
                         </div>
                     )}
 
@@ -186,7 +186,7 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
                                 placeholder="Ej: Limpiar filtros"
                                 value={newTask}
                                 onChange={(e) => setNewTask(e.target.value)}
-                                className="h-9 focus:border-emerald-500"
+                                className="h-9 focus:border-green-500"
                             />
                         </div>
                         <div className="w-24 space-y-1">
@@ -197,10 +197,10 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
                                 placeholder="30"
                                 value={frequency}
                                 onChange={(e) => setFrequency(Number(e.target.value))}
-                                className="h-9 focus:border-emerald-500"
+                                className="h-9 focus:border-green-500"
                             />
                         </div>
-                        <Button onClick={addItem} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white mb-0.5">
+                        <Button onClick={addItem} size="sm" className="bg-green-800 hover:bg-green-900 text-white mb-0.5">
                             <Plus className="h-4 w-4" />
                         </Button>
                     </div>
@@ -215,12 +215,12 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
                         )}
 
                         {items.map(item => (
-                            <div key={item.id} className="group flex items-center justify-between p-3 rounded-lg border hover:border-emerald-200 hover:bg-emerald-50/30 transition-all bg-white shadow-sm">
+                            <div key={item.id} className="group flex items-center justify-between p-3 rounded-lg border hover:border-green-200 hover:bg-green-50/30 transition-all bg-white shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <Checkbox
                                         checked={item.is_completed}
                                         onCheckedChange={() => toggleItem(item.id, item.is_completed, item.frequency_days || null)}
-                                        className="border-emerald-400 data-[state=checked]:bg-emerald-600 data-[state=checked]:text-white"
+                                        className="border-green-400 data-[state=checked]:bg-green-800 data-[state=checked]:text-white"
                                     />
                                     <div>
                                         <p className={`text-sm font-medium ${item.is_completed ? 'line-through text-muted-foreground' : 'text-slate-800'}`}>
@@ -262,3 +262,4 @@ export function ChecklistDialog({ manualId, manualTitle, open, onOpenChange }: C
         </Dialog>
     );
 }
+

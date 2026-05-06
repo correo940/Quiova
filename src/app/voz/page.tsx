@@ -248,7 +248,7 @@ export default function VoicePhantomPage() {
                         <Card className="bg-gray-950/80 border-gray-800/50 backdrop-blur-xl">
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm flex items-center gap-2 text-gray-300">
-                                    <Cpu className="h-3.5 w-3.5 text-emerald-500" /> Motor Neural
+                                    <Cpu className="h-3.5 w-3.5 text-green-500" /> Motor Neural
                                 </CardTitle>
                                 <CardDescription className="text-gray-600 text-xs">
                                     Carga el modelo XTTS en el servidor antes de generar.
@@ -260,7 +260,7 @@ export default function VoicePhantomPage() {
                                     disabled={modelLoading || !config.xttsApiUrl}
                                     size="sm"
                                     className={`w-full text-xs font-bold transition-all ${modelLoaded
-                                        ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800 hover:bg-emerald-900'
+                                        ? 'bg-green-950/50 text-green-300 border border-green-950 hover:bg-green-950'
                                         : 'bg-blue-900/50 text-blue-300 border border-blue-800 hover:bg-blue-900'
                                         }`}
                                 >
@@ -518,3 +518,4 @@ export default function VoicePhantomPage() {
         </div>
     );
 }
+

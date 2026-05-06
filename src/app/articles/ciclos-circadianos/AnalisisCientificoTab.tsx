@@ -53,18 +53,17 @@ export function AnalisisCientificoTab() {
     const activeData = circadianData.find(d => d.time === sliderValue) || circadianData[0];
 
     return (
-        <div className="bg-stone-50 min-h-screen text-stone-800 font-sans pb-32">
+        <div className="bg-white min-h-screen text-zinc-800 font-sans pb-32">
 
             <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-24">
 
                 {/* Header / Intro */}
                 <section id="introduccion" className="text-center space-y-6 max-w-3xl mx-auto pt-10">
-                    <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold tracking-wide uppercase mb-2">
+                    <div className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold tracking-wide uppercase mb-2 mx-auto">
                         Análisis Científico
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 leading-tight">
-                        Los Ciclos Circadianos: <br />
-                        <span className="text-indigo-600">El Reloj Maestro de tu Salud</span>
+                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-yellow-500 leading-tight text-center">
+                        Los Ciclos Circadianos: El Reloj Maestro de tu Salud
                     </h1>
                     <p className="text-lg text-stone-600">
                         Una síntesis de la investigación científica actual sobre cómo nuestro reloj biológico interno de 24 horas regula el sueño, el metabolismo, la cognición y el bienestar general. Descubre cómo la sincronización con los ciclos naturales de luz y oscuridad es fundamental para la biología humana.
@@ -72,10 +71,10 @@ export function AnalisisCientificoTab() {
                 </section>
 
                 {/* Section 1: Fisiología 24h */}
-                <section id="fisiologia" className="space-y-12 bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100">
-                    <div className="max-w-3xl">
-                        <h2 className="text-3xl font-serif font-bold text-stone-900 mb-4">La Fisiología de 24 Horas</h2>
-                        <p className="text-stone-600">
+                <section id="fisiologia" className="space-y-12 bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-zinc-100">
+                    <div className="max-w-3xl mx-auto text-center">
+                        <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-4 text-center">La Fisiología de 24 Horas</h2>
+                        <p className="text-zinc-600">
                             Esta sección desglosa el comportamiento interno de nuestro cuerpo a lo largo del día. El Núcleo Supraquiasmático (NSQ) en el cerebro actúa como el director de orquesta, utilizando la luz para regular la producción hormonal. Interactúa con el control deslizante y la gráfica para observar estos cambios.
                         </p>
                     </div>
@@ -94,7 +93,7 @@ export function AnalisisCientificoTab() {
                                     max="23"
                                     value={sliderValue}
                                     onChange={(e) => setSliderValue(Number(e.target.value))}
-                                    className="w-full appearance-none bg-stone-200 h-2 rounded-full outline-none focus:ring-2 focus:ring-indigo-600 transition-all [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+                                    className="w-full appearance-none bg-zinc-200 h-2 rounded-full outline-none focus:ring-2 focus:ring-green-800 transition-all [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-green-800 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
                                 />
                                 <div className="flex justify-between text-xs text-stone-400 mt-2 font-medium">
                                     <span>00:00</span>
@@ -107,8 +106,8 @@ export function AnalisisCientificoTab() {
 
                             <div className="mt-8 text-center transition-all duration-300">
                                 <div className="text-6xl mb-4">{activeData.icon}</div>
-                                <h4 className="text-2xl font-bold text-indigo-900 mb-2">{activeData.title}</h4>
-                                <p className="text-stone-600 min-h-[80px]">{activeData.desc}</p>
+                                <h4 className="text-2xl font-bold text-green-900 mb-2">{activeData.title}</h4>
+                                <p className="text-zinc-600 min-h-[80px]">{activeData.desc}</p>
                             </div>
                         </div>
 
@@ -129,8 +128,8 @@ export function AnalisisCientificoTab() {
                                             itemStyle={{ color: '#fff' }}
                                         />
                                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Line type="monotone" dataKey="melatonina" name="Melatonina (Hormona del Sueño)" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                        <Line type="monotone" dataKey="cortisol" name="Cortisol (Hormona de Alerta)" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="melatonina" name="Melatonina (Hormona del Sueño)" stroke="#166534" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="cortisol" name="Cortisol (Hormona de Alerta)" stroke="#eab308" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -142,8 +141,8 @@ export function AnalisisCientificoTab() {
                 {/* Section 2: Impacto y Desincronización */}
                 <section id="impacto" className="space-y-12">
                     <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-3xl font-serif font-bold text-stone-900 mb-4">Cronodisrupción y Salud</h2>
-                        <p className="text-stone-600">
+                        <h2 className="text-3xl md:text-4xl font-bold text-yellow-500 mb-4 text-center">Cronodisrupción y Salud</h2>
+                        <p className="text-slate-600">
                             La "Cronodisrupción" ocurre cuando nuestro estilo de vida (trabajo por turnos, luz artificial nocturna) se desalinea con nuestro reloj interno. La evidencia científica muestra correlaciones directas entre esta desincronización y diversas patologías metabólicas y cognitivas.
                         </p>
                     </div>
@@ -156,17 +155,17 @@ export function AnalisisCientificoTab() {
                                 <h4 className="font-bold text-stone-900 mb-2">Los "Zeitgebers"</h4>
                                 <p className="text-sm text-stone-700">Son las señales externas que sincronizan nuestro reloj. La <strong>luz solar</strong> es el más potente, seguido de los horarios de alimentación y la temperatura ambiente.</p>
                             </div>
-                            <div className="bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-2xl shadow-sm">
+                            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-r-2xl shadow-sm">
                                 <div className="text-2xl mb-2">📱</div>
-                                <h4 className="font-bold text-stone-900 mb-2">El Problema de la Luz Azul</h4>
-                                <p className="text-sm text-stone-700">La luz emitida por las pantallas suprime fuertemente la secreción de melatonina de la glándula pineal, engañando al cerebro para que piense que es de día.</p>
+                                <h4 className="font-bold text-green-950 mb-2">El Problema de la Luz Azul</h4>
+                                <p className="text-sm text-zinc-700">La luz emitida por las pantallas suprime fuertemente la secreción de melatonina de la glándula pineal, engañando al cerebro para que piense que es de día.</p>
                             </div>
                         </div>
 
                         {/* Risk Chart */}
                         <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-stone-100">
                             <div>
-                                <h3 className="text-xl font-semibold text-stone-800 mb-2">Incremento del Riesgo Relativo (%)</h3>
+                                <h3 className="text-xl font-semibold text-green-950 mb-2">Incremento del Riesgo Relativo (%)</h3>
                                 <p className="text-sm text-stone-500 mb-6">Datos epidemiológicos comparando poblaciones con desincronización crónica (ej. trabajadores nocturnos) vs ritmo diurno normal.</p>
                             </div>
                             <div className="w-full h-[300px] md:h-[400px]">
@@ -177,7 +176,7 @@ export function AnalisisCientificoTab() {
                                         <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#78716c', fontSize: 12 }} width={140} />
                                         <RechartsTooltip
                                             cursor={{ fill: '#f5f5f4' }}
-                                            contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#16a34a', color: '#fff' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#166534', color: '#fff' }}
                                             itemStyle={{ color: '#fff' }}
                                             formatter={(value) => [`+${value}% incremento de riesgo`, 'Riesgo']}
                                         />
@@ -193,71 +192,70 @@ export function AnalisisCientificoTab() {
                     </div>
                 </section>
 
-                {/* Section 3: Optimización */}
-                <section id="optimizacion" className="bg-stone-900 text-stone-50 p-8 md:p-12 rounded-3xl shadow-xl space-y-10">
-                    <div className="max-w-3xl">
-                        <h2 className="text-3xl font-serif font-bold text-white mb-4">Protocolos de Optimización Circadiana</h2>
-                        <p className="text-stone-300">
+                <section id="optimizacion" className="bg-green-50 text-zinc-900 p-8 md:p-12 rounded-3xl shadow-sm border border-green-100 space-y-10">
+                    <div className="max-w-3xl mx-auto text-center">
+                        <h2 className="text-3xl font-serif font-bold text-green-800 mb-4">Protocolos de Optimización Circadiana</h2>
+                        <p className="text-zinc-600">
                             Basado en la literatura científica de la cronobiología, aquí se presentan las intervenciones conductuales más efectivas para resincronizar tu reloj biológico y mejorar la calidad del sueño y el rendimiento diurno.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Morning */}
-                        <div className="bg-stone-800 p-6 rounded-2xl hover:bg-stone-700 transition-colors group">
+                        <div className="bg-white border border-green-100 p-6 rounded-2xl hover:shadow-md transition-all group">
                             <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">🌅</div>
-                            <h4 className="text-xl font-bold text-amber-400 mb-3">Mañana</h4>
-                            <ul className="space-y-3 text-sm text-stone-300">
+                            <h4 className="text-xl font-bold text-green-800 mb-3">Mañana</h4>
+                            <ul className="space-y-3 text-sm text-zinc-600">
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-amber-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Exposición a luz solar directa (10-30 min) en la primera hora tras despertar.
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-amber-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Retrasar la ingesta de cafeína 90 minutos para evitar el "crash" de la tarde (regulación de adenosina).
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-amber-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Mantener un horario de despertar constante, incluso fines de semana.
                                 </li>
                             </ul>
                         </div>
 
                         {/* Day */}
-                        <div className="bg-stone-800 p-6 rounded-2xl hover:bg-stone-700 transition-colors group">
+                        <div className="bg-white border border-yellow-100 p-6 rounded-2xl hover:shadow-md transition-all group">
                             <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">☀️</div>
-                            <h4 className="text-xl font-bold text-white mb-3">Día</h4>
-                            <ul className="space-y-3 text-sm text-stone-300">
+                            <h4 className="text-xl font-bold text-yellow-700 mb-3">Día</h4>
+                            <ul className="space-y-3 text-sm text-zinc-600">
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-white">▶</span>
+                                    <span className="mr-2 text-yellow-500">▶</span>
                                     Concentrar el trabajo cognitivo exigente durante los picos de alerta (generalmente 10:00 - 14:00).
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-white">▶</span>
+                                    <span className="mr-2 text-yellow-500">▶</span>
                                     Restringir la ventana de alimentación a 10-12 horas diarias para sincronizar relojes periféricos (hígado, intestino).
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-white">▶</span>
+                                    <span className="mr-2 text-yellow-500">▶</span>
                                     Ejercicio físico óptimo cardiovascular por la tarde (15:00 - 17:00) cuando la coordinación y fuerza son mayores.
                                 </li>
                             </ul>
                         </div>
 
                         {/* Night */}
-                        <div className="bg-stone-800 p-6 rounded-2xl hover:bg-stone-700 transition-colors group">
+                        <div className="bg-white border border-green-100 p-6 rounded-2xl hover:shadow-md transition-all group">
                             <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">🌙</div>
-                            <h4 className="text-xl font-bold text-indigo-400 mb-3">Noche</h4>
-                            <ul className="space-y-3 text-sm text-stone-300">
+                            <h4 className="text-xl font-bold text-green-800 mb-3">Noche</h4>
+                            <ul className="space-y-3 text-sm text-zinc-600">
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-indigo-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Reducir luces cenitales y pantallas 2 horas antes de dormir; usar filtros de luz azul.
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-indigo-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Bajar la temperatura de la habitación (18-20°C) para facilitar la caída térmica corporal necesaria para el sueño profundo.
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="mr-2 text-indigo-500">▶</span>
+                                    <span className="mr-2 text-green-800">▶</span>
                                     Evitar comidas copiosas 3 horas antes de dormir.
                                 </li>
                             </ul>
@@ -274,3 +272,4 @@ export function AnalisisCientificoTab() {
         </div>
     );
 }
+

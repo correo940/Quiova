@@ -214,7 +214,7 @@ export function ImageGalleryDialog({
                                     key={image.id}
                                     onClick={() => setCurrentIndex(index)}
                                     className={`flex-shrink-0 w-16 h-16 rounded border-2 transition-all ${index === currentIndex
-                                        ? 'border-emerald-500 scale-110'
+                                        ? 'border-green-500 scale-110'
                                         : 'border-transparent opacity-50 hover:opacity-100'
                                         }`}
                                 >
@@ -232,3 +232,4 @@ export function ImageGalleryDialog({
         </Dialog>
     );
 }
+

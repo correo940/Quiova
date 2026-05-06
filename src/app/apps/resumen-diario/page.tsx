@@ -374,18 +374,18 @@ export default function DailySummaryPage() {
 
                         {/* ESTADO FINANCIERO */}
                         {(showCat('money') || showCat('expenses')) && (
-                            <Card className="shadow-sm border-t-4 border-t-emerald-500 lg:col-span-1 h-fit">
+                            <Card className="shadow-sm border-t-4 border-t-green-500 lg:col-span-1 h-fit">
                                 <CardHeader className="pb-3">
-                                    <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400"><Wallet className="h-5 w-5" /> Finanzas</CardTitle>
+                                    <CardTitle className="flex items-center gap-2 text-green-900 dark:text-green-400"><Wallet className="h-5 w-5" /> Finanzas</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     {showCat('money') && (
                                         <div className="space-y-2">
                                             {accounts.length > 0 ? (
                                                 accounts.map((acc: any) => (
-                                                    <div key={acc.id} className="flex justify-between items-center p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg">
-                                                        <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1 text-emerald-800 dark:text-emerald-300"><CreditCard className="h-3 w-3" /> {acc.name}</span>
-                                                        <span className="font-bold text-emerald-900 dark:text-emerald-100">{Number(acc.current_balance).toFixed(0)}€</span>
+                                                    <div key={acc.id} className="flex justify-between items-center p-3 bg-green-50/50 dark:bg-green-950/10 rounded-lg">
+                                                        <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1 text-green-950 dark:text-green-300"><CreditCard className="h-3 w-3" /> {acc.name}</span>
+                                                        <span className="font-bold text-green-950 dark:text-green-100">{Number(acc.current_balance).toFixed(0)}€</span>
                                                     </div>
                                                 ))
                                             ) : <p className="text-sm text-gray-500 italic">Sin cuentas registradas</p>}
@@ -621,7 +621,7 @@ function DaySummaryCard({ dayData, isToday, shoppingCount, totalMoney, settings 
                     {(showCat('money')) && (
                         <div className="space-y-0.5">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Wallet className="h-3 w-3" /> Saldo</p>
-                            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{Number(totalMoney).toFixed(0)}€</p>
+                            <p className="text-xs font-medium text-green-800 dark:text-green-400">{Number(totalMoney).toFixed(0)}€</p>
                         </div>
                     )}
                 </div>
@@ -629,3 +629,4 @@ function DaySummaryCard({ dayData, isToday, shoppingCount, totalMoney, settings 
         </Card>
     );
 }
+

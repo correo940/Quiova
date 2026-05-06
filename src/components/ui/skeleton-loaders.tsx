@@ -75,7 +75,7 @@ export function AuthGuardSkeleton() {
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 p-8">
             <div className="relative">
                 {/* Pulsing glow */}
-                <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full animate-pulse" />
+                <div className="absolute inset-0 bg-green-400/20 blur-2xl rounded-full animate-pulse" />
                 <div className="relative w-16 h-16 bg-white dark:bg-slate-900 rounded-full shadow-lg border border-slate-200/50 dark:border-white/10 flex items-center justify-center overflow-hidden">
                     <img
                         src="/images/logo.png"
@@ -89,7 +89,7 @@ export function AuthGuardSkeleton() {
                     Preparando tu espacio...
                 </p>
                 <div className="w-48 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full animate-[loading_1.5s_ease-in-out_infinite]" 
+                    <div className="h-full bg-gradient-to-r from-green-400 to-green-800 rounded-full animate-[loading_1.5s_ease-in-out_infinite]" 
                          style={{ width: '60%' }} />
                 </div>
             </div>
@@ -180,3 +180,4 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
         </div>
     );
 }
+
