@@ -75,11 +75,11 @@ interface DocumentDialogProps {
     uploading?: boolean;
 }
 
-const CATEGORIES = ['Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
+const CATEGORIES = ['Identidad', 'Vehículo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
 const LIFECYCLE_OPTIONS = [
     { value: 'activo', label: 'Activo' },
-    { value: 'pendiente_revision', label: 'Pendiente de revision' },
-    { value: 'pendiente_renovacion', label: 'Pendiente de renovacion' },
+    { value: 'pendiente_revision', label: 'Pendiente de revisión' },
+    { value: 'pendiente_renovacion', label: 'Pendiente de renovación' },
     { value: 'archivado', label: 'Archivado' },
 ];
 const IDENTITY_TAGS = ['dni', 'nie', 'pasaporte', 'carnet'];
@@ -183,8 +183,8 @@ export function DocumentDialog({
                                 <Plus className="w-8 h-8 text-amber-500" />
                             </div>
                             <div className="text-center">
-                                <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg">Suelta tu archivo aqu�</p>
-                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Soporta PDF e Im�genes</p>
+                                <p className="font-black text-slate-900 dark:text-white uppercase tracking-tighter text-lg">Suelta tu archivo aquí</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Soporta PDF e Imágenes</p>
                             </div>
                         </div>
 
@@ -221,7 +221,7 @@ export function DocumentDialog({
                             className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-2"
                         >
                             <div className="flex items-center gap-2 text-rose-600 font-black text-xs uppercase">
-                                <AlertTriangle className="w-4 h-4" /> Fallo en el an�lisis inteligente
+                                <AlertTriangle className="w-4 h-4" /> Fallo en el análisis inteligente
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{analysisError}</p>
                         </motion.div>
@@ -265,23 +265,23 @@ export function DocumentDialog({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="title">Titulo</Label>
+                            <Label htmlFor="title">Título</Label>
                             <Input
                                 id="title"
-                                placeholder="Ej. DNI, poliza del coche o contrato"
+                                placeholder="Ej. DNI, póliza del coche o contrato"
                                 value={form.title}
                                 onChange={(event) => setForm({ ...form, title: event.target.value })}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="category">Categoria</Label>
+                            <Label htmlFor="category">Categoría</Label>
                             <Select
                                 value={form.category}
                                 onValueChange={(value) => setForm({ ...form, category: value })}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona una categoria" />
+                                    <SelectValue placeholder="Selecciona una categoría" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {CATEGORIES.map((cat) => (
@@ -297,7 +297,7 @@ export function DocumentDialog({
                                 <FileBadge2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     className="pl-9"
-                                    placeholder="Ej. DNI, ITV, Poliza, Factura"
+                                    placeholder="Ej. DNI, ITV, Póliza, Factura"
                                     value={form.document_type}
                                     onChange={(event) => setForm({ ...form, document_type: event.target.value })}
                                 />
@@ -310,7 +310,7 @@ export function DocumentDialog({
                                 <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     className="pl-9"
-                                    placeholder="Ej. Direccion General de la Policia"
+                                    placeholder="Ej. Dirección General de la Policía"
                                     value={form.issuer}
                                     onChange={(event) => setForm({ ...form, issuer: event.target.value })}
                                 />
@@ -382,7 +382,7 @@ export function DocumentDialog({
                     <div className="grid gap-2">
                         <Label>Notas</Label>
                         <Textarea
-                            placeholder="Anotaciones manuales, renovacion, ubicacion del original, observaciones..."
+                            placeholder="Anotaciones manuales, renovación, ubicación del original, observaciones..."
                             value={form.notes}
                             onChange={(event) => setForm({ ...form, notes: event.target.value })}
                             className="min-h-[110px]"

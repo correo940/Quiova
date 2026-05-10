@@ -410,7 +410,7 @@ type Accent = 'blue' | 'pink' | 'green-800' | 'orange' | 'amber' | 'red';
 const ACCENT_STYLES: Record<Accent, string> = {
   blue: 'border-l-blue-500   bg-blue-500/5',
   pink: 'border-l-pink-500   bg-pink-500/5',
-  green-800: 'border-l-green-500 bg-green-500/5',
+  'green-800': 'border-l-green-500 bg-green-500/5',
   orange: 'border-l-orange-500  bg-orange-500/5',
   amber: 'border-l-amber-500   bg-amber-500/5',
   red: 'border-l-red-500     bg-red-500/8',

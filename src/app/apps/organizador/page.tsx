@@ -43,7 +43,7 @@ function SummaryPill({
     onClick?: () => void;
 }) {
     const colors = {
-        green-800: 'bg-green-500/10 border-green-500/20 text-green-800 dark:text-green-400',
+        'green-800': 'bg-green-500/10 border-green-500/20 text-green-800 dark:text-green-400',
         amber: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
         blue: 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400',
         rose: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400',
@@ -79,7 +79,7 @@ function MainActionCard({
     const accentStyles = {
         amber: 'border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20',
         indigo: 'border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20',
-        green-800: 'border-green-200 dark:border-green-950/50 bg-green-50/50 dark:bg-green-800-950/20',
+        'green-800': 'border-green-200 dark:border-green-950/50 bg-green-50/50 dark:bg-green-800-950/20',
     };
 
     return (
