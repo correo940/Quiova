@@ -496,6 +496,7 @@ export default function CiclosCircadianosPage() {
                                         color: 'from-green-50 to-green-50',
                                         border: 'border-green-200',
                                         description: 'Tu reloj interno configura tu fisiología para gastar energía, asimilar nutrientes, rendir mental y físicamente, y defenderte de las amenazas del entorno, reservando la noche exclusivamente para los procesos de "limpieza" y reparación celular.',
+                                        items: []
                                     },
                                     {
                                         icon: '🌙',
@@ -503,6 +504,7 @@ export default function CiclosCircadianosPage() {
                                         color: 'from-green-50 to-teal-50',
                                         border: 'border-green-200',
                                         description: 'La noche biológica no es un estado de inactividad, sino un periodo de intenso trabajo interno donde tus células se reparan, tu cerebro se limpia y tus hormonas se reinician para que puedas despertar con vitalidad.',
+                                        items: []
                                     },
                                 ].map((card, i) => (
                                     <FadeIn key={card.title} delay={i * 0.15}>
