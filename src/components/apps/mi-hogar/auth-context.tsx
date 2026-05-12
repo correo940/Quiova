@@ -104,11 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Forzar refresco real del token al volver
                 const { data, error } = await supabase.auth.getSession()
                 if (error || !data.session) {
-                    await supabase.auth.signOut({ scope: 'local' })
+                    // Limpiar estado local si hay error o no hay sesión, 
+                    // pero NO redirigir automáticamente (las páginas protegidas ya tienen su propia lógica)
                     setSession(null)
                     setUser(null)
                     setIsPremium(false)
-                    router.push('/apps/mi-hogar/login')
+                    if (error) await supabase.auth.signOut({ scope: 'local' })
                 }
                 supabase.auth.startAutoRefresh()
             } else {
@@ -128,7 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         await supabase.auth.signOut()
-        router.push('/apps/mi-hogar/login')
+        setSession(null)
+        setUser(null)
+        setIsPremium(false)
+        // Redirigir solo si estamos en una zona que requiere login
+        if (window.location.pathname.includes('/apps/')) {
+            router.push('/apps/mi-hogar/login')
+        }
     }
 
     return (

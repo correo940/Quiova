@@ -137,6 +137,8 @@ export default function SavingsPage() {
     const [passwords, setPasswords] = useState<{ id: string, name: string }[]>([]);
     const [pendingTotal, setPendingTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [selectedMonthBalance, setSelectedMonthBalance] = useState<number>(0);
+    const [accountStats, setAccountStats] = useState<Record<string, { income: number, expense: number }>>({});
 
     // Detail States
     const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
@@ -179,6 +181,7 @@ export default function SavingsPage() {
         setRecurringItems([]);
         setPasswords([]);
         setPendingTotal(0);
+        setSelectedMonthBalance(0);
         setSelectedMonth(new Date());
         setLoading(false);
     };
@@ -314,21 +317,39 @@ export default function SavingsPage() {
                 .order('deadline', { ascending: true });
             setGoals(gls || []);
 
-            // 3. Transactions (Last 30 days for stats & chart)
-            const chartStartDate = new Date();
-            chartStartDate.setDate(chartStartDate.getDate() - 30);
+            // Time Travel Logic
+            const lastDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+            const today = new Date();
+            const referenceDate = lastDayOfMonth < today ? lastDayOfMonth : today;
+            const referenceDateStr = format(referenceDate, 'yyyy-MM-dd');
 
-            const firstDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-            const fetchStartDate = firstDayOfMonth < chartStartDate ? firstDayOfMonth : chartStartDate;
+            // 3. Transactions (Last 365 days from referenceDate, up to TODAY to allow rewinding)
+            const chartStartDate = new Date(referenceDate);
+            chartStartDate.setDate(chartStartDate.getDate() - 365);
 
             const { data: txs } = await supabase
                 .from('savings_account_transactions')
                 .select('*')
-                .gte('date', fetchStartDate.toISOString().split('T')[0])
+                .gte('date', chartStartDate.toISOString().split('T')[0])
                 .in('account_id', accs?.map(a => a.id) || [])
                 .order('date', { ascending: false });
 
-            setRecentTransactions(txs || []);
+            // Calculate balance at referenceDate
+            const includedAccountIds = (accs || []).filter(a => a.include_in_total !== false).map(a => a.id);
+            let currentTotal = (accs || []).reduce((sum, a) => sum + (a.include_in_total !== false ? (a.current_balance || 0) : 0), 0);
+
+            // Rewind currentTotal to referenceDate by subtracting transactions that happened AFTER referenceDate
+            (txs || []).forEach(t => {
+                if (t.date && t.date.split('T')[0] > referenceDateStr && includedAccountIds.includes(t.account_id)) {
+                    currentTotal -= t.amount;
+                }
+            });
+
+            setSelectedMonthBalance(currentTotal);
+
+            // Filter txs to only those <= referenceDate for UI display
+            const txsForMonth = (txs || []).filter(t => t.date && t.date.split('T')[0] <= referenceDateStr);
+            setRecentTransactions(txsForMonth);
 
             // 4. Recurring Items
             const { data: recs } = await supabase
@@ -343,40 +364,50 @@ export default function SavingsPage() {
             const currentYear = monthDate.getFullYear();
             let mIncome = 0;
             let mExpense = 0;
+            const mAccountStats: Record<string, { income: number, expense: number }> = {};
 
-            (txs || []).forEach(tx => {
-                const d = new Date(tx.date);
-                if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-                    if (tx.amount > 0) mIncome += tx.amount;
-                    else mExpense += Math.abs(tx.amount);
+            (txsForMonth || []).forEach(tx => {
+                if (tx.date) {
+                    const dateParts = tx.date.split('T')[0].split('-');
+                    if (dateParts.length >= 3) {
+                        const txYear = parseInt(dateParts[0], 10);
+                        const txMonth = parseInt(dateParts[1], 10) - 1;
+                        if (txMonth === currentMonth && txYear === currentYear) {
+                            if (tx.amount > 0) mIncome += tx.amount;
+                            else mExpense += Math.abs(tx.amount);
+                            
+                            if (!mAccountStats[tx.account_id]) mAccountStats[tx.account_id] = { income: 0, expense: 0 };
+                            if (tx.amount > 0) mAccountStats[tx.account_id].income += tx.amount;
+                            else mAccountStats[tx.account_id].expense += Math.abs(tx.amount);
+                        }
+                    }
                 }
             });
 
             const rate = mIncome > 0 ? ((mIncome - mExpense) / mIncome) * 100 : 0;
             setMonthlyStats({ income: mIncome, expense: mExpense, savingsRate: rate > 0 ? rate : 0 });
+            setAccountStats(mAccountStats);
 
-            // Calculate Chart Data (Reconstruct backwards)
-            // We only want to graph the total of accounts that are marked 'include_in_total'
-            const includedAccountIds = (accs || []).filter(a => a.include_in_total !== false).map(a => a.id);
-            let currentTotal = (accs || []).reduce((sum, a) => sum + (a.include_in_total !== false ? (a.current_balance || 0) : 0), 0);
+            // Calculate Chart Data (Reconstruct backwards from referenceDate)
             const dailyBalances = [];
+            let chartTotal = currentTotal;
 
-            for (let i = 0; i < 30; i++) {
-                const d = new Date();
+            for (let i = 0; i < 365; i++) {
+                const d = new Date(referenceDate);
                 d.setDate(d.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
+                const dateStr = format(d, 'yyyy-MM-dd');
 
                 dailyBalances.push({
                     date: format(d, 'd MMM', { locale: es }),
                     fullDate: dateStr,
-                    value: currentTotal // Using 'value' for Recharts compatibility
+                    value: chartTotal // Using 'value' for Recharts compatibility
                 });
 
-                // Subtract ONLY the transactions from the included accounts
-                const daysTransactions = (txs || []).filter(t => t.date === dateStr && includedAccountIds.includes(t.account_id));
+                // Subtract ONLY the transactions from the included accounts of THIS day
+                const daysTransactions = (txsForMonth || []).filter(t => t.date && t.date.split('T')[0] === dateStr && includedAccountIds.includes(t.account_id));
                 const daysChange = daysTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-                currentTotal -= daysChange;
+                chartTotal -= daysChange;
             }
 
             setChartData(dailyBalances.reverse());
@@ -1026,7 +1057,7 @@ export default function SavingsPage() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <Link href="/apps/mi-hogar">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                    <Button variant="ghost" size="sm" className="rounded-full gap-2 text-xs font-semibold uppercase tracking-wider">
                         <ArrowLeft className="h-4 w-4" /> Volver
                     </Button>
                 </Link>
@@ -1051,8 +1082,8 @@ export default function SavingsPage() {
             <SavingsNotificationManager />
 
             {/* MAIN DASHBOARD UI */}
-            <div className="flex justify-between items-center bg-white dark:bg-slate-900 rounded-[1.5rem] p-4 shadow-sm border border-slate-100 dark:border-slate-800">
-                <Button variant="ghost" size="icon" onClick={() => {
+            <div className="flex justify-between items-center bg-green-50 dark:bg-green-950/40 rounded-[1.5rem] p-4 shadow-sm border-2 border-green-600/30 dark:border-green-800">
+                <Button variant="ghost" size="icon" className="text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50" onClick={() => {
                     const prev = new Date(selectedMonth);
                     prev.setMonth(prev.getMonth() - 1);
                     setSelectedMonth(prev);
@@ -1060,10 +1091,10 @@ export default function SavingsPage() {
                 }}>
                     <ChevronLeft className="w-5 h-5" />
                 </Button>
-                <h2 className="text-lg font-bold capitalize">
+                <h2 className="text-lg font-bold capitalize text-slate-800 dark:text-slate-100">
                     {format(selectedMonth, 'MMMM yyyy', { locale: es })}
                 </h2>
-                <Button variant="ghost" size="icon" onClick={() => {
+                <Button variant="ghost" size="icon" className="text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50" onClick={() => {
                     const next = new Date(selectedMonth);
                     next.setMonth(next.getMonth() + 1);
                     setSelectedMonth(next);
@@ -1077,7 +1108,8 @@ export default function SavingsPage() {
                 accounts={accounts}
                 goals={goals}
                 monthlyStats={monthlyStats}
-                totalBalance={totalCurrentBalance}
+                accountStats={accountStats}
+                totalBalance={selectedMonthBalance}
                 totalGoalSaved={totalGoalSaved}
                 chartData={chartData}
                 loading={loading}

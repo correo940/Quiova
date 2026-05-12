@@ -67,13 +67,9 @@ export async function generateSchedule(userId: string, startDate: Date) {
             .map((b: any) => ({ start: timeToMinutes(b.start_time), end: timeToMinutes(b.end_time) }))
             .sort((a: TimeBlock, b: TimeBlock) => a.start - b.start);
 
-        // 2. Identify Gaps (Assume day is 08:00 to 22:00 for scheduling generated tasks?)
-        // Or just fill whatever isn't fixed 24/7? Let's assume awake time 07:00 - 23:00 for now if not specified.
-        // Actually simpler: Treat free space between fixed blocks.
-        // But what if no fixed blocks?
-        // Let's define a "Schedulable Window", e.g., 07:00 to 23:00.
-        const DAY_START = 8 * 60; // 08:00
-        const DAY_END = 22 * 60;  // 22:00
+        // 2. Identify Gaps — use profile wake/sleep times instead of hardcoded values
+        const DAY_START = timeToMinutes(profile.wake_time || '07:00');
+        const DAY_END = timeToMinutes(profile.sleep_time || '23:00');
 
         let cursor = DAY_START;
         const gaps: TimeBlock[] = [];

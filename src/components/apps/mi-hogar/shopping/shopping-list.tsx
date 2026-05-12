@@ -28,11 +28,187 @@ type ShoppingItem = {
     status: 'to_buy' | 'in_stock';
 };
 
+type SupermarketConfig = {
+    name: string;
+    aliases: string[];
+    mark: string;
+    logoPath?: string;
+    logoClassName: string;
+    badgeClassName: string;
+};
+
+const UNASSIGNED_SUPERMARKET = 'Sin supermercado';
+
+const SUPERMARKETS: SupermarketConfig[] = [
+    {
+        name: 'Mercadona',
+        aliases: ['mercadona', 'hacendado'],
+        mark: 'M',
+        logoPath: '/images/supermarkets/mercadona.svg',
+        logoClassName: 'bg-emerald-700 text-white border-emerald-800',
+        badgeClassName: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+    },
+    {
+        name: 'Carrefour',
+        aliases: ['carrefour', 'carrefur'],
+        mark: 'C',
+        logoPath: '/images/supermarkets/carrefour.svg',
+        logoClassName: 'bg-blue-700 text-white border-blue-800',
+        badgeClassName: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+    },
+    {
+        name: 'Lidl',
+        aliases: ['lidl'],
+        mark: 'LIDL',
+        logoPath: '/images/supermarkets/lidl.svg',
+        logoClassName: 'bg-yellow-300 text-blue-900 border-blue-700',
+        badgeClassName: 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50',
+    },
+    {
+        name: 'DIA',
+        aliases: ['dia', 'd ia'],
+        mark: 'DIA',
+        logoPath: '/images/supermarkets/dia.svg',
+        logoClassName: 'bg-red-600 text-white border-red-700',
+        badgeClassName: 'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800/50',
+    },
+    {
+        name: 'ALDI',
+        aliases: ['aldi'],
+        mark: 'ALDI',
+        logoPath: '/images/supermarkets/aldi.svg',
+        logoClassName: 'bg-cyan-700 text-white border-cyan-800',
+        badgeClassName: 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/50',
+    },
+    {
+        name: 'Alcampo',
+        aliases: ['alcampo', 'auchan'],
+        mark: 'A',
+        logoPath: '/images/supermarkets/alcampo.png',
+        logoClassName: 'bg-red-500 text-white border-red-600',
+        badgeClassName: 'bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-800/50',
+    },
+    {
+        name: 'Consum',
+        aliases: ['consum'],
+        mark: 'C',
+        logoClassName: 'bg-orange-500 text-white border-orange-600',
+        badgeClassName: 'bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-800/50',
+    },
+    {
+        name: 'Eroski',
+        aliases: ['eroski'],
+        mark: 'E',
+        logoPath: '/images/supermarkets/eroski.svg',
+        logoClassName: 'bg-blue-600 text-white border-blue-700',
+        badgeClassName: 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800/50',
+    },
+    {
+        name: 'El Corte Ingles',
+        aliases: ['el corte ingles', 'corte ingles', 'eci'],
+        mark: 'ECI',
+        logoPath: '/images/supermarkets/el-corte-ingles.svg',
+        logoClassName: 'bg-green-700 text-white border-green-800',
+        badgeClassName: 'bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-300 border-green-200 dark:border-green-800/50',
+    },
+];
+
+const normalizeMarketText = (value: string) =>
+    value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+const getSupermarketConfig = (supermarket?: string | null) => {
+    if (!supermarket?.trim()) return null;
+    const normalized = normalizeMarketText(supermarket);
+    return SUPERMARKETS.find(market =>
+        market.aliases.some(alias => normalizeMarketText(alias) === normalized) ||
+        normalizeMarketText(market.name) === normalized
+    ) || null;
+};
+
+const getSupermarketDisplayName = (supermarket?: string | null) => {
+    if (!supermarket?.trim()) return UNASSIGNED_SUPERMARKET;
+    return getSupermarketConfig(supermarket)?.name || supermarket.trim();
+};
+
+const resolveSupermarketValue = (supermarket?: string | null) => {
+    if (!supermarket?.trim()) return null;
+    return getSupermarketConfig(supermarket)?.name || supermarket.trim();
+};
+
+const inferSupermarketFromText = (value: string) => {
+    const normalized = normalizeMarketText(value);
+    const words = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+
+    return SUPERMARKETS.find(market =>
+        market.aliases.some(alias => {
+            const normalizedAlias = normalizeMarketText(alias);
+            return normalizedAlias.includes(' ')
+                ? normalized.includes(normalizedAlias)
+                : words.includes(normalizedAlias);
+        })
+    )?.name || null;
+};
+
+function SupermarketLogo({ supermarket, className = '' }: { supermarket?: string | null; className?: string }) {
+    const config = getSupermarketConfig(supermarket);
+
+    if (!supermarket?.trim()) {
+        return (
+            <span className={`inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${className}`}>
+                <Store className="h-3.5 w-3.5" />
+            </span>
+        );
+    }
+
+    const mark = config?.mark || supermarket.trim().slice(0, 3).toUpperCase();
+
+    if (config?.logoPath) {
+        return (
+            <span className={`inline-flex items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-700 dark:bg-white ${className}`}>
+                <img
+                    src={config.logoPath}
+                    alt={`${config.name} logo`}
+                    className="h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </span>
+        );
+    }
+
+    return (
+        <span className={`inline-flex items-center justify-center rounded-lg border text-[9px] font-black leading-none shadow-sm ${config?.logoClassName || 'bg-slate-700 text-white border-slate-800'} ${className}`}>
+            {mark}
+        </span>
+    );
+}
+
+function SupermarketBadge({ supermarket, subtle = false }: { supermarket?: string | null; subtle?: boolean }) {
+    const label = getSupermarketDisplayName(supermarket);
+    const config = getSupermarketConfig(supermarket);
+
+    return (
+        <Badge
+            variant="outline"
+            className={`h-6 gap-1.5 rounded-lg border px-1.5 pr-2 text-[10px] font-extrabold uppercase tracking-wide shadow-sm ${subtle ? 'opacity-70' : ''} ${config?.badgeClassName || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}
+        >
+            <SupermarketLogo supermarket={supermarket} className="h-4 w-4 rounded-md" />
+            <span className="max-w-[105px] truncate">{label}</span>
+        </Badge>
+    );
+}
+
 export default function ShoppingList() {
     const [items, setItems] = useState<ShoppingItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+    const [supermarketFilter, setSupermarketFilter] = useState<string | null>(null);
     const [newItemName, setNewItemName] = useState('');
+    const [selectedSupermarket, setSelectedSupermarket] = useState('');
     const [loading, setLoading] = useState(true);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isPlannerOpen, setIsPlannerOpen] = useState(false);
@@ -67,13 +243,14 @@ export default function ShoppingList() {
 
     const updateItem = async () => {
         if (!editingItem || !editName.trim()) return;
+        const supermarketValue = resolveSupermarketValue(editSupermarket);
 
         try {
             const { error } = await supabase
                 .from('shopping_items')
                 .update({
                     name: editName,
-                    supermarket: editSupermarket || null
+                    supermarket: supermarketValue
                 })
                 .eq('id', editingItem.id);
 
@@ -81,7 +258,7 @@ export default function ShoppingList() {
 
             setItems(items.map(i =>
                 i.id === editingItem.id
-                    ? { ...i, name: editName, supermarket: editSupermarket || undefined }
+                    ? { ...i, name: editName, supermarket: supermarketValue || undefined }
                     : i
             ));
 
@@ -257,6 +434,7 @@ export default function ShoppingList() {
         if (isShopMode) {
             setSearchTerm('');
             setCategoryFilter(null);
+            setSupermarketFilter(null);
             // We can't directly set the Tab value here easily without a state for it
             // but the user is likely on 'list'. If not, we should probably add a state for Tab.
         }
@@ -276,7 +454,7 @@ export default function ShoppingList() {
                 id: item.id,
                 name: item.name,
                 category: item.category || 'General',
-                supermarket: item.supermarket,
+                supermarket: item.supermarket || inferSupermarketFromText(item.name) || undefined,
                 created_at: item.created_at,
                 status: item.is_checked ? 'in_stock' : 'to_buy',
             }));
@@ -290,8 +468,9 @@ export default function ShoppingList() {
         }
     };
 
-    const addItem = async (name: string = newItemName, supermarket?: string) => {
+    const addItem = async (name: string = newItemName, supermarket: string = selectedSupermarket) => {
         if (!name.trim() || !user) return;
+        const supermarketValue = resolveSupermarketValue(supermarket) || inferSupermarketFromText(name);
 
         // AUTO-CATEGORIZATION AI MAGIC
         const aiAnalysis = guessCategoryAndPrice(name);
@@ -304,7 +483,7 @@ export default function ShoppingList() {
                         user_id: user.id,
                         name: name,
                         category: aiAnalysis.category,
-                        supermarket: supermarket || null,
+                        supermarket: supermarketValue,
                         is_checked: false, // to_buy
                     },
                 ])
@@ -317,7 +496,7 @@ export default function ShoppingList() {
                 id: data.id,
                 name: data.name,
                 category: data.category || 'General',
-                supermarket: data.supermarket,
+                supermarket: data.supermarket || supermarketValue || undefined,
                 created_at: data.created_at,
                 status: 'to_buy',
             };
@@ -413,7 +592,7 @@ export default function ShoppingList() {
         }
     };
 
-    const filteredItems = React.useMemo(() => {
+    const baseFilteredItems = React.useMemo(() => {
         return items.filter(item => {
             const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchCategory = !categoryFilter || item.category === categoryFilter;
@@ -421,11 +600,19 @@ export default function ShoppingList() {
         });
     }, [items, searchTerm, categoryFilter]);
 
+    const filteredItems = React.useMemo(() => {
+        return baseFilteredItems.filter(item => {
+            const marketLabel = getSupermarketDisplayName(item.supermarket);
+            return !supermarketFilter || marketLabel === supermarketFilter;
+        });
+    }, [baseFilteredItems, supermarketFilter]);
+
     const categories = React.useMemo(() =>
         [...new Set(items.map(i => i.category).filter(Boolean))],
         [items]
     );
 
+    const baseToBuyItems = baseFilteredItems.filter(i => i.status === 'to_buy');
     const toBuyItems = filteredItems.filter(i => i.status === 'to_buy');
     const inStockItems = filteredItems.filter(i => i.status === 'in_stock');
 
@@ -449,17 +636,59 @@ export default function ShoppingList() {
     const totalFiltered = toBuyItems.length + inStockItems.length;
     const progressPercent = totalFiltered === 0 ? 0 : Math.round((inStockItems.length / totalFiltered) * 100);
 
-    // Grouping items by category for aisles
+    const supermarketRouteGroups = React.useMemo(() => {
+        const groups: Record<string, ShoppingItem[]> = {};
+
+        baseToBuyItems.forEach(item => {
+            const label = getSupermarketDisplayName(item.supermarket);
+            if (!groups[label]) groups[label] = [];
+            groups[label].push(item);
+        });
+
+        return Object.entries(groups)
+            .map(([label, groupItems]) => ({ label, items: groupItems }))
+            .sort((a, b) => {
+                if (a.label === UNASSIGNED_SUPERMARKET) return 1;
+                if (b.label === UNASSIGNED_SUPERMARKET) return -1;
+                const aIndex = SUPERMARKETS.findIndex(market => market.name === a.label);
+                const bIndex = SUPERMARKETS.findIndex(market => market.name === b.label);
+                if (aIndex === -1 && bIndex === -1) return a.label.localeCompare(b.label);
+                if (aIndex === -1) return 1;
+                if (bIndex === -1) return -1;
+                return aIndex - bIndex;
+            });
+    }, [baseToBuyItems]);
+
+    // Grouping items by category or by supermarket in shop mode
     const groupedToBuyItems = React.useMemo(() => {
         const groups: Record<string, ShoppingItem[]> = {};
         toBuyItems.forEach(item => {
-            if (!groups[item.category]) groups[item.category] = [];
-            groups[item.category].push(item);
+            const groupName = isShopMode ? getSupermarketDisplayName(item.supermarket) : item.category;
+            if (!groups[groupName]) groups[groupName] = [];
+            groups[groupName].push(item);
         });
         return groups;
-    }, [toBuyItems]);
+    }, [toBuyItems, isShopMode]);
+
+    const groupedToBuyEntries = React.useMemo(() => {
+        const entries = Object.entries(groupedToBuyItems);
+        if (!isShopMode) return entries;
+
+        return entries.sort(([a], [b]) => {
+            if (a === UNASSIGNED_SUPERMARKET) return 1;
+            if (b === UNASSIGNED_SUPERMARKET) return -1;
+            const aIndex = SUPERMARKETS.findIndex(market => market.name === a);
+            const bIndex = SUPERMARKETS.findIndex(market => market.name === b);
+            if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+            if (aIndex === -1) return 1;
+            if (bIndex === -1) return -1;
+            return aIndex - bIndex;
+        });
+    }, [groupedToBuyItems, isShopMode]);
 
     const getSupermarketBadgeColor = (supermarket?: string) => {
+        const config = getSupermarketConfig(supermarket);
+        if (config) return config.badgeClassName;
         if (!supermarket) return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
         const lower = supermarket.toLowerCase();
         if (lower.includes('mercadona')) return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800/50";
@@ -494,7 +723,8 @@ export default function ShoppingList() {
                 <div className="relative group">
                     {/* Efecto resplandor */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-green-800 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
-                    <div className="relative flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-1.5 shadow-lg">
+                    <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-2 shadow-lg">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center">
                         <div className="flex-1 px-3">
                             <Input
                                 placeholder="Añadir a la lista (Ej. Manzanas...)"
@@ -504,7 +734,7 @@ export default function ShoppingList() {
                                 className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-base h-10 px-0 placeholder:text-muted-foreground font-medium"
                             />
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                        <div className="flex items-center gap-1.5 shrink-0 pl-1 md:pl-2">
                             <Button
                                 variant={isListening ? "destructive" : "secondary"}
                                 size="icon"
@@ -549,6 +779,41 @@ export default function ShoppingList() {
                                 Añadir
                             </Button>
                         </div>
+                        </div>
+
+                        <div className="mt-2 flex items-center gap-2 overflow-x-auto px-2 pb-1 no-scrollbar">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSupermarket('')}
+                                className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold transition-all ${!selectedSupermarket
+                                    ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+                                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    }`}
+                            >
+                                <Store className="h-3.5 w-3.5" />
+                                Sin tienda
+                            </button>
+                            {SUPERMARKETS.map((market) => (
+                                <button
+                                    key={market.name}
+                                    type="button"
+                                    onClick={() => setSelectedSupermarket(prev => prev === market.name ? '' : market.name)}
+                                    className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 pr-3 text-[11px] font-bold transition-all ${selectedSupermarket === market.name
+                                        ? 'border-green-800 bg-green-50 text-green-900 shadow-sm dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                        }`}
+                                >
+                                    <SupermarketLogo supermarket={market.name} className="h-5 w-5 rounded-md" />
+                                    {market.name}
+                                </button>
+                            ))}
+                            <input
+                                value={selectedSupermarket && !getSupermarketConfig(selectedSupermarket) ? selectedSupermarket : ''}
+                                onChange={(event) => setSelectedSupermarket(event.target.value)}
+                                placeholder="Otra tienda"
+                                className="h-8 w-32 shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 text-[11px] font-semibold text-slate-700 outline-none transition focus:border-green-800 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -561,7 +826,12 @@ export default function ShoppingList() {
                             <ShoppingCart className="w-6 h-6 text-green-800" /> Lista de Compra
                         </h1>
                         <p className="text-sm font-semibold text-muted-foreground mt-1">
-                            Tienes {toBuyItems.length} artículos pendientes
+                            Tienes {supermarketFilter ? toBuyItems.length : baseToBuyItems.length} artículos pendientes
+                            {supermarketFilter && (
+                                <span className="ml-1 text-green-800 dark:text-green-300">
+                                    en {supermarketFilter}
+                                </span>
+                            )}
                         </p>
                     </div>
 
@@ -594,6 +864,40 @@ export default function ShoppingList() {
                         </Button>
                     </div>
                 </div>
+
+                {supermarketRouteGroups.length > 0 && (
+                    <div className="grid gap-2 border-t border-slate-100 pt-4 dark:border-slate-800/50 sm:grid-cols-2 lg:grid-cols-3">
+                        {supermarketRouteGroups.map((group) => {
+                            const isUnassigned = group.label === UNASSIGNED_SUPERMARKET;
+                            const isActive = supermarketFilter === group.label;
+
+                            return (
+                                <button
+                                    key={group.label}
+                                    type="button"
+                                    onClick={() => setSupermarketFilter(prev => prev === group.label ? null : group.label)}
+                                    className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition-all ${isActive
+                                        ? 'border-green-800 bg-green-50 shadow-sm dark:border-green-700 dark:bg-green-950/30'
+                                        : 'border-slate-100 bg-slate-50/70 hover:border-slate-200 hover:bg-white dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800'
+                                        }`}
+                                >
+                                    <SupermarketLogo supermarket={isUnassigned ? undefined : group.label} className="h-10 w-10 rounded-xl" />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-black text-slate-800 dark:text-slate-100">
+                                            {group.label}
+                                        </span>
+                                        <span className="text-xs font-semibold text-muted-foreground">
+                                            {group.items.length} producto{group.items.length === 1 ? '' : 's'}
+                                        </span>
+                                    </span>
+                                    {isActive && (
+                                        <X className="h-4 w-4 shrink-0 text-green-800 dark:text-green-300" />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {!isShopMode && categories.length > 0 && (
                     <div className="flex gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/50">
@@ -688,12 +992,28 @@ export default function ShoppingList() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Supermercado <span className="opacity-50">(Opcional)</span></label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {SUPERMARKETS.map((market) => (
+                                    <button
+                                        key={market.name}
+                                        type="button"
+                                        onClick={() => setEditSupermarket(prev => getSupermarketDisplayName(prev) === market.name ? '' : market.name)}
+                                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${getSupermarketDisplayName(editSupermarket) === market.name
+                                            ? 'border-green-800 bg-green-50 text-green-900 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                                            }`}
+                                    >
+                                        <SupermarketLogo supermarket={market.name} className="h-7 w-7 rounded-lg" />
+                                        <span className="truncate">{market.name}</span>
+                                    </button>
+                                ))}
+                            </div>
                             <div className="relative">
                                 <Input
                                     value={editSupermarket}
                                     onChange={(e) => setEditSupermarket(e.target.value)}
                                     className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl pl-10 pr-4 text-base"
-                                    placeholder="Ej. Mercadona"
+                                    placeholder="Otro supermercado"
                                 />
                                 <Store className="w-4 h-4 absolute left-3.5 top-4 text-muted-foreground" />
                             </div>
@@ -838,7 +1158,7 @@ export default function ShoppingList() {
                         </motion.div>
                     ) : (
                         <div className="space-y-8 pb-20">
-                            {Object.entries(groupedToBuyItems).map(([category, catItems]) => (
+                            {groupedToBuyEntries.map(([category, catItems]) => (
                                 <motion.div
                                     key={category}
                                     initial={{ opacity: 0 }}
@@ -846,10 +1166,19 @@ export default function ShoppingList() {
                                     className="space-y-4"
                                 >
                                     <div className="flex items-center gap-2 pl-2">
-                                        <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                            <span className="text-base">{guessCategoryAndPrice(catItems[0].name).emoji}</span>
-                                        </div>
+                                        {isShopMode ? (
+                                            <SupermarketLogo supermarket={category === UNASSIGNED_SUPERMARKET ? undefined : category} className="h-8 w-8 rounded-lg" />
+                                        ) : (
+                                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                <span className="text-base">{guessCategoryAndPrice(catItems[0].name).emoji}</span>
+                                            </div>
+                                        )}
                                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500">{category}</h3>
+                                        {isShopMode && (
+                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                {catItems.length}
+                                            </span>
+                                        )}
                                         <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800 to-transparent ml-2" />
                                     </div>
 
@@ -878,10 +1207,8 @@ export default function ShoppingList() {
                                                             {item.name}
                                                         </h4>
                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                                            {item.supermarket && (
-                                                                <Badge variant="outline" className={`text-[9px] uppercase tracking-wider font-extrabold border rounded-md px-1.5 py-0 shadow-sm ${getSupermarketBadgeColor(item.supermarket)}`}>
-                                                                    {item.supermarket}
-                                                                </Badge>
+                                                            {(item.supermarket || isShopMode) && (
+                                                                <SupermarketBadge supermarket={item.supermarket} />
                                                             )}
                                                             {item.created_at && (
                                                                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold opacity-80 italic">
@@ -940,9 +1267,7 @@ export default function ShoppingList() {
                                             <div className="flex items-end justify-between">
                                                 <div className="flex flex-col gap-1.5 items-start">
                                                     {item.supermarket && (
-                                                        <Badge variant="secondary" className="text-[9px] h-5 px-1.5 uppercase font-bold tracking-wider opacity-60">
-                                                            {item.supermarket}
-                                                        </Badge>
+                                                        <SupermarketBadge supermarket={item.supermarket} subtle />
                                                     )}
                                                 </div>
                                                 <button

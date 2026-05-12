@@ -298,21 +298,45 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="relative border-l-2 border-slate-200 dark:border-slate-800 ml-3 space-y-6 py-2">
+                                <div className="relative border-l-2 border-slate-200 dark:border-slate-800 ml-3 space-y-4 py-2">
                                     {smartBlocks.map((block, idx) => {
                                         const isFixed = block.type === 'fixed';
+                                        // Check if current time is within this block
+                                        const now = new Date();
+                                        const [startH, startM] = block.start_time.split(':').map(Number);
+                                        const [endH, endM] = block.end_time.split(':').map(Number);
+                                        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                                        const startMinutes = startH * 60 + startM;
+                                        const endMinutes = endH * 60 + endM;
+                                        const isNow = selectedDate?.toDateString() === new Date().toDateString() && nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+
                                         return (
                                             <div key={block.id} className="relative pl-6">
-                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${isFixed ? 'bg-blue-500 border-blue-100' : 'bg-green-800 border-green-100'}`} />
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between group">
-                                                    <div>
-                                                        <div className="text-xs font-bold text-muted-foreground flex items-center gap-2 mb-0.5">
-                                                            {block.start_time} - {block.end_time}
-                                                            {isFixed && <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium">Fijo</span>}
+                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 transition-all ${
+                                                    isNow 
+                                                        ? 'bg-green-500 border-green-200 ring-4 ring-green-500/20 animate-pulse' 
+                                                        : isFixed 
+                                                            ? 'bg-blue-500 border-blue-100' 
+                                                            : 'bg-green-800 border-green-100'
+                                                }`} />
+                                                <div className={`p-3 rounded-xl border-l-4 transition-all ${
+                                                    isNow 
+                                                        ? 'bg-green-50 dark:bg-green-900/20 border-l-green-500 shadow-sm' 
+                                                        : isFixed 
+                                                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-blue-400' 
+                                                            : 'bg-slate-50/50 dark:bg-slate-800/30 border-l-green-800'
+                                                }`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="text-xs font-bold text-muted-foreground flex items-center gap-2 mb-0.5">
+                                                                {block.start_time} - {block.end_time}
+                                                                {isFixed && <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium dark:bg-blue-900/40 dark:text-blue-300">Fijo</span>}
+                                                                {isNow && <span className="px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold dark:bg-green-900/40 dark:text-green-300">Ahora</span>}
+                                                            </div>
+                                                            <h4 className={`font-semibold text-sm ${isFixed ? 'text-blue-900 dark:text-blue-300' : 'text-green-900 dark:text-green-300'}`}>
+                                                                {block.title}
+                                                            </h4>
                                                         </div>
-                                                        <h4 className={`font-medium text-sm ${isFixed ? 'text-blue-900 dark:text-blue-300' : 'text-green-900 dark:text-green-300'}`}>
-                                                            {block.title}
-                                                        </h4>
                                                     </div>
                                                 </div>
                                             </div>
@@ -333,32 +357,40 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                             {loading ? (
                                 <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : shifts.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <p>Sin turnos</p>
-                                    <p className="text-sm">Todo despejado hoy.</p>
+                                <div className="text-center py-8 text-muted-foreground space-y-2">
+                                    <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                                        <Clock className="w-5 h-5 text-slate-400" />
+                                    </div>
+                                    <p className="font-medium text-slate-500">Sin turnos</p>
+                                    <p className="text-xs text-slate-400">Todo despejado por aquí.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {shifts.map((shift) => (
-                                        <Link href="/apps/mi-hogar/roster" key={shift.id} className="block group">
-                                            <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 transition-all hover:shadow-md hover:border-green-300">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold text-green-800 dark:text-green-300">{shift.title}</span>
-                                                    <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
-                                                        {format(new Date(shift.start_time), "HH:mm")} - {format(new Date(shift.end_time), "HH:mm")}
-                                                    </span>
-                                                </div>
-                                                {shift.description && (
-                                                    <div className="text-sm font-medium text-green-700 dark:text-green-400 mt-1 mb-1 line-clamp-2">
-                                                        {shift.description}
+                                    {shifts.map((shift, idx) => {
+                                        // Alternate border colors for multiple shifts
+                                        const borderColors = ['border-l-green-600', 'border-l-blue-500', 'border-l-amber-500', 'border-l-purple-500'];
+                                        const borderColor = borderColors[idx % borderColors.length];
+                                        return (
+                                            <Link href="/apps/mi-hogar/roster" key={shift.id} className="block group">
+                                                <div className={`p-3 rounded-xl border border-l-4 ${borderColor} bg-white dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 transition-all hover:shadow-sm`}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{shift.title}</span>
+                                                        <span className="text-xs bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-slate-700 font-mono">
+                                                            {format(new Date(shift.start_time), "HH:mm")} - {format(new Date(shift.end_time), "HH:mm")}
+                                                        </span>
                                                     </div>
-                                                )}
-                                                <div className="text-xs text-green-600 dark:text-green-500 opacity-80 group-hover:underline">
-                                                    Ver en Cuadrante
+                                                    {shift.description && (
+                                                        <div className="text-sm text-muted-foreground mt-1 mb-1 line-clamp-2">
+                                                            {shift.description}
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-muted-foreground opacity-80 group-hover:underline">
+                                                        Ver en Cuadrante
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </Link>
-                                    ))}
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </ScrollArea>
@@ -369,9 +401,12 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                             {loading ? (
                                 <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : tasks.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <p>¡Todo al día!</p>
-                                    <p className="text-sm">No tienes tareas pendientes.</p>
+                                <div className="text-center py-8 space-y-2">
+                                    <div className="w-12 h-12 mx-auto bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-3">
+                                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                                    </div>
+                                    <p className="font-medium text-slate-600 dark:text-slate-300">¡Todo al día!</p>
+                                    <p className="text-xs text-slate-400">No tienes tareas pendientes.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -421,9 +456,12 @@ export default function OrganizerWidget({ selectedDate, user }: OrganizerWidgetP
                             {loading ? (
                                 <p className="text-center py-4"><span className="inline-block h-4 w-24 bg-slate-200/60 rounded animate-pulse" /></p>
                             ) : journalEntries.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <p>Sin apuntes</p>
-                                    <p className="text-sm">No escribiste nada este día.</p>
+                                <div className="text-center py-8 space-y-2">
+                                    <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                                        <Book className="w-5 h-5 text-slate-400" />
+                                    </div>
+                                    <p className="font-medium text-slate-500">Día en blanco</p>
+                                    <p className="text-xs text-slate-400">No escribiste nada este día.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">

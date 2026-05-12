@@ -24,23 +24,24 @@ const ICON_MAP: Record<string, any> = {
 };
 
 // Default item order (keys used for persistence)
+// Paleta reducida: verde=hogar, amber=economía, blue=organización, slate=documentos
 const DEFAULT_ITEMS_CONFIG = [
-    { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-blue-500', href: '/apps/mi-hogar/shopping' },
-    { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-purple-500', href: '/apps/mi-hogar/tasks' },
-    { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-500', href: '/apps/mi-hogar/savings' },
+    { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-green-800', href: '/apps/mi-hogar/shopping' },
+    { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-blue-600', href: '/apps/mi-hogar/tasks' },
+    { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-600', href: '/apps/mi-hogar/savings' },
     { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: 'bg-green-800', href: '/apps/mi-hogar/meditation' },
-    { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-red-500', href: '/apps/debate' },
-    { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-slate-500', href: '/apps/mi-hogar/garage' },
+    { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-blue-600', href: '/apps/debate' },
+    { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-green-800', href: '/apps/mi-hogar/garage' },
     { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-green-800', href: '/apps/mi-hogar/pharmacy' },
-    { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-orange-500', href: '/apps/mi-hogar/documents' },
-    { key: 'expenses', label: 'Gastos Compartidos', iconKey: 'Receipt', color: 'bg-pink-500', href: '/apps/mi-hogar/expenses' },
-    { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-indigo-500', href: '/apps/mi-hogar/warranties' },
-    { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: 'bg-lime-500', href: '/apps/mi-hogar/recipes' },
-    { key: 'manuals', label: 'Manual y Mantenimiento', iconKey: 'Book', color: 'bg-cyan-500', href: '/apps/mi-hogar/manuals' },
-    { key: 'passwords', label: 'Claves', iconKey: 'Key', color: 'bg-zinc-600', href: '/apps/mi-hogar/passwords' },
-    { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-teal-600', href: '/apps/mi-hogar/insurance' },
-    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-green-800', href: '/apps/mi-hogar/roster' },
-    { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-violet-500', href: '/apps/resumen-diario' },
+    { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-slate-600', href: '/apps/mi-hogar/documents' },
+    { key: 'expenses', label: 'Gastos', iconKey: 'Receipt', color: 'bg-amber-600', href: '/apps/mi-hogar/expenses' },
+    { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-slate-600', href: '/apps/mi-hogar/warranties' },
+    { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: 'bg-green-800', href: '/apps/mi-hogar/recipes' },
+    { key: 'manuals', label: 'Mantenimiento', iconKey: 'Book', color: 'bg-green-800', href: '/apps/mi-hogar/manuals' },
+    { key: 'passwords', label: 'Claves', iconKey: 'Key', color: 'bg-slate-600', href: '/apps/mi-hogar/passwords' },
+    { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-amber-600', href: '/apps/mi-hogar/insurance' },
+    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-blue-600', href: '/apps/mi-hogar/roster' },
+    { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-blue-600', href: '/apps/resumen-diario' },
 ];
 
 function getStorageKey(userId: string) {
@@ -82,6 +83,8 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
     const [loading, setLoading] = useState(true);
     const [userProfile, setUserProfile] = useState<any>(null);
     const [orderedKeys, setOrderedKeys] = useState<string[]>(DEFAULT_ITEMS_CONFIG.map(i => i.key));
+    const [showAll, setShowAll] = useState(false);
+    const VISIBLE_COUNT = 8; // Show 8 items by default, rest behind "Ver todo"
 
     // Drag state
     const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -373,11 +376,11 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
         return () => clearInterval(interval);
     }, []);
 
-    return (
-        <Card className="h-full overflow-hidden border-none shadow-md bg-white dark:bg-slate-950 flex flex-col relative group/card">
-            {/* Background Texture: Subtle Dot Pattern */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:20px_20px] dark:bg-[radial-gradient(#ffffff_1px,transparent_1px)]"></div>
+    const displayedItems = showAll ? sortedItems : sortedItems.slice(0, VISIBLE_COUNT);
+    const hiddenCount = sortedItems.length - VISIBLE_COUNT;
 
+    return (
+        <Card className="h-full overflow-hidden border-none shadow-md bg-white dark:bg-slate-950 flex flex-col relative">
             <CardHeader className="pb-2 pt-3 shrink-0 relative z-10 px-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -429,9 +432,9 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                         <LogoLoader size="md" />
                     </div>
                 ) : (
-                    <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-                        <div className="flex w-max space-x-3 p-1">
-                            {sortedItems.map((item) => (
+                    <div className="w-full">
+                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 p-1">
+                            {displayedItems.map((item) => (
                                 <div
                                     key={item.key}
                                     draggable
@@ -440,7 +443,7 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                                     onDragLeave={handleDragLeave}
                                     onDrop={(e) => handleDrop(e, item.key)}
                                     onDragEnd={handleDragEnd}
-                                    className={`relative w-[130px] py-1 pl-1 transition-all duration-200 ${draggedKey === item.key ? 'opacity-40 scale-95' : ''
+                                    className={`relative transition-all duration-200 ${draggedKey === item.key ? 'opacity-40 scale-95' : ''
                                         } ${dragOverKey === item.key ? 'scale-105' : ''
                                         }`}
                                     style={{ cursor: 'grab' }}
@@ -453,23 +456,19 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                                         href={item.href}
                                         className="block group"
                                         onClick={(e) => {
-                                            // Prevent navigation when dragging
                                             if (draggedKey) e.preventDefault();
                                         }}
                                         draggable={false}
                                     >
-                                        <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-[72px] flex flex-col justify-between backdrop-blur-sm ${dragOverKey === item.key && draggedKey !== item.key
-                                            ? 'border-primary/70 shadow-lg shadow-primary/10'
-                                            : 'border-slate-100 dark:border-slate-700 hover:border-primary/50'
-                                            }`}>
+                                        <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[72px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
+                                            ? 'border-primary/70 shadow-sm shadow-primary/10'
+                                            : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
+                                            } ${item.count === 0 ? 'opacity-50' : ''}`}>
                                             <div className="flex justify-between items-start mb-0.5">
-                                                <div className={`p-1 rounded-lg ${item.color} text-white shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                                                <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200`}>
                                                     <item.icon className="w-3 h-3" />
                                                 </div>
-                                                <div className="flex items-center gap-0.5">
-                                                    <GripVertical className="w-2.5 h-2.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                                                    <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1" />
-                                                </div>
+                                                <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
                                             </div>
                                             <div>
                                                 <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
@@ -480,6 +479,16 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                                 </div>
                             ))}
                         </div>
+                        {/* Ver todo / Ocultar toggle */}
+                        {hiddenCount > 0 && (
+                            <button
+                                onClick={() => setShowAll(!showAll)}
+                                className="w-full mt-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
+                            >
+                                {showAll ? 'Ocultar' : `Ver todo (+${hiddenCount})`}
+                                <ArrowRight className={`w-3 h-3 transition-transform ${showAll ? 'rotate-90' : ''}`} />
+                            </button>
+                        )}
                     </div>
                 )}
 

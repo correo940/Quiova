@@ -8,11 +8,12 @@ import { Calendar, Play, Settings } from "lucide-react";
 
 interface MainDashboardProps {
     profile: any;
+    onReconfigure: () => void;
 }
 
 type View = 'dashboard' | 'fixed-schedule' | 'generator';
 
-export function MainDashboard({ profile }: MainDashboardProps) {
+export function MainDashboard({ profile, onReconfigure }: MainDashboardProps) {
     const [view, setView] = useState<View>('dashboard');
 
     if (view === 'fixed-schedule') {
@@ -30,12 +31,14 @@ export function MainDashboard({ profile }: MainDashboardProps) {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     Organizador Vital
                 </h1>
-                <p className="text-muted-foreground mt-2">
-                    Nivel: <strong className="capitalize text-foreground">{profile.physical_level}</strong> •
-                    Intensidad: <strong className="capitalize text-foreground">{profile.availability_intensity}</strong>
-                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
+                    <span>🏃 <strong className="capitalize text-foreground">{profile.physical_level}</strong></span>
+                    <span>⚡ <strong className="capitalize text-foreground">{profile.availability_intensity}</strong></span>
+                    {profile.wake_time && <span>☀️ <strong className="text-foreground">{profile.wake_time}</strong></span>}
+                    {profile.sleep_time && <span>🌙 <strong className="text-foreground">{profile.sleep_time}</strong></span>}
+                </div>
                 <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                    <Button variant="outline" size="sm" onClick={onReconfigure}>
                         <Settings className="w-4 h-4 mr-2" /> Reconfigurar Perfil
                     </Button>
                 </div>

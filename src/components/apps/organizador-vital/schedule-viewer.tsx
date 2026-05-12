@@ -18,6 +18,11 @@ interface ScheduleBlock {
     is_completed?: boolean;
 }
 
+const parseTimeToDecimal = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h + m / 60;
+};
+
 const EVENTS_COLORS = {
     fixed: { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', dark: { bg: 'dark:bg-blue-900/20', border: 'dark:border-blue-800', text: 'dark:text-blue-300' } },
     generated: { bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-700', dark: { bg: 'dark:bg-green-900/20', border: 'dark:border-green-800', text: 'dark:text-green-300' } },
@@ -33,9 +38,11 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
     // Default to current week's Monday
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
         const d = new Date();
+        d.setHours(0, 0, 0, 0); // Set to midnight local time
         const day = d.getDay();
-        const diff = d.getDate() - day + (day == 0 ? -6 : 1); // adjust when day is sunday
-        return new Date(d.setDate(diff));
+        const diff = d.getDate() - day + (day == 0 ? -6 : 1);
+        d.setDate(diff);
+        return new Date(d);
     });
 
     useEffect(() => {
@@ -81,21 +88,41 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
             // Combine
             const blocks: ScheduleBlock[] = [];
 
-            // Add Fixed Blocks (mapped to dates of this week)
+            // Add Fixed Blocks (mapped to dates of this week, handling overnight)
             fixed?.forEach((f: any) => {
                 const dayIndex = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(f.day_of_week);
                 if (dayIndex >= 0) {
-                    const d = new Date(currentWeekStart);
-                    d.setDate(d.getDate() + dayIndex);
+                    const startDec = parseTimeToDecimal(f.start_time);
+                    const endDec = parseTimeToDecimal(f.end_time);
+                    const crossesMidnight = endDec < startDec;
+
+                    // Piece 1: On the current day
+                    const d1 = new Date(currentWeekStart);
+                    d1.setDate(d1.getDate() + dayIndex);
                     blocks.push({
-                        id: f.id,
+                        id: `${f.id}-p1`,
                         type: 'fixed',
                         title: f.label,
                         start: f.start_time.slice(0, 5),
                         end: f.end_time.slice(0, 5),
-                        date: d.toISOString().split('T')[0],
+                        date: d1.toLocaleDateString('en-CA'),
                         color: f.color
                     });
+
+                    // Piece 2: On the next day if it crosses midnight
+                    if (crossesMidnight) {
+                        const d2 = new Date(currentWeekStart);
+                        d2.setDate(d2.getDate() + dayIndex + 1);
+                        blocks.push({
+                            id: `${f.id}-p2`,
+                            type: 'fixed',
+                            title: f.label,
+                            start: f.start_time.slice(0, 5),
+                            end: f.end_time.slice(0, 5),
+                            date: d2.toLocaleDateString('en-CA'),
+                            color: f.color
+                        });
+                    }
                 }
             });
 
@@ -193,7 +220,7 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
                 <div className="grid grid-cols-7 gap-4">
                     {[0, 1, 2, 3, 4, 5, 6].map(i => {
                         const date = getDayDate(i);
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = date.toLocaleDateString('en-CA');
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
                         const dayBlocks = schedule
                             .filter(b => b.date === dateStr)

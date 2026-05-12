@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
+import QuickActionFab from './quick-action-fab';
 import PostItQuotes from '@/components/post-it-quotes';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useRouter } from 'next/navigation';
@@ -170,9 +171,10 @@ export default function MobileDashboard() {
                     </div>
                 </div>
 
-                {/* Espaciado inferior para safe area */}
-                <div className="h-8"></div>
+                {/* Espaciado inferior para safe area + taskbar */}
+                <div className="h-28"></div>
             </div>
+            <QuickActionFab />
         </div>
     );
 }

@@ -9,7 +9,6 @@ import ArticleCard from '@/components/article-card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
 import CategoryIcon from '@/components/category-icon';
-import LogoLoader from '@/components/ui/logo-loader';
 import { ArticlesSkeleton } from '@/components/ui/skeleton-loaders';
 import { getApiUrl } from '@/lib/api-utils';
 
@@ -83,12 +82,12 @@ export default function BlogContent() {
             );
         }
         if (selectedCategory === 'all') {
-            return filtered.filter((article) => !article.featured);
+            return filtered;
         }
         const normalizedCategory = selectedCategory.toLowerCase().trim();
         return filtered.filter((article) => {
             const articleCategory = (article.category || '').toLowerCase().trim();
-            return articleCategory === normalizedCategory && !article.featured;
+            return articleCategory === normalizedCategory;
         });
     }, [selectedCategory, articles, searchQuery]);
 
