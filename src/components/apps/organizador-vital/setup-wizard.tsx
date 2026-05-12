@@ -70,7 +70,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         try {
             // Robust auth check
             const { data: { session } } = await supabase.auth.getSession();
-            let user = session?.user;
+            let user = session?.user ?? null;
             
             if (!user) {
                 const { data: { user: u } } = await supabase.auth.getUser();

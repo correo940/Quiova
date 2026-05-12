@@ -16,7 +16,7 @@ export default function OrganizadorVitalPage() {
         async function checkProfile() {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
-                let currentUser = session?.user;
+                let currentUser = session?.user ?? null;
                 
                 if (!currentUser) {
                     const { data: { user: u } } = await supabase.auth.getUser();
