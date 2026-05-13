@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Calendar as CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Calendar as CalendarIcon, Loader2, CheckCircle2, X, Trash2, CheckSquare } from 'lucide-react';
 import { generateSchedule } from '@/lib/smart-scheduler/engine';
 import { toast } from 'sonner';
 
@@ -34,6 +34,10 @@ const DAY_LABELS: any = { Monday: 'Lunes', Tuesday: 'Martes', Wednesday: 'Miérc
 export function ScheduleViewer({ onBack }: { onBack: () => void }) {
     const [loading, setLoading] = useState(false);
     const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
+    
+    // Multi-selection state
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
 
     // Default to current week's Monday
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
@@ -169,6 +173,82 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
         }
     };
 
+    const handleDeleteBlock = async (blockId: string, type: 'fixed' | 'generated' | 'task') => {
+        try {
+            // Optimistic update
+            setSchedule(prev => prev.filter(b => b.id !== blockId));
+            
+            let actualId = blockId;
+            if (type === 'fixed') {
+                actualId = blockId.replace('-p1', '').replace('-p2', '');
+                const { error } = await supabase.from('smart_scheduler_fixed_blocks').delete().eq('id', actualId);
+                if (error) throw error;
+            } else if (type === 'generated') {
+                const { error } = await supabase.from('smart_scheduler_generated_blocks').delete().eq('id', actualId);
+                if (error) throw error;
+            } else if (type === 'task') {
+                const { error } = await supabase.from('tasks').delete().eq('id', actualId);
+                if (error) throw error;
+            }
+            toast.success('Bloque eliminado');
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar');
+            fetchSchedule(); // Restore on error
+        }
+    };
+
+    const toggleSelectionMode = () => {
+        setIsSelectionMode(!isSelectionMode);
+        setSelectedBlockIds(new Set());
+    };
+
+    const handleBlockClick = (blockId: string) => {
+        if (!isSelectionMode) return;
+        setSelectedBlockIds(prev => {
+            const next = new Set(prev);
+            if (next.has(blockId)) next.delete(blockId);
+            else next.add(blockId);
+            return next;
+        });
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedBlockIds.size === 0) return;
+        
+        setLoading(true);
+        try {
+            const blocksToDelete = schedule.filter(b => selectedBlockIds.has(b.id));
+            
+            // Optimistic update
+            setSchedule(prev => prev.filter(b => !selectedBlockIds.has(b.id)));
+            
+            const fixedIds = blocksToDelete.filter(b => b.type === 'fixed').map(b => b.id.replace('-p1', '').replace('-p2', ''));
+            const generatedIds = blocksToDelete.filter(b => b.type === 'generated').map(b => b.id);
+            const taskIds = blocksToDelete.filter(b => b.type === 'task').map(b => b.id);
+            
+            if (fixedIds.length > 0) {
+                await supabase.from('smart_scheduler_fixed_blocks').delete().in('id', fixedIds);
+            }
+            if (generatedIds.length > 0) {
+                await supabase.from('smart_scheduler_generated_blocks').delete().in('id', generatedIds);
+            }
+            if (taskIds.length > 0) {
+                await supabase.from('tasks').delete().in('id', taskIds);
+            }
+            
+            toast.success(`${selectedBlockIds.size} bloques eliminados`);
+            setIsSelectionMode(false);
+            setSelectedBlockIds(new Set());
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar bloques');
+            fetchSchedule(); // Restore on error
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleGenerate = async () => {
         setLoading(true);
         try {
@@ -209,6 +289,24 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    {isSelectionMode ? (
+                        <>
+                            <Button variant="outline" onClick={toggleSelectionMode}>Cancelar</Button>
+                            <Button 
+                                variant="destructive" 
+                                onClick={handleBulkDelete}
+                                disabled={selectedBlockIds.size === 0 || loading}
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Eliminar ({selectedBlockIds.size})
+                            </Button>
+                        </>
+                    ) : (
+                        <Button variant="outline" onClick={toggleSelectionMode} className="bg-white dark:bg-slate-900 border-slate-200 hover:bg-slate-100">
+                            <CheckSquare className="w-4 h-4 mr-2" />
+                            Seleccionar
+                        </Button>
+                    )}
                     <Button onClick={handleGenerate} disabled={loading} className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/20">
                         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                         Generar Inteligente
@@ -244,15 +342,31 @@ export function ScheduleViewer({ onBack }: { onBack: () => void }) {
                                         return (
                                             <div
                                                 key={block.id}
-                                                className={`p-2 rounded-md text-xs border ${styles.bg} ${styles.border} ${styles.text} ${styles.dark.bg} ${styles.dark.border} ${styles.dark.text} ${block.is_completed ? 'opacity-50 line-through' : ''}`}
+                                                onClick={() => handleBlockClick(block.id)}
+                                                className={`group relative p-2 rounded-md text-xs border transition-all ${isSelectionMode ? 'cursor-pointer hover:ring-2 hover:ring-slate-400' : ''} ${selectedBlockIds.has(block.id) ? 'ring-2 ring-red-500 ring-offset-1 scale-[0.98]' : ''} ${styles.bg} ${styles.border} ${styles.text} ${styles.dark.bg} ${styles.dark.border} ${styles.dark.text} ${block.is_completed ? 'opacity-50 line-through' : ''}`}
                                             >
-                                                <div className="font-bold truncate flex items-center gap-1">
+                                                <div className="font-bold truncate pr-4 flex items-center gap-1">
                                                     {block.type === 'task' && <CheckCircle2 className="w-3 h-3" />}
                                                     {block.title}
                                                 </div>
                                                 <div className="opacity-80 font-mono text-[10px]">
                                                     {block.type === 'task' ? 'Tarea' : `${block.start} - ${block.end}`}
                                                 </div>
+                                                
+                                                {!isSelectionMode && (
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id, block.type); }}
+                                                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/20 transition-all text-current"
+                                                        title="Eliminar bloque"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                )}
+                                                {isSelectionMode && selectedBlockIds.has(block.id) && (
+                                                    <div className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}

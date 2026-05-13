@@ -22,6 +22,11 @@ export default {
         code: ['monospace'],
       },
       colors: {
+        quioba: {
+          cuerpo: '#1a5c2e',
+          mente: '#1558a8',
+          finanzas: '#b87514',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
