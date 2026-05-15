@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     const today = new Date().toISOString().split('T')[0];
 
     // Solo consultamos lo que necesitamos (consultas paralelas)
-    const queries: Promise<any>[] = [];
+    const queries: any[] = [];
     const queryKeys: string[] = [];
 
     if (needed.has('tasks')) {
