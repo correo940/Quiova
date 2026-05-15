@@ -56,7 +56,7 @@ export default function Header() {
             <div className="container flex h-16 items-center" suppressHydrationWarning>
 
                 {/* ── Logo ── */}
-                <div className="mr-6 hidden md:flex items-center">
+                <div className="mr-6 hidden md:flex items-center flex-shrink-0">
                     <Link href="/" className="flex items-center gap-2.5 group">
                         <Image
                             src="/images/logo.png"
@@ -65,7 +65,7 @@ export default function Header() {
                             height={32}
                             className="object-contain group-hover:scale-105 transition-transform duration-200"
                         />
-                        <span className="font-black text-lg tracking-tight">Quioba</span>
+                        <span className="font-black text-lg tracking-tight whitespace-nowrap">Quioba</span>
                     </Link>
                 </div>
 
