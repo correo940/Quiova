@@ -65,7 +65,7 @@ export default function Header() {
                             height={32}
                             className="object-contain group-hover:scale-105 transition-transform duration-200"
                         />
-                        <span className="font-black text-lg tracking-tight whitespace-nowrap">Quioba</span>
+                        <span className="font-black text-lg tracking-tight whitespace-nowrap hidden lg:inline">Quioba</span>
                     </Link>
                 </div>
 
