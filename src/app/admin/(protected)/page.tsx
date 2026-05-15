@@ -8,6 +8,7 @@ import AdminArticleList from "@/components/admin/article-list";
 import AdminPostItManager from "@/components/admin/post-it-manager";
 import SchedulerActivityManager from "@/components/admin/scheduler-activity-manager";
 import AssistantManager from "@/components/admin/assistant-manager";
+import AdminKnowledgeManager from "@/components/admin/admin-knowledge-manager";
 import ApiLimitsManager from "@/components/admin/api-limits-manager";
 
 export default function AdminPage() {
@@ -40,6 +41,10 @@ export default function AdminPage() {
 
         <div className="rounded-lg bg-card p-6 shadow-sm">
           <AssistantManager />
+        </div>
+
+        <div className="rounded-lg bg-card shadow-sm">
+          <AdminKnowledgeManager />
         </div>
 
         <div className="rounded-lg bg-card shadow-sm">

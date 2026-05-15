@@ -158,59 +158,12 @@ export default function MobileNav() {
                 />
             )}
 
-            {/* Dynamic Bottom Navigation Bar */}
+            {/* Dynamic Bottom Navigation Bar - Disabled in favor of global Taskbar */}
+            {/* 
             <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-[max(1.5rem,env(safe-area-inset-bottom))] px-4 pointer-events-none">
-                <div className="w-full max-w-md h-16 bg-white/95 backdrop-blur-[32px] rounded-[24px] border border-slate-200/80 shadow-[0_12px_40px_rgba(0,0,0,0.12)] flex items-center justify-around px-4 pointer-events-auto">
-                    {/* Home - always first */}
-                    <Link href="/">
-                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/' ? 'text-green-800 bg-green-100 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <LayoutGrid className="w-6 h-6" />
-                        </button>
-                    </Link>
-
-                    {/* Dynamic quick app buttons (max 3) */}
-                    {quickApps.length > 0 ? (
-                        quickApps.map((app) => {
-                            const Icon = IconMap[app.icon_key] || LayoutGrid;
-                            const style = getAppStyle(app.key);
-                            const isActive = pathname?.startsWith(app.route);
-                            return (
-                                <button
-                                    key={`nav-${app.key}`}
-                                    onClick={() => handleAppClick(app)}
-                                    className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-all rounded-xl ${isActive ? `${style.text} ${style.bg} shadow-sm border border-white/50` : `text-slate-400 hover:${style.text}`}`}
-                                    title={app.name}
-                                >
-                                    <Icon className="w-6 h-6" />
-                                </button>
-                            );
-                        })
-                    ) : (
-                        // Default buttons when no quick apps are set
-                        <>
-                            <button
-                                onClick={() => setShowScanner(true)}
-                                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all rounded-xl"
-                            >
-                                <ShoppingCart className="w-6 h-6" />
-                            </button>
-                            <button
-                                onClick={() => setShowAssistant(!showAssistant)}
-                                className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${showAssistant ? 'text-violet-600 bg-violet-50 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                <MessageCircle className="w-6 h-6" />
-                            </button>
-                        </>
-                    )}
-
-                    {/* Settings - always last */}
-                    <Link href="/profile">
-                        <button className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all ${pathname === '/profile' ? 'text-green-800 bg-green-100 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <Settings className="w-6 h-6" />
-                        </button>
-                    </Link>
-                </div>
+                ...
             </div>
+            */}
         </div>
     );
 }

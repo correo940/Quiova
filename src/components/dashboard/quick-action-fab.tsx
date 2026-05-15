@@ -2,27 +2,33 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, ShoppingCart, CheckSquare, Wallet } from 'lucide-react';
+import { Plus, X, ShoppingCart, CheckSquare, Wallet, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const actions = [
     {
         label: 'Nueva tarea',
         icon: CheckSquare,
-        href: '/apps/mi-hogar/tasks',
+        href: '/apps/mi-hogar/tasks?action=new',
         color: 'bg-blue-600',
     },
     {
         label: 'Lista compra',
         icon: ShoppingCart,
-        href: '/apps/mi-hogar/shopping',
+        href: '/apps/mi-hogar/shopping?action=new',
         color: 'bg-green-800',
     },
     {
         label: 'Nuevo gasto',
         icon: Wallet,
-        href: '/apps/mi-hogar/expenses',
+        href: '/apps/mi-hogar/expenses?action=new',
         color: 'bg-amber-600',
+    },
+    {
+        label: 'Escanear',
+        icon: Camera,
+        href: '/apps/mi-hogar/shopping?action=scan',
+        color: 'bg-slate-700',
     },
 ];
 
@@ -46,7 +52,7 @@ export default function QuickActionFab() {
     }, []);
 
     return (
-        <div ref={fabRef} className="fixed bottom-28 right-6 md:bottom-28 md:right-8 z-40">
+        <div ref={fabRef} className="fixed top-[13px] right-[108px] md:right-[150px] z-[110]">
             {/* Action items */}
             <AnimatePresence>
                 {isOpen && (
@@ -60,13 +66,13 @@ export default function QuickActionFab() {
                             onClick={() => setIsOpen(false)}
                         />
                         {/* Actions */}
-                        <div className="absolute bottom-16 right-0 flex flex-col items-end gap-3 mb-2">
+                        <div className="absolute top-14 right-0 flex flex-col items-end gap-3 mt-2">
                             {actions.map((action, i) => (
                                 <motion.button
                                     key={action.label}
-                                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                                    initial={{ opacity: 0, y: -20, scale: 0.8 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                                    exit={{ opacity: 0, y: -10, scale: 0.8 }}
                                     transition={{ delay: i * 0.05, type: 'spring', stiffness: 400, damping: 25 }}
                                     onClick={() => {
                                         setIsOpen(false);
@@ -92,13 +98,13 @@ export default function QuickActionFab() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-14 h-14 bg-green-800 hover:bg-green-700 rounded-full flex items-center justify-center shadow-xl shadow-green-900/30 text-white transition-colors"
+                className="w-9 h-9 bg-green-800 hover:bg-green-700 rounded-full flex items-center justify-center shadow-lg text-white transition-colors"
             >
                 <motion.div
                     animate={{ rotate: isOpen ? 45 : 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
-                    <Plus className="w-7 h-7" strokeWidth={2.5} />
+                    <Plus className="w-5 h-5" strokeWidth={3} />
                 </motion.div>
             </motion.button>
         </div>

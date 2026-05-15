@@ -101,20 +101,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ✅ FIX 3: Al volver visible, pedir refresco activo en vez de solo startAutoRefresh
         const handleVisibility = async () => {
             if (document.visibilityState === 'visible') {
-                // Forzar refresco real del token al volver
-                const { data, error } = await supabase.auth.getSession()
-                if (error || !data.session) {
-                    // Limpiar estado local si hay error o no hay sesión, 
-                    // pero NO redirigir automáticamente (las páginas protegidas ya tienen su propia lógica)
-                    setSession(null)
-                    setUser(null)
-                    setIsPremium(false)
-                    if (error) await supabase.auth.signOut({ scope: 'local' })
+                // Refrescar sesión al volver, pero NUNCA cerrar sesión automáticamente
+                const { data } = await supabase.auth.getSession()
+                if (data.session) {
+                    setSession(data.session)
+                    setUser(data.session.user)
+                    supabase.auth.startAutoRefresh()
                 }
-                supabase.auth.startAutoRefresh()
-            } else {
-                // ✅ NO parar el autorefresh al ocultar — dejarlo correr
-                // stopAutoRefresh() causaba que el token muriera al cerrar
+                // Si no hay sesión al volver, simplemente no hacemos nada —
+                // el usuario la cerrará manualmente cuando quiera
             }
         }
 
@@ -128,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     const signOut = async () => {
+        const confirmed = window.confirm('¿Seguro que quieres cerrar sesión?')
+        if (!confirmed) return
         await supabase.auth.signOut()
         setSession(null)
         setUser(null)

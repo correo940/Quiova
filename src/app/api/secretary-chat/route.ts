@@ -101,28 +101,56 @@ Cuando el usuario indique que quiere terminar o hagas la 4ª pregunta, genera un
       });
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: groqMessages,
-        max_tokens: 400,
-        temperature: 0.7,
-      }),
-    });
+    const FALLBACK_MODELS = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
+      'gemma2-9b-it'
+    ];
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Groq secretary-chat error:', err);
-      return NextResponse.json({ error: 'Error al contactar con Groq' }, { status: 500 });
+    let response;
+    let data;
+    let success = false;
+    let lastError = '';
+    let usedModel = '';
+
+    for (const model of FALLBACK_MODELS) {
+      try {
+        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${groqKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: groqMessages,
+            max_tokens: 400,
+            temperature: 0.7,
+          }),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          success = true;
+          usedModel = model;
+          break;
+        } else {
+          lastError = await response.text();
+          console.warn(`[Secretary] Modelo ${model} falló. Probando siguiente...`);
+        }
+      } catch (err) {
+        console.warn(`[Secretary] Error de red con modelo ${model}. Probando siguiente...`);
+      }
     }
 
-    const data = await response.json();
+    if (!success || !data) {
+      console.error('Todos los modelos de Groq fallaron en secretary-chat. Último error:', lastError);
+      return NextResponse.json({ error: 'Nuestros servidores están muy ocupados. Inténtalo de nuevo.' }, { status: 500 });
+    }
+
     const reply = data.choices?.[0]?.message?.content ?? '';
+    console.log(`[Secretary] Respuesta generada con éxito usando: ${usedModel}`);
 
     // Detectar si el reply contiene un JSON de resumen final
     let isSummary = false;

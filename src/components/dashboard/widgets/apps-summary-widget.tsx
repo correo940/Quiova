@@ -398,28 +398,6 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                             {dateInfo.fullDate} • {dateInfo.time}
                         </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
-                                ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400'
-                                : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
-                                }`}
-                            title={isWakeWordEnabled ? "Micrófono IA activo (Toca para desactivar)" : "Micrófono IA desactivado (Toca para reactivar)"}
-                        >
-                            {isWakeWordEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                        </button>
-                        <button
-                            onClick={() => setAiPanelOpen(true)}
-                            className="relative w-8 h-8 flex items-center justify-center rounded-full bg-green-800 shadow-md hover:scale-110 transition-transform overflow-hidden"
-                            title="IA de Quioba"
-                        >
-                            <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200 bg-white flex items-center justify-center text-sm">
-                                {typeof window !== 'undefined' ? getAvatarById(getSecretarySettings().avatarId).emoji : '🤖'}
-                            </div>
-                        </button>
-                        <NotificationSettingsDialog />
-                    </div>
                 </div>
                 {/* Mobile Date fallback */}
                 <div className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">

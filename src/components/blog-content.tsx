@@ -27,6 +27,11 @@ const PILLARS = [
         borderClass: 'border-[#9fd6b0]',
         icon: '🌿',
         accentHex: '#1a5c2e',
+        bgImage: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=800&auto=format&fit=crop',
+        bgVideo: '/1.mp4',
+        ringColor: '#1a5c2e',
+        textColor: 'text-emerald-800 dark:text-emerald-400',
+        descColor: 'text-emerald-700 font-medium',
     },
     {
         key: 'salud mental',
@@ -43,6 +48,11 @@ const PILLARS = [
         borderClass: 'border-[#90bbf0]',
         icon: '🧠',
         accentHex: '#1558a8',
+        bgImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=800&auto=format&fit=crop',
+        bgVideo: '/2.mp4',
+        ringColor: '#3b82f6',
+        textColor: 'text-blue-800 dark:text-blue-400',
+        descColor: 'text-blue-700 font-medium',
     },
     {
         key: 'finanzas familiares',
@@ -59,6 +69,11 @@ const PILLARS = [
         borderClass: 'border-[#f0c56a]',
         icon: '💛',
         accentHex: '#b87514',
+        bgImage: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800&auto=format&fit=crop',
+        bgVideo: '/3.mp4',
+        ringColor: '#eab308',
+        textColor: 'text-yellow-700 dark:text-yellow-500',
+        descColor: 'text-yellow-700 font-medium',
     },
 ];
 
@@ -97,6 +112,7 @@ const SLIDES = [
         description: 'Cuerpo, mente y finanzas: las tres áreas que más impactan tu vida, en un solo lugar.',
         pillar: null,
         gradient: 'from-[#0d2e18] via-[#1a5c2e] to-[#0d2e18]',
+        highlightColor: 'text-[#b87514]',
     },
     {
         title: 'Cuida tu',
@@ -104,6 +120,7 @@ const SLIDES = [
         description: 'Ejercicio, nutrición y hábitos para una vida activa y saludable.',
         pillar: 'salud física',
         gradient: 'from-[#0d2e18] via-[#1a5c2e] to-[#163d22]',
+        highlightColor: 'text-green-500',
     },
     {
         title: 'Fortalece tu',
@@ -111,6 +128,7 @@ const SLIDES = [
         description: 'Meditación, mindfulness y herramientas para vivir con calma y claridad.',
         pillar: 'salud mental',
         gradient: 'from-[#071e3d] via-[#1558a8] to-[#0e2f5c]',
+        highlightColor: 'text-blue-500',
     },
     {
         title: 'Domina tus',
@@ -118,8 +136,73 @@ const SLIDES = [
         description: 'Estrategias reales para ahorrar, invertir y dar estabilidad a tu familia.',
         pillar: 'finanzas familiares',
         gradient: 'from-[#3d2100] via-[#b87514] to-[#4a2900]',
+        highlightColor: 'text-yellow-400',
     },
 ];
+
+// ─── Tagline animated words (one-shot) ────────────────────────────────────────
+const TAGLINE_WORDS = [
+    { text: 'TE',       bg: '#1a5c2e' },
+    { text: 'SIENTA',   bg: '#1558a8' },
+    { text: 'BIEN',     bg: '#6b3a2a' },
+    { text: 'QUERERTE', bg: '#eab308' },
+];
+
+function TaglineWords() {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [triggered, setTriggered] = useState(false);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setTriggered(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.3 }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <>
+            <style>{`
+                @keyframes wordIn {
+                    from { opacity: 0; transform: translateY(28px) scale(0.92); }
+                    to   { opacity: 1; transform: translateY(0)   scale(1);    }
+                }
+                .tagline-word {
+                    opacity: 0;
+                    display: inline-block;
+                }
+                .tagline-word.animate {
+                    animation: wordIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+                }
+            `}</style>
+            <div
+                ref={containerRef}
+                className="flex flex-wrap justify-center items-center gap-3 mb-12"
+            >
+                {TAGLINE_WORDS.map((w, i) => (
+                    <span
+                        key={w.text}
+                        className={`tagline-word text-3xl md:text-5xl font-black text-white px-6 py-2 rounded-2xl uppercase${triggered ? ' animate' : ''}`}
+                        style={{
+                            backgroundColor: w.bg,
+                            animationDelay: triggered ? `${i * 0.18}s` : undefined,
+                        }}
+                    >
+                        {w.text}
+                    </span>
+                ))}
+            </div>
+        </>
+    );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function BlogContent() {
@@ -157,6 +240,25 @@ export default function BlogContent() {
         }, 4500);
         return () => clearInterval(interval);
     }, []);
+
+    // Leer ?pillar= de la URL y activar filtro + scroll
+    useEffect(() => {
+        const pillarParam = searchParams?.get('pillar')?.toLowerCase() || '';
+        if (!pillarParam) return;
+        const matched = PILLARS.find(
+            (p) => p.key.toLowerCase() === pillarParam
+        );
+        if (matched) {
+            setActivePillar(matched.key);
+            setSelectedCategory(matched.key as ArticleCategory);
+            // Scroll solo cuando los artículos ya estén listos
+            const delay = articles.length > 0 ? 100 : 800;
+            setTimeout(() => {
+                articlesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, delay);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
 
     const featuredArticles = useMemo(() => articles.filter((a) => a.featured), [articles]);
 
@@ -234,56 +336,53 @@ export default function BlogContent() {
                     {/* Pillar logo badge */}
                     {slide.pillar && (
                         <div className="flex justify-center mb-6">
-                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2">
-                                <Image
-                                    src={PILLARS.find(p => p.key === slide.pillar)?.logo || '/images/logo.png'}
-                                    alt="Pillar logo"
-                                    width={24}
-                                    height={24}
-                                    className="object-contain"
-                                />
+                            <button 
+                                onClick={() => scrollToArticles(slide.pillar)}
+                                className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 hover:bg-white/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                            >
+                                <div className="bg-white rounded-full w-6 h-6 flex shrink-0 items-center justify-center overflow-hidden">
+                                    <Image
+                                        src={PILLARS.find(p => p.key === slide.pillar)?.logo || '/images/logo.png'}
+                                        alt="Pillar logo"
+                                        width={18}
+                                        height={18}
+                                        className="object-contain"
+                                    />
+                                </div>
                                 <span className="text-white/90 text-sm font-medium">
                                     Quioba {PILLARS.find(p => p.key === slide.pillar)?.label}
                                 </span>
-                            </div>
+                            </button>
                         </div>
                     )}
 
                     {!slide.pillar && (
                         <div className="flex justify-center mb-6">
-                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-5 py-2">
-                                <Image src="/images/logo.png" alt="Quioba" width={22} height={22} className="object-contain" />
+                            <button 
+                                onClick={() => scrollToArticles(null)}
+                                className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-5 py-2 hover:bg-white/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                            >
+                                <div className="bg-white rounded-full w-6 h-6 flex shrink-0 items-center justify-center overflow-hidden">
+                                    <Image src="/images/logo.png" alt="Quioba" width={18} height={18} className="object-contain" />
+                                </div>
                                 <span className="text-white/90 text-sm font-medium">Quioba — Bienestar integral</span>
-                            </div>
+                            </button>
                         </div>
                     )}
 
                     <h1 className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tight mb-4 transition-all duration-700">
                         {slide.title}{' '}
-                        <span className="italic font-black text-white/80">{slide.highlight}</span>
+                        <span className={`italic font-black ${slide.highlightColor}`}>{slide.highlight}</span>
                     </h1>
                     <p className="text-lg md:text-xl text-white/75 mb-10 max-w-xl mx-auto leading-relaxed transition-all duration-700">
                         {slide.description}
                     </p>
 
-                    <div className="flex flex-wrap gap-3 justify-center">
-                        <button
-                            onClick={() => scrollToArticles(null)}
-                            className="bg-white text-gray-900 font-bold px-8 py-3 rounded-full text-sm hover:bg-white/90 transition-all hover:scale-105 active:scale-95"
-                        >
-                            Empieza a crecer ↗
-                        </button>
-                        <button
-                            onClick={() => scrollToArticles(null)}
-                            className="bg-white/10 border border-white/25 text-white font-medium px-8 py-3 rounded-full text-sm hover:bg-white/20 transition-all backdrop-blur-sm"
-                        >
-                            Ver artículos
-                        </button>
-                    </div>
+
                 </div>
 
                 {/* Slide dots */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                <div className="absolute top-10 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                     {SLIDES.map((_, i) => (
                         <button
                             key={i}
@@ -301,51 +400,75 @@ export default function BlogContent() {
             {/* ── THREE PILLARS ─────────────────────────────────────────────── */}
             <section className="bg-gray-50 py-16 px-4">
                 <div className="max-w-5xl mx-auto">
-                    <p className="text-center text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">Las tres áreas</p>
-                    <h2 className="text-center text-3xl md:text-4xl font-black text-gray-900 mb-3">
-                        ¿Qué quieres mejorar hoy?
-                    </h2>
-                    <p className="text-center text-gray-500 text-base mb-12 max-w-md mx-auto">
-                        Cada pilar tiene su propio universo de contenido especializado.
-                    </p>
+                    <TaglineWords />
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {PILLARS.map((p) => (
                             <button
                                 key={p.key}
                                 onClick={() => scrollToArticles(p.key)}
-                                className={`group text-left rounded-2xl border-2 bg-white overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] ${
-                                    activePillar === p.key ? `border-[${p.color}]` : 'border-transparent'
-                                }`}
-                                style={{ boxShadow: activePillar === p.key ? `0 0 0 2px ${p.color}` : undefined }}
+                                className={`group relative text-left rounded-[2rem] bg-white overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] flex flex-col min-h-[380px] focus:outline-none`}
+                                style={{
+                                    border: `4px solid ${p.ringColor}`,
+                                }}
                             >
-                                {/* Card header with gradient */}
-                                <div className={`bg-gradient-to-br ${p.gradient} p-8 flex items-center justify-between`}>
-                                    <div>
-                                        <span className="text-white/70 text-xs font-semibold uppercase tracking-widest">
-                                            {p.tagline}
-                                        </span>
-                                        <h3 className="text-white text-2xl font-black mt-1">
-                                            Quioba {p.label}
-                                        </h3>
-                                    </div>
-                                    <div className="w-16 h-16 flex items-center justify-center bg-white rounded-full shadow-md p-1.5 border-2 border-white/80">
-                                        <Image
-                                            src={p.logo}
-                                            alt={`Logo ${p.label}`}
-                                            width={48}
-                                            height={48}
-                                            className="object-contain drop-shadow-sm group-hover:scale-110 transition-transform duration-300"
-                                        />
-                                    </div>
+                                {/* Video de fondo constante (estado normal) */}
+                                <div className="absolute inset-0 z-0 opacity-100 group-hover:opacity-0 transition-opacity duration-700 pointer-events-none">
+                                    <video 
+                                        src={p.bgVideo} 
+                                        autoPlay 
+                                        loop 
+                                        muted 
+                                        playsInline
+                                        className="absolute inset-0 w-full h-full object-cover opacity-50 scale-[1.15]"
+                                    />
                                 </div>
 
-                                {/* Card body */}
-                                <div className="p-6">
-                                    <p className="text-gray-600 text-sm leading-relaxed mb-4">{p.description}</p>
-                                    <div className="flex items-center gap-1 font-bold text-sm" style={{ color: p.color }}>
-                                        Explorar artículos
-                                        <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
+                                {/* Imagen original y color (estado hover) */}
+                                <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                                    <img 
+                                        src={p.bgImage} 
+                                        alt={p.label} 
+                                        className="absolute inset-0 w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-1000"
+                                    />
+                                    {/* Color overlay */}
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${p.gradient} opacity-90 mix-blend-multiply`} />
+                                </div>
+
+                                {/* Content container */}
+                                <div className="relative z-10 flex flex-col h-full w-full p-8">
+                                    {/* Header area */}
+                                    <div className="flex items-start justify-between mb-auto gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-16 h-16 shrink-0 flex items-center justify-center bg-gray-50 group-hover:bg-white rounded-2xl shadow-sm group-hover:shadow-lg transition-all duration-500 p-2 border border-gray-100 group-hover:border-white/50 group-hover:-rotate-6 group-hover:scale-110">
+                                                <Image
+                                                    src={p.logo}
+                                                    alt={`Logo ${p.label}`}
+                                                    width={48}
+                                                    height={48}
+                                                    className="object-contain"
+                                                />
+                                            </div>
+                                            <h3 
+                                                className="group-hover:!text-white text-2xl lg:text-3xl font-black transition-colors duration-500 drop-shadow-md leading-tight"
+                                                style={{ color: p.ringColor }}
+                                            >
+                                                Quioba<br/>{p.label}
+                                            </h3>
+                                        </div>
+                                        <div className="w-10 h-10 shrink-0 rounded-full border border-gray-200 group-hover:border-white/30 flex items-center justify-center text-gray-400 group-hover:text-white transition-colors duration-500 bg-white/50 group-hover:bg-transparent backdrop-blur-sm mt-1">
+                                            <span className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300">↗</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Text area */}
+                                    <div className="mt-12 transition-colors duration-500">
+                                        <span className="block opacity-0 group-hover:opacity-100 text-white/80 text-xs font-black uppercase tracking-widest transition-opacity duration-500 drop-shadow-md mb-2">
+                                            {p.tagline}
+                                        </span>
+                                        <p className="opacity-0 group-hover:opacity-100 text-white/90 text-sm leading-relaxed font-semibold transition-opacity duration-500 drop-shadow-md">
+                                            {p.description}
+                                        </p>
                                     </div>
                                 </div>
                             </button>
@@ -353,6 +476,8 @@ export default function BlogContent() {
                     </div>
                 </div>
             </section>
+
+
 
             {/* ── FEATURED ARTICLES ─────────────────────────────────────────── */}
             {featuredArticles.length > 0 && (

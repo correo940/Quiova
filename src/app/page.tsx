@@ -59,10 +59,7 @@ function HomeContent() {
     return <MobileLauncher user={user} onLaunchDesktop={() => setIsLauncherMode(false)} />
   }
 
-  if (user) {
-    return <HomeDashboard />
-  }
-
+  // La página principal siempre muestra los artículos, independientemente del login
   return <BlogContent />
 }
 

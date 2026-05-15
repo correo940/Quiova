@@ -26,7 +26,7 @@ export default function Taskbar() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    if (isLauncherMode) return null;
+    // if (isLauncherMode) return null;
 
     const handleNavClick = async () => {
         try {
@@ -119,7 +119,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/',
+            href: '/desktop',
         },
         {
             id: 'articles',
@@ -137,7 +137,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/articles',
+            href: '/',
         },
         {
             id: 'profile',
@@ -160,7 +160,7 @@ export default function Taskbar() {
     ];
 
     return (
-        <div className="fixed bottom-6 md:bottom-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)]">
             <motion.div
                 initial={{ y: 40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}

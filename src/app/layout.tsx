@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
-// import Header from '@/components/layout/header';
+import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import Taskbar from '@/components/layout/taskbar';
 import MobileNav from '@/components/layout/mobile-nav';
@@ -45,7 +45,7 @@ export default function RootLayout({
         <AuthProvider>
           <ClientProvider>
             <div className="print:hidden">
-              {/* <Header /> */}
+              <Header />
             </div>
             <main className="flex-grow">{children}</main>
             <div className="print:hidden">

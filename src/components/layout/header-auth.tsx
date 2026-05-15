@@ -25,9 +25,25 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { translateAuthError } from '@/lib/utils';
+import { useAi } from '@/context/AiContext';
+import { useJournal } from '@/context/JournalContext';
+import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
+import { Mic, MicOff, Plus, CheckSquare, ShoppingCart, Wallet, Camera, Book } from 'lucide-react';
+import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const QUICK_ACTIONS = [
+    { label: 'Nueva tarea', icon: CheckSquare, href: '/apps/mi-hogar/tasks?action=new', color: 'bg-blue-600' },
+    { label: 'Lista compra', icon: ShoppingCart, href: '/apps/mi-hogar/shopping?action=new', color: 'bg-green-800' },
+    { label: 'Nuevo gasto', icon: Wallet, href: '/apps/mi-hogar/expenses?action=new', color: 'bg-amber-600' },
+    { label: 'Escanear', icon: Camera, href: '/apps/mi-hogar/shopping?action=scan', color: 'bg-slate-700' },
+];
 
 export default function HeaderAuth() {
+    const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
+    const { setIsOpen: setIsJournalOpen } = useJournal();
     const [user, setUser] = useState<any>(null);
+    const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -66,6 +82,7 @@ export default function HeaderAuth() {
     };
 
     const handleLogout = async () => {
+        if (!window.confirm('¿Seguro que quieres cerrar sesión?')) return;
         await supabase.auth.signOut();
         toast.success('Sesión cerrada');
         router.refresh();
@@ -73,44 +90,128 @@ export default function HeaderAuth() {
 
     if (user) {
         return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                            <User className="h-4 w-4 text-primary" />
-                        </div>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">Mi Cuenta</p>
-                            <p className="text-xs leading-none text-muted-foreground">
-                                {user.email}
-                            </p>
-                        </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/apps/mi-hogar" className="cursor-pointer">
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            <span>Ir a Mi Hogar</span>
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Cerrar Sesión</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2 md:gap-3">
+                {/* Global Quick Action Button (+) */}
+                <div className="relative">
+                    <button
+                        onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-green-800 text-white shadow-md hover:scale-110 transition-transform"
+                        title="Acciones Rápidas"
+                    >
+                        <motion.div animate={{ rotate: isActionMenuOpen ? 45 : 0 }}>
+                            <Plus className="w-5 h-5" strokeWidth={3} />
+                        </motion.div>
+                    </button>
+
+                    <AnimatePresence>
+                        {isActionMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsActionMenuOpen(false)} />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute top-10 right-0 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-2 z-50"
+                                >
+                                    {QUICK_ACTIONS.map((action) => (
+                                        <Link
+                                            key={action.label}
+                                            href={action.href}
+                                            onClick={() => setIsActionMenuOpen(false)}
+                                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                        >
+                                            <div className={`w-8 h-8 rounded-lg ${action.color} text-white flex items-center justify-center`}>
+                                                <action.icon className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{action.label}</span>
+                                        </Link>
+                                    ))}
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* Journal / Notes Button */}
+                <button
+                    onClick={() => setIsJournalOpen(true)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-md hover:scale-110 transition-transform"
+                    title="Mis Apuntes"
+                >
+                    <Book className="w-4 h-4" />
+                </button>
+
+                {/* Wake Word / Mic Button */}
+                <button
+                    onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
+                        ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
+                        }`}
+                    title={isWakeWordEnabled ? "Micrófono IA activo" : "Micrófono IA desactivado"}
+                >
+                    {isWakeWordEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                </button>
+
+                {/* Quioba Bot Button */}
+                <button
+                    onClick={() => setAiPanelOpen(true)}
+                    className="relative w-8 h-8 flex items-center justify-center rounded-full bg-green-800 shadow-md hover:scale-110 transition-transform overflow-hidden"
+                    title="IA de Quioba"
+                >
+                    <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200 bg-white flex items-center justify-center text-sm">
+                        {typeof window !== 'undefined' ? getAvatarById(getSecretarySettings().avatarId).emoji : '🤖'}
+                    </div>
+                </button>
+
+                {/* Notifications Button */}
+                <NotificationSettingsDialog />
+
+                <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
+
+                <Button variant="default" size="sm" asChild className="hidden lg:flex bg-green-700 hover:bg-green-800 text-white h-8">
+                    <Link href="/desktop">
+                        <LayoutDashboard className="mr-2 h-3.5 w-3.5" />
+                        Mi Panel
+                    </Link>
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className="h-9 w-9 rounded-full flex items-center justify-center bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer text-xl">
+                            {typeof window !== 'undefined' ? getAvatarById(getSecretarySettings().avatarId).emoji : '🤖'}
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-medium leading-none">Mi Cuenta</p>
+                                <p className="text-xs leading-none text-muted-foreground">
+                                    {user.email}
+                                </p>
+                            </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                            <Link href="/desktop" className="cursor-pointer">
+                                <LayoutDashboard className="mr-2 h-4 w-4" />
+                                <span>Ir a Mi Panel</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Cerrar Sesión</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         );
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="default" size="sm" className="gap-2 bg-green-700 hover:bg-green-800 text-white rounded-full px-4">
                     <LogIn className="h-4 w-4" />
                     <span className="hidden sm:inline">Iniciar Sesión</span>
                 </Button>
@@ -162,7 +263,7 @@ export default function HeaderAuth() {
                     </div>
                     <Button
                         type="submit"
-                        className="w-full"
+                        className="w-full bg-green-700 hover:bg-green-800"
                         disabled={loading}
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

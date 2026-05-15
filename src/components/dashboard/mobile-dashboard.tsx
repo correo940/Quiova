@@ -174,7 +174,6 @@ export default function MobileDashboard() {
                 {/* Espaciado inferior para safe area + taskbar */}
                 <div className="h-28"></div>
             </div>
-            <QuickActionFab />
         </div>
     );
 }

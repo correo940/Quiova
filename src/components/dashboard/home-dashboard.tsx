@@ -49,8 +49,6 @@ export default function HomeDashboard() {
                     </div>
                 </div>
             </div>
-            <QuickActionFab />
         </>
     );
 }
-

@@ -6,6 +6,32 @@ interface Message {
   content: string;
 }
 
+// Detecta qué módulos son relevantes para el mensaje del usuario
+function detectNeededModules(userMsg: string): Set<string> {
+  const msg = userMsg.toLowerCase();
+  const modules = new Set<string>();
+  modules.add('base');
+
+  if (/tarea|pendiente|todo|hacer|completar/.test(msg)) modules.add('tasks');
+  if (/compr|mercado|supermercado/.test(msg)) modules.add('shopping');
+  if (/dinero|saldo|gast|ahorro|finanz|euro|€|cuenta|sobre|presupuesto/.test(msg)) modules.add('finance');
+  if (/turno|trabajo|jornada|guardia|horario/.test(msg)) modules.add('shifts');
+  if (/medicin|pastilla|fármaco|medicación|dosis/.test(msg)) modules.add('medicines');
+  if (/manual|avería|hogar|casa|instrucción|mantenimiento/.test(msg)) modules.add('manuals');
+  if (/contraseña|password|bóveda|clave/.test(msg)) modules.add('passwords');
+  if (/sync|balance|día|victoria|logro|cómo ha ido/.test(msg)) modules.add('sync');
+  if (/conocimiento|aprendido|enseñado|recuerdas/.test(msg)) modules.add('knowledge');
+
+  // Mensaje general → incluir resumen básico
+  if (modules.size <= 1) {
+    modules.add('tasks');
+    modules.add('finance');
+    modules.add('sync');
+  }
+
+  return modules;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -20,184 +46,222 @@ export async function POST(req: Request) {
     if (!groqKey) return NextResponse.json({ error: 'Falta GROQ_API_KEY' }, { status: 500 });
     if (!userId) return NextResponse.json({ error: 'Falta userId' }, { status: 400 });
 
-    // Supabase con service role para leer datos del usuario
+    const lastUserMsg = messages.findLast(m => m.role === 'user')?.content || '';
+    const needed = detectNeededModules(lastUserMsg);
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Consultas paralelas para máxima velocidad
     const today = new Date().toISOString().split('T')[0];
-    const [
-      { data: tasks },
-      { data: shopping },
-      { data: savings },
-      { data: shifts },
-      { data: medicines },
-      { data: expenses },
-      { data: manuals },
-      { data: passwords },
-    ] = await Promise.all([
-      supabase.from('tasks').select('title, is_completed, due_date').eq('user_id', userId).eq('is_completed', false).limit(10),
-      supabase.from('shopping_items').select('name, quantity').eq('user_id', userId).eq('is_checked', false).limit(15),
-      supabase.from('savings_accounts').select('name, current_balance').eq('user_id', userId),
-      supabase.from('work_shifts').select('title, start_time, end_time').eq('user_id', userId).gte('start_time', today).limit(5),
-      supabase.from('medicines').select('name, dosage, frequency').eq('user_id', userId).limit(10),
-      supabase.from('expenses').select('title, amount, date').eq('user_id', userId).gte('date', `${new Date().toISOString().substring(0, 7)}-01`).order('date', { ascending: false }),
-      supabase.from('manuals').select('title, category, content').eq('user_id', userId).limit(20),
-      supabase.from('passwords').select('id, name').eq('user_id', userId),
-    ]);
 
-    // Conocimiento personalizado — consulta separada para no romper el chat si la tabla no existe aún
+    // Solo consultamos lo que necesitamos (consultas paralelas)
+    const queries: Promise<any>[] = [];
+    const queryKeys: string[] = [];
+
+    if (needed.has('tasks')) {
+      queries.push(supabase.from('tasks').select('title,due_date').eq('user_id', userId).eq('is_completed', false).limit(5));
+      queryKeys.push('tasks');
+    }
+    if (needed.has('shopping')) {
+      queries.push(supabase.from('shopping_items').select('name,quantity').eq('user_id', userId).eq('is_checked', false).limit(8));
+      queryKeys.push('shopping');
+    }
+    if (needed.has('finance')) {
+      queries.push(supabase.from('savings_accounts').select('name,current_balance').eq('user_id', userId));
+      queries.push(supabase.from('expenses').select('title,amount').eq('user_id', userId).gte('date', `${today.substring(0, 7)}-01`).order('date', { ascending: false }).limit(3));
+      queryKeys.push('savings', 'expenses');
+    }
+    if (needed.has('shifts')) {
+      queries.push(supabase.from('work_shifts').select('title,start_time,end_time').eq('user_id', userId).gte('start_time', today).limit(3));
+      queryKeys.push('shifts');
+    }
+    if (needed.has('medicines')) {
+      queries.push(supabase.from('medicines').select('name,dosage,frequency').eq('user_id', userId).limit(5));
+      queryKeys.push('medicines');
+    }
+    if (needed.has('manuals')) {
+      queries.push(supabase.from('manuals').select('title,category,content').eq('user_id', userId).limit(3));
+      queryKeys.push('manuals');
+    }
+    if (needed.has('passwords')) {
+      queries.push(supabase.from('passwords').select('id,name').eq('user_id', userId));
+      queryKeys.push('passwords');
+    }
+    if (needed.has('sync') && !todaySyncStatus) {
+      queries.push(supabase.from('secretary_syncs').select('completed_at,victories').eq('user_id', userId).eq('sync_date', today).maybeSingle());
+      queryKeys.push('sync');
+    }
+
+    const results = await Promise.all(queries);
+    const dataMap: Record<string, any> = {};
+    queryKeys.forEach((key, i) => { dataMap[key] = results[i]?.data; });
+
+    if (needed.has('sync') && !todaySyncStatus && dataMap['sync']) {
+      todaySyncStatus = dataMap['sync'];
+    }
+
+    // Conocimiento (solo si relevante)
     let knowledge: { title: string; content: string }[] = [];
+    let globalKnowledge: { title: string; content: string; category?: string }[] = [];
 
-    // Si no viene del cliente, lo buscamos nosotros
-    if (!todaySyncStatus) {
+    if (needed.has('knowledge') || needed.size <= 3) {
       try {
-        const { data: sData } = await supabase
-          .from('secretary_syncs')
-          .select('completed_at, victories')
-          .eq('user_id', userId)
-          .eq('sync_date', today)
-          .maybeSingle();
-        todaySyncStatus = sData;
-      } catch (e) {
-        console.error('Error fetching sync status in route:', e);
-      }
+        const { data } = await supabase.from('ai_knowledge').select('title,content').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+        knowledge = data || [];
+      } catch { /* tabla no existe */ }
+
+      try {
+        const { data } = await supabase.from('ai_global_knowledge').select('title,content,category').order('created_at', { ascending: false }).limit(8);
+        globalKnowledge = data || [];
+      } catch { /* tabla no existe */ }
     }
 
-    try {
-      const { data: kData } = await supabase
-        .from('ai_knowledge')
-        .select('title, content')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      knowledge = kData || [];
-    } catch {
-      // La tabla aún no existe, ignorar
-    }
-
-    const totalBalance = savings?.reduce((sum, a) => sum + (a.current_balance || 0), 0) || 0;
-    const currentMonthSpent = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
-
-    const knowledgeSection = knowledge.length > 0
-      ? `\n📚 CONOCIMIENTO PERSONALIZADO DEL USUARIO:\n${knowledge.map(k => `## ${k.title}\n${k.content}`).join('\n\n')}\n`
-      : '';
-
-    const formattedManuals = manuals?.map(m => {
-      let notes = m.content || '';
-      try {
-        const p = JSON.parse(m.content);
-        if (p.text) notes = p.text;
-      } catch { }
-      if (!notes.trim()) return '';
-      return `- [${m.category || 'General'}] ${m.title}: ${notes.substring(0, 500)}`;
-    }).filter(Boolean).join('\n') || '- Sin manuales registrados';
-
+    // ── Construir prompt compacto ──────────────────────────────────────
     const personality = secretarySettings?.personality || 'friendly';
-    const traitsMap = {
-      formal: "Eres una asistente profesional, elegante y respetuosa. Usas un lenguaje cuidado y evitas el exceso de emojis. Te diriges al usuario con deferencia pero cercanía.",
-      friendly: "Eres una asistente muy amable, cercana y positiva. Usas emojis para dar calidez y te enfocas en motivar al usuario. Tu tono es informal (tú).",
-      sergeant: "Eres una asistente extremadamente directa, disciplinada y breve. Tu objetivo es la eficiencia. No andas con rodeos y exiges cumplimiento de objetivos. Tono seco y autoritario.",
+    const traitsMap: Record<string, string> = {
+      formal: 'Profesional y elegante. Sin exceso de emojis.',
+      friendly: 'Amable, cercana. Usa emojis. Tono informal.',
+      sergeant: 'Directa, breve, autoritaria. Sin rodeos.',
     };
-    const personalityTraits = traitsMap[personality as keyof typeof traitsMap] || traitsMap.friendly;
+    const trait = traitsMap[personality] || traitsMap.friendly;
 
-    const syncStatusSection = todaySyncStatus
-      ? `\nESTADO DEL SYNC DE HOY: ${todaySyncStatus.completed_at ? 'Completado ✅' : 'Pendiente 🌙'}. Victories: ${todaySyncStatus.victories?.join(', ') || 'Ninguna aún'}`
-      : '\nESTADO DEL SYNC DE HOY: Pendiente 🌙';
+    const parts: string[] = [];
 
-    const systemPrompt = `Eres la IA de Quioba, asistente personal total. Has absorbido las funciones del Organizador Personal.
-${personalityTraits}
-Tienes acceso a los datos reales del usuario y le ayudas con cualquier pregunta sobre su vida diaria.
-Responde siempre en español. Nunca menciones que eres un modelo de lenguaje ni menciones a Groq/Llama.
+    // Fecha y sync
+    const dateStr = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    const syncStr = todaySyncStatus
+      ? `Sync:${todaySyncStatus.completed_at ? '✅' : '🌙'}${todaySyncStatus.victories?.length ? ` victorias:${todaySyncStatus.victories.join('/')}` : ''}`
+      : 'Sync:🌙pendiente';
+    parts.push(`HOY:${dateStr} ${syncStr}`);
 
-${knowledgeSection}
+    // Finanzas
+    if (needed.has('finance')) {
+      const bal = (dataMap['savings'] as any[] || []).reduce((s: number, a: any) => s + (a.current_balance || 0), 0);
+      const spent = (dataMap['expenses'] as any[] || []).reduce((s: number, e: any) => s + (e.amount || 0), 0);
+      const lastExp = (dataMap['expenses'] as any[] || []).slice(0, 3).map((e: any) => `${e.title}:${e.amount}€`).join(',');
+      parts.push(`FINANZAS:saldo=${bal.toFixed(0)}€ mes=${spent.toFixed(0)}€${lastExp ? ` últimos:${lastExp}` : ''}`);
+    }
 
-DATOS ACTUALES DEL USUARIO (${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}):
-${syncStatusSection}
+    // Tareas
+    if (needed.has('tasks')) {
+      const t = (dataMap['tasks'] as any[] || []);
+      parts.push(t.length ? `TAREAS(${t.length}):${t.map((x: any) => x.title + (x.due_date ? `[${x.due_date}]` : '')).join('|')}` : 'TAREAS:ninguna');
+    }
 
-💰 FINANZAS:
-- Saldo Cuentas y Sobres: ${totalBalance.toLocaleString('es-ES')}€
-- Gastado este mes: ${currentMonthSpent.toLocaleString('es-ES')}€
-- Últimos gastos de este mes: ${expenses?.slice(0, 5).map(e => `${e.title} (${e.amount}€)`).join(', ') || 'Sin gastos recientes'}
+    // Compra
+    if (needed.has('shopping')) {
+      const s = (dataMap['shopping'] as any[] || []);
+      parts.push(s.length ? `COMPRA(${s.length}):${s.map((x: any) => x.name + (x.quantity ? `×${x.quantity}` : '')).join('|')}` : 'COMPRA:vacía');
+    }
 
-✅ TAREAS PENDIENTES (${tasks?.length || 0}):
-${tasks?.map(t => `- ${t.title}${t.due_date ? ` (vence: ${t.due_date})` : ''}`).join('\n') || '- Sin tareas pendientes'}
+    // Turnos
+    if (needed.has('shifts')) {
+      const sh = (dataMap['shifts'] as any[] || []);
+      if (sh.length) parts.push(`TURNOS:${sh.map((x: any) => { const d = new Date(x.start_time); return `${x.title} ${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ${d.getHours()}h`; }).join('|')}`);
+    }
 
-🛒 LISTA DE LA COMPRA (${shopping?.length || 0} items):
-${shopping?.map(s => `- ${s.name}${s.quantity ? ` x${s.quantity}` : ''}`).join('\n') || '- Lista vacía'}
+    // Medicación
+    if (needed.has('medicines')) {
+      const m = (dataMap['medicines'] as any[] || []);
+      if (m.length) parts.push(`MED:${m.map((x: any) => x.name + (x.dosage ? ` ${x.dosage}` : '')).join('|')}`);
+    }
 
-💼 PRÓXIMOS TURNOS:
-${shifts?.map(s => {
-      const start = new Date(s.start_time);
-      const end = new Date(s.end_time);
-      return `- ${s.title}: ${start.toLocaleDateString('es-ES')} ${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')}–${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`;
-    }).join('\n') || '- Sin turnos próximos'}
+    // Manuales (solo títulos)
+    if (needed.has('manuals')) {
+      const mn = (dataMap['manuals'] as any[] || []);
+      if (mn.length) parts.push(`MANUALES:${mn.map((x: any) => x.title).join('|')}`);
+    }
 
-💊 MEDICACIÓN:
-${medicines?.map(m => `- ${m.name}${m.dosage ? ` (${m.dosage})` : ''}${m.frequency ? ` — ${m.frequency}` : ''}`).join('\n') || '- Sin medicación registrada'}
+    // Contraseñas
+    if (needed.has('passwords')) {
+      const pw = (dataMap['passwords'] as any[] || []);
+      if (pw.length) parts.push(`CLAVES:${pw.map((x: any) => `${x.name}(ID:${x.id})`).join('|')}`);
+    }
 
-📘 MANUALES Y MANTENIMIENTO DEL HOGAR:
-${formattedManuals}
+    // Conocimiento global
+    if (globalKnowledge.length > 0) {
+      parts.push(`INFO_QUIOBA:\n${globalKnowledge.map(k => `[${k.title}]: ${k.content}`).join('\n---\n')}`);
+    }
 
-🔑 BÓVEDA DE CONTRASEÑAS (SOLO NOMBRES):
-${passwords?.map(p => `- ${p.name} (ID: ${p.id})`).join('\n') || '- No hay contraseñas en la bóveda'}
+    // Conocimiento del usuario
+    if (knowledge.length > 0) {
+      parts.push(`SABE:\n${knowledge.map(k => `[${k.title}]: ${k.content}`).join('\n---\n')}`);
+    }
 
-REGLAS DEL ORGANIZADOR (SYNC NOCTURNO):
-- Si el usuario quiere hacer el "sync" o "balance del día", guíale de forma conversacional.
-- Pregunta sobre sus victorias del día y si queda algo para mañana.
-- Tras 3-4 mensajes de sync, genera un resumen final usando el tipo "summary".
+    const systemPrompt = `Eres Quioba, asistente personal IA. Responde SIEMPRE con JSON válido. ${trait} Idioma: español. No menciones modelos de IA. Nunca cites nombres propios de personas del conocimiento inyectado.
 
-FORMATO DE RESPUESTA — MUY IMPORTANTE:
-Debes responder SIEMPRE y ÚNICAMENTE con JSON válido. Nunca texto plano.
+REGLA FUNDAMENTAL — BASA TODO EN LOS DATOS REALES:
+- Usa TODA la información del bloque DATOS para construir tus respuestas.
+- Si el usuario pide un plan, recomendación o resumen, créalo extrayendo y organizando lo que hay en los DATOS, aunque sea poco.
+- Si los datos son escasos, sé transparente: indícalo brevemente y trabaja con lo que tienes ("Con los datos que tengo hasta ahora...").
+- NUNCA inventes datos concretos que no estén en el bloque DATOS: no añadas números, nombres, fechas, calorías, precios ni detalles específicos que no aparezcan allí.
+- Si no tienes absolutamente ningún dato relevante sobre lo que pide el usuario, responde: {"type":"text","content":"Aún no tengo información sobre eso registrada. Puedes añadirla desde la app para que pueda ayudarte mejor."}
 
-Para listas (compra, tareas, documentos, turnos, medicación):
-{"type":"list","title":"Título","icon":"emoji","items":[{"icon":"emoji","text":"texto"}]}
+DATOS REALES DEL USUARIO: ${parts.join(' || ')}
 
-Para solicitar revelación de una contraseña al usuario:
-{"type":"password_request","name":"Nombre del servicio","id":"COPIA_EXACTA_DEL_ID_PROPORCIONADO"}
+SYNC: si el usuario pide sync/balance del día, guíale conversacionalmente y tras 3-4 msgs usa tipo "summary".
 
-Para texto normal:
-{"type":"text","content":"Tu respuesta aquí"}
-
-Para cerrar un Sync Nocturno:
-{"type":"summary","text":"[Resumen de 2 frases del día]","readyToClose":true}
-
-EJEMPLOS:
-Usuario: "hazme el sync"
-{"type":"text","content":"¡Hola! Claro, vamos a cerrar el día. Cuéntame, ¿cuál ha sido tu mayor victoria hoy? 😊"}
-
-NUNCA uses markdown, viñetas ni texto fuera del JSON.`;
+JSON obligatorio:
+{"type":"text","content":"..."} para respuestas normales
+{"type":"list","title":"...","icon":"🛒","items":[{"icon":"✅","text":"..."}]} para listas
+{"type":"password_request","name":"servicio","id":"ID_EXACTO"} para contraseñas
+{"type":"summary","text":"resumen 2 frases","readyToClose":true} para cerrar sync`;
 
     const groqMessages: Message[] = [
       { role: 'system', content: systemPrompt },
-      ...messages,
+      ...messages.slice(-6),
     ];
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: groqMessages,
-        max_tokens: 500,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    const FALLBACK_MODELS = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'qwen/qwen3-32b',
+    ];
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Groq ai-chat error:', err);
-      return NextResponse.json({ error: 'Error al contactar con Groq' }, { status: 500 });
+    let data;
+    let lastError = '';
+    let usedModel = '';
+
+    for (const model of FALLBACK_MODELS) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${groqKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: groqMessages,
+            max_tokens: 400,
+            temperature: 0.7,
+            response_format: { type: 'json_object' },
+          }),
+        });
+
+        if (res.ok) {
+          data = await res.json();
+          usedModel = model;
+          break;
+        } else {
+          lastError = await res.text();
+          console.warn(`Modelo ${model} falló. Probando siguiente...`);
+        }
+      } catch (err) {
+        console.warn(`Error de red con modelo ${model}.`);
+      }
     }
 
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content ?? 'Lo siento, no pude procesar tu mensaje.';
+    if (!data) {
+      console.error('Todos los modelos fallaron. Último error:', lastError);
+      return NextResponse.json({ error: 'Nuestros servidores de IA están muy ocupados. Inténtalo en unos segundos.' }, { status: 500 });
+    }
+
+    const reply = data.choices?.[0]?.message?.content ?? '{"type":"text","content":"Lo siento, no pude procesar tu mensaje."}';
+    console.log(`✅ Respuesta OK con modelo: ${usedModel}`);
 
     return NextResponse.json({ reply });
 

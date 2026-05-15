@@ -11,21 +11,21 @@ import HeaderAuth from './header-auth';
 
 const PILLARS = [
     {
-        href: '/?pillar=physical+health#latest-articles',
+        href: '/?pillar=salud+f%C3%ADsica#articles',
         label: 'Cuerpo',
         logo: '/images/logo-cuerpo.png',
         color: '#1a5c2e',
         colorLight: '#e8f5ec',
     },
     {
-        href: '/?pillar=mental+health#latest-articles',
+        href: '/?pillar=salud+mental#articles',
         label: 'Mente',
         logo: '/images/logo-mente.png',
         color: '#1558a8',
         colorLight: '#e6f0fa',
     },
     {
-        href: '/?pillar=family+finance#latest-articles',
+        href: '/?pillar=finanzas+familiares#articles',
         label: 'Finanzas',
         logo: '/images/logo-finanzas.png',
         color: '#b87514',
@@ -33,15 +33,11 @@ const PILLARS = [
     },
 ];
 
-const NAV_LINKS = [
-    { href: '/about', label: 'Sobre nosotros' },
-    { href: '/contact', label: 'Contacto' },
-];
+
 
 export default function Header() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
-    const [hoveredPillar, setHoveredPillar] = useState<string | null>(null);
 
     const handleSearch = () => {
         if (searchQuery.trim()) {
@@ -75,42 +71,24 @@ export default function Header() {
 
                 {/* ── Desktop Nav ── */}
                 <nav className="hidden md:flex items-center gap-1 flex-1">
-                    {/* Pillar links */}
+                    {/* Pillar buttons */}
                     {PILLARS.map((p) => (
                         <Link
                             key={p.label}
                             href={p.href}
-                            onMouseEnter={() => setHoveredPillar(p.label)}
-                            onMouseLeave={() => setHoveredPillar(null)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
-                            style={
-                                hoveredPillar === p.label
-                                    ? { background: p.colorLight, color: p.color }
-                                    : { color: 'var(--foreground)', opacity: 0.65 }
-                            }
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold text-white transition-all duration-200 hover:opacity-90 hover:scale-105 active:scale-95"
+                            style={{ backgroundColor: p.color }}
                         >
-                            <Image
-                                src={p.logo}
-                                alt={p.label}
-                                width={16}
-                                height={16}
-                                className="object-contain"
-                            />
+                            <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                                <Image
+                                    src={p.logo}
+                                    alt={p.label}
+                                    width={14}
+                                    height={14}
+                                    className="object-contain"
+                                />
+                            </div>
                             {p.label}
-                        </Link>
-                    ))}
-
-                    {/* Divider */}
-                    <div className="w-px h-4 bg-border mx-2" />
-
-                    {/* Extra links */}
-                    {NAV_LINKS.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className="px-3 py-1.5 text-sm font-medium text-foreground/60 hover:text-foreground/90 transition-colors"
-                        >
-                            {link.label}
                         </Link>
                     ))}
                 </nav>
@@ -148,17 +126,7 @@ export default function Header() {
                                 </Link>
                             ))}
 
-                            <div className="border-t my-3" />
 
-                            {NAV_LINKS.map((link) => (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className="text-sm font-medium p-2 rounded-lg transition-colors hover:bg-accent text-foreground/70"
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
                         </div>
                     </SheetContent>
                 </Sheet>
