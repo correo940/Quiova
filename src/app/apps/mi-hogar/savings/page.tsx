@@ -5,6 +5,7 @@ import Script from 'next/script';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 const AccountDetailDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/account-detail-dialog'), { ssr: false });
+const AddAccountDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/add-account-dialog'), { ssr: false });
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { toast } from 'sonner';
@@ -163,6 +164,7 @@ export default function SavingsV2Preview() {
     const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
     const [accountTransactions, setAccountTransactions] = useState<SavingsTransaction[]>([]);
     const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
+    const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
     const [passwords, setPasswords] = useState<any[]>([]);
 
     const selectedAccountPasswordId = selectedAccount?.password_id || null;
@@ -1715,7 +1717,7 @@ export default function SavingsV2Preview() {
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: '600', color: 'var(--color-text-primary)' }}>
                             <i className="ti ti-credit-card" style={{ color: '#F5C400' }} aria-hidden="true"></i> Cuentas y tarjetas
                         </span>
-                        <button className="qf-btn primary" style={{ padding: '5px 12px' }} onClick={() => toast.info('Añadir cuenta en desarrollo')}>
+                        <button className="qf-btn primary" style={{ padding: '5px 12px' }} onClick={() => setIsAddAccountOpen(true)}>
                             <i className="ti ti-plus" aria-hidden="true"></i> Añadir cuenta
                         </button>
                     </div>
@@ -2245,6 +2247,15 @@ export default function SavingsV2Preview() {
                     onUpdateBalance={handleUpdateAccountBalance}
                     onUpdateAccount={handleUpdateAccount}
                     onToggleIncludeInTotal={handleToggleAccountInTotal}
+                />
+            )}
+
+            {user && (
+                <AddAccountDialog
+                    open={isAddAccountOpen}
+                    onOpenChange={setIsAddAccountOpen}
+                    userId={user.id}
+                    onSuccess={() => fetchData(user.id)}
                 />
             )}
         </>
