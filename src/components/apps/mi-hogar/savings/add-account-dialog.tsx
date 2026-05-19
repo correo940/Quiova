@@ -8,6 +8,20 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Landmark, Save } from 'lucide-react';
 
+const BANKS = [
+    { name: 'BBVA', color: '#004481', logo: 'https://www.google.com/s2/favicons?domain=bbva.es&sz=128', url: 'https://www.bbva.es' },
+    { name: 'Santander', color: '#EC0000', logo: 'https://www.google.com/s2/favicons?domain=bancosantander.es&sz=128', url: 'https://www.bancosantander.es' },
+    { name: 'CaixaBank', color: '#007dbd', logo: 'https://www.google.com/s2/favicons?domain=caixabank.es&sz=128', url: 'https://www.caixabank.es' },
+    { name: 'Sabadell', color: '#006dff', logo: 'https://www.google.com/s2/favicons?domain=bancsabadell.com&sz=128', url: 'https://www.bancsabadell.com' },
+    { name: 'ING', color: '#FF6200', logo: 'https://www.google.com/s2/favicons?domain=ing.es&sz=128', url: 'https://www.ing.es' },
+    { name: 'Openbank', color: '#EC0000', logo: 'https://www.google.com/s2/favicons?domain=openbank.es&sz=128', url: 'https://www.openbank.es' },
+    { name: 'Revolut', color: '#4079FA', logo: 'https://www.google.com/s2/favicons?domain=revolut.com&sz=128', url: 'https://www.revolut.com' },
+    { name: 'N26', color: '#36a18b', logo: 'https://www.google.com/s2/favicons?domain=n26.com&sz=128', url: 'https://n26.com' },
+    { name: 'Trade Republic', color: '#0e0e0e', logo: 'https://www.google.com/s2/favicons?domain=traderepublic.com&sz=128', url: 'https://traderepublic.com' },
+    { name: 'Efectivo', color: '#10b981', logo: null, url: null },
+    { name: 'Otro', color: '#64748b', logo: null, url: null },
+];
+
 export default function AddAccountDialog({ 
     open, 
     onOpenChange, 
@@ -32,12 +46,14 @@ export default function AddAccountDialog({
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const bankInfo = BANKS.find(b => b.name === form.bank_name);
             const { error } = await supabase.from('savings_accounts').insert({
                 user_id: userId,
                 name: form.name || 'Nueva Cuenta',
                 bank_name: form.bank_name,
                 current_balance: parseFloat(form.current_balance) || 0,
-                color: form.color
+                color: form.color,
+                logo_url: bankInfo ? bankInfo.logo : null
             });
 
             if (error) throw error;
@@ -81,13 +97,23 @@ export default function AddAccountDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Entidad</label>
-                            <Input 
-                                placeholder="Ej. BBVA, Santander..." 
+                            <select 
                                 value={form.bank_name}
-                                onChange={e => setForm({...form, bank_name: e.target.value})}
+                                onChange={e => {
+                                    const selectedBank = BANKS.find(b => b.name === e.target.value);
+                                    setForm({
+                                        ...form, 
+                                        bank_name: e.target.value,
+                                        color: selectedBank ? selectedBank.color : form.color
+                                    });
+                                }}
                                 required
-                                className="h-10 rounded-xl bg-white border-slate-200"
-                            />
+                                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5C400]"
+                            >
+                                {BANKS.map(bank => (
+                                    <option key={bank.name} value={bank.name}>{bank.name}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Saldo Inicial (€)</label>
