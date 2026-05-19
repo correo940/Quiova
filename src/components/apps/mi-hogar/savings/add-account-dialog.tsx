@@ -37,10 +37,7 @@ export default function AddAccountDialog({
                 name: form.name || 'Nueva Cuenta',
                 bank_name: form.bank_name,
                 current_balance: parseFloat(form.current_balance) || 0,
-                account_type: form.account_type,
-                color: form.color,
-                include_in_total: true,
-                logo_type: 'icon'
+                color: form.color
             });
 
             if (error) throw error;
