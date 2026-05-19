@@ -94,27 +94,34 @@ export default function AddAccountDialog({
                             className="h-10 rounded-xl bg-white border-slate-200"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Entidad</label>
-                            <select 
-                                value={form.bank_name}
-                                onChange={e => {
-                                    const selectedBank = BANKS.find(b => b.name === e.target.value);
-                                    setForm({
-                                        ...form, 
-                                        bank_name: e.target.value,
-                                        color: selectedBank ? selectedBank.color : form.color
-                                    });
-                                }}
-                                required
-                                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5C400]"
-                            >
-                                {BANKS.map(bank => (
-                                    <option key={bank.name} value={bank.name}>{bank.name}</option>
-                                ))}
-                            </select>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Entidad Bancaria</label>
+                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                            {BANKS.map(bank => (
+                                <button
+                                    key={bank.name}
+                                    type="button"
+                                    onClick={() => {
+                                        setForm({
+                                            ...form, 
+                                            bank_name: bank.name,
+                                            color: bank.color || form.color
+                                        });
+                                    }}
+                                    className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${form.bank_name === bank.name ? 'border-[#F5C400] bg-[#F5C400]/10' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                                >
+                                    {bank.logo ? (
+                                        <img src={bank.logo} alt={bank.name} className="w-6 h-6 mb-1 rounded-sm object-contain" />
+                                    ) : (
+                                        <div className="w-6 h-6 mb-1 bg-slate-100 rounded-sm flex items-center justify-center"><Landmark className="w-4 h-4 text-slate-400" /></div>
+                                    )}
+                                    <span className="text-[9px] font-semibold text-slate-600 truncate w-full text-center">{bank.name}</span>
+                                </button>
+                            ))}
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Saldo Inicial (€)</label>
                             <Input 
@@ -127,8 +134,6 @@ export default function AddAccountDialog({
                                 className="h-10 rounded-xl bg-white border-slate-200 font-bold"
                             />
                         </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Tipo</label>
                             <select 
@@ -141,6 +146,9 @@ export default function AddAccountDialog({
                                 <option value="bloqueada">Bloqueada (Plazo fijo)</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Color de tarjeta</label>
                             <div className="flex h-10 items-center rounded-xl overflow-hidden border border-slate-200 p-0.5 bg-white">
@@ -153,6 +161,7 @@ export default function AddAccountDialog({
                             </div>
                         </div>
                     </div>
+
 
                     <div className="pt-4 flex justify-end gap-2">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl text-slate-500 hover:text-slate-800">
