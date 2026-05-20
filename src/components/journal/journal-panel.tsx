@@ -520,77 +520,73 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
     const JournalUI = (
         <div className="flex flex-col h-full bg-background">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-                <div>
-                    <h2 className="font-headline font-bold text-lg flex items-center gap-2">
-                        📒 Mis Apuntes
-                    </h2>
-                    <div className="flex items-center gap-2">
+            {/* Header — vertical layout: título arriba, acciones abajo */}
+            <div className="flex flex-col gap-1 px-3 py-2 border-b border-border bg-muted/30">
+                {/* Fila 1: título + cerrar */}
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="font-headline font-bold text-base flex items-center gap-1">
+                            📒 Mis Apuntes
+                        </h2>
                         <Button
                             variant="link"
                             className="p-0 h-auto text-[10px] text-blue-500 hover:underline"
                             onClick={() => {
-                                if (pipWindow) {
-                                    pipWindow.close();
-                                    setPipWindow(null);
-                                }
+                                if (pipWindow) { pipWindow.close(); setPipWindow(null); }
                                 router.push('/journal');
                                 onClose();
                             }}
                         >
                             Ver Biblioteca Completa
                         </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {selectedDate ? (
-                            <>
-                                Del: {selectedDate.toLocaleDateString()}
-                            </>
-                        ) : (
-                            <>Sobre: {pathname === '/' ? 'Inicio' : pathname}</>
+                        <p className="text-[10px] text-muted-foreground">
+                            {selectedDate ? `Del: ${selectedDate.toLocaleDateString()}` : `Sobre: ${pathname === '/' ? 'Inicio' : pathname}`}
+                        </p>
+                        {selectedDate && (
+                            <Button
+                                variant="link"
+                                className="h-auto p-0 text-[10px] text-blue-500"
+                                onClick={async () => {
+                                    const startOfDay = new Date(selectedDate);
+                                    startOfDay.setHours(0, 0, 0, 0);
+                                    const endOfDay = new Date(selectedDate);
+                                    endOfDay.setHours(23, 59, 59, 999);
+                                    const { data } = await supabase
+                                        .from('journal_entries')
+                                        .select('context_id')
+                                        .eq('user_id', user.id)
+                                        .gte('updated_at', startOfDay.toISOString())
+                                        .lte('updated_at', endOfDay.toISOString())
+                                        .limit(1)
+                                        .single();
+                                    if (data?.context_id) { router.push(data.context_id); onClose(); }
+                                    else toast.info('No hay entrada para esta fecha');
+                                }}
+                            >
+                                Ir al sitio
+                            </Button>
                         )}
-                    </p>
-                    {selectedDate && (
-                        <Button
-                            variant="link"
-                            className="h-auto p-0 text-xs text-blue-500"
-                            onClick={async () => {
-                                const startOfDay = new Date(selectedDate);
-                                startOfDay.setHours(0, 0, 0, 0);
-                                const endOfDay = new Date(selectedDate);
-                                endOfDay.setHours(23, 59, 59, 999);
-
-                                const { data } = await supabase
-                                    .from('journal_entries')
-                                    .select('context_id')
-                                    .eq('user_id', user.id)
-                                    .gte('updated_at', startOfDay.toISOString())
-                                    .lte('updated_at', endOfDay.toISOString())
-                                    .limit(1)
-                                    .single();
-
-                                if (data?.context_id) {
-                                    router.push(data.context_id);
-                                    onClose();
-                                } else {
-                                    toast.info('No hay entrada para esta fecha');
-                                }
-                            }}
-                        >
-                            Ir al sitio
-                        </Button>
-                    )}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { if (pipWindow) { pipWindow.close(); setPipWindow(null); } onClose(); }}
+                        className="h-7 w-7 shrink-0 mt-0.5"
+                    >
+                        <X className="w-4 h-4" />
+                    </Button>
                 </div>
-                <div className="flex items-center gap-1 flex-wrap justify-end max-w-[50%]">
+
+                {/* Fila 2: botones de acción */}
+                <div className="flex items-center gap-0.5">
                     <TooltipProvider>
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground mr-1 h-8 w-8 shrink-0">
-                                    <HelpCircle className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                                    <HelpCircle className="w-3.5 h-3.5" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-64 p-4 text-sm z-[70]" align="end">
+                            <PopoverContent className="w-64 p-4 text-sm z-[70]" align="start">
                                 <h4 className="font-semibold mb-3">Ayuda de Navegación</h4>
                                 <ul className="space-y-3">
                                     <li className="flex items-start gap-2">
@@ -600,11 +596,10 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                                         <div>
                                             <span className="font-medium block text-xs">Navegador Normal</span>
                                             <span className="text-muted-foreground block text-[10px] leading-tight mt-0.5">
-                                                Abre una ventana externa. Se ocultará si tocas el diario.
+                                                Abre una ventana externa.
                                             </span>
                                         </div>
                                     </li>
-
                                     <li className="flex items-start gap-2">
                                         <div className="mt-0.5 p-1 bg-slate-100 dark:bg-slate-800 rounded">
                                             <MoveUpRight className="w-3 h-3" />
@@ -622,13 +617,8 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant={pipWindow ? "secondary" : "ghost"}
-                                    size="icon"
-                                    onClick={togglePiP}
-                                    className="h-8 w-8 shrink-0"
-                                >
-                                    <MoveUpRight className="w-4 h-4" />
+                                <Button variant={pipWindow ? "secondary" : "ghost"} size="icon" onClick={togglePiP} className="h-7 w-7">
+                                    <MoveUpRight className="w-3.5 h-3.5" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom"><p>Notas Flotantes</p></TooltipContent>
@@ -636,29 +626,17 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openBrowserPopup()}
-                                    className="h-8 w-8 shrink-0"
-                                >
-                                    <Globe className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" onClick={() => openBrowserPopup()} className="h-7 w-7">
+                                    <Globe className="w-3.5 h-3.5" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom"><p>Abrir Navegador</p></TooltipContent>
                         </Tooltip>
 
-
-
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={handleSmartPaste}
-                                    className="h-8 w-8 shrink-0"
-                                >
-                                    <Clipboard className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" onClick={handleSmartPaste} className="h-7 w-7">
+                                    <Clipboard className="w-3.5 h-3.5" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom"><p>Pegar inteligente</p></TooltipContent>
@@ -666,11 +644,11 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                    <Settings className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <Settings className="w-3.5 h-3.5" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 z-[70]" align="end">
+                            <PopoverContent className="w-80 z-[70]" align="start">
                                 <div className="grid gap-4">
                                     <div className="space-y-2">
                                         <h4 className="font-medium leading-none">Apariencia</h4>
@@ -692,27 +670,12 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving} className="h-8 w-8 shrink-0">
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving} className="h-7 w-7">
+                                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom"><p>Guardar</p></TooltipContent>
                         </Tooltip>
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                                if (pipWindow) {
-                                    pipWindow.close();
-                                    setPipWindow(null);
-                                }
-                                onClose();
-                            }}
-                            className="h-8 w-8 shrink-0"
-                        >
-                            <X className="w-5 h-5" />
-                        </Button>
                     </TooltipProvider>
                 </div>
             </div>
