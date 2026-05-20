@@ -42,6 +42,13 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const router = useRouter();
     const { selectedDate, width, setWidth, isBrowserPinned, setBrowserPinned, browserWindow, setBrowserWindow, setBrowserOpen } = useJournal();
     const [isSaving, setIsSaving] = useState(false);
+
+    // On mobile screens use minimum 50% width so the panel is usable
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setWidth(50);
+        }
+    }, [setWidth]);
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [opacity, setOpacity] = useState(1);
