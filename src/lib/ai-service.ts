@@ -1,7 +1,7 @@
 import { scanRosterImage as scanRosterLocal } from './roster-scanner';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
-const GROQ_VISION_MODEL = 'llama-3.2-90b-vision-preview';
+const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 // Helper to wait between retries
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

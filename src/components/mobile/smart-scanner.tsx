@@ -8,6 +8,7 @@ import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { getApiUrl } from '@/lib/api-utils';
 
 interface SmartScannerProps {
@@ -54,7 +55,8 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [manualProductName, setManualProductName] = useState('');
     const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
 
-    const barcodeFileInputRef = useRef<HTMLInputElement>(null);
+    const [showWebScanner, setShowWebScanner] = useState(false);
+
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
 
@@ -125,49 +127,23 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // ─── Web: barcode via BarcodeDetector + file input ───────────────────────
+    // ─── Web: barcode via live camera (react-qr-scanner) ─────────────────────
 
-    const handleWebBarcodeFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (e.target) e.target.value = '';
-        if (!file) return;
+    const handleWebBarcodeScan = async (results: any[]) => {
+        if (!results?.length || loading) return;
+        const barcode = results[0]?.rawValue;
+        if (!barcode) return;
 
-        try {
-            setLoading(true);
-            setError(null);
+        setShowWebScanner(false);
+        setLoading(true);
+        setError(null);
+        await lookupBarcode(barcode, continuousMode);
+        setLoading(false);
+    };
 
-            if (!('BarcodeDetector' in window)) {
-                // BarcodeDetector not available — fall back to manual entry
-                setPendingBarcode('web-unknown');
-                setShowManualEntry(true);
-                return;
-            }
-
-            const barcodeDetector = new (window as any).BarcodeDetector({
-                formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'upc_a', 'upc_e', 'code_39', 'code_93', 'itf', 'data_matrix']
-            });
-
-            const img = new Image();
-            img.src = URL.createObjectURL(file);
-            await new Promise<void>((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = reject;
-            });
-
-            const barcodes: any[] = await barcodeDetector.detect(img);
-            URL.revokeObjectURL(img.src);
-
-            if (barcodes.length > 0) {
-                const barcode = barcodes[0].rawValue as string;
-                await lookupBarcode(barcode, continuousMode);
-            } else {
-                setError('No se detectó código de barras. Intenta con mejor iluminación o usa Foto.');
-            }
-        } catch (err: any) {
-            setError(err.message || 'Error al escanear');
-        } finally {
-            setLoading(false);
-        }
+    const handleWebScannerError = (err: unknown) => {
+        setShowWebScanner(false);
+        setError('No se pudo acceder a la cámara. Comprueba los permisos.');
     };
 
     // ─── Web: photo via file input ────────────────────────────────────────────
@@ -424,7 +400,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
             setError(null);
             setShowManualEntry(false);
             setLastScanned(null);
-            barcodeFileInputRef.current?.click();
+            setShowWebScanner(true);
         } else {
             await handleNativeBarcodeScan();
         }
@@ -462,15 +438,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
     return (
         <AnimatePresence>
-            {/* Hidden file inputs for web */}
-            <input
-                ref={barcodeFileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: 'none' }}
-                onChange={handleWebBarcodeFileSelected}
-            />
+            {/* Hidden file input for web photo */}
             <input
                 ref={photoFileInputRef}
                 type="file"
@@ -508,6 +476,28 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             <X className="w-6 h-6 text-slate-600" />
                         </button>
                     </div>
+
+                    {/* Web live barcode scanner */}
+                    {showWebScanner && (
+                        <div className="mb-4">
+                            <div className="relative rounded-2xl overflow-hidden bg-black aspect-square">
+                                <Scanner
+                                    onScan={handleWebBarcodeScan}
+                                    onError={handleWebScannerError}
+                                    styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }}
+                                />
+                                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                    <div className="w-48 h-48 border-2 border-white/70 rounded-xl" />
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowWebScanner(false)}
+                                className="mt-2 w-full text-sm text-slate-500 py-2 hover:text-slate-800"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
 
                     {/* Last scanned feedback */}
                     {lastScanned && (
