@@ -132,10 +132,10 @@ export default function HeaderAuth() {
                     </AnimatePresence>
                 </div>
 
-                {/* Journal / Notes Button - desktop only */}
+                {/* Journal / Notes Button */}
                 <button
                     onClick={() => setIsJournalOpen(true)}
-                    className="hidden md:flex w-8 h-8 items-center justify-center rounded-full bg-amber-500 text-white shadow-md hover:scale-110 transition-transform"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-md hover:scale-110 transition-transform"
                     title="Mis Apuntes"
                 >
                     <Book className="w-4 h-4" />
