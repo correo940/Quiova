@@ -42,13 +42,14 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const router = useRouter();
     const { selectedDate, width, setWidth, isBrowserPinned, setBrowserPinned, browserWindow, setBrowserWindow, setBrowserOpen } = useJournal();
     const [isSaving, setIsSaving] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
-    // On mobile screens use minimum 50% width so the panel is usable
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-            setWidth(50);
-        }
-    }, [setWidth]);
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [opacity, setOpacity] = useState(1);
@@ -883,19 +884,37 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div
-                    initial={{ x: '100%' }}
-                    animate={{ x: 0 }}
-                    exit={{ x: '100%' }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    style={{ width: `${width}%`, opacity: opacity }}
-                    className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex flex-col"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleDrop}
-                    ref={panelRef}
-                >
-                    {JournalUI}
-                </motion.div>
+                isMobile ? (
+                    // Móvil: bottom sheet (arriba/abajo)
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{ opacity }}
+                        className="fixed bottom-0 left-0 right-0 h-[50vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        ref={panelRef}
+                    >
+                        {JournalUI}
+                    </motion.div>
+                ) : (
+                    // Escritorio: panel lateral derecho
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{ width: `${width}%`, opacity }}
+                        className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex flex-col"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        ref={panelRef}
+                    >
+                        {JournalUI}
+                    </motion.div>
+                )
             )}
         </AnimatePresence>
     );
