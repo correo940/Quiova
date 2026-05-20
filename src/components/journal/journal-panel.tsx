@@ -61,6 +61,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const recordingInterval = React.useRef<NodeJS.Timeout | null>(null);
     const popupRef = React.useRef<Window | null>(null);
     const [pipWindow, setPipWindow] = useState<Window | null>(null);
+    const [isMobilePiP, setIsMobilePiP] = useState(false);
 
     const togglePiP = async () => {
         if (pipWindow) {
@@ -69,9 +70,10 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             return;
         }
 
-        // Check API support
+        // Mobile/tablet: documentPictureInPicture is not supported on any mobile browser.
+        // Fall back to a draggable floating overlay inside the same window.
         if (!('documentPictureInPicture' in window)) {
-            toast.error('Tu navegador no soporta el modo "Notas Flotantes" (Picture-in-Picture). Prueba en Chrome o Edge.');
+            setIsMobilePiP((prev) => !prev);
             return;
         }
 
@@ -571,7 +573,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => { if (pipWindow) { pipWindow.close(); setPipWindow(null); } onClose(); }}
+                        onClick={() => { if (pipWindow) { pipWindow.close(); setPipWindow(null); } setIsMobilePiP(false); onClose(); }}
                         className="h-7 w-7 shrink-0 mt-0.5"
                     >
                         <X className="w-4 h-4" />
@@ -618,7 +620,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant={pipWindow ? "secondary" : "ghost"} size="icon" onClick={togglePiP} className="h-7 w-7">
+                                <Button variant={(pipWindow || isMobilePiP) ? "secondary" : "ghost"} size="icon" onClick={togglePiP} className="h-7 w-7">
                                     <MoveUpRight className="w-3.5 h-3.5" />
                                 </Button>
                             </TooltipTrigger>
@@ -883,8 +885,27 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
     return (
         <AnimatePresence>
-            {isOpen && (
-                isMobile ? (
+            {(isOpen || isMobilePiP) && (
+                isMobilePiP ? (
+                    // Móvil/Tablet: overlay flotante arrastrable (fallback de PiP)
+                    <motion.div
+                        key="pip-mobile"
+                        drag
+                        dragMomentum={false}
+                        dragElastic={0.15}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+                        style={{ opacity, touchAction: 'none' }}
+                        className="fixed top-[8vh] left-[5vw] w-[90vw] max-w-md h-[65vh] bg-background border-2 border-primary/40 shadow-2xl z-[70] rounded-2xl overflow-hidden flex flex-col cursor-move"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        ref={panelRef}
+                    >
+                        {JournalUI}
+                    </motion.div>
+                ) : isMobile ? (
                     // Móvil: bottom sheet (arriba/abajo)
                     <motion.div
                         initial={{ y: '100%' }}
