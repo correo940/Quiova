@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Search } from 'lucide-react';
 import HeaderAuth from './header-auth';
+import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 const PILLARS = [
     {
@@ -38,6 +39,9 @@ const PILLARS = [
 export default function Header() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
+    const { isLauncherMode } = useGlobalMenu();
+
+    if (isLauncherMode) return null;
 
     const handleSearch = () => {
         if (searchQuery.trim()) {
@@ -132,8 +136,9 @@ export default function Header() {
                 </Sheet>
 
                 {/* ── Search + Auth ── */}
-                <div className="flex flex-1 items-center justify-end gap-2 md:flex-none" suppressHydrationWarning>
-                    <div className="relative w-full md:w-48 lg:w-64" suppressHydrationWarning>
+                <div className="flex flex-1 items-center justify-end gap-2" suppressHydrationWarning>
+                    {/* Desktop search */}
+                    <div className="relative hidden md:block w-48 lg:w-64" suppressHydrationWarning>
                         <button
                             onClick={handleSearch}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
@@ -149,6 +154,14 @@ export default function Header() {
                             onKeyDown={handleKeyDown}
                         />
                     </div>
+                    {/* Mobile search icon */}
+                    <button
+                        onClick={handleSearch}
+                        className="md:hidden p-2 text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Buscar"
+                    >
+                        <Search className="h-5 w-5" />
+                    </button>
                     <HeaderAuth />
                 </div>
 

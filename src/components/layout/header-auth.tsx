@@ -132,19 +132,19 @@ export default function HeaderAuth() {
                     </AnimatePresence>
                 </div>
 
-                {/* Journal / Notes Button */}
+                {/* Journal / Notes Button - desktop only */}
                 <button
                     onClick={() => setIsJournalOpen(true)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-md hover:scale-110 transition-transform"
+                    className="hidden md:flex w-8 h-8 items-center justify-center rounded-full bg-amber-500 text-white shadow-md hover:scale-110 transition-transform"
                     title="Mis Apuntes"
                 >
                     <Book className="w-4 h-4" />
                 </button>
 
-                {/* Wake Word / Mic Button */}
+                {/* Wake Word / Mic Button - desktop only */}
                 <button
                     onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
+                    className={`hidden md:flex w-8 h-8 items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
                         ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400'
                         : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
                         }`}
