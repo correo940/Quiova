@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap } from 'lucide-react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
@@ -15,10 +15,8 @@ interface SmartScannerProps {
     onProductAdded: (product: { name: string; barcode?: string }) => void;
 }
 
-// Local barcode cache key
 const BARCODE_CACHE_KEY = 'quioba_barcode_cache';
 
-// Helper functions for local cache
 const getBarcodeCache = (): Record<string, string> => {
     try {
         const cache = localStorage.getItem(BARCODE_CACHE_KEY);
@@ -33,7 +31,6 @@ const saveBarcodeToCache = (barcode: string, productName: string) => {
         const cache = getBarcodeCache();
         cache[barcode] = productName;
         localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
-        console.log('💾 Saved to local cache:', barcode, '->', productName);
     } catch (e) {
         console.error('Error saving to cache:', e);
     }
@@ -49,23 +46,25 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [error, setError] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
 
-    // Continuous scanning mode
     const [scanCount, setScanCount] = useState(0);
     const [lastScanned, setLastScanned] = useState<string | null>(null);
     const [continuousMode, setContinuousMode] = useState(false);
 
-    // Manual entry state
     const [showManualEntry, setShowManualEntry] = useState(false);
     const [manualProductName, setManualProductName] = useState('');
     const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
 
-    // Helper to handle success - in continuous mode, immediately scan next
+    const barcodeFileInputRef = useRef<HTMLInputElement>(null);
+    const photoFileInputRef = useRef<HTMLInputElement>(null);
+    const speechRecognitionRef = useRef<any>(null);
+
+    const isWeb = !Capacitor.isNativePlatform();
+
     const handleSuccess = (productName: string, barcode?: string, startNextScan = false) => {
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
         onProductAdded({ name: productName, barcode });
 
-        // In continuous mode, start next scan after a short delay
         if (startNextScan && continuousMode) {
             setTimeout(() => {
                 setLastScanned(null);
@@ -74,7 +73,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Save manual entry
     const handleManualSave = () => {
         if (manualProductName.trim() && pendingBarcode) {
             saveBarcodeToCache(pendingBarcode, manualProductName.trim());
@@ -85,8 +83,187 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Barcode Scanning with continuous mode support
-    const handleBarcodeScan = async () => {
+    // Lookup barcode value against cache + Open Food Facts
+    const lookupBarcode = async (barcode: string, continueAfter: boolean) => {
+        const cachedName = getFromCache(barcode);
+        if (cachedName) {
+            handleSuccess(cachedName, barcode, continueAfter);
+            return;
+        }
+
+        try {
+            const headers = {
+                'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
+                'Accept': 'application/json'
+            };
+
+            let response = await fetch(`https://es.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
+            if (!response.ok) {
+                response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
+            }
+
+            const data = await response.json();
+
+            if (data.status === 1 && data.product) {
+                const productName =
+                    data.product.product_name_es ||
+                    data.product.product_name ||
+                    data.product.generic_name_es ||
+                    data.product.generic_name ||
+                    data.product.brands ||
+                    'Producto detectado';
+
+                saveBarcodeToCache(barcode, productName);
+                handleSuccess(productName, barcode, continueAfter);
+            } else {
+                setPendingBarcode(barcode);
+                setShowManualEntry(true);
+            }
+        } catch {
+            setPendingBarcode(barcode);
+            setShowManualEntry(true);
+        }
+    };
+
+    // ─── Web: barcode via BarcodeDetector + file input ───────────────────────
+
+    const handleWebBarcodeFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (e.target) e.target.value = '';
+        if (!file) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            if (!('BarcodeDetector' in window)) {
+                // BarcodeDetector not available — fall back to manual entry
+                setPendingBarcode('web-unknown');
+                setShowManualEntry(true);
+                return;
+            }
+
+            const barcodeDetector = new (window as any).BarcodeDetector({
+                formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'upc_a', 'upc_e', 'code_39', 'code_93', 'itf', 'data_matrix']
+            });
+
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = reject;
+            });
+
+            const barcodes: any[] = await barcodeDetector.detect(img);
+            URL.revokeObjectURL(img.src);
+
+            if (barcodes.length > 0) {
+                const barcode = barcodes[0].rawValue as string;
+                await lookupBarcode(barcode, continuousMode);
+            } else {
+                setError('No se detectó código de barras. Intenta con mejor iluminación o usa Foto.');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Error al escanear');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ─── Web: photo via file input ────────────────────────────────────────────
+
+    const handleWebPhotoFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (e.target) e.target.value = '';
+        if (!file) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const apiUrl = getApiUrl('api/mi-hogar/identify-product');
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Image: base64 })
+            });
+
+            const data = await response.json();
+
+            if (data.productName) {
+                handleSuccess(data.productName, undefined, false);
+                setLastScanned(data.productName);
+            } else {
+                setError(`No se identificó: ${data.error || 'Intenta de nuevo'}`);
+            }
+        } catch (err: any) {
+            setError(`Error foto: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ─── Web: voice via Web Speech API ───────────────────────────────────────
+
+    const handleWebVoiceInput = () => {
+        const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognitionAPI) {
+            setError('Reconocimiento de voz no disponible en este navegador');
+            return;
+        }
+
+        setError(null);
+        setShowManualEntry(false);
+
+        const recognition = new SpeechRecognitionAPI();
+        recognition.lang = 'es-ES';
+        recognition.maxAlternatives = 1;
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event: any) => {
+            const text: string = event.results[0][0].transcript;
+            if (text) {
+                handleSuccess(text, undefined, false);
+                setLastScanned(text);
+            } else {
+                setError('No te entendí, intenta de nuevo');
+            }
+            setIsListening(false);
+        };
+
+        recognition.onerror = (event: any) => {
+            if (event.error !== 'aborted') {
+                setError('Error de voz: ' + event.error);
+            }
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        speechRecognitionRef.current = recognition;
+        setIsListening(true);
+        recognition.start();
+    };
+
+    const stopWebListening = () => {
+        speechRecognitionRef.current?.stop();
+        speechRecognitionRef.current = null;
+        setIsListening(false);
+    };
+
+    // ─── Native: barcode ─────────────────────────────────────────────────────
+
+    const handleNativeBarcodeScan = async () => {
         try {
             setLoading(true);
             setError(null);
@@ -102,10 +279,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
             document.querySelector('body')?.classList.add('barcode-scanner-active');
 
-            // Scan with custom options - remove Google branding, custom colors
-            const result = await BarcodeScanner.scan({
-                formats: [],  // All formats
-            });
+            const result = await BarcodeScanner.scan({ formats: [] });
 
             document.querySelector('body')?.classList.remove('barcode-scanner-active');
 
@@ -115,56 +289,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                     setError('No se pudo leer el código escaneado');
                     return;
                 }
-                console.log('🔍 Scanned Barcode:', barcode);
-
-                // 1. First check local cache
-                const cachedName = getFromCache(barcode);
-                if (cachedName) {
-                    console.log('✅ Found in local cache:', cachedName);
-                    handleSuccess(cachedName, barcode, true);
-                    setLoading(false);
-                    return;
-                }
-
-                // 2. Try Open Food Facts
-                try {
-                    const headers = {
-                        'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
-                        'Accept': 'application/json'
-                    };
-
-                    let response = await fetch(`https://es.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
-
-                    if (!response.ok) {
-                        response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
-                    }
-
-                    const data = await response.json();
-
-                    if (data.status === 1 && data.product) {
-                        const productName =
-                            data.product.product_name_es ||
-                            data.product.product_name ||
-                            data.product.generic_name_es ||
-                            data.product.generic_name ||
-                            data.product.brands ||
-                            'Producto detectado';
-
-                        saveBarcodeToCache(barcode, productName);
-                        handleSuccess(productName, barcode, true);
-                    } else {
-                        // Product not found - show manual entry
-                        setPendingBarcode(barcode);
-                        setShowManualEntry(true);
-                    }
-                } catch (apiError: any) {
-                    console.error('❌ API Error:', apiError);
-                    setPendingBarcode(barcode);
-                    setShowManualEntry(true);
-                }
+                await lookupBarcode(barcode, continuousMode);
             }
         } catch (err: any) {
-            console.error('Barcode scan error:', err);
             if (!err.message?.includes('cancelled')) {
                 setError(err.message || 'Error al escanear código');
             }
@@ -174,15 +301,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Start continuous mode
-    const startContinuousMode = () => {
-        setContinuousMode(true);
-        setScanCount(0);
-        handleBarcodeScan();
-    };
+    // ─── Native: photo ───────────────────────────────────────────────────────
 
-    // Photo Recognition
-    const handlePhotoCapture = async () => {
+    const handleNativePhotoCapture = async () => {
         try {
             setLoading(true);
             setError(null);
@@ -224,7 +345,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
                 const resizedBase64 = await resizeImage(image.base64String);
 
-                const response = await fetch(apiUrl, {
+                const response = await fetch(getApiUrl('api/mi-hogar/identify-product'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ base64Image: resizedBase64 })
@@ -248,8 +369,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Voice Input
-    const handleVoiceInput = async () => {
+    // ─── Native: voice ───────────────────────────────────────────────────────
+
+    const handleNativeVoiceInput = async () => {
         try {
             setError(null);
             setShowManualEntry(false);
@@ -282,22 +404,82 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                 setError('No te entendí');
             }
             setIsListening(false);
-
         } catch (err: any) {
             setError('Error voz');
             setIsListening(false);
         }
     };
 
-    const stopListening = async () => {
+    const stopNativeListening = async () => {
         try {
             await SpeechRecognition.stop();
             setIsListening(false);
-        } catch (err) { }
+        } catch { }
+    };
+
+    // ─── Unified handlers (route to web or native) ────────────────────────────
+
+    const handleBarcodeScan = async () => {
+        if (isWeb) {
+            setError(null);
+            setShowManualEntry(false);
+            setLastScanned(null);
+            barcodeFileInputRef.current?.click();
+        } else {
+            await handleNativeBarcodeScan();
+        }
+    };
+
+    const startContinuousMode = () => {
+        setContinuousMode(true);
+        setScanCount(0);
+        handleBarcodeScan();
+    };
+
+    const handlePhotoCapture = async () => {
+        if (isWeb) {
+            photoFileInputRef.current?.click();
+        } else {
+            await handleNativePhotoCapture();
+        }
+    };
+
+    const handleVoiceInput = async () => {
+        if (isWeb) {
+            handleWebVoiceInput();
+        } else {
+            await handleNativeVoiceInput();
+        }
+    };
+
+    const stopListening = async () => {
+        if (isWeb) {
+            stopWebListening();
+        } else {
+            await stopNativeListening();
+        }
     };
 
     return (
         <AnimatePresence>
+            {/* Hidden file inputs for web */}
+            <input
+                ref={barcodeFileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleWebBarcodeFileSelected}
+            />
+            <input
+                ref={photoFileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleWebPhotoFileSelected}
+            />
+
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -350,7 +532,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                                 <Edit3 className="w-4 h-4 text-amber-600" />
                                 <p className="text-amber-800 font-medium text-sm">Producto no encontrado</p>
                             </div>
-                            <p className="text-xs text-amber-600 mb-2 font-mono">{pendingBarcode}</p>
+                            {pendingBarcode !== 'web-unknown' && (
+                                <p className="text-xs text-amber-600 mb-2 font-mono">{pendingBarcode}</p>
+                            )}
                             <input
                                 type="text"
                                 value={manualProductName}
@@ -384,7 +568,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
                     {/* Options */}
                     <div className="space-y-3">
-                        {/* Turbo Scan Button - Primary action */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -396,7 +579,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             Escaneo Rápido
                         </motion.button>
 
-                        {/* Single Scan */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -425,8 +607,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                                 whileTap={{ scale: 0.98 }}
                                 onClick={isListening ? stopListening : handleVoiceInput}
                                 disabled={loading}
-                                className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50 ${isListening ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'
-                                    }`}
+                                className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50 ${isListening ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'}`}
                             >
                                 {isListening ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
                                 {isListening ? '...' : 'Voz'}
