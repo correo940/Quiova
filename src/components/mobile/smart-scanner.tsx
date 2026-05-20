@@ -2,14 +2,19 @@
 
 import { useState, useRef, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap } from 'lucide-react';
+import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api-utils';
+import { supabase } from '@/lib/supabase';
+import { guessCategoryAndPrice } from '@/lib/shopping-list-ai-helpers';
+
+type Destination = 'shopping' | 'pantry';
 
 interface SmartScannerProps {
     onClose: () => void;
@@ -56,13 +61,42 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
 
     const [showWebScanner, setShowWebScanner] = useState(false);
+    const [destination, setDestination] = useState<Destination>('shopping');
 
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
 
     const isWeb = !Capacitor.isNativePlatform();
 
-    const handleSuccess = (productName: string, barcode?: string, startNextScan = false) => {
+    const saveToShoppingItems = async (productName: string): Promise<boolean> => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user?.id;
+        if (!userId) {
+            toast.error('Inicia sesión para guardar productos');
+            return false;
+        }
+        const aiAnalysis = guessCategoryAndPrice(productName);
+        const isPantry = destination === 'pantry';
+        const { error: insertError } = await supabase
+            .from('shopping_items')
+            .insert([{
+                user_id: userId,
+                name: productName,
+                category: aiAnalysis.category,
+                is_checked: isPantry,
+            }]);
+        if (insertError) {
+            console.error('Error saving product:', insertError);
+            toast.error('Error al guardar el producto');
+            return false;
+        }
+        toast.success(isPantry ? `🥫 ${productName} añadido a la despensa` : `🛒 ${productName} añadido a la lista`);
+        return true;
+    };
+
+    const handleSuccess = async (productName: string, barcode?: string, startNextScan = false) => {
+        const ok = await saveToShoppingItems(productName);
+        if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
         onProductAdded({ name: productName, barcode });
@@ -474,6 +508,26 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full">
                             <X className="w-6 h-6 text-slate-600" />
+                        </button>
+                    </div>
+
+                    {/* Destination selector */}
+                    <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-slate-200/70 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={() => setDestination('shopping')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'shopping' ? 'bg-white text-orange-600 shadow' : 'text-slate-600'}`}
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Comprar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setDestination('pantry')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'pantry' ? 'bg-white text-emerald-700 shadow' : 'text-slate-600'}`}
+                        >
+                            <Archive className="w-4 h-4" />
+                            Despensa
                         </button>
                     </div>
 
