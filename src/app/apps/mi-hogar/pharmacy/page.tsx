@@ -1114,17 +1114,7 @@ function TimelineGroup({ title, items, medicines, onTake, accent }: {
 }
 
 function HistoryView({ intakes, medicines }: { intakes: Array<{ medicineId: string; name: string; date: Date; form?: MedicineForm }>; medicines: Medicine[] }) {
-    if (intakes.length === 0) {
-        return (
-            <Card className="p-12 text-center">
-                <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <h3 className="text-lg font-bold mb-1">Sin historial</h3>
-                <p className="text-sm text-muted-foreground">Aún no has registrado ninguna toma.</p>
-            </Card>
-        );
-    }
-
-    // Agrupar por día
+    // Agrupar por día — debe estar antes de cualquier early return (reglas de hooks)
     const grouped = useMemo(() => {
         const map = new Map<string, typeof intakes>();
         intakes.forEach(i => {
@@ -1134,6 +1124,16 @@ function HistoryView({ intakes, medicines }: { intakes: Array<{ medicineId: stri
         });
         return Array.from(map.entries());
     }, [intakes]);
+
+    if (intakes.length === 0) {
+        return (
+            <Card className="p-12 text-center">
+                <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <h3 className="text-lg font-bold mb-1">Sin historial</h3>
+                <p className="text-sm text-muted-foreground">Aún no has registrado ninguna toma.</p>
+            </Card>
+        );
+    }
 
     return (
         <div className="space-y-3">
