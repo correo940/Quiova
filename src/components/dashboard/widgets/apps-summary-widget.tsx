@@ -5,7 +5,8 @@ import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff,
+    ChevronUp, ChevronDown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ import { useDailyNotifications } from '@/hooks/useDailyNotifications';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import LogoLoader from '@/components/ui/logo-loader';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
+import TopbarCalendar from './topbar-calendar';
 
 // Icon map for serialization
 const ICON_MAP: Record<string, any> = {
@@ -62,7 +64,7 @@ function saveOrder(userId: string, keys: string[]) {
     } catch { }
 }
 
-export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate?: Date; user: User | null }) {
+export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: { selectedDate?: Date; onDateSelect?: (date: Date | undefined) => void; user: User | null }) {
     const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
     const [stats, setStats] = useState({
         shoppingCount: 0,
@@ -83,7 +85,17 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
     const [userProfile, setUserProfile] = useState<any>(null);
     const [orderedKeys, setOrderedKeys] = useState<string[]>(DEFAULT_ITEMS_CONFIG.map(i => i.key));
     const [showAll, setShowAll] = useState(false);
+    const [isAppsMinimized, setIsAppsMinimized] = useState(false);
     const VISIBLE_COUNT = 8; // Show 8 items by default, rest behind "Ver todo"
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('quioba_apps_minimized');
+            if (saved === 'true') {
+                setIsAppsMinimized(true);
+            }
+        }
+    }, []);
 
     // Drag state
     const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -361,96 +373,123 @@ export default function AppsSummaryWidget({ selectedDate, user }: { selectedDate
                             {dateInfo.fullDate} • {dateInfo.time}
                         </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => setAiPanelOpen(true)}
-                            className="p-2 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                            title="Asistente Quioba"
-                        >
-                            <Bot className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
-                            className={`p-2 rounded-full transition-colors ${isWakeWordEnabled ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'}`}
-                            title={isWakeWordEnabled ? 'Desactivar voz' : 'Activar voz'}
-                        >
-                            {isWakeWordEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                        </button>
-                        <NotificationSettingsDialog />
-                    </div>
-                </div>
-                {/* Mobile Date fallback */}
-                <div className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                    {dateInfo.fullDate} • {dateInfo.time}
-                </div>
-            </CardHeader>
-            <CardContent className="flex-1 min-h-0 flex flex-col gap-2">
-                {loading ? (
-                    <div className="flex justify-center py-8">
-                        <LogoLoader size="md" />
-                    </div>
-                ) : (
-                    <div className="w-full">
-                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 p-1">
-                            {displayedItems.map((item) => (
-                                <div
-                                    key={item.key}
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, item.key, orderedKeys.indexOf(item.key))}
-                                    onDragOver={(e) => handleDragOver(e, item.key)}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={(e) => handleDrop(e, item.key)}
-                                    onDragEnd={handleDragEnd}
-                                    className={`relative transition-all duration-200 ${draggedKey === item.key ? 'opacity-40 scale-95' : ''
-                                        } ${dragOverKey === item.key ? 'scale-105' : ''
-                                        }`}
-                                    style={{ cursor: 'grab' }}
-                                >
-                                    {/* Drop indicator */}
-                                    {dragOverKey === item.key && draggedKey !== item.key && (
-                                        <div className="absolute left-0 top-1 bottom-1 w-1 bg-primary rounded-full z-10 animate-pulse" />
-                                    )}
-                                    <Link
-                                        href={item.href}
-                                        className="block group"
-                                        onClick={(e) => {
-                                            if (draggedKey) e.preventDefault();
-                                        }}
-                                        draggable={false}
-                                    >
-                                        <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[72px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
-                                            ? 'border-primary/70 shadow-sm shadow-primary/10'
-                                            : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
-                                            } ${item.count === 0 ? 'opacity-50' : ''}`}>
-                                            <div className="flex justify-between items-start mb-0.5">
-                                                <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200`}>
-                                                    <item.icon className="w-3 h-3" />
-                                                </div>
-                                                <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
-                                                <div className="text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-                        {/* Ver todo / Ocultar toggle */}
-                        {hiddenCount > 0 && (
-                            <button
-                                onClick={() => setShowAll(!showAll)}
-                                className="w-full mt-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
-                            >
-                                {showAll ? 'Ocultar' : `Ver todo (+${hiddenCount})`}
-                                <ArrowRight className={`w-3 h-3 transition-transform ${showAll ? 'rotate-90' : ''}`} />
-                            </button>
+
+                    {/* NUEVO CALENDARIO EN MEDIO */}
+                    <div className="flex-1 min-w-0 hidden lg:flex justify-center px-4 max-w-2xl">
+                        {onDateSelect && (
+                            <TopbarCalendar 
+                                selectedDate={selectedDate} 
+                                onDateSelect={onDateSelect} 
+                                user={user} 
+                            />
                         )}
                     </div>
-                )}
 
-            </CardContent>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => {
+                                const newVal = !isAppsMinimized;
+                                setIsAppsMinimized(newVal);
+                                localStorage.setItem('quioba_apps_minimized', String(newVal));
+                            }}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                                isAppsMinimized 
+                                    ? 'bg-primary/10 text-primary hover:bg-primary/20' 
+                                    : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                            }`}
+                            title={isAppsMinimized ? 'Mostrar aplicaciones' : 'Minimizar aplicaciones'}
+                        >
+                            <span className="hidden sm:inline">{isAppsMinimized ? 'Apps' : 'Apps'}</span>
+                            {isAppsMinimized ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                        </button>
+                    </div>
+                </div>
+                {/* Mobile Date fallback & Calendar */}
+                <div className="lg:hidden flex flex-col gap-2 mt-2 w-full">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest sm:hidden">
+                        {dateInfo.fullDate} • {dateInfo.time}
+                    </div>
+                    {onDateSelect && (
+                        <TopbarCalendar 
+                            selectedDate={selectedDate} 
+                            onDateSelect={onDateSelect} 
+                            user={user} 
+                        />
+                    )}
+                </div>
+            </CardHeader>
+            <div className={`grid transition-all duration-300 ease-in-out ${
+                isAppsMinimized ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
+            }`}>
+                <div className="overflow-hidden">
+                    <CardContent className="flex-1 min-h-0 flex flex-col gap-2 pb-3">
+                        {loading ? (
+                            <div className="flex justify-center py-8">
+                                <LogoLoader size="md" />
+                            </div>
+                        ) : (
+                            <div className="w-full">
+                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 p-1">
+                                    {displayedItems.map((item) => (
+                                        <div
+                                            key={item.key}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, item.key, orderedKeys.indexOf(item.key))}
+                                            onDragOver={(e) => handleDragOver(e, item.key)}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={(e) => handleDrop(e, item.key)}
+                                            onDragEnd={handleDragEnd}
+                                            className={`relative transition-all duration-200 ${draggedKey === item.key ? 'opacity-40 scale-95' : ''
+                                                } ${dragOverKey === item.key ? 'scale-105' : ''
+                                                }`}
+                                            style={{ cursor: 'grab' }}
+                                        >
+                                            {/* Drop indicator */}
+                                            {dragOverKey === item.key && draggedKey !== item.key && (
+                                                <div className="absolute left-0 top-1 bottom-1 w-1 bg-primary rounded-full z-10 animate-pulse" />
+                                            )}
+                                            <Link
+                                                href={item.href}
+                                                className="block group"
+                                                onClick={(e) => {
+                                                    if (draggedKey) e.preventDefault();
+                                                }}
+                                                draggable={false}
+                                            >
+                                                <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[72px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
+                                                    ? 'border-primary/70 shadow-sm shadow-primary/10'
+                                                    : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
+                                                    } ${item.count === 0 ? 'opacity-50' : ''}`}>
+                                                    <div className="flex justify-between items-start mb-0.5">
+                                                        <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200`}>
+                                                            <item.icon className="w-3 h-3" />
+                                                        </div>
+                                                        <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
+                                                        <div className="text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Ver todo / Ocultar toggle */}
+                                {hiddenCount > 0 && (
+                                    <button
+                                        onClick={() => setShowAll(!showAll)}
+                                        className="w-full mt-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
+                                    >
+                                        {showAll ? 'Ocultar' : `Ver todo (+${hiddenCount})`}
+                                        <ArrowRight className={`w-3 h-3 transition-transform ${showAll ? 'rotate-90' : ''}`} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </div>
+            </div>
         </Card>
     );
 }

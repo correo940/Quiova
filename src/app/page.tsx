@@ -14,8 +14,6 @@ function HomeContent() {
   // ✅ Leer sesión del AuthProvider global — sin llamadas duplicadas a Supabase
   const { user, loading } = useAuth()
   const [isLauncherMode, setIsLauncherMode] = useState(false)
-  const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false)
-  const router = useRouter()
   const { setIsLauncherMode: setGlobalLauncherMode } = useGlobalMenu()
 
   // Detectar si es móvil/nativo
@@ -28,29 +26,12 @@ function HomeContent() {
     }
   }, [setGlobalLauncherMode])
 
-  // Redirigir a login solo si estamos seguros de que no hay sesión
-  useEffect(() => {
-    if (!loading && isLauncherMode && !user) {
-      setIsRedirectingToLogin(true)
-      router.replace('/login')
-    }
-  }, [isLauncherMode, user, loading, router])
-
   // ✅ Solo un loading state — el del AuthProvider
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-20 min-h-[60vh] flex flex-col items-center justify-center gap-6">
         <LogoLoader size="lg" />
         <p className="text-xl font-medium text-slate-600 animate-pulse">Entrando en Quioba...</p>
-      </div>
-    )
-  }
-
-  if (isRedirectingToLogin) {
-    return (
-      <div className="container mx-auto px-4 py-20 min-h-[60vh] flex flex-col items-center justify-center gap-6">
-        <LogoLoader size="lg" />
-        <p className="text-xl font-medium text-slate-600 animate-pulse">Abriendo acceso seguro...</p>
       </div>
     )
   }

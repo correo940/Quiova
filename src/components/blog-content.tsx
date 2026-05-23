@@ -9,6 +9,7 @@ import ArticleCard from '@/components/article-card';
 import { ArticlesSkeleton } from '@/components/ui/skeleton-loaders';
 import { getApiUrl } from '@/lib/api-utils';
 import Image from 'next/image';
+import Footer from '@/components/footer';
 
 // ─── Pillar data ───────────────────────────────────────────────────────────────
 const PILLARS = [
@@ -479,39 +480,7 @@ export default function BlogContent() {
 
 
 
-            {/* ── FEATURED ARTICLES ─────────────────────────────────────────── */}
-            {featuredArticles.length > 0 && (
-                <section className="bg-white py-16 px-4">
-                    <div className="max-w-5xl mx-auto">
-                        <p className="text-center text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">Lo más destacado</p>
-                        <h2 className="text-center text-3xl font-black text-gray-900 mb-12">
-                            Artículos destacados
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {featuredArticles.slice(0, 3).map((article) => {
-                                const pillar = PILLARS.find((p) => p.key === (article.category || '').toLowerCase().trim());
-                                return (
-                                    <div
-                                        key={article.id}
-                                        className="relative rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 group"
-                                    >
-                                        {pillar && (
-                                            <div
-                                                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-                                                style={{ background: pillar.colorLight, color: pillar.color }}
-                                            >
-                                                <Image src={pillar.logo} alt={pillar.label} width={14} height={14} className="object-contain" />
-                                                {pillar.label}
-                                            </div>
-                                        )}
-                                        <ArticleCard article={article} className="h-full border-0" />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </section>
-            )}
+
 
             {/* ── EXPLORE ALL ───────────────────────────────────────────────── */}
             <section ref={articlesRef} className="bg-gray-50 py-16 px-4">
@@ -594,44 +563,8 @@ export default function BlogContent() {
                 </div>
             </section>
 
-            {/* ── CTA FINAL ─────────────────────────────────────────────────── */}
-            <section className="relative bg-[#0d2e18] py-20 px-4 overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#1a5c2e] opacity-20 blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-[#1558a8] opacity-15 blur-3xl" />
-                <div className="relative z-10 max-w-2xl mx-auto text-center">
-                    <Image src="/images/logo.png" alt="Quioba" width={64} height={64} className="mx-auto mb-6 object-contain" />
-                    <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-                        Todo lo que necesitas,<br />en un solo lugar
-                    </h2>
-                    <p className="text-white/60 text-base mb-10 max-w-md mx-auto">
-                        Sin suscripciones. Sin complicaciones. Solo contenido de calidad para mejorar tu cuerpo, tu mente y tus finanzas.
-                    </p>
-                    <div className="flex flex-wrap gap-4 justify-center">
-                        <button
-                            onClick={() => scrollToArticles(null)}
-                            className="bg-white text-gray-900 font-bold px-10 py-4 rounded-full text-sm hover:bg-white/90 transition-all hover:scale-105 active:scale-95"
-                        >
-                            Empieza a crecer ↗
-                        </button>
-                    </div>
-                    <div className="flex items-center justify-center gap-6 mt-10">
-                        {PILLARS.map((p) => (
-                            <button
-                                key={p.key}
-                                onClick={() => scrollToArticles(p.key)}
-                                className="flex flex-col items-center gap-2 group"
-                            >
-                                <div
-                                    className="w-12 h-12 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-md p-1"
-                                >
-                                    <Image src={p.logo} alt={p.label} width={32} height={32} className="object-contain" />
-                                </div>
-                                <span className="text-white/50 text-xs group-hover:text-white/80 transition-colors">{p.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </section>
+
+            <Footer />
         </div>
     );
 }

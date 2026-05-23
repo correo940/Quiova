@@ -8,6 +8,7 @@ import Taskbar from '@/components/layout/taskbar';
 import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
 import { AuthProvider } from '@/components/apps/mi-hogar/auth-context';
+import CookieBanner from '@/components/cookie-banner';
 
 export const metadata: Metadata = {
   title: 'Quioba',
@@ -55,6 +56,7 @@ export default function RootLayout({
             </div>
             <Toaster />
             <SonnerToaster position="top-right" />
+            <CookieBanner />
           </ClientProvider>
         </AuthProvider>
       </body>

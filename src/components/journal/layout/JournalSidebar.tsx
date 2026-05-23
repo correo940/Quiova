@@ -35,6 +35,15 @@ interface JournalSidebarProps {
     onSelectCollection: (id: string | null) => void;
     onCreateCollection: (parentId: string | null) => void;
     onDeleteCollection: (id: string) => void;
+    counts?: Record<string, number>;
+    totalCount?: number;
+}
+
+// Cuenta recursiva: incluye notas de subcarpetas
+function countWithChildren(col: Collection, counts: Record<string, number>): number {
+    let n = counts[col.id] || 0;
+    if (col.children) col.children.forEach(c => { n += countWithChildren(c, counts); });
+    return n;
 }
 
 export function JournalSidebar({
@@ -42,7 +51,9 @@ export function JournalSidebar({
     selectedCollectionId,
     onSelectCollection,
     onCreateCollection,
-    onDeleteCollection
+    onDeleteCollection,
+    counts = {},
+    totalCount = 0,
 }: JournalSidebarProps) {
 
     // Recursive component for tree rendering
@@ -50,6 +61,7 @@ export function JournalSidebar({
         const [isExpanded, setIsExpanded] = useState(true);
         const hasChildren = collection.children && collection.children.length > 0;
         const isSelected = selectedCollectionId === collection.id;
+        const count = countWithChildren(collection, counts);
 
         return (
             <div>
@@ -82,6 +94,12 @@ export function JournalSidebar({
                     )}
 
                     <span className="truncate text-sm flex-1">{collection.name}</span>
+
+                    {count > 0 && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full mr-1 group-hover:bg-background">
+                            {count}
+                        </span>
+                    )}
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -133,7 +151,12 @@ export function JournalSidebar({
                     onClick={() => onSelectCollection(null)}
                 >
                     <Book className="w-4 h-4 text-blue-500 mr-2" />
-                    <span className="text-sm">Mi Biblioteca</span>
+                    <span className="text-sm flex-1">Mi Biblioteca</span>
+                    {totalCount > 0 && (
+                        <span className="text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded-full">
+                            {totalCount}
+                        </span>
+                    )}
                 </div>
 
                 {collections.map(collection => (

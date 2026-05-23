@@ -53,6 +53,9 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const recordingInterval = React.useRef<NodeJS.Timeout | null>(null);
     const popupRef = React.useRef<Window | null>(null);
     const [pipWindow, setPipWindow] = useState<Window | null>(null);
+    const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
+    const autoSaveTimer = React.useRef<NodeJS.Timeout | null>(null);
+    const isLoadingContentRef = React.useRef(false);
 
     const togglePiP = async () => {
         if (pipWindow) {
@@ -159,7 +162,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             StarterKit,
             TextStyle,
             FontFamily,
-            // Underline,
+            Underline,
             Color,
             Highlight.configure({ multicolor: true }),
             ImageExtension,
@@ -168,12 +171,10 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         content: '',
         editorProps: {
             attributes: {
-                class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] p-4',
+                class: 'prose prose-base dark:prose-invert max-w-none focus:outline-none min-h-[200px] p-5 text-[15px] leading-relaxed',
             },
         },
-        onUpdate: ({ editor }) => {
-            // Auto-save logic could go here (debounced)
-        },
+        onUpdate: () => {},
         immediatelyRender: false,
     });
 
@@ -246,14 +247,15 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             const entry = Array.isArray(data) ? data[0] : data;
 
             if (entry?.content) {
+                isLoadingContentRef.current = true;
                 editor.commands.setContent(entry.content);
+                isLoadingContentRef.current = false;
                 setTags(entry.tags || []);
             } else {
                 // Auto-Title Capture for new notes
                 let initialContent = '';
                 if (!selectedDate && typeof document !== 'undefined') {
                     const pageTitle = document.title || '';
-                    // Try to find H1 if title is generic
                     const h1 = document.querySelector('h1')?.innerText;
                     const titleToUse = h1 || pageTitle;
 
@@ -261,8 +263,11 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         initialContent = `<h1>${titleToUse}</h1><p></p>`;
                     }
                 }
+                isLoadingContentRef.current = true;
                 editor.commands.setContent(initialContent);
+                isLoadingContentRef.current = false;
             }
+            setSaveStatus('saved');
             setIsLoading(false);
         };
 
@@ -278,11 +283,16 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         }
     }, [editor, pendingQuote, clearPendingQuote]);
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async (isAutoSave = false) => {
         if (!user || !editor) return;
-        setIsSaving(true);
+        if (!isAutoSave) setIsSaving(true);
+        setSaveStatus('saving');
         const contextId = pathname || '/';
         const content = editor.getJSON();
+        const firstNode = (content.content as any[])?.[0];
+        const title = (firstNode?.type === 'heading' && firstNode.attrs?.level === 1)
+            ? (firstNode.content?.map((n: any) => n.text || '').join('') || '')
+            : '';
 
         const { error } = await supabase
             .from('journal_entries')
@@ -291,19 +301,105 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                 context_id: contextId,
                 content: content,
                 tags: tags,
+                metadata: { title },
                 updated_at: new Date().toISOString(),
             }, { onConflict: 'user_id, context_id' });
 
-        setIsSaving(false);
+        if (!isAutoSave) setIsSaving(false);
         if (error) {
             console.error('Error saving journal entry:', error);
+            setSaveStatus('unsaved');
             toast.error(`Error al guardar: ${error.message}`);
         } else {
-            toast.success('Guardado');
+            setSaveStatus('saved');
+            // No mostramos toast para evitar tapar los botones de la cabecera (el indicador '● Guardado' de la UI ya es suficiente)
         }
+    }, [user, editor, pathname, tags]);
+
+    // Auto-save: debounce 1.5s tras cada cambio en el editor
+    useEffect(() => {
+        if (!editor) return;
+
+        const handleUpdate = () => {
+            if (isLoadingContentRef.current) return;
+            setSaveStatus('unsaved');
+            if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+            autoSaveTimer.current = setTimeout(() => {
+                handleSave(true);
+            }, 1500);
+        };
+
+        editor.on('update', handleUpdate);
+        return () => {
+            editor.off('update', handleUpdate);
+            if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        };
+    }, [editor, handleSave]);
+
+    // #9: Atajos de teclado
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isOpen) return;
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave(false);
+            }
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, handleSave, onClose]);
+
+    // #11: Contador de palabras
+    const [wordCount, setWordCount] = useState(0);
+    useEffect(() => {
+        if (!editor) return;
+        const updateCount = () => {
+            const text = editor.getText();
+            setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0);
+        };
+        updateCount();
+        editor.on('update', updateCount);
+        return () => { editor.off('update', updateCount); };
+    }, [editor]);
+
+    // #8: Drag resize handle
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = width;
+        const onMouseMove = (ev: MouseEvent) => {
+            const delta = startX - ev.clientX;
+            const newWidth = Math.min(80, Math.max(20, startWidth + (delta / window.innerWidth * 100)));
+            setWidth(newWidth);
+        };
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
     };
 
     if (!editor) return null;
+
+    const getTagColor = (tag: string) => {
+        const palette = [
+            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+            'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+            'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+            'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+            'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
+            'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+            'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-200 dark:border-violet-800',
+            'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400 border-pink-200 dark:border-pink-800',
+        ];
+        let hash = 0;
+        for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+        return palette[Math.abs(hash) % palette.length];
+    };
 
     const handleQuote = () => {
         if (!editor) return;
@@ -544,6 +640,15 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                             <>Sobre: {pathname === '/' ? 'Inicio' : pathname}</>
                         )}
                     </p>
+                    <p className="text-[10px] leading-none mt-0.5">
+                        {saveStatus === 'saving' ? (
+                            <span className="text-amber-500">● Guardando...</span>
+                        ) : saveStatus === 'unsaved' ? (
+                            <span className="text-amber-500">● Sin guardar</span>
+                        ) : (
+                            <span className="text-green-500">● Guardado</span>
+                        )}
+                    </p>
                     {selectedDate && (
                         <Button
                             variant="link"
@@ -575,44 +680,8 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         </Button>
                     )}
                 </div>
-                <div className="flex items-center gap-1 flex-wrap justify-end max-w-[50%]">
+                <div className="flex items-center gap-0.5">
                     <TooltipProvider>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground mr-1 h-8 w-8 shrink-0">
-                                    <HelpCircle className="w-4 h-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-4 text-sm z-[70]" align="end">
-                                <h4 className="font-semibold mb-3">Ayuda de Navegación</h4>
-                                <ul className="space-y-3">
-                                    <li className="flex items-start gap-2">
-                                        <div className="mt-0.5 p-1 bg-slate-100 dark:bg-slate-800 rounded">
-                                            <Globe className="w-3 h-3" />
-                                        </div>
-                                        <div>
-                                            <span className="font-medium block text-xs">Navegador Normal</span>
-                                            <span className="text-muted-foreground block text-[10px] leading-tight mt-0.5">
-                                                Abre una ventana externa. Se ocultará si tocas el diario.
-                                            </span>
-                                        </div>
-                                    </li>
-
-                                    <li className="flex items-start gap-2">
-                                        <div className="mt-0.5 p-1 bg-slate-100 dark:bg-slate-800 rounded">
-                                            <MoveUpRight className="w-3 h-3" />
-                                        </div>
-                                        <div>
-                                            <span className="font-medium block text-xs">Notas Flotantes</span>
-                                            <span className="text-muted-foreground block text-[10px] leading-tight mt-0.5">
-                                                Saca el diario fuera de la app (PiP).
-                                            </span>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </PopoverContent>
-                        </Popover>
-
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -624,37 +693,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                                     <MoveUpRight className="w-4 h-4" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom"><p>Notas Flotantes</p></TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openBrowserPopup()}
-                                    className="h-8 w-8 shrink-0"
-                                >
-                                    <Globe className="w-4 h-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom"><p>Abrir Navegador</p></TooltipContent>
-                        </Tooltip>
-
-
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={handleSmartPaste}
-                                    className="h-8 w-8 shrink-0"
-                                >
-                                    <Clipboard className="w-4 h-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom"><p>Pegar inteligente</p></TooltipContent>
+                            <TooltipContent side="bottom"><p>Notas flotantes (PiP)</p></TooltipContent>
                         </Tooltip>
 
                         <Popover>
@@ -663,21 +702,36 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                                     <Settings className="w-4 h-4" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 z-[70]" align="end">
-                                <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium leading-none">Apariencia</h4>
-                                        <p className="text-sm text-muted-foreground">Opciones de visualización.</p>
+                            <PopoverContent className="w-72 z-[70] p-4" align="end">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h4 className="font-semibold text-sm mb-3">Ajustes del panel</h4>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-sm text-muted-foreground">Opacidad</span>
+                                                <Slider defaultValue={[opacity]} max={1} min={0.2} step={0.1} className="w-32" onValueChange={(value) => setOpacity(value[0])} />
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-sm text-muted-foreground">Ancho</span>
+                                                <Slider defaultValue={[width]} max={80} min={20} step={5} className="w-32" onValueChange={(value) => setWidth(value[0])} />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="grid gap-2">
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <span className="text-sm">Opacidad</span>
-                                            <Slider defaultValue={[opacity]} max={1} min={0.2} step={0.1} className="col-span-2" onValueChange={(value) => setOpacity(value[0])} />
+                                    <div className="border-t border-border pt-3">
+                                        <h4 className="font-semibold text-sm mb-2">Herramientas</h4>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openBrowserPopup()}>
+                                                <Globe className="w-3.5 h-3.5" /> Navegador
+                                            </Button>
+                                            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleSmartPaste}>
+                                                <Clipboard className="w-3.5 h-3.5" /> Pegar
+                                            </Button>
                                         </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <span className="text-sm">Ancho</span>
-                                            <Slider defaultValue={[width]} max={100} min={20} step={5} className="col-span-2" onValueChange={(value) => setWidth(value[0])} />
-                                        </div>
+                                    </div>
+                                    <div className="border-t border-border pt-3 text-[11px] text-muted-foreground space-y-1">
+                                        <p><kbd className="bg-muted px-1 rounded text-[10px]">Ctrl+S</kbd> Guardar</p>
+                                        <p><kbd className="bg-muted px-1 rounded text-[10px]">Esc</kbd> Cerrar panel</p>
+                                        <p><kbd className="bg-muted px-1 rounded text-[10px]">Ctrl+B/I/U</kbd> Formato</p>
                                     </div>
                                 </div>
                             </PopoverContent>
@@ -685,26 +739,23 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleSave} disabled={isSaving} className="h-8 w-8 shrink-0">
+                                <Button variant="ghost" size="icon" onClick={() => handleSave(false)} disabled={isSaving} className="h-8 w-8 shrink-0">
                                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom"><p>Guardar</p></TooltipContent>
+                            <TooltipContent side="bottom"><p>Guardar (Ctrl+S)</p></TooltipContent>
                         </Tooltip>
 
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                                if (pipWindow) {
-                                    pipWindow.close();
-                                    setPipWindow(null);
-                                }
+                                if (pipWindow) { pipWindow.close(); setPipWindow(null); }
                                 onClose();
                             }}
                             className="h-8 w-8 shrink-0"
                         >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
                         </Button>
                     </TooltipProvider>
                 </div>
@@ -714,12 +765,12 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
             <div className="px-4 py-2 border-b border-border bg-background/50">
                 <div className="flex flex-wrap gap-2 mb-2">
                     {tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
+                        <span key={tag} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(tag)}`}>
                             {tag}
-                            <button onClick={() => handleRemoveTag(tag)} className="ml-1 hover:text-destructive">
+                            <button onClick={() => handleRemoveTag(tag)} className="hover:opacity-70 ml-0.5">
                                 <X className="w-3 h-3" />
                             </button>
-                        </Badge>
+                        </span>
                     ))}
                 </div>
                 <div className="flex items-center gap-2">
@@ -742,151 +793,93 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                 </div>
             </div>
 
-            {/* Toolbar */}
-            <div className="flex flex-wrap gap-1 p-2 border-b border-border bg-background sticky top-0 z-10 items-center">
+            {/* Toolbar — Fila 1: fuente + formato texto */}
+            <div className="flex items-center gap-0.5 px-2 pt-2 pb-1 border-b border-border bg-background sticky top-0 z-10">
                 <Select onValueChange={(value) => editor.chain().focus().setFontFamily(value).run()}>
-                    <SelectTrigger className="w-[120px] h-8">
+                    <SelectTrigger className="w-[100px] h-7 text-xs">
                         <SelectValue placeholder="Fuente" />
                     </SelectTrigger>
                     <SelectContent className="z-[70]">
                         <SelectItem value="Inter">Inter</SelectItem>
                         <SelectItem value="Comic Sans MS, Comic Sans">Comic Sans</SelectItem>
                         <SelectItem value="serif">Serif</SelectItem>
-                        <SelectItem value="monospace">Monospace</SelectItem>
-                        <SelectItem value="cursive">Cursive</SelectItem>
+                        <SelectItem value="monospace">Mono</SelectItem>
+                        <SelectItem value="cursive">Cursiva</SelectItem>
                     </SelectContent>
                 </Select>
 
-                <div className="w-px h-6 bg-border mx-1" />
+                <div className="w-px h-5 bg-border mx-1" />
 
-                <Button
-                    variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                >
-                    <Bold className="w-4 h-4" />
+                <Button variant={editor.isActive('bold') ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleBold().run()}>
+                    <Bold className="w-3.5 h-3.5" />
                 </Button>
-                <Button
-                    variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                >
-                    <Italic className="w-4 h-4" />
+                <Button variant={editor.isActive('italic') ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleItalic().run()}>
+                    <Italic className="w-3.5 h-3.5" />
                 </Button>
-                <Button
-                    variant={editor.isActive('underline') ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                >
-                    <UnderlineIcon className="w-4 h-4" />
+                <Button variant={editor.isActive('underline') ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+                    <UnderlineIcon className="w-3.5 h-3.5" />
                 </Button>
 
-                <div className="w-px h-6 bg-border mx-1" />
+                <div className="w-px h-5 bg-border mx-1" />
 
-                <Button
-                    variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                >
-                    <Heading1 className="w-4 h-4" />
+                <Button variant={editor.isActive('heading', { level: 1 }) ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+                    <Heading1 className="w-3.5 h-3.5" />
                 </Button>
-                <Button
-                    variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                >
-                    <Heading2 className="w-4 h-4" />
+                <Button variant={editor.isActive('heading', { level: 2 }) ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+                    <Heading2 className="w-3.5 h-3.5" />
                 </Button>
-                <Button
-                    variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                >
-                    <Heading3 className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-6 bg-border mx-1" />
-                <Button
-                    variant={editor.isActive('highlight') ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleHighlight().run()}
-                >
-                    <Highlighter className="w-4 h-4" />
+                <Button variant={editor.isActive('heading', { level: 3 }) ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+                    <Heading3 className="w-3.5 h-3.5" />
                 </Button>
 
-                {/* Color Picker (Simplified) */}
-                <div className="flex items-center gap-1 ml-2">
-                    <button
-                        className="w-4 h-4 rounded-full bg-black border border-gray-300"
-                        onClick={() => editor.chain().focus().setColor('#000000').run()}
-                    />
-                    <button
-                        className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"
-                        onClick={() => editor.chain().focus().setColor('#EF4444').run()}
-                    />
-                    <button
-                        className="w-4 h-4 rounded-full bg-blue-500 border border-gray-300"
-                        onClick={() => editor.chain().focus().setColor('#3B82F6').run()}
-                    />
-                    <button
-                        className="w-4 h-4 rounded-full bg-green-500 border border-gray-300"
-                        onClick={() => editor.chain().focus().setColor('#22C55E').run()}
-                    />
-                    <button
-                        className="w-4 h-4 rounded-full bg-purple-500 border border-gray-300"
-                        onClick={() => editor.chain().focus().setColor('#A855F7').run()}
-                    />
+                <div className="w-px h-5 bg-border mx-1" />
+
+                <Button variant={editor.isActive('blockquote') ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={handleQuote}>
+                    <Quote className="w-3.5 h-3.5" />
+                </Button>
+            </div>
+
+            {/* Toolbar — Fila 2: resaltado + colores + media */}
+            <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-background">
+                <Button variant={editor.isActive('highlight') ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => editor.chain().focus().toggleHighlight().run()}>
+                    <Highlighter className="w-3.5 h-3.5" />
+                </Button>
+
+                <div className="w-px h-5 bg-border mx-1" />
+
+                <div className="flex items-center gap-1">
+                    {['#18181b','#EF4444','#3B82F6','#22C55E','#A855F7','#F59E0B'].map((color, i) => (
+                        <button
+                            key={color}
+                            className="w-4 h-4 rounded-full border border-white/30 ring-1 ring-black/10 hover:scale-110 transition-transform"
+                            style={{ backgroundColor: color }}
+                            onClick={() => editor.chain().focus().setColor(color).run()}
+                        />
+                    ))}
                 </div>
 
-                <div className="w-px h-6 bg-border mx-1" />
+                <div className="w-px h-5 bg-border mx-1" />
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => document.getElementById('image-upload')?.click()}
-                    title="Insertar Imagen"
-                >
-                    <ImageIcon className="w-4 h-4" />
-                    <input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImageUpload(file);
-                        }}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => document.getElementById('image-upload')?.click()} title="Insertar imagen">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <input id="image-upload" type="file" accept="image/*" className="hidden"
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageUpload(file); }}
                     />
                 </Button>
-                <div className="flex items-center gap-2">
-                    {isRecording && (
-                        <span className="text-xs text-red-500 font-medium animate-pulse">
-                            Grabando {formatRecordingTime(recordingTime)}...
-                        </span>
-                    )}
-                    <Button
-                        variant={isRecording ? 'destructive' : 'ghost'}
-                        size="sm"
-                        onClick={isRecording ? stopRecording : startRecording}
-                        title={isRecording ? "Detener Grabación" : "Grabar Voz"}
-                        className={isRecording ? "animate-pulse" : ""}
-                    >
-                        <Mic className="w-4 h-4" />
-                    </Button>
-                </div>
 
-                <div className="w-px h-6 bg-border mx-1" />
-
+                {isRecording && (
+                    <span className="text-[11px] text-red-500 font-medium animate-pulse ml-1">
+                        ● {formatRecordingTime(recordingTime)}
+                    </span>
+                )}
                 <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleQuote}
-                    className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-                    title="Citar texto seleccionado"
+                    variant={isRecording ? 'destructive' : 'ghost'}
+                    size="icon"
+                    className={`h-7 w-7 ${isRecording ? 'animate-pulse' : ''}`}
+                    onClick={isRecording ? stopRecording : startRecording}
                 >
-                    <Quote className="w-4 h-4" />
+                    <Mic className="w-3.5 h-3.5" />
                 </Button>
-
-                <div className="w-px h-4 bg-border mx-1" />
             </div>
 
             {/* Editor Area */}
@@ -899,6 +892,16 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                 ) : (
                     <EditorContent editor={editor} />
                 )}
+            </div>
+
+            {/* Footer — contador de palabras */}
+            <div className="px-4 py-1.5 border-t border-border bg-muted/20 flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">
+                    {wordCount} {wordCount === 1 ? 'palabra' : 'palabras'}
+                </span>
+                <span className="text-[11px] text-muted-foreground hidden sm:block">
+                    Arrastra el borde para redimensionar
+                </span>
             </div>
         </div>
     );
@@ -924,6 +927,13 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                     onDrop={handleDrop}
                     ref={panelRef}
                 >
+                    {/* Drag resize handle */}
+                    <div
+                        className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors z-10 group"
+                        onMouseDown={handleResizeMouseDown}
+                    >
+                        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-border rounded-full group-hover:bg-primary/50 transition-colors" />
+                    </div>
                     {JournalUI}
                 </motion.div>
             )}
