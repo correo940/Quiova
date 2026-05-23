@@ -133,7 +133,7 @@ export default function Header() {
 
                 {/* ── Search + Auth ── */}
                 <div className="flex flex-1 items-center justify-end gap-2 md:flex-none" suppressHydrationWarning>
-                    <div className="relative w-full md:w-48 lg:w-64" suppressHydrationWarning>
+                    <div className="relative w-32 md:w-48 lg:w-64" suppressHydrationWarning>
                         <button
                             onClick={handleSearch}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
@@ -142,7 +142,7 @@ export default function Header() {
                         </button>
                         <Input
                             type="search"
-                            placeholder="Buscar artículos..."
+                            placeholder="Buscar..."
                             className="pl-9"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}

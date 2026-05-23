@@ -1,24 +1,28 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap } from 'lucide-react';
+import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api-utils';
+import { supabase } from '@/lib/supabase';
+import { guessCategoryAndPrice } from '@/lib/shopping-list-ai-helpers';
+
+type Destination = 'shopping' | 'pantry';
 
 interface SmartScannerProps {
     onClose: () => void;
     onProductAdded: (product: { name: string; barcode?: string }) => void;
 }
 
-// Local barcode cache key
 const BARCODE_CACHE_KEY = 'quioba_barcode_cache';
 
-// Helper functions for local cache
 const getBarcodeCache = (): Record<string, string> => {
     try {
         const cache = localStorage.getItem(BARCODE_CACHE_KEY);
@@ -33,7 +37,6 @@ const saveBarcodeToCache = (barcode: string, productName: string) => {
         const cache = getBarcodeCache();
         cache[barcode] = productName;
         localStorage.setItem(BARCODE_CACHE_KEY, JSON.stringify(cache));
-        console.log('💾 Saved to local cache:', barcode, '->', productName);
     } catch (e) {
         console.error('Error saving to cache:', e);
     }
@@ -49,23 +52,55 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [error, setError] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
 
-    // Continuous scanning mode
     const [scanCount, setScanCount] = useState(0);
     const [lastScanned, setLastScanned] = useState<string | null>(null);
     const [continuousMode, setContinuousMode] = useState(false);
 
-    // Manual entry state
     const [showManualEntry, setShowManualEntry] = useState(false);
     const [manualProductName, setManualProductName] = useState('');
     const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
 
-    // Helper to handle success - in continuous mode, immediately scan next
-    const handleSuccess = (productName: string, barcode?: string, startNextScan = false) => {
+    const [showWebScanner, setShowWebScanner] = useState(false);
+    const [destination, setDestination] = useState<Destination>('shopping');
+
+    const photoFileInputRef = useRef<HTMLInputElement>(null);
+    const speechRecognitionRef = useRef<any>(null);
+
+    const isWeb = !Capacitor.isNativePlatform();
+
+    const saveToShoppingItems = async (productName: string): Promise<boolean> => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user?.id;
+        if (!userId) {
+            toast.error('Inicia sesión para guardar productos');
+            return false;
+        }
+        const aiAnalysis = guessCategoryAndPrice(productName);
+        const isPantry = destination === 'pantry';
+        const { error: insertError } = await supabase
+            .from('shopping_items')
+            .insert([{
+                user_id: userId,
+                name: productName,
+                category: aiAnalysis.category,
+                is_checked: isPantry,
+            }]);
+        if (insertError) {
+            console.error('Error saving product:', insertError);
+            toast.error('Error al guardar el producto');
+            return false;
+        }
+        toast.success(isPantry ? `🥫 ${productName} añadido a la despensa` : `🛒 ${productName} añadido a la lista`);
+        return true;
+    };
+
+    const handleSuccess = async (productName: string, barcode?: string, startNextScan = false) => {
+        const ok = await saveToShoppingItems(productName);
+        if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
         onProductAdded({ name: productName, barcode });
 
-        // In continuous mode, start next scan after a short delay
         if (startNextScan && continuousMode) {
             setTimeout(() => {
                 setLastScanned(null);
@@ -74,7 +109,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Save manual entry
     const handleManualSave = () => {
         if (manualProductName.trim() && pendingBarcode) {
             saveBarcodeToCache(pendingBarcode, manualProductName.trim());
@@ -85,8 +119,161 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Barcode Scanning with continuous mode support
-    const handleBarcodeScan = async () => {
+    // Lookup barcode value against cache + Open Food Facts
+    const lookupBarcode = async (barcode: string, continueAfter: boolean) => {
+        const cachedName = getFromCache(barcode);
+        if (cachedName) {
+            handleSuccess(cachedName, barcode, continueAfter);
+            return;
+        }
+
+        try {
+            const headers = {
+                'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
+                'Accept': 'application/json'
+            };
+
+            let response = await fetch(`https://es.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
+            if (!response.ok) {
+                response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
+            }
+
+            const data = await response.json();
+
+            if (data.status === 1 && data.product) {
+                const productName =
+                    data.product.product_name_es ||
+                    data.product.product_name ||
+                    data.product.generic_name_es ||
+                    data.product.generic_name ||
+                    data.product.brands ||
+                    'Producto detectado';
+
+                saveBarcodeToCache(barcode, productName);
+                handleSuccess(productName, barcode, continueAfter);
+            } else {
+                setPendingBarcode(barcode);
+                setShowManualEntry(true);
+            }
+        } catch {
+            setPendingBarcode(barcode);
+            setShowManualEntry(true);
+        }
+    };
+
+    // ─── Web: barcode via live camera (react-qr-scanner) ─────────────────────
+
+    const handleWebBarcodeScan = async (results: any[]) => {
+        if (!results?.length || loading) return;
+        const barcode = results[0]?.rawValue;
+        if (!barcode) return;
+
+        setShowWebScanner(false);
+        setLoading(true);
+        setError(null);
+        await lookupBarcode(barcode, continuousMode);
+        setLoading(false);
+    };
+
+    const handleWebScannerError = (err: unknown) => {
+        setShowWebScanner(false);
+        setError('No se pudo acceder a la cámara. Comprueba los permisos.');
+    };
+
+    // ─── Web: photo via file input ────────────────────────────────────────────
+
+    const handleWebPhotoFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (e.target) e.target.value = '';
+        if (!file) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const apiUrl = getApiUrl('api/mi-hogar/identify-product');
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Image: base64 })
+            });
+
+            const data = await response.json();
+
+            if (data.productName) {
+                handleSuccess(data.productName, undefined, false);
+                setLastScanned(data.productName);
+            } else {
+                setError(`No se identificó: ${data.error || 'Intenta de nuevo'}`);
+            }
+        } catch (err: any) {
+            setError(`Error foto: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ─── Web: voice via Web Speech API ───────────────────────────────────────
+
+    const handleWebVoiceInput = () => {
+        const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognitionAPI) {
+            setError('Reconocimiento de voz no disponible en este navegador');
+            return;
+        }
+
+        setError(null);
+        setShowManualEntry(false);
+
+        const recognition = new SpeechRecognitionAPI();
+        recognition.lang = 'es-ES';
+        recognition.maxAlternatives = 1;
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event: any) => {
+            const text: string = event.results[0][0].transcript;
+            if (text) {
+                handleSuccess(text, undefined, false);
+                setLastScanned(text);
+            } else {
+                setError('No te entendí, intenta de nuevo');
+            }
+            setIsListening(false);
+        };
+
+        recognition.onerror = (event: any) => {
+            if (event.error !== 'aborted') {
+                setError('Error de voz: ' + event.error);
+            }
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        speechRecognitionRef.current = recognition;
+        setIsListening(true);
+        recognition.start();
+    };
+
+    const stopWebListening = () => {
+        speechRecognitionRef.current?.stop();
+        speechRecognitionRef.current = null;
+        setIsListening(false);
+    };
+
+    // ─── Native: barcode ─────────────────────────────────────────────────────
+
+    const handleNativeBarcodeScan = async () => {
         try {
             setLoading(true);
             setError(null);
@@ -102,10 +289,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
             document.querySelector('body')?.classList.add('barcode-scanner-active');
 
-            // Scan with custom options - remove Google branding, custom colors
-            const result = await BarcodeScanner.scan({
-                formats: [],  // All formats
-            });
+            const result = await BarcodeScanner.scan({ formats: [] });
 
             document.querySelector('body')?.classList.remove('barcode-scanner-active');
 
@@ -115,56 +299,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                     setError('No se pudo leer el código escaneado');
                     return;
                 }
-                console.log('🔍 Scanned Barcode:', barcode);
-
-                // 1. First check local cache
-                const cachedName = getFromCache(barcode);
-                if (cachedName) {
-                    console.log('✅ Found in local cache:', cachedName);
-                    handleSuccess(cachedName, barcode, true);
-                    setLoading(false);
-                    return;
-                }
-
-                // 2. Try Open Food Facts
-                try {
-                    const headers = {
-                        'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
-                        'Accept': 'application/json'
-                    };
-
-                    let response = await fetch(`https://es.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
-
-                    if (!response.ok) {
-                        response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers });
-                    }
-
-                    const data = await response.json();
-
-                    if (data.status === 1 && data.product) {
-                        const productName =
-                            data.product.product_name_es ||
-                            data.product.product_name ||
-                            data.product.generic_name_es ||
-                            data.product.generic_name ||
-                            data.product.brands ||
-                            'Producto detectado';
-
-                        saveBarcodeToCache(barcode, productName);
-                        handleSuccess(productName, barcode, true);
-                    } else {
-                        // Product not found - show manual entry
-                        setPendingBarcode(barcode);
-                        setShowManualEntry(true);
-                    }
-                } catch (apiError: any) {
-                    console.error('❌ API Error:', apiError);
-                    setPendingBarcode(barcode);
-                    setShowManualEntry(true);
-                }
+                await lookupBarcode(barcode, continuousMode);
             }
         } catch (err: any) {
-            console.error('Barcode scan error:', err);
             if (!err.message?.includes('cancelled')) {
                 setError(err.message || 'Error al escanear código');
             }
@@ -174,15 +311,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Start continuous mode
-    const startContinuousMode = () => {
-        setContinuousMode(true);
-        setScanCount(0);
-        handleBarcodeScan();
-    };
+    // ─── Native: photo ───────────────────────────────────────────────────────
 
-    // Photo Recognition
-    const handlePhotoCapture = async () => {
+    const handleNativePhotoCapture = async () => {
         try {
             setLoading(true);
             setError(null);
@@ -224,7 +355,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
                 const resizedBase64 = await resizeImage(image.base64String);
 
-                const response = await fetch(apiUrl, {
+                const response = await fetch(getApiUrl('api/mi-hogar/identify-product'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ base64Image: resizedBase64 })
@@ -248,8 +379,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         }
     };
 
-    // Voice Input
-    const handleVoiceInput = async () => {
+    // ─── Native: voice ───────────────────────────────────────────────────────
+
+    const handleNativeVoiceInput = async () => {
         try {
             setError(null);
             setShowManualEntry(false);
@@ -282,22 +414,74 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                 setError('No te entendí');
             }
             setIsListening(false);
-
         } catch (err: any) {
             setError('Error voz');
             setIsListening(false);
         }
     };
 
-    const stopListening = async () => {
+    const stopNativeListening = async () => {
         try {
             await SpeechRecognition.stop();
             setIsListening(false);
-        } catch (err) { }
+        } catch { }
+    };
+
+    // ─── Unified handlers (route to web or native) ────────────────────────────
+
+    const handleBarcodeScan = async () => {
+        if (isWeb) {
+            setError(null);
+            setShowManualEntry(false);
+            setLastScanned(null);
+            setShowWebScanner(true);
+        } else {
+            await handleNativeBarcodeScan();
+        }
+    };
+
+    const startContinuousMode = () => {
+        setContinuousMode(true);
+        setScanCount(0);
+        handleBarcodeScan();
+    };
+
+    const handlePhotoCapture = async () => {
+        if (isWeb) {
+            photoFileInputRef.current?.click();
+        } else {
+            await handleNativePhotoCapture();
+        }
+    };
+
+    const handleVoiceInput = async () => {
+        if (isWeb) {
+            handleWebVoiceInput();
+        } else {
+            await handleNativeVoiceInput();
+        }
+    };
+
+    const stopListening = async () => {
+        if (isWeb) {
+            stopWebListening();
+        } else {
+            await stopNativeListening();
+        }
     };
 
     return (
         <AnimatePresence>
+            {/* Hidden file input for web photo */}
+            <input
+                ref={photoFileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleWebPhotoFileSelected}
+            />
+
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -327,6 +511,48 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                         </button>
                     </div>
 
+                    {/* Destination selector */}
+                    <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-slate-200/70 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={() => setDestination('shopping')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'shopping' ? 'bg-white text-orange-600 shadow' : 'text-slate-600'}`}
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Comprar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setDestination('pantry')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'pantry' ? 'bg-white text-emerald-700 shadow' : 'text-slate-600'}`}
+                        >
+                            <Archive className="w-4 h-4" />
+                            Despensa
+                        </button>
+                    </div>
+
+                    {/* Web live barcode scanner */}
+                    {showWebScanner && (
+                        <div className="mb-4">
+                            <div className="relative rounded-2xl overflow-hidden bg-black aspect-square">
+                                <Scanner
+                                    onScan={handleWebBarcodeScan}
+                                    onError={handleWebScannerError}
+                                    styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }}
+                                />
+                                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                    <div className="w-48 h-48 border-2 border-white/70 rounded-xl" />
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowWebScanner(false)}
+                                className="mt-2 w-full text-sm text-slate-500 py-2 hover:text-slate-800"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
+
                     {/* Last scanned feedback */}
                     {lastScanned && (
                         <motion.div
@@ -350,7 +576,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                                 <Edit3 className="w-4 h-4 text-amber-600" />
                                 <p className="text-amber-800 font-medium text-sm">Producto no encontrado</p>
                             </div>
-                            <p className="text-xs text-amber-600 mb-2 font-mono">{pendingBarcode}</p>
+                            {pendingBarcode !== 'web-unknown' && (
+                                <p className="text-xs text-amber-600 mb-2 font-mono">{pendingBarcode}</p>
+                            )}
                             <input
                                 type="text"
                                 value={manualProductName}
@@ -384,7 +612,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
                     {/* Options */}
                     <div className="space-y-3">
-                        {/* Turbo Scan Button - Primary action */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -396,7 +623,6 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             Escaneo Rápido
                         </motion.button>
 
-                        {/* Single Scan */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -425,8 +651,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                                 whileTap={{ scale: 0.98 }}
                                 onClick={isListening ? stopListening : handleVoiceInput}
                                 disabled={loading}
-                                className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50 ${isListening ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'
-                                    }`}
+                                className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold disabled:opacity-50 ${isListening ? 'bg-red-500 text-white' : 'bg-purple-500 text-white'}`}
                             >
                                 {isListening ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
                                 {isListening ? '...' : 'Voz'}

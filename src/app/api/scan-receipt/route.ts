@@ -39,7 +39,7 @@ Responde SOLO con el JSON, sin texto adicional:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: modelName || 'llama-3.2-90b-vision-preview',
+                    model: modelName || 'meta-llama/llama-4-scout-17b-16e-instruct',
                     messages: [
                         {
                             role: 'user',
@@ -73,7 +73,7 @@ Responde SOLO con el JSON, sin texto adicional:
                     'X-Title': 'Mi Economía - Scanner'
                 },
                 body: JSON.stringify({
-                    model: modelName || 'llama-3.2-90b-vision-preview',
+                    model: modelName || 'meta-llama/llama-4-scout-17b-16e-instruct',
                     messages: [
                         {
                             role: 'user',
