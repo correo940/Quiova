@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, MessageCircle, Sparkles, Send, ChevronRight } from 'lucide-react';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
@@ -21,6 +21,7 @@ export default function MobileDashboard() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [aiInput, setAiInput] = useState('');
     const { user } = useAuth();
     const [secretaryStatus, setSecretaryStatus] = useState<'sync' | 'briefing' | 'ok' | null>(null);
     const [secretaryEmoji, setSecretaryEmoji] = useState('🤖');
@@ -122,7 +123,60 @@ export default function MobileDashboard() {
                     <AppsSummaryWidget selectedDate={selectedDate} user={user} />
                 </div>
 
-                {/* 2. Calendar Widget - Compacto */}
+                {/* 2. IA Quioba - Chat con la IA */}
+                <div className="px-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-violet-100/60 dark:border-violet-900/30 overflow-hidden">
+                        <div className="p-3 border-b border-violet-100/50 dark:border-violet-900/30 bg-gradient-to-r from-violet-50/60 to-transparent dark:from-violet-950/30 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" />
+                                IA Quioba
+                            </h2>
+                            <button
+                                onClick={() => router.push('/apps/mi-hogar/asistente')}
+                                className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                            >
+                                Abrir chat <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <div className="p-3 space-y-3">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                                Hola, soy Quioba. Pregúntame lo que necesites: tareas, recetas, recordatorios y más.
+                            </p>
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (aiInput.trim()) {
+                                        router.push(`/apps/mi-hogar/asistente?q=${encodeURIComponent(aiInput.trim())}`);
+                                        setAiInput('');
+                                    } else {
+                                        router.push('/apps/mi-hogar/asistente');
+                                    }
+                                }}
+                                className="flex items-center gap-2"
+                            >
+                                <div className="flex-1 flex items-center gap-2 bg-violet-50 dark:bg-violet-950/30 rounded-xl px-3 py-2 border border-violet-100 dark:border-violet-800/40 focus-within:ring-2 focus-within:ring-violet-200 dark:focus-within:ring-violet-700/40 transition-all">
+                                    <MessageCircle className="w-4 h-4 text-violet-400 shrink-0" />
+                                    <input
+                                        type="text"
+                                        value={aiInput}
+                                        onChange={(e) => setAiInput(e.target.value)}
+                                        placeholder="Escribe algo a Quioba..."
+                                        className="flex-1 bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="p-2.5 bg-violet-500 hover:bg-violet-600 active:scale-95 text-white rounded-xl transition-all shadow-sm"
+                                    aria-label="Enviar"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Calendar Widget - Compacto */}
                 <div className="px-4">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
@@ -141,7 +195,7 @@ export default function MobileDashboard() {
                     </div>
                 </div>
 
-                {/* 3. Organizer Widget - Eventos del día */}
+                {/* 4. Organizer Widget - Eventos del día */}
                 <div className="px-4">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
@@ -156,7 +210,7 @@ export default function MobileDashboard() {
                     </div>
                 </div>
 
-                {/* 4. Post-it Quotes - Nevera */}
+                {/* 5. Post-it Quotes - Nevera */}
                 <div className="px-4">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-green-100/50 dark:border-green-900/30 overflow-hidden">
                         <div className="p-3 border-b border-green-100/50 dark:border-green-900/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30">
