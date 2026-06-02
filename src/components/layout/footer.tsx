@@ -46,13 +46,13 @@ export default function Footer() {
             )}
           </p>
           <div className="flex items-center space-x-4 mt-4 md:mt-0" suppressHydrationWarning>
-            <Link href="#" aria-label="Twitter">
+            <Link href="https://x.com/quioba" aria-label="Quioba en Twitter/X" target="_blank" rel="noopener noreferrer">
               <Twitter className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
             </Link>
-            <Link href="#" aria-label="GitHub">
+            <Link href="https://github.com/correo940/Quiova" aria-label="Código en GitHub" target="_blank" rel="noopener noreferrer">
               <Github className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
             </Link>
-            <Link href="#" aria-label="Instagram">
+            <Link href="https://instagram.com/quioba" aria-label="Quioba en Instagram" target="_blank" rel="noopener noreferrer">
               <Instagram className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
             </Link>
           </div>

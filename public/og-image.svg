@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#1A4B8C"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#2D7DD2"/>
+  <rect x="0" y="622" width="1200" height="8" fill="#2D7DD2"/>
+  <text x="600" y="260" text-anchor="middle" font-family="Arial,sans-serif" font-size="100" font-weight="bold" fill="white">Quioba</text>
+  <text x="600" y="340" text-anchor="middle" font-family="Arial,sans-serif" font-size="32" fill="#93C5FD">El sistema operativo para tu vida personal y familiar</text>
+  <text x="600" y="420" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" fill="#60A5FA">Lista de la compra · Mi Economía · Botiquín · Campus · Tareas · y más</text>
+  <text x="600" y="580" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" fill="#93C5FD">quioba.com</text>
+</svg>
