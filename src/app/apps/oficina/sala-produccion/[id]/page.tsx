@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Clapperboard, Copy, Check, FileText, Trash2, ChevronRight, Mic2, Sparkles, Clock, Hash } from 'lucide-react';
 import { generarBriefing } from '@/config/oficina/briefing-generator';
+import type { PiezaContenido } from '@/config/oficina/sala-produccion';
 import {
     useOficinaRegistros,
     type FasePieza,
@@ -90,8 +91,7 @@ export default function PiezaDetallePage() {
     const produccion = producciones.find(p => p.id === pieza.id);
 
     // Adapter para generarBriefing — solo usa titulo, categoria, formato, objetivo
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const briefing = generarBriefing(pieza as any);
+    const briefing = generarBriefing(pieza as unknown as PiezaContenido);
 
     const handleCopy = async (target: Target) => {
         try {
