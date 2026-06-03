@@ -1,0 +1,47 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - button "Abrir menú" [ref=e6] [cursor=pointer]:
+          - img
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - button [ref=e9] [cursor=pointer]:
+              - img [ref=e10]
+            - searchbox "Buscar..." [ref=e13]
+          - button [ref=e14] [cursor=pointer]:
+            - img
+    - main [ref=e15]:
+      - generic [ref=e16]:
+        - img "Quioba Loading" [ref=e21]
+        - paragraph [ref=e22]: Entrando en Quioba...
+    - generic [ref=e23]:
+      - link "Quioba" [ref=e25] [cursor=pointer]:
+        - /url: "#start"
+        - img "Quioba" [ref=e29]
+      - link [ref=e31] [cursor=pointer]:
+        - /url: /desktop
+        - img [ref=e34]
+      - link [ref=e38] [cursor=pointer]:
+        - /url: /
+        - img [ref=e41]
+      - link [ref=e46] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e49]
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]: 🍪
+          - heading "Valoramos tu privacidad" [level=3] [ref=e58]
+        - paragraph [ref=e59]:
+          - text: Utilizamos cookies propias y de terceros para mejorar nuestros servicios, personalizar el contenido y analizar el tráfico de nuestro sitio web. Al hacer clic en "Aceptar todas", aceptas el uso de todas las cookies. Puedes leer más al respecto en nuestra
+          - link "Política de Cookies" [ref=e60] [cursor=pointer]:
+            - /url: /cookies
+          - text: .
+      - generic [ref=e61]:
+        - button "Rechazar no esenciales" [ref=e62] [cursor=pointer]
+        - button "Aceptar todas" [ref=e63] [cursor=pointer]
+  - alert [ref=e64]

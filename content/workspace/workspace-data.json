@@ -1,0 +1,123 @@
+{
+  "ideas": [
+    {
+      "id": "idea-1",
+      "title": "5 Alimentos que combaten la fatiga mental y física",
+      "category": "cuerpo",
+      "description": "Una lista de alimentos que contienen micronutrientes clave (magnesio, omega-3, etc.) para mantener altos niveles de energía en días de trabajo intenso.",
+      "format": "short",
+      "status": "pendiente",
+      "usada": false,
+      "audioBase64": "",
+      "createdAt": "2026-05-26T15:15:00.000Z"
+    },
+    {
+      "id": "idea-2",
+      "title": "La regla del 50/30/20 explicada con ejemplos de compras reales",
+      "category": "finanzas",
+      "description": "Hacer un reel rápido mostrando cómo dividir un sueldo medio español en necesidades básicas, deseos y ahorro utilizando el carro de la compra.",
+      "format": "short",
+      "status": "pendiente",
+      "usada": false,
+      "audioBase64": "",
+      "createdAt": "2026-05-26T15:16:00.000Z"
+    },
+    {
+      "id": "idea-3",
+      "title": "Meditación guiada exprés: Desconectar del PC en 3 minutos",
+      "category": "mente",
+      "description": "Un audio respiratorio rápido para esos días estresantes donde necesitas pausar la mente y relajar la vista de la pantalla.",
+      "format": "video-largo",
+      "status": "en-progreso",
+      "usada": false,
+      "audioBase64": "",
+      "createdAt": "2026-05-26T15:17:00.000Z"
+    },
+    {
+      "id": "idea-4",
+      "title": "Cómo crear un presupuesto de emergencia familiar",
+      "category": "finanzas",
+      "description": "Explicar paso a paso cómo recortar gastos hormiga y guardar un fondo de 3 meses para imprevistos.",
+      "format": "post",
+      "status": "completado",
+      "usada": true,
+      "audioBase64": "",
+      "createdAt": "2026-05-25T10:00:00.000Z"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "prompt-1",
+      "title": "Guion de Short Virales (Retención Alta)",
+      "category": "cuerpo",
+      "tipo": "video",
+      "content": "Escribe un guion para un Short de 60 segundos sobre [TEMA]. Usa la siguiente estructura:\n1. Hook (0-3s): Rompe un mito común con una frase impactante.\n2. Explicación del problema (3-20s): Explica por qué la mayoría de personas lo hace mal.\n3. Solución práctica (20-50s): Da 3 pasos sencillos y accionables.\n4. Call to Action (50-60s): Pide guardar el video para consultarlo después.\nMantén un tono dinámico, directo y empático.",
+      "isCustom": false
+    },
+    {
+      "id": "prompt-2",
+      "title": "Prompt Generador de Hilos de Twitter / Posts",
+      "category": "finanzas",
+      "tipo": "redes",
+      "content": "Escribe un post educativo de LinkedIn / Instagram sobre [TEMA DE FINANZAS]. Estilo minimalista, usando espaciados amplios entre párrafos. \nComienza con una estadística sorprendente. Desglosa los puntos usando viñetas con emojis relacionados. Termina con una pregunta abierta para generar debate en los comentarios.",
+      "isCustom": false
+    },
+    {
+      "id": "prompt-3",
+      "title": "Prompt de Mini-guion de Audio Relajante",
+      "category": "mente",
+      "tipo": "guion",
+      "content": "Escribe el guion para una sesión de audio de mindfulness de 3 minutos enfocada en [SITUACIÓN]. El tono debe ser pausado, sereno y reconfortante. Incluye indicaciones entre corchetes para los efectos de sonido o silencios de respiración (ej: [Silencio de 4 segundos], [Sonido suave de lluvia]).",
+      "isCustom": false
+    }
+  ],
+  "blocks": [
+    {
+      "id": "block-1",
+      "day": "Lunes",
+      "time": "09:00 - 10:30",
+      "title": "Generar ideas e investigación",
+      "category": "mente",
+      "semana": "2026-W22",
+      "fecha": "2026-05-25",
+      "type": "planificacion",
+      "status": "completado"
+    },
+    {
+      "id": "block-2",
+      "day": "Lunes",
+      "time": "11:00 - 13:00",
+      "title": "Escribir guiones de Mente y Cuerpo",
+      "category": "cuerpo",
+      "semana": "2026-W22",
+      "fecha": "2026-05-25",
+      "type": "escritura",
+      "status": "completado"
+    },
+    {
+      "id": "block-3",
+      "day": "Miércoles",
+      "time": "09:00 - 12:00",
+      "title": "Grabación de vídeos cortos (Finanzas/Cuerpo)",
+      "category": "finanzas",
+      "semana": "2026-W22",
+      "fecha": "2026-05-27",
+      "type": "grabacion",
+      "status": "pendiente"
+    },
+    {
+      "id": "block-4",
+      "day": "Viernes",
+      "time": "15:00 - 17:00",
+      "title": "Edición y Programación de Shorts",
+      "category": "finanzas",
+      "semana": "2026-W22",
+      "fecha": "2026-05-29",
+      "type": "edicion",
+      "status": "pendiente"
+    }
+  ],
+  "config": {
+    "passwordHash": null
+  }
+}

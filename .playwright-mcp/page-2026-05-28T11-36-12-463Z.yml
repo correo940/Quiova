@@ -1,0 +1,111 @@
+- main [ref=e19]:
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e24]:
+        - heading "Lo que está pasando ahora." [level=1] [ref=e25]
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - button "Continuar con el teléfono" [ref=e98] [cursor=pointer]:
+              - generic [ref=e100]:
+                - img [ref=e102]
+                - paragraph [ref=e105]: Continuar con el teléfono
+            - iframe [ref=e109]:
+              - button "Continue with Google. Opens in new tab" [ref=f2e3] [cursor=pointer]:
+                - generic [ref=f2e5]:
+                  - img [ref=f2e7]
+                  - generic [ref=f2e14]: Continue with Google
+            - button "Continuar con Apple" [ref=e110] [cursor=pointer]:
+              - generic [ref=e112]:
+                - img [ref=e114]
+                - paragraph [ref=e117]: Continuar con Apple
+          - paragraph [ref=e121]: o
+          - generic [ref=e124]:
+            - generic: Correo electrónico o nombre de usuario
+            - textbox "Correo electrónico o nombre de usuario" [ref=e125]
+            - textbox
+          - paragraph [ref=e129]: Continuar
+          - paragraph [ref=e133]:
+            - text: Al continuar, aceptas nuestros
+            - link "Términos de servicio" [ref=e134] [cursor=pointer]:
+              - /url: https://x.com/tos
+            - text: ","
+            - link "Política de privacidad" [ref=e135] [cursor=pointer]:
+              - /url: https://x.com/privacy
+            - text: "y"
+            - link "Uso de cookies." [ref=e136] [cursor=pointer]:
+              - /url: https://help.x.com/rules-and-policies/twitter-cookies
+      - img [ref=e35]
+    - navigation "Pie de página" [ref=e39]:
+      - generic [ref=e40]:
+        - link "Información" [ref=e41] [cursor=pointer]:
+          - /url: https://about.x.com
+        - generic [ref=e42]: "|"
+      - generic [ref=e43]:
+        - link "Descarga la app de X" [ref=e44] [cursor=pointer]:
+          - /url: https://help.x.com/using-x/download-the-x-app
+        - generic [ref=e45]: "|"
+      - generic [ref=e46]:
+        - link "Grok" [ref=e47] [cursor=pointer]:
+          - /url: https://grok.com/
+        - generic [ref=e48]: "|"
+      - generic [ref=e49]:
+        - link "Centro de Ayuda" [ref=e50] [cursor=pointer]:
+          - /url: https://help.x.com
+        - generic [ref=e51]: "|"
+      - generic [ref=e52]:
+        - link "Condiciones de Servicio" [ref=e53] [cursor=pointer]:
+          - /url: https://x.com/tos
+        - generic [ref=e54]: "|"
+      - generic [ref=e55]:
+        - link "Política de Privacidad" [ref=e56] [cursor=pointer]:
+          - /url: https://x.com/privacy
+        - generic [ref=e57]: "|"
+      - generic [ref=e58]:
+        - link "Política de cookies" [ref=e59] [cursor=pointer]:
+          - /url: https://support.x.com/articles/20170514
+        - generic [ref=e60]: "|"
+      - generic [ref=e61]:
+        - link "Accesibilidad" [ref=e62] [cursor=pointer]:
+          - /url: https://help.x.com/resources/accessibility
+        - generic [ref=e63]: "|"
+      - generic [ref=e64]:
+        - link "Información de anuncios" [ref=e65] [cursor=pointer]:
+          - /url: https://business.x.com/en/help/troubleshooting/how-twitter-ads-work.html?ref=web-twc-ao-gbl-adsinfo&utm_source=twc&utm_medium=web&utm_campaign=ao&utm_content=adsinfo
+        - generic [ref=e66]: "|"
+      - generic [ref=e67]:
+        - link "Blog" [ref=e68] [cursor=pointer]:
+          - /url: https://blog.x.com
+        - generic [ref=e69]: "|"
+      - generic [ref=e70]:
+        - link "Empleos" [ref=e71] [cursor=pointer]:
+          - /url: https://careers.x.com
+        - generic [ref=e72]: "|"
+      - generic [ref=e73]:
+        - link "Recursos para marcas" [ref=e74] [cursor=pointer]:
+          - /url: https://about.x.com/press/brand-assets
+        - generic [ref=e75]: "|"
+      - generic [ref=e76]:
+        - link "Publicidad" [ref=e77] [cursor=pointer]:
+          - /url: https://ads.x.com/?ref=gl-tw-tw-twitter-advertise
+        - generic [ref=e78]: "|"
+      - generic [ref=e79]:
+        - link "Marketing" [ref=e80] [cursor=pointer]:
+          - /url: https://marketing.x.com
+        - generic [ref=e81]: "|"
+      - generic [ref=e82]:
+        - link "X para empresas" [ref=e83] [cursor=pointer]:
+          - /url: https://business.x.com/?ref=web-twc-ao-gbl-twitterforbusiness&utm_source=twc&utm_medium=web&utm_campaign=ao&utm_content=twitterforbusiness
+        - generic [ref=e84]: "|"
+      - generic [ref=e85]:
+        - link "Desarrolladores" [ref=e86] [cursor=pointer]:
+          - /url: https://developer.x.com
+        - generic [ref=e87]: "|"
+      - generic [ref=e88]:
+        - link "Noticias" [ref=e89] [cursor=pointer]:
+          - /url: https://x.com/i/jf/stories/home
+        - generic [ref=e90]: "|"
+      - generic [ref=e91]:
+        - link "Configuración" [ref=e92] [cursor=pointer]:
+          - /url: /settings
+        - generic [ref=e93]: "|"
+      - generic [ref=e94]: © 2026 X Corp.

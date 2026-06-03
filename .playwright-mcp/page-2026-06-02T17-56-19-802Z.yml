@@ -1,0 +1,81 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Quioba Quioba" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Quioba" [ref=e8]
+        - generic [ref=e9]: Quioba
+      - navigation [ref=e10]:
+        - link "Cuerpo Cuerpo" [ref=e11] [cursor=pointer]:
+          - /url: /?pillar=salud+f%C3%ADsica#articles
+          - img "Cuerpo" [ref=e13]
+          - text: Cuerpo
+        - link "Mente Mente" [ref=e14] [cursor=pointer]:
+          - /url: /?pillar=salud+mental#articles
+          - img "Mente" [ref=e16]
+          - text: Mente
+        - link "Finanzas Finanzas" [ref=e17] [cursor=pointer]:
+          - /url: /?pillar=finanzas+familiares#articles
+          - img "Finanzas" [ref=e19]
+          - text: Finanzas
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - button [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - searchbox "Buscar..." [ref=e26]
+        - button "Iniciar Sesión" [ref=e27] [cursor=pointer]:
+          - img
+          - generic [ref=e28]: Iniciar Sesión
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - 'link "Mi Hogar Gestión integral del hogar: contraseñas, compras, manuales y más." [ref=e31] [cursor=pointer]':
+        - /url: /apps/mi-hogar
+        - generic [ref=e32]:
+          - img [ref=e33]
+          - heading "Mi Hogar" [level=3] [ref=e36]
+        - paragraph [ref=e37]: "Gestión integral del hogar: contraseñas, compras, manuales y más."
+      - link "Pausa Meditacion breve, respiracion guiada y pensamiento personal con estilo Quioba." [ref=e38] [cursor=pointer]:
+        - /url: /apps/mi-hogar/meditation
+        - generic [ref=e39]:
+          - img [ref=e40]
+          - heading "Pausa" [level=3] [ref=e50]
+        - paragraph [ref=e51]: Meditacion breve, respiracion guiada y pensamiento personal con estilo Quioba.
+      - 'link "Quioba Organizador Tu asistente de vida diaria: planifica mañana, recibe tu briefing matinal y registra victorias." [ref=e52] [cursor=pointer]':
+        - /url: /apps/organizador
+        - generic [ref=e53]:
+          - img [ref=e54]
+          - heading "Quioba Organizador" [level=3] [ref=e57]
+        - paragraph [ref=e58]: "Tu asistente de vida diaria: planifica mañana, recibe tu briefing matinal y registra victorias."
+  - generic [ref=e59]:
+    - contentinfo [ref=e60]:
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - img "Quioba Logo" [ref=e65]
+          - generic [ref=e66]: Quioba
+        - paragraph [ref=e67]: Cargando...
+        - generic [ref=e68]:
+          - link "Twitter" [ref=e69] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e70]
+          - link "GitHub" [ref=e72] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e73]
+          - link "Instagram" [ref=e76] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e77]
+    - generic [ref=e80]:
+      - link "Quioba" [ref=e82] [cursor=pointer]:
+        - /url: "#start"
+        - img "Quioba" [ref=e86]
+      - link [ref=e88] [cursor=pointer]:
+        - /url: /desktop
+        - img [ref=e91]
+      - link [ref=e95] [cursor=pointer]:
+        - /url: /
+        - img [ref=e98]
+      - link [ref=e102] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e105]
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"

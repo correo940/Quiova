@@ -116,42 +116,49 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                     <ChevronRight className="w-4 h-4" />
                 </Button>
                 
-                <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-
-                {/* View Controls & Popover */}
-                <div className="flex flex-col gap-0.5 ml-1">
-                    <div className="flex items-center gap-1">
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setViewMode('day')} 
-                            className={cn("h-5 px-1.5 text-[9px] font-bold rounded", viewMode === 'day' ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "text-muted-foreground hover:text-foreground")}
-                        >
-                            DÍA
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setViewMode('week')} 
-                            className={cn("h-5 px-1.5 text-[9px] font-bold rounded", viewMode === 'week' ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "text-muted-foreground hover:text-foreground")}
-                        >
-                            SEM
-                        </Button>
-                    </div>
+                {/* View Controls segmented */}
+                <div className="flex items-center ml-1 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800 p-0.5 gap-0.5">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewMode('day')}
+                        className={cn(
+                            "h-6 px-2.5 text-[10px] font-semibold rounded-md transition-all duration-150",
+                            viewMode === 'day'
+                                ? "bg-white dark:bg-slate-950 text-green-700 dark:text-green-400 shadow-sm"
+                                : "text-muted-foreground hover:text-foreground bg-transparent hover:bg-white/60 dark:hover:bg-slate-700"
+                        )}
+                    >
+                        DÍA
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewMode('week')}
+                        className={cn(
+                            "h-6 px-2.5 text-[10px] font-semibold rounded-md transition-all duration-150",
+                            viewMode === 'week'
+                                ? "bg-white dark:bg-slate-950 text-green-700 dark:text-green-400 shadow-sm"
+                                : "text-muted-foreground hover:text-foreground bg-transparent hover:bg-white/60 dark:hover:bg-slate-700"
+                        )}
+                    >
+                        SEM
+                    </Button>
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-5 px-1.5 text-[9px] font-bold gap-1 rounded bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-700">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2.5 text-[10px] font-semibold rounded-md gap-1 text-muted-foreground hover:text-foreground bg-transparent hover:bg-white/60 dark:hover:bg-slate-700 transition-all duration-150"
+                            >
                                 <CalendarIcon className="w-3 h-3" />
-                                MES / AÑO
+                                MES
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="center">
                             <CalendarWidget
                                 date={selectedDate}
-                                onDateSelect={(date) => {
-                                    onDateSelect(date);
-                                    // Popover will close implicitly or stay open depending on interaction
-                                }}
+                                onDateSelect={(date) => { onDateSelect(date); }}
                                 user={user}
                                 isWeekly={false}
                                 className="border-0 shadow-none w-[280px]"

@@ -1,0 +1,101 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Quioba Quioba" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Quioba" [ref=e8]
+          - generic [ref=e9]: Quioba
+        - navigation [ref=e10]:
+          - link "Cuerpo Cuerpo" [ref=e11] [cursor=pointer]:
+            - /url: /?pillar=salud+f%C3%ADsica#articles
+            - img "Cuerpo" [ref=e13]
+            - text: Cuerpo
+          - link "Mente Mente" [ref=e14] [cursor=pointer]:
+            - /url: /?pillar=salud+mental#articles
+            - img "Mente" [ref=e16]
+            - text: Mente
+          - link "Finanzas Finanzas" [ref=e17] [cursor=pointer]:
+            - /url: /?pillar=finanzas+familiares#articles
+            - img "Finanzas" [ref=e19]
+            - text: Finanzas
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - button [ref=e22] [cursor=pointer]:
+              - img [ref=e23]
+            - searchbox "Buscar..." [ref=e26]
+          - button "Iniciar Sesión" [ref=e27] [cursor=pointer]:
+            - img
+            - generic [ref=e28]: Iniciar Sesión
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - img "Quioba Logo" [ref=e36]
+        - heading "Bienvenido a Quioba" [level=2] [ref=e37]
+        - paragraph [ref=e38]: Ingresa tus credenciales para continuar
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - text: Email
+            - generic [ref=e41]:
+              - img [ref=e42]
+              - textbox "tu@email.com" [active] [ref=e45]
+          - generic [ref=e46]:
+            - text: Contraseña
+            - generic [ref=e47]:
+              - img [ref=e48]
+              - textbox "••••••••" [ref=e51]
+              - button [ref=e52] [cursor=pointer]:
+                - img [ref=e53]
+          - button "Iniciar Sesión" [ref=e56] [cursor=pointer]
+        - button "¿No tienes cuenta? Regístrate gratis" [ref=e58] [cursor=pointer]
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: ¿La aplicación se queda cargando o tienes problemas de conexión?
+          - button "Limpiar Caché y Recargar" [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+            - text: Limpiar Caché y Recargar
+    - generic [ref=e67]:
+      - contentinfo [ref=e68]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - img "Quioba Logo" [ref=e73]
+            - generic [ref=e74]: Quioba
+          - paragraph [ref=e75]: © 2026 Quioba. Todos los derechos reservados.
+          - generic [ref=e76]:
+            - link "Twitter" [ref=e77] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e78]
+            - link "GitHub" [ref=e80] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e81]
+            - link "Instagram" [ref=e84] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e85]
+      - generic [ref=e88]:
+        - link "Quioba" [ref=e90] [cursor=pointer]:
+          - /url: "#start"
+          - img "Quioba" [ref=e94]
+        - link [ref=e96] [cursor=pointer]:
+          - /url: /desktop
+          - img [ref=e99]
+        - link [ref=e103] [cursor=pointer]:
+          - /url: /
+          - img [ref=e106]
+        - link [ref=e110] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e113]
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e121]: 🍪
+          - heading "Valoramos tu privacidad" [level=3] [ref=e122]
+        - paragraph [ref=e123]:
+          - text: Utilizamos cookies propias y de terceros para mejorar nuestros servicios, personalizar el contenido y analizar el tráfico de nuestro sitio web. Al hacer clic en "Aceptar todas", aceptas el uso de todas las cookies. Puedes leer más al respecto en nuestra
+          - link "Política de Cookies" [ref=e124] [cursor=pointer]:
+            - /url: /cookies
+          - text: .
+      - generic [ref=e125]:
+        - button "Rechazar no esenciales" [ref=e126] [cursor=pointer]
+        - button "Aceptar todas" [ref=e127] [cursor=pointer]
+  - alert [ref=e128]

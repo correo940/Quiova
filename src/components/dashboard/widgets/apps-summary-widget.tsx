@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff,
-    ChevronUp, ChevronDown
+    ChevronUp, ChevronDown, GraduationCap, Sparkles
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ import TopbarCalendar from './topbar-calendar';
 const ICON_MAP: Record<string, any> = {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
-    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot
+    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot, GraduationCap, Sparkles
 };
 
 // Default item order (keys used for persistence)
@@ -44,6 +44,8 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-amber-600', href: '/apps/mi-hogar/insurance' },
     { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-blue-600', href: '/apps/mi-hogar/roster' },
     { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-blue-600', href: '/apps/resumen-diario' },
+    { key: 'el-campus', label: 'Campus', iconKey: 'GraduationCap', color: 'bg-blue-600', href: '/apps/el-campus' },
+    { key: 'workspace', label: 'Quioba Studios', iconKey: 'Sparkles', color: 'bg-emerald-600', href: '/apps/mi-hogar/workspace' },
 ];
 
 function getStorageKey(userId: string) {
@@ -230,7 +232,9 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
             case 'passwords': return stats.passwordCount > 0 ? `${stats.passwordCount}` : '—';
             case 'insurance': return stats.insuranceCount > 0 ? `${stats.insuranceCount}` : '—';
             case 'roster': return 'Ver';
+            case 'el-campus': return 'Campus';
             case 'summary': return 'Hoy';
+            case 'workspace': return 'Studios';
             default: return '—';
         }
     }, [stats]);
@@ -251,12 +255,17 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
             case 'manuals': return stats.manualCount;
             case 'passwords': return stats.passwordCount;
             case 'insurance': return stats.insuranceCount;
+            case 'el-campus': return 1;
+            case 'workspace': return 1;
             default: return 0;
         }
     }, [stats]);
 
     // Build ordered items for rendering
     const orderedItems = orderedKeys.map(key => {
+        if (key === 'workspace' && user?.email !== 'todojuntomirar@gmail.com') {
+            return null;
+        }
         const config = DEFAULT_ITEMS_CONFIG.find(c => c.key === key);
         if (!config) return null;
         return {

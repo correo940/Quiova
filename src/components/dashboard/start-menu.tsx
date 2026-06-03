@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf, Bot } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf, Bot, GraduationCap, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -47,6 +47,7 @@ const ALL_APPS_CONFIG: { key: string; name: string; route: string; icon: React.R
     { key: 'documents', name: 'Documentos', route: '/apps/mi-hogar/documents', icon: <FileText className="w-4 h-4" />, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
     { key: 'assistant', name: 'Asistente', route: '/apps/mi-hogar/asistente', icon: <MessageCircle className="w-4 h-4" />, color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
     { key: 'secretary', name: 'Organizador', route: '/apps/organizador', icon: <Bot className="w-4 h-4" />, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
+    { key: 'el-campus', name: 'Campus', route: '/apps/el-campus', icon: <GraduationCap className="w-4 h-4" />, color: 'text-blue-700', bgColor: 'bg-blue-500/10' },
 ];
 
 export default function StartMenu() {
@@ -54,6 +55,7 @@ export default function StartMenu() {
     const [activeView, setActiveView] = useState<'menu' | 'apps'>('menu');
     const { isOpen: isJournalOpen, setIsOpen: setIsJournalOpen } = useJournal();
     const { user } = useAuth();
+    const isAdmin = user?.email === 'todojuntomirar@gmail.com';
     const [userProfile, setUserProfile] = useState<any>(null);
     const [shoppingCount, setShoppingCount] = useState(0);
     const [taskCount, setTaskCount] = useState(0);
@@ -372,6 +374,19 @@ export default function StartMenu() {
                                                 </div>
                                                 <span className="text-xs font-medium">Agenda</span>
                                             </Link>
+
+                                            {isAdmin && (
+                                                <Link
+                                                    href="/apps/oficina"
+                                                    onClick={() => closeStartMenu()}
+                                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors bg-white/40 dark:bg-zinc-800/40 shadow-sm text-center"
+                                                >
+                                                    <div className="p-2 bg-slate-500/10 rounded-full text-slate-700 dark:text-slate-300">
+                                                        <Building2 className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="text-xs font-medium">Oficina</span>
+                                                </Link>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -449,4 +464,3 @@ export default function StartMenu() {
         </>
     );
 }
-

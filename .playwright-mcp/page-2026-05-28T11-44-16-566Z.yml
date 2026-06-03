@@ -1,0 +1,58 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - progressbar [ref=e6]
+      - main [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e93]:
+            - img [ref=e95]
+            - generic [ref=e100]: Iniciar sesión con Google
+          - generic [ref=e101]:
+            - heading "Juan francisco Arevalo Tabasco" [level=1] [ref=e102]
+            - generic [ref=e109]: jachobolsa@gmail.com
+        - generic [ref=e112]:
+          - generic [ref=e118]:
+            - generic [ref=e126]:
+              - textbox "Introduce tu contraseña" [active] [ref=e127]
+              - generic: Introduce tu contraseña
+            - generic [ref=e166]:
+              - img [ref=e168]
+              - generic [ref=e170]: La contraseña no es correcta. Inténtalo de nuevo o haz clic en Probar otra manera para ver más opciones.
+            - generic [ref=e134]:
+              - generic [ref=e137] [cursor=pointer]:
+                - checkbox "Mostrar contraseña" [ref=e138]
+                - generic:
+                  - img
+              - generic [ref=e141] [cursor=pointer]: Mostrar contraseña
+          - generic [ref=e144]:
+            - text: Antes de usar esta aplicación, puedes leer la
+            - link "Política de Privacidad" [ref=e145] [cursor=pointer]:
+              - /url: https://x.com/privacy
+            - text: y los
+            - link "Términos del Servicio" [ref=e146] [cursor=pointer]:
+              - /url: https://x.com/tos
+            - text: de x.com.
+        - generic [ref=e148]:
+          - button "Siguiente" [ref=e152]:
+            - generic [ref=e155]: Siguiente
+          - button "Probar otra manera" [ref=e159]:
+            - generic [ref=e162]: Probar otra manera
+    - contentinfo [ref=e74]:
+      - combobox "Cómo cambiar de idioma Español (España)" [ref=e78] [cursor=pointer]:
+        - generic:
+          - generic: Español (España)
+        - generic:
+          - img
+      - list [ref=e80]:
+        - listitem [ref=e81]:
+          - link "Ayuda" [ref=e82] [cursor=pointer]:
+            - /url: https://support.google.com/accounts?hl=es&p=account_iph
+        - listitem [ref=e83]:
+          - link "Privacidad" [ref=e84] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es&privacy=true
+        - listitem [ref=e85]:
+          - link "Términos" [ref=e86] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es
+  - iframe [ref=e87]:
+    
+  - generic [ref=e165]: Juan francisco Arevalo Tabasco

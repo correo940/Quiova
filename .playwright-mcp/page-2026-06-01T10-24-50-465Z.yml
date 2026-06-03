@@ -1,0 +1,145 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Quioba Quioba" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Quioba" [ref=e8]
+        - generic [ref=e9]: Quioba
+      - navigation [ref=e10]:
+        - link "Cuerpo Cuerpo" [ref=e11] [cursor=pointer]:
+          - /url: /?pillar=salud+f%C3%ADsica#articles
+          - img "Cuerpo" [ref=e13]
+          - text: Cuerpo
+        - link "Mente Mente" [ref=e14] [cursor=pointer]:
+          - /url: /?pillar=salud+mental#articles
+          - img "Mente" [ref=e16]
+          - text: Mente
+        - link "Finanzas Finanzas" [ref=e17] [cursor=pointer]:
+          - /url: /?pillar=finanzas+familiares#articles
+          - img "Finanzas" [ref=e19]
+          - text: Finanzas
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - button [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - searchbox "Buscar..." [ref=e26]
+        - button "Trabajar" [ref=e27] [cursor=pointer]:
+          - img
+          - generic [ref=e28]: Trabajar
+        - button "Iniciar Sesión" [ref=e29] [cursor=pointer]:
+          - img
+          - generic [ref=e30]: Iniciar Sesión
+  - main [ref=e31]:
+    - generic [ref=e32]:
+      - complementary [ref=e33]:
+        - generic [ref=e34]:
+          - link "Volver a Apps" [ref=e35] [cursor=pointer]:
+            - /url: /apps
+            - img [ref=e36]
+            - text: Volver a Apps
+          - generic [ref=e38]:
+            - img [ref=e40]
+            - generic [ref=e43]:
+              - generic [ref=e44]: Clone Stamp
+              - generic [ref=e45]: Eliminar marcas de agua
+        - generic [ref=e46]:
+          - button "Subir archivo" [ref=e47] [cursor=pointer]:
+            - img [ref=e48]
+            - text: Subir archivo
+          - paragraph [ref=e51]: Imágenes (PNG, JPG, WEBP) · Videos (MP4, WEBM, MOV)
+        - generic [ref=e52]:
+          - generic [ref=e53]: Ajustes del pincel
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - generic [ref=e56]: Tamaño
+              - generic [ref=e57]: 30px
+            - slider [ref=e60] [cursor=pointer]: "30"
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]: Opacidad
+              - generic [ref=e64]: 85%
+            - slider [ref=e67] [cursor=pointer]: "85"
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: Dureza
+              - generic [ref=e71]: 70%
+            - slider [ref=e74] [cursor=pointer]: "70"
+        - generic [ref=e76]: Vista previa
+        - button "Deshacer Ctrl+Z" [disabled] [ref=e80]:
+          - img [ref=e81]
+          - text: Deshacer
+          - generic [ref=e84]: Ctrl+Z
+        - generic [ref=e85]:
+          - generic [ref=e86]: Cómo usar
+          - generic [ref=e87]:
+            - generic [ref=e88]: "1"
+            - paragraph [ref=e89]: Sube la imagen o video que quieres editar
+          - generic [ref=e90]:
+            - generic [ref=e91]: "2"
+            - paragraph [ref=e92]: Alt+clic en una zona limpia para fijar el origen del clon
+          - generic [ref=e93]:
+            - generic [ref=e94]: "3"
+            - paragraph [ref=e95]: Clic y arrastra sobre la marca de agua para pintarla con los píxeles del origen
+          - generic [ref=e96]:
+            - generic [ref=e97]: "4"
+            - paragraph [ref=e98]: Ajusta tamaño, opacidad y dureza para una fusión natural
+          - generic [ref=e100]:
+            - img [ref=e101]
+            - paragraph [ref=e103]: El indicador verde sigue el punto de origen mientras pistas. Mantén presionado Alt para refijar el origen en cualquier momento.
+        - generic [ref=e106]: Sube una imagen o video para comenzar
+      - main [ref=e107]:
+        - generic [ref=e108] [cursor=pointer]:
+          - img [ref=e110]
+          - generic [ref=e113]:
+            - paragraph [ref=e114]: Arrastra o haz clic para subir
+            - paragraph [ref=e115]: "Imágenes: PNG, JPG, WEBP, GIF · Videos: MP4, WEBM, MOV"
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - img [ref=e118]
+              - text: Imagen
+            - generic [ref=e122]:
+              - img [ref=e123]
+              - text: Video
+        - generic [ref=e126]:
+          - generic [ref=e127]:
+            - generic [ref=e128]: Alt+clic
+            - generic [ref=e129]: Fijar origen
+          - generic [ref=e130]:
+            - generic [ref=e131]: Clic+arrastrar
+            - generic [ref=e132]: Clonar
+          - generic [ref=e133]:
+            - generic [ref=e134]: Ctrl+Z
+            - generic [ref=e135]: Deshacer
+  - generic [ref=e136]:
+    - contentinfo [ref=e137]:
+      - generic [ref=e139]:
+        - generic [ref=e140]:
+          - img "Quioba Logo" [ref=e142]
+          - generic [ref=e143]: Quioba
+        - paragraph [ref=e144]: Cargando...
+        - generic [ref=e145]:
+          - link "Twitter" [ref=e146] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e147]
+          - link "GitHub" [ref=e149] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e150]
+          - link "Instagram" [ref=e153] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e154]
+    - generic [ref=e157]:
+      - link "Quioba" [ref=e159] [cursor=pointer]:
+        - /url: "#start"
+        - img "Quioba" [ref=e163]
+      - link [ref=e165] [cursor=pointer]:
+        - /url: /desktop
+        - img [ref=e168]
+      - link [ref=e172] [cursor=pointer]:
+        - /url: /
+        - img [ref=e175]
+      - link [ref=e179] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e182]
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"

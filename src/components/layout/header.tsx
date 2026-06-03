@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Search } from 'lucide-react';
+import { Menu, Search, Sparkles } from 'lucide-react';
+import { useWorkSession } from '@/context/work-session-context';
 import HeaderAuth from './header-auth';
 
 const PILLARS = [
@@ -38,6 +39,14 @@ const PILLARS = [
 export default function Header() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
+    const { isRunning, elapsedSec, startSession, stopSession } = useWorkSession();
+
+    const formatTime = (sec: number) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
+    };
 
     const handleSearch = () => {
         if (searchQuery.trim()) {
@@ -149,6 +158,22 @@ export default function Header() {
                             onKeyDown={handleKeyDown}
                         />
                     </div>
+                    <Button
+                        onClick={() => isRunning ? stopSession() : startSession()}
+                        size="sm"
+                        title={isRunning ? `Tiempo: ${formatTime(elapsedSec)} — click para parar` : 'Iniciar sesión de trabajo'}
+                        className={`gap-2 rounded-full hidden sm:flex group relative overflow-hidden ${isRunning ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        {isRunning ? (
+                            <>
+                                <span className="text-xs font-bold group-hover:hidden">Trabajando...</span>
+                                <span className="text-xs font-bold font-mono tabular-nums hidden group-hover:inline">{formatTime(elapsedSec)}</span>
+                            </>
+                        ) : (
+                            <span className="text-xs font-bold">Trabajar</span>
+                        )}
+                    </Button>
                     <HeaderAuth />
                 </div>
 

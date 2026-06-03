@@ -1,0 +1,592 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Quioba Quioba" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Quioba" [ref=e8]
+          - generic [ref=e9]: Quioba
+        - navigation [ref=e10]:
+          - link "Cuerpo Cuerpo" [ref=e11] [cursor=pointer]:
+            - /url: /?pillar=salud+f%C3%ADsica#articles
+            - img "Cuerpo" [ref=e13]
+            - text: Cuerpo
+          - link "Mente Mente" [ref=e14] [cursor=pointer]:
+            - /url: /?pillar=salud+mental#articles
+            - img "Mente" [ref=e16]
+            - text: Mente
+          - link "Finanzas Finanzas" [ref=e17] [cursor=pointer]:
+            - /url: /?pillar=finanzas+familiares#articles
+            - img "Finanzas" [ref=e19]
+            - text: Finanzas
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - button [ref=e22] [cursor=pointer]:
+              - img [ref=e23]
+            - searchbox "Buscar..." [ref=e26]
+          - button "Iniciar Sesión" [ref=e27] [cursor=pointer]:
+            - img
+            - generic [ref=e28]: Iniciar Sesión
+    - main [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e38]:
+            - button "Quioba Quioba — Bienestar integral" [ref=e40] [cursor=pointer]:
+              - img "Quioba" [ref=e42]
+              - generic [ref=e43]: Quioba — Bienestar integral
+            - heading "Tu bienestar integral empieza aquí" [level=1] [ref=e44]
+            - paragraph [ref=e45]: "Cuerpo, mente y finanzas: las tres áreas que más impactan tu vida, en un solo lugar."
+          - generic [ref=e46]:
+            - button [ref=e47] [cursor=pointer]
+            - button [ref=e48] [cursor=pointer]
+            - button [ref=e49] [cursor=pointer]
+            - button [ref=e50] [cursor=pointer]
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e54]: TE
+            - generic [ref=e55]: SIENTA
+            - generic [ref=e56]: BIEN
+            - generic [ref=e57]: QUERERTE
+          - generic [ref=e58]:
+            - button "Cuerpo Logo Cuerpo Quioba Cuerpo ↗ Bienestar físico Ejercicio, nutrición y hábitos para una vida activa, energética y plena." [ref=e59] [cursor=pointer]:
+              - generic:
+                - img "Cuerpo"
+              - generic [ref=e60]:
+                - generic [ref=e61]:
+                  - generic [ref=e62]:
+                    - img "Logo Cuerpo" [ref=e64]
+                    - heading "Quioba Cuerpo" [level=3] [ref=e65]:
+                      - text: Quioba
+                      - text: Cuerpo
+                  - generic [ref=e67]: ↗
+                - generic [ref=e68]:
+                  - generic [ref=e69]: Bienestar físico
+                  - paragraph [ref=e70]: Ejercicio, nutrición y hábitos para una vida activa, energética y plena.
+            - button "Mente Logo Mente Quioba Mente ↗ Bienestar mental Meditación, mindfulness y técnicas para reducir el estrés y vivir con claridad." [ref=e71] [cursor=pointer]:
+              - generic:
+                - img "Mente"
+              - generic [ref=e72]:
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - img "Logo Mente" [ref=e76]
+                    - heading "Quioba Mente" [level=3] [ref=e77]:
+                      - text: Quioba
+                      - text: Mente
+                  - generic [ref=e79]: ↗
+                - generic [ref=e80]:
+                  - generic [ref=e81]: Bienestar mental
+                  - paragraph [ref=e82]: Meditación, mindfulness y técnicas para reducir el estrés y vivir con claridad.
+            - button "Finanzas Logo Finanzas Quioba Finanzas ↗ Finanzas familiares Presupuestos, ahorro e inversiones para la estabilidad financiera de tu familia." [ref=e83] [cursor=pointer]:
+              - generic:
+                - img "Finanzas"
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - generic [ref=e86]:
+                    - img "Logo Finanzas" [ref=e88]
+                    - heading "Quioba Finanzas" [level=3] [ref=e89]:
+                      - text: Quioba
+                      - text: Finanzas
+                  - generic [ref=e91]: ↗
+                - generic [ref=e92]:
+                  - generic [ref=e93]: Finanzas familiares
+                  - paragraph [ref=e94]: Presupuestos, ahorro e inversiones para la estabilidad financiera de tu familia.
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e99]:
+              - paragraph [ref=e100]: Todos los artículos
+              - heading "Explorar todo" [level=2] [ref=e101]
+            - generic [ref=e102]:
+              - button "Todos" [ref=e103] [cursor=pointer]
+              - button "Cuerpo Cuerpo" [ref=e104] [cursor=pointer]:
+                - img "Cuerpo" [ref=e105]
+                - text: Cuerpo
+              - button "Mente Mente" [ref=e106] [cursor=pointer]:
+                - img "Mente" [ref=e107]
+                - text: Mente
+              - button "Finanzas Finanzas" [ref=e108] [cursor=pointer]:
+                - img "Finanzas" [ref=e109]
+                - text: Finanzas
+          - 'link "Ciclos Circadianos: Tu Reloj Maestro salud física Ciclos Circadianos: Tu Reloj Maestro Los ciclos circadianos organizan prácticamente todo lo que ocurre en tu cuerpo. No es solo estar despierto o dormido — es decidir cuándo ejecutar tus funciones vitales." [ref=e112] [cursor=pointer]':
+            - /url: /articles/ciclos-circadianos
+            - generic [ref=e113]:
+              - generic [ref=e115]:
+                - 'img "Ciclos Circadianos: Tu Reloj Maestro" [ref=e116]'
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - text: salud física
+              - generic [ref=e121]:
+                - 'heading "Ciclos Circadianos: Tu Reloj Maestro" [level=3] [ref=e122]'
+                - paragraph [ref=e123]: Los ciclos circadianos organizan prácticamente todo lo que ocurre en tu cuerpo. No es solo estar despierto o dormido — es decidir cuándo ejecutar tus funciones vitales.
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - heading "Lo que dicen de nosotros" [level=2] [ref=e127]
+              - paragraph [ref=e128]: Únete a la comunidad que ya está transformando su vida.
+            - generic [ref=e129]:
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - generic [ref=e132]:
+                    - generic [ref=e133]:
+                      - generic [ref=e134]:
+                        - generic [ref=e135]:
+                          - generic [ref=e136]: ★
+                          - generic [ref=e137]: ★
+                          - generic [ref=e138]: ★
+                          - generic [ref=e139]: ★
+                          - generic [ref=e140]: ★
+                        - generic [ref=e141]: Mente
+                      - paragraph [ref=e142]: "\"Quioba me ha ayudado a organizar mejor las finanzas de casa y a encontrar tiempo para mi bienestar mental. Es justo lo que necesitaba.\""
+                    - generic [ref=e143]:
+                      - generic [ref=e144]: MG
+                      - generic [ref=e145]:
+                        - paragraph [ref=e146]: María Gómez
+                        - paragraph [ref=e147]: Madre de familia
+                  - generic [ref=e148]:
+                    - generic [ref=e149]:
+                      - generic [ref=e150]:
+                        - generic [ref=e151]:
+                          - generic [ref=e152]: ★
+                          - generic [ref=e153]: ★
+                          - generic [ref=e154]: ★
+                          - generic [ref=e155]: ★
+                          - generic [ref=e156]: ★
+                        - generic [ref=e157]: Cuerpo
+                      - paragraph [ref=e158]: "\"La sección de salud física y las herramientas de hábitos han cambiado mi rutina diaria. Una plataforma muy completa y fácil de usar.\""
+                    - generic [ref=e159]:
+                      - generic [ref=e160]: CR
+                      - generic [ref=e161]:
+                        - paragraph [ref=e162]: Carlos Ruiz
+                        - paragraph [ref=e163]: Emprendedor
+                  - generic [ref=e164]:
+                    - generic [ref=e165]:
+                      - generic [ref=e166]:
+                        - generic [ref=e167]:
+                          - generic [ref=e168]: ★
+                          - generic [ref=e169]: ★
+                          - generic [ref=e170]: ★
+                          - generic [ref=e171]: ★
+                          - generic [ref=e172]: ★
+                        - generic [ref=e173]: General
+                      - paragraph [ref=e174]: "\"Increíble cómo integran cuerpo, mente y finanzas. Me siento mucho más equilibrada desde que uso Quioba.\""
+                    - generic [ref=e175]:
+                      - generic [ref=e176]: LM
+                      - generic [ref=e177]:
+                        - paragraph [ref=e178]: Laura Martínez
+                        - paragraph [ref=e179]: Estudiante
+                  - generic [ref=e180]:
+                    - generic [ref=e181]:
+                      - generic [ref=e182]:
+                        - generic [ref=e183]:
+                          - generic [ref=e184]: ★
+                          - generic [ref=e185]: ★
+                          - generic [ref=e186]: ★
+                          - generic [ref=e187]: ★
+                          - generic [ref=e188]: ★
+                        - generic [ref=e189]: Cuerpo
+                      - paragraph [ref=e190]: "\"Gracias a las rutinas de Quioba Cuerpo he vuelto a entrenar de forma constante sin lesionarme. Los planes de nutrición son oro puro.\""
+                    - generic [ref=e191]:
+                      - generic [ref=e192]: AS
+                      - generic [ref=e193]:
+                        - paragraph [ref=e194]: Alejandro Sanz
+                        - paragraph [ref=e195]: Deportista amateur
+                  - generic [ref=e196]:
+                    - generic [ref=e197]:
+                      - generic [ref=e198]:
+                        - generic [ref=e199]:
+                          - generic [ref=e200]: ★
+                          - generic [ref=e201]: ★
+                          - generic [ref=e202]: ★
+                          - generic [ref=e203]: ★
+                          - generic [ref=e204]: ★
+                        - generic [ref=e205]: Mente
+                      - paragraph [ref=e206]: "\"La sección de meditación y respiración guiada me salva después de un día intenso en las aulas. Mis niveles de estrés han bajado drásticamente.\""
+                    - generic [ref=e207]:
+                      - generic [ref=e208]: SV
+                      - generic [ref=e209]:
+                        - paragraph [ref=e210]: Sofía Vega
+                        - paragraph [ref=e211]: Profesora de Secundaria
+                  - generic [ref=e212]:
+                    - generic [ref=e213]:
+                      - generic [ref=e214]:
+                        - generic [ref=e215]:
+                          - generic [ref=e216]: ★
+                          - generic [ref=e217]: ★
+                          - generic [ref=e218]: ★
+                          - generic [ref=e219]: ★
+                          - generic [ref=e220]: ★
+                        - generic [ref=e221]: Finanzas
+                      - paragraph [ref=e222]: "\"Organizar el presupuesto mensual con Quioba Finanzas me ha permitido planificar el futuro de mi familia con total claridad y tranquilidad.\""
+                    - generic [ref=e223]:
+                      - generic [ref=e224]: DO
+                      - generic [ref=e225]:
+                        - paragraph [ref=e226]: David Ortiz
+                        - paragraph [ref=e227]: Consultor de Negocios
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - generic [ref=e230]:
+                      - generic [ref=e231]:
+                        - generic [ref=e232]:
+                          - generic [ref=e233]: ★
+                          - generic [ref=e234]: ★
+                          - generic [ref=e235]: ★
+                          - generic [ref=e236]: ★
+                          - generic [ref=e237]: ★
+                        - generic [ref=e238]: Mente
+                      - paragraph [ref=e239]: "\"Quioba me ha ayudado a organizar mejor las finanzas de casa y a encontrar tiempo para mi bienestar mental. Es justo lo que necesitaba.\""
+                    - generic [ref=e240]:
+                      - generic [ref=e241]: MG
+                      - generic [ref=e242]:
+                        - paragraph [ref=e243]: María Gómez
+                        - paragraph [ref=e244]: Madre de familia
+                  - generic [ref=e245]:
+                    - generic [ref=e246]:
+                      - generic [ref=e247]:
+                        - generic [ref=e248]:
+                          - generic [ref=e249]: ★
+                          - generic [ref=e250]: ★
+                          - generic [ref=e251]: ★
+                          - generic [ref=e252]: ★
+                          - generic [ref=e253]: ★
+                        - generic [ref=e254]: Cuerpo
+                      - paragraph [ref=e255]: "\"La sección de salud física y las herramientas de hábitos han cambiado mi rutina diaria. Una plataforma muy completa y fácil de usar.\""
+                    - generic [ref=e256]:
+                      - generic [ref=e257]: CR
+                      - generic [ref=e258]:
+                        - paragraph [ref=e259]: Carlos Ruiz
+                        - paragraph [ref=e260]: Emprendedor
+                  - generic [ref=e261]:
+                    - generic [ref=e262]:
+                      - generic [ref=e263]:
+                        - generic [ref=e264]:
+                          - generic [ref=e265]: ★
+                          - generic [ref=e266]: ★
+                          - generic [ref=e267]: ★
+                          - generic [ref=e268]: ★
+                          - generic [ref=e269]: ★
+                        - generic [ref=e270]: General
+                      - paragraph [ref=e271]: "\"Increíble cómo integran cuerpo, mente y finanzas. Me siento mucho más equilibrada desde que uso Quioba.\""
+                    - generic [ref=e272]:
+                      - generic [ref=e273]: LM
+                      - generic [ref=e274]:
+                        - paragraph [ref=e275]: Laura Martínez
+                        - paragraph [ref=e276]: Estudiante
+                  - generic [ref=e277]:
+                    - generic [ref=e278]:
+                      - generic [ref=e279]:
+                        - generic [ref=e280]:
+                          - generic [ref=e281]: ★
+                          - generic [ref=e282]: ★
+                          - generic [ref=e283]: ★
+                          - generic [ref=e284]: ★
+                          - generic [ref=e285]: ★
+                        - generic [ref=e286]: Cuerpo
+                      - paragraph [ref=e287]: "\"Gracias a las rutinas de Quioba Cuerpo he vuelto a entrenar de forma constante sin lesionarme. Los planes de nutrición son oro puro.\""
+                    - generic [ref=e288]:
+                      - generic [ref=e289]: AS
+                      - generic [ref=e290]:
+                        - paragraph [ref=e291]: Alejandro Sanz
+                        - paragraph [ref=e292]: Deportista amateur
+                  - generic [ref=e293]:
+                    - generic [ref=e294]:
+                      - generic [ref=e295]:
+                        - generic [ref=e296]:
+                          - generic [ref=e297]: ★
+                          - generic [ref=e298]: ★
+                          - generic [ref=e299]: ★
+                          - generic [ref=e300]: ★
+                          - generic [ref=e301]: ★
+                        - generic [ref=e302]: Mente
+                      - paragraph [ref=e303]: "\"La sección de meditación y respiración guiada me salva después de un día intenso en las aulas. Mis niveles de estrés han bajado drásticamente.\""
+                    - generic [ref=e304]:
+                      - generic [ref=e305]: SV
+                      - generic [ref=e306]:
+                        - paragraph [ref=e307]: Sofía Vega
+                        - paragraph [ref=e308]: Profesora de Secundaria
+                  - generic [ref=e309]:
+                    - generic [ref=e310]:
+                      - generic [ref=e311]:
+                        - generic [ref=e312]:
+                          - generic [ref=e313]: ★
+                          - generic [ref=e314]: ★
+                          - generic [ref=e315]: ★
+                          - generic [ref=e316]: ★
+                          - generic [ref=e317]: ★
+                        - generic [ref=e318]: Finanzas
+                      - paragraph [ref=e319]: "\"Organizar el presupuesto mensual con Quioba Finanzas me ha permitido planificar el futuro de mi familia con total claridad y tranquilidad.\""
+                    - generic [ref=e320]:
+                      - generic [ref=e321]: DO
+                      - generic [ref=e322]:
+                        - paragraph [ref=e323]: David Ortiz
+                        - paragraph [ref=e324]: Consultor de Negocios
+              - generic [ref=e325]:
+                - generic [ref=e326]:
+                  - generic [ref=e327]:
+                    - generic [ref=e328]:
+                      - generic [ref=e329]:
+                        - generic [ref=e330]:
+                          - generic [ref=e331]: ★
+                          - generic [ref=e332]: ★
+                          - generic [ref=e333]: ★
+                          - generic [ref=e334]: ★
+                          - generic [ref=e335]: ★
+                        - generic [ref=e336]: Cuerpo
+                      - paragraph [ref=e337]: "\"A mis 65 años, los ejercicios adaptados de bajo impacto y los retos de hábitos diarios me ayudan a sentirme activa y llena de energía. ¡Maravilloso!\""
+                    - generic [ref=e338]:
+                      - generic [ref=e339]: ER
+                      - generic [ref=e340]:
+                        - paragraph [ref=e341]: Elena Rius
+                        - paragraph [ref=e342]: Jubilada
+                  - generic [ref=e343]:
+                    - generic [ref=e344]:
+                      - generic [ref=e345]:
+                        - generic [ref=e346]:
+                          - generic [ref=e347]: ★
+                          - generic [ref=e348]: ★
+                          - generic [ref=e349]: ★
+                          - generic [ref=e350]: ★
+                          - generic [ref=e351]: ★
+                        - generic [ref=e352]: Finanzas
+                      - paragraph [ref=e353]: "\"El control de los gastos hormiga me abrió los ojos. He ahorrado más de 120€ al mes casi sin darme cuenta. Una app imprescindible.\""
+                    - generic [ref=e354]:
+                      - generic [ref=e355]: JL
+                      - generic [ref=e356]:
+                        - paragraph [ref=e357]: Javier López
+                        - paragraph [ref=e358]: Desarrollador de Software
+                  - generic [ref=e359]:
+                    - generic [ref=e360]:
+                      - generic [ref=e361]:
+                        - generic [ref=e362]:
+                          - generic [ref=e363]: ★
+                          - generic [ref=e364]: ★
+                          - generic [ref=e365]: ★
+                          - generic [ref=e366]: ★
+                          - generic [ref=e367]: ★
+                        - generic [ref=e368]: Mente
+                      - paragraph [ref=e369]: "\"Recomiendo las herramientas de Quioba Mente a mis pacientes. El enfoque integral es la clave para un autocuidado diario sostenible.\""
+                    - generic [ref=e370]:
+                      - generic [ref=e371]: CD
+                      - generic [ref=e372]:
+                        - paragraph [ref=e373]: Dra. Carmen Díaz
+                        - paragraph [ref=e374]: Psicóloga Clínica
+                  - generic [ref=e375]:
+                    - generic [ref=e376]:
+                      - generic [ref=e377]:
+                        - generic [ref=e378]:
+                          - generic [ref=e379]: ★
+                          - generic [ref=e380]: ★
+                          - generic [ref=e381]: ★
+                          - generic [ref=e382]: ★
+                          - generic [ref=e383]: ★
+                        - generic [ref=e384]: General
+                      - paragraph [ref=e385]: "\"Como freelance, gestionar salud y finanzas en un solo lugar me ahorra tiempo y dolores de cabeza. La interfaz es intuitiva y preciosa.\""
+                    - generic [ref=e386]:
+                      - generic [ref=e387]: RS
+                      - generic [ref=e388]:
+                        - paragraph [ref=e389]: Roberto Soler
+                        - paragraph [ref=e390]: Diseñador Autónomo
+                  - generic [ref=e391]:
+                    - generic [ref=e392]:
+                      - generic [ref=e393]:
+                        - generic [ref=e394]:
+                          - generic [ref=e395]: ★
+                          - generic [ref=e396]: ★
+                          - generic [ref=e397]: ★
+                          - generic [ref=e398]: ★
+                          - generic [ref=e399]: ★
+                        - generic [ref=e400]: Cuerpo
+                      - paragraph [ref=e401]: "\"Los recordatorios de hidratación y las pausas activas me ayudan a no estar tan cansada al final de mi jornada de teletrabajo.\""
+                    - generic [ref=e402]:
+                      - generic [ref=e403]: MF
+                      - generic [ref=e404]:
+                        - paragraph [ref=e405]: Marta Ferrero
+                        - paragraph [ref=e406]: Content Manager
+                  - generic [ref=e407]:
+                    - generic [ref=e408]:
+                      - generic [ref=e409]:
+                        - generic [ref=e410]:
+                          - generic [ref=e411]: ★
+                          - generic [ref=e412]: ★
+                          - generic [ref=e413]: ★
+                          - generic [ref=e414]: ★
+                          - generic [ref=e415]: ★
+                        - generic [ref=e416]: Mente
+                      - paragraph [ref=e417]: "\"Pensaba que la salud mental era secundaria, pero el diario guiado y las herramientas de enfoque me han ayudado a lograr mis metas personales.\""
+                    - generic [ref=e418]:
+                      - generic [ref=e419]: PC
+                      - generic [ref=e420]:
+                        - paragraph [ref=e421]: Pablo Castro
+                        - paragraph [ref=e422]: Ingeniero de Caminos
+                - generic [ref=e423]:
+                  - generic [ref=e424]:
+                    - generic [ref=e425]:
+                      - generic [ref=e426]:
+                        - generic [ref=e427]:
+                          - generic [ref=e428]: ★
+                          - generic [ref=e429]: ★
+                          - generic [ref=e430]: ★
+                          - generic [ref=e431]: ★
+                          - generic [ref=e432]: ★
+                        - generic [ref=e433]: Cuerpo
+                      - paragraph [ref=e434]: "\"A mis 65 años, los ejercicios adaptados de bajo impacto y los retos de hábitos diarios me ayudan a sentirme activa y llena de energía. ¡Maravilloso!\""
+                    - generic [ref=e435]:
+                      - generic [ref=e436]: ER
+                      - generic [ref=e437]:
+                        - paragraph [ref=e438]: Elena Rius
+                        - paragraph [ref=e439]: Jubilada
+                  - generic [ref=e440]:
+                    - generic [ref=e441]:
+                      - generic [ref=e442]:
+                        - generic [ref=e443]:
+                          - generic [ref=e444]: ★
+                          - generic [ref=e445]: ★
+                          - generic [ref=e446]: ★
+                          - generic [ref=e447]: ★
+                          - generic [ref=e448]: ★
+                        - generic [ref=e449]: Finanzas
+                      - paragraph [ref=e450]: "\"El control de los gastos hormiga me abrió los ojos. He ahorrado más de 120€ al mes casi sin darme cuenta. Una app imprescindible.\""
+                    - generic [ref=e451]:
+                      - generic [ref=e452]: JL
+                      - generic [ref=e453]:
+                        - paragraph [ref=e454]: Javier López
+                        - paragraph [ref=e455]: Desarrollador de Software
+                  - generic [ref=e456]:
+                    - generic [ref=e457]:
+                      - generic [ref=e458]:
+                        - generic [ref=e459]:
+                          - generic [ref=e460]: ★
+                          - generic [ref=e461]: ★
+                          - generic [ref=e462]: ★
+                          - generic [ref=e463]: ★
+                          - generic [ref=e464]: ★
+                        - generic [ref=e465]: Mente
+                      - paragraph [ref=e466]: "\"Recomiendo las herramientas de Quioba Mente a mis pacientes. El enfoque integral es la clave para un autocuidado diario sostenible.\""
+                    - generic [ref=e467]:
+                      - generic [ref=e468]: CD
+                      - generic [ref=e469]:
+                        - paragraph [ref=e470]: Dra. Carmen Díaz
+                        - paragraph [ref=e471]: Psicóloga Clínica
+                  - generic [ref=e472]:
+                    - generic [ref=e473]:
+                      - generic [ref=e474]:
+                        - generic [ref=e475]:
+                          - generic [ref=e476]: ★
+                          - generic [ref=e477]: ★
+                          - generic [ref=e478]: ★
+                          - generic [ref=e479]: ★
+                          - generic [ref=e480]: ★
+                        - generic [ref=e481]: General
+                      - paragraph [ref=e482]: "\"Como freelance, gestionar salud y finanzas en un solo lugar me ahorra tiempo y dolores de cabeza. La interfaz es intuitiva y preciosa.\""
+                    - generic [ref=e483]:
+                      - generic [ref=e484]: RS
+                      - generic [ref=e485]:
+                        - paragraph [ref=e486]: Roberto Soler
+                        - paragraph [ref=e487]: Diseñador Autónomo
+                  - generic [ref=e488]:
+                    - generic [ref=e489]:
+                      - generic [ref=e490]:
+                        - generic [ref=e491]:
+                          - generic [ref=e492]: ★
+                          - generic [ref=e493]: ★
+                          - generic [ref=e494]: ★
+                          - generic [ref=e495]: ★
+                          - generic [ref=e496]: ★
+                        - generic [ref=e497]: Cuerpo
+                      - paragraph [ref=e498]: "\"Los recordatorios de hidratación y las pausas activas me ayudan a no estar tan cansada al final de mi jornada de teletrabajo.\""
+                    - generic [ref=e499]:
+                      - generic [ref=e500]: MF
+                      - generic [ref=e501]:
+                        - paragraph [ref=e502]: Marta Ferrero
+                        - paragraph [ref=e503]: Content Manager
+                  - generic [ref=e504]:
+                    - generic [ref=e505]:
+                      - generic [ref=e506]:
+                        - generic [ref=e507]:
+                          - generic [ref=e508]: ★
+                          - generic [ref=e509]: ★
+                          - generic [ref=e510]: ★
+                          - generic [ref=e511]: ★
+                          - generic [ref=e512]: ★
+                        - generic [ref=e513]: Mente
+                      - paragraph [ref=e514]: "\"Pensaba que la salud mental era secundaria, pero el diario guiado y las herramientas de enfoque me han ayudado a lograr mis metas personales.\""
+                    - generic [ref=e515]:
+                      - generic [ref=e516]: PC
+                      - generic [ref=e517]:
+                        - paragraph [ref=e518]: Pablo Castro
+                        - paragraph [ref=e519]: Ingeniero de Caminos
+          - generic [ref=e520]:
+            - generic [ref=e521]:
+              - generic [ref=e522]:
+                - generic [ref=e523]:
+                  - img "Quioba" [ref=e525]
+                  - generic [ref=e526]: Quioba
+                - paragraph [ref=e527]: Tu espacio integral para mejorar tu cuerpo, tu mente y tus finanzas sin complicaciones.
+              - generic [ref=e528]:
+                - generic [ref=e529]:
+                  - heading "Compañía" [level=4] [ref=e530]
+                  - link "Quiénes somos" [ref=e531] [cursor=pointer]:
+                    - /url: /quienes-somos
+                  - link "Contacto" [ref=e532] [cursor=pointer]:
+                    - /url: /contacto
+                - generic [ref=e533]:
+                  - heading "Legal" [level=4] [ref=e534]
+                  - link "Política de Cookies" [ref=e535] [cursor=pointer]:
+                    - /url: /cookies
+                  - link "Privacidad" [ref=e536] [cursor=pointer]:
+                    - /url: /privacidad
+                - generic [ref=e537]:
+                  - heading "Síguenos" [level=4] [ref=e538]
+                  - generic [ref=e539]:
+                    - link [ref=e540] [cursor=pointer]:
+                      - /url: "#"
+                      - img [ref=e541]
+                    - link [ref=e543] [cursor=pointer]:
+                      - /url: "#"
+                      - img [ref=e544]
+            - paragraph [ref=e547]: © 2026 Quioba. Todos los derechos reservados.
+    - generic [ref=e548]:
+      - contentinfo [ref=e549]:
+        - generic [ref=e551]:
+          - generic [ref=e552]:
+            - img "Quioba Logo" [ref=e554]
+            - generic [ref=e555]: Quioba
+          - paragraph [ref=e556]: © 2026 Quioba. Todos los derechos reservados.
+          - generic [ref=e557]:
+            - link "Twitter" [ref=e558] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e559]
+            - link "GitHub" [ref=e561] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e562]
+            - link "Instagram" [ref=e565] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e566]
+      - generic [ref=e569]:
+        - link "Quioba" [ref=e571] [cursor=pointer]:
+          - /url: "#start"
+          - img "Quioba" [ref=e575]
+        - link [ref=e577] [cursor=pointer]:
+          - /url: /desktop
+          - img [ref=e580]
+        - link [ref=e584] [cursor=pointer]:
+          - /url: /
+          - img [ref=e587]
+        - link [ref=e592] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e595]
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e600]:
+      - generic [ref=e601]:
+        - generic [ref=e602]:
+          - generic [ref=e603]: 🍪
+          - heading "Valoramos tu privacidad" [level=3] [ref=e604]
+        - paragraph [ref=e605]:
+          - text: Utilizamos cookies propias y de terceros para mejorar nuestros servicios, personalizar el contenido y analizar el tráfico de nuestro sitio web. Al hacer clic en "Aceptar todas", aceptas el uso de todas las cookies. Puedes leer más al respecto en nuestra
+          - link "Política de Cookies" [ref=e606] [cursor=pointer]:
+            - /url: /cookies
+          - text: .
+      - generic [ref=e607]:
+        - button "Rechazar no esenciales" [ref=e608] [cursor=pointer]
+        - button "Aceptar todas" [ref=e609] [cursor=pointer]
+  - alert [ref=e610]

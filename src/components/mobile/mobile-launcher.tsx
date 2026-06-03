@@ -10,7 +10,8 @@ import {
     ShoppingBag, ChefHat, ListTodo, Lock,
     Wallet, CreditCard, Sparkles, Star,
     Pencil, Check, X as XIcon, CheckSquare, ArrowDown,
-    AlertTriangle, Info, Pill, ShieldAlert, Car, Send, Leaf, Brain
+    AlertTriangle, Info, Pill, ShieldAlert, Car, Send, Leaf, Brain, GraduationCap,
+    Mic, Loader2, PenLine, MicOff, Building2
 } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Network } from '@capacitor/network';
@@ -30,7 +31,26 @@ import { fetchPendingTasks, fetchMedicines, fetchInsurances, fetchVehicles } fro
 const IconMap: { [key: string]: any } = {
     Settings, ShoppingCart, ShoppingBag, ChefHat,
     ListTodo, Calendar, FileText, KeyRound, MessageCircle,
-    Monitor, Leaf, Brain
+    Monitor, Leaf, Brain, GraduationCap, Sparkles, Building2
+};
+
+// Supermarket config for shopping list modal
+type SupermarketCfg = { name: string; aliases: string[]; logo?: string; bg: string; text: string; border: string };
+const SHOP_MARKETS: SupermarketCfg[] = [
+    { name: 'Mercadona', aliases: ['mercadona', 'hacendado'], logo: '/images/supermarkets/mercadona.svg', bg: 'bg-emerald-700', text: 'text-white', border: 'border-emerald-800' },
+    { name: 'Carrefour',  aliases: ['carrefour','carrefur'],  logo: '/images/supermarkets/carrefour.svg',  bg: 'bg-blue-700',    text: 'text-white', border: 'border-blue-800' },
+    { name: 'Lidl',       aliases: ['lidl'],                  logo: '/images/supermarkets/lidl.svg',       bg: 'bg-yellow-300',  text: 'text-blue-900', border: 'border-blue-700' },
+    { name: 'DIA',        aliases: ['dia'],                   logo: '/images/supermarkets/dia.svg',        bg: 'bg-red-600',     text: 'text-white', border: 'border-red-700' },
+    { name: 'ALDI',       aliases: ['aldi'],                  logo: '/images/supermarkets/aldi.svg',       bg: 'bg-cyan-700',    text: 'text-white', border: 'border-cyan-800' },
+    { name: 'Alcampo',    aliases: ['alcampo','auchan'],       logo: '/images/supermarkets/alcampo.png',    bg: 'bg-red-500',     text: 'text-white', border: 'border-red-600' },
+    { name: 'Eroski',     aliases: ['eroski'],                logo: '/images/supermarkets/eroski.svg',     bg: 'bg-blue-600',    text: 'text-white', border: 'border-blue-700' },
+    { name: 'El Corte Inglés', aliases: ['el corte ingles','corte ingles','eci'], logo: '/images/supermarkets/el-corte-ingles.svg', bg: 'bg-green-700', text: 'text-white', border: 'border-green-800' },
+    { name: 'Consum',     aliases: ['consum'],                bg: 'bg-orange-500',  text: 'text-white', border: 'border-orange-600' },
+];
+const resolveMarket = (raw?: string | null): SupermarketCfg | null => {
+    if (!raw?.trim()) return null;
+    const n = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return SHOP_MARKETS.find(m => m.aliases.some(a => n.includes(a))) ?? null;
 };
 
 // Fallback apps - used when marketplace_apps table doesn't exist yet
@@ -45,6 +65,9 @@ const FALLBACK_APPS: AppWithStatus[] = [
     { id: 'fb-8', key: 'assistant', name: 'Asistente Quioba', description: 'Tu asistente personal con IA.', icon_key: 'MessageCircle', route: '/apps/mi-hogar/asistente', price: 9.99, category: 'productivity', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-9', key: 'huerto', name: 'Mis Plantas/Huerto', description: 'Identifica y cuida tus plantas con IA.', icon_key: 'Leaf', route: '/apps/huerto', price: 2.99, category: 'lifestyle', is_active: true, isOwned: false, isLocked: true },
     { id: 'fb-10', key: 'meditation', name: 'Pausa', description: 'Meditacion breve, respiracion y espacio mental.', icon_key: 'Brain', route: '/apps/mi-hogar/meditation', price: 0, category: 'lifestyle', is_active: true, isOwned: true, isLocked: false },
+    { id: 'fb-11', key: 'el-campus', name: 'Campus', description: 'Centro académico para alumnos, familias y universidad.', icon_key: 'GraduationCap', route: '/apps/el-campus', price: 0, category: 'productivity', is_active: true, isOwned: true, isLocked: false },
+    { id: 'fb-12', key: 'workspace', name: 'Quioba Studios', description: 'Planifica tus ideas y guiones.', icon_key: 'Sparkles', route: '/apps/mi-hogar/workspace', price: 0, category: 'productivity', is_active: true, isOwned: true, isLocked: false },
+    { id: 'fb-13', key: 'oficina', name: 'Oficina', description: 'Centro de dirección de Quioba.', icon_key: 'Building2', route: '/apps/oficina', price: 0, category: 'utility', is_active: true, isOwned: true, isLocked: false },
 ];
 
 const LOCAL_MEDITATION_APP: AppWithStatus = {
@@ -131,6 +154,31 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
     const [showScanRoster, setShowScanRoster] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
     const [inlineChatInput, setInlineChatInput] = useState('');
+
+    // Quick Task Modal
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [taskText, setTaskText] = useState('');
+    const [taskLoading, setTaskLoading] = useState(false);
+    const [taskListening, setTaskListening] = useState(false);
+    const [taskDate, setTaskDate] = useState('');
+    const [taskPriority, setTaskPriority] = useState<'high' | 'medium' | 'low' | ''>('');
+    const [taskLists, setTaskLists] = useState<{ id: string; name: string }[]>([]);
+    const [selectedListId, setSelectedListId] = useState<string>('');
+    const taskInputRef = useRef<HTMLInputElement>(null);
+
+    // Shopping List Modal
+    const [showShoppingList, setShowShoppingList] = useState(false);
+    const [shoppingItems, setShoppingItems] = useState<{ id: string; name: string; supermarket?: string; is_checked: boolean }[]>([]);
+    const [shoppingLoading, setShoppingLoading] = useState(false);
+    const [selectedSupermarketView, setSelectedSupermarketView] = useState<string | null>(null);
+
+    // Quick Note Modal
+    const [showNoteModal, setShowNoteModal] = useState(false);
+    const [noteText, setNoteText] = useState('');
+    const [noteSaving, setNoteSaving] = useState(false);
+    const [noteListening, setNoteListening] = useState(false);
+    const noteInputRef = useRef<HTMLTextAreaElement>(null);
+    const noteRecognitionRef = useRef<any>(null);
     const [assistantInitialMessage, setAssistantInitialMessage] = useState('');
 
     // Marketplace States
@@ -479,6 +527,159 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
         setEditedName('');
     };
 
+    // --- Shopping List ---
+    const fetchShoppingItems = async () => {
+        if (!user) return;
+        setShoppingLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .select('id, name, supermarket, is_checked')
+                .eq('is_checked', false)
+                .order('created_at', { ascending: false });
+            if (!error && data) setShoppingItems(data);
+        } catch (e) { console.error('fetchShoppingItems', e); }
+        finally { setShoppingLoading(false); }
+    };
+
+    const toggleShoppingItem = async (id: string) => {
+        setShoppingItems(prev => prev.filter(i => i.id !== id));
+        await supabase.from('shopping_items').update({ is_checked: true }).eq('id', id);
+    };
+
+    // --- Quick Note ---
+    const saveQuickNote = async () => {
+        if (!noteText.trim() || !user) return;
+        setNoteSaving(true);
+        try {
+            await supabase.from('journal_entries').insert({
+                user_id: user.id,
+                context_id: `/journal/quick-${Date.now()}`,
+                content: `<p>${noteText.trim()}</p>`,
+                metadata: { title: noteText.trim().slice(0, 60), source: 'quick-note' },
+                tags: [],
+                entry_type: 'note',
+            });
+            setNoteText('');
+            setShowNoteModal(false);
+        } catch (e) { console.error('saveQuickNote', e); }
+        finally { setNoteSaving(false); }
+    };
+
+    const toggleNoteVoice = () => {
+        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+        if (noteListening) {
+            noteRecognitionRef.current?.stop();
+            setNoteListening(false);
+            return;
+        }
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const rec = new SR();
+        noteRecognitionRef.current = rec;
+        rec.lang = 'es-ES';
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.onresult = (e: any) => {
+            const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join('');
+            setNoteText(transcript);
+        };
+        rec.onend = () => setNoteListening(false);
+        rec.start();
+        setNoteListening(true);
+    };
+
+    // --- Quick Task ---
+    const fetchTaskLists = async () => {
+        if (!user || taskLists.length > 0) return;
+        try {
+            const { data: owned } = await supabase
+                .from('task_lists')
+                .select('id, name')
+                .eq('owner_id', user.id)
+                .order('name');
+
+            const { data: membered } = await supabase
+                .from('task_list_members')
+                .select('list_id, task_lists(id, name)')
+                .eq('user_id', user.id)
+                .neq('role', 'viewer');
+
+            const memberLists = (membered ?? [])
+                .map((m: any) => m.task_lists)
+                .filter(Boolean)
+                .filter((l: any) => !(owned ?? []).some((o: any) => o.id === l.id));
+
+            let all = [...(owned ?? []), ...memberLists] as { id: string; name: string }[];
+
+            if (all.length === 0) {
+                const { data: created } = await supabase
+                    .from('task_lists')
+                    .insert([{ name: 'Mis Tareas', owner_id: user.id }])
+                    .select('id, name')
+                    .single();
+                if (created) all = [created];
+            }
+
+            setTaskLists(all);
+            if (all.length > 0 && !selectedListId) setSelectedListId(all[0].id);
+        } catch (e) { console.error('fetchTaskLists', e); }
+    };
+
+    const handleQuickTaskSubmit = async () => {
+        if (!taskText.trim() || !user || !selectedListId) return;
+        setTaskLoading(true);
+        try {
+            const res = await fetch('/api/mi-hogar/quick-task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: taskText.trim() })
+            });
+            const { title, due_date, priority } = await res.json();
+
+            // Manual values override Groq
+            const finalDate = taskDate
+                ? new Date(taskDate).toISOString()
+                : (due_date ?? new Date(Date.now() + 86400000).toISOString());
+            const finalPriority = taskPriority || priority || 'medium';
+
+            await supabase.from('tasks').insert([{
+                user_id: user.id,
+                list_id: selectedListId,
+                is_completed: false,
+                title: title || taskText.trim(),
+                due_date: finalDate,
+                priority: finalPriority
+            }]);
+
+            setTaskText('');
+            setTaskDate('');
+            setTaskPriority('');
+            setShowTaskModal(false);
+            triggerHaptic(ImpactStyle.Heavy);
+        } catch (e) {
+            console.error('quick-task error', e);
+        } finally {
+            setTaskLoading(false);
+        }
+    };
+
+    const startVoiceTask = () => {
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SR) { alert('Tu navegador no soporta voz'); return; }
+        const recognition = new SR();
+        recognition.lang = 'es-ES';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onstart = () => setTaskListening(true);
+        recognition.onresult = (e: any) => {
+            setTaskText(e.results[0][0].transcript);
+            setTaskListening(false);
+        };
+        recognition.onerror = () => setTaskListening(false);
+        recognition.onend = () => setTaskListening(false);
+        recognition.start();
+    };
+
     // --- Quick Apps ---
     const toggleQuickApp = (appKey: string) => {
         setQuickAppKeys(prev => {
@@ -499,7 +700,14 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
         });
     };
 
-    const quickApps = apps.filter(a => quickAppKeys.includes(a.key) && !a.isLocked);
+    const visibleApps = apps.filter(app => {
+        if (app.key === 'workspace' || app.key === 'oficina') {
+            return user?.email === 'todojuntomirar@gmail.com';
+        }
+        return true;
+    });
+
+    const quickApps = visibleApps.filter(a => quickAppKeys.includes(a.key) && !a.isLocked);
 
     // PIN Modal State
     const [showPinModal, setShowPinModal] = useState(false);
@@ -530,7 +738,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             return;
         }
         
-        if (app.key === 'passwords' || app.key === 'documents') {
+        if (app.key === 'passwords' || app.key === 'documents' || app.key === 'workspace') {
             triggerHaptic(ImpactStyle.Light);
             setPendingSecureApp(app);
             setPinInput('');
@@ -563,11 +771,13 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             case 'passwords': return { bg: 'bg-amber-50', text: 'text-amber-600', decoration: 'bg-amber-500', shadow: 'amber' };
             case 'assistant': return { bg: 'bg-violet-50', text: 'text-violet-600', decoration: 'bg-violet-500', shadow: 'violet' };
             case 'huerto': return { bg: 'bg-green-100', text: 'text-green-800', decoration: 'bg-green-800', shadow: 'green' };
+            case 'el-campus': return { bg: 'bg-blue-50', text: 'text-blue-700', decoration: 'bg-blue-600', shadow: 'blue' };
+            case 'workspace': return { bg: 'bg-emerald-50', text: 'text-emerald-600', decoration: 'bg-emerald-500', shadow: 'emerald' };
             default: return { bg: 'bg-slate-50', text: 'text-slate-600', decoration: 'bg-slate-500', shadow: 'slate' };
         }
     };
 
-    const filteredApps = apps.filter(app => 
+    const filteredApps = visibleApps.filter(app => 
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         (app.description && app.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
@@ -798,6 +1008,310 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                 )}
             </AnimatePresence>
 
+            {/* Shopping List Modal */}
+            <AnimatePresence>
+                {showShoppingList && (
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                        className="fixed inset-0 bg-[#f2f2f7] dark:bg-slate-950 z-[90] flex flex-col"
+                    >
+                        {/* Header */}
+                        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-5 pt-12 pb-4 flex items-center gap-3 flex-shrink-0">
+                            {selectedSupermarketView ? (
+                                <button
+                                    onClick={() => setSelectedSupermarketView(null)}
+                                    className="p-2 -ml-1 rounded-full text-slate-500 active:bg-slate-100"
+                                >
+                                    <ChevronRight className="w-5 h-5 rotate-180" />
+                                </button>
+                            ) : null}
+                            <div className="flex-1">
+                                <h2 className="font-black text-slate-900 dark:text-white text-lg leading-tight">
+                                    {selectedSupermarketView ?? 'Lista de la Compra'}
+                                </h2>
+                                <p className="text-xs text-slate-400">
+                                    {selectedSupermarketView
+                                        ? `${shoppingItems.filter(i => (i.supermarket?.trim() || 'Sin supermercado') === selectedSupermarketView).length} productos`
+                                        : `${shoppingItems.length} pendiente${shoppingItems.length !== 1 ? 's' : ''}`}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => { setShowShoppingList(false); setSelectedSupermarketView(null); }}
+                                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500"
+                            >
+                                <XIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-4 py-4">
+                            {shoppingLoading ? (
+                                <div className="flex items-center justify-center py-20">
+                                    <Loader2 className="w-6 h-6 animate-spin text-green-700" />
+                                </div>
+                            ) : shoppingItems.length === 0 ? (
+                                <div className="text-center py-20 text-slate-400">
+                                    <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-25" />
+                                    <p className="text-sm">No hay productos pendientes</p>
+                                </div>
+                            ) : selectedSupermarketView ? (
+                                /* ── Vista productos ── */
+                                <AnimatePresence>
+                                    <div className="space-y-2">
+                                        {shoppingItems
+                                            .filter(i => (i.supermarket?.trim() || 'Sin supermercado') === selectedSupermarketView)
+                                            .map(item => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    layout
+                                                    initial={{ opacity: 0, x: 20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: 60, height: 0, marginBottom: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl px-4 py-3 shadow-sm border border-slate-100 dark:border-slate-800"
+                                                >
+                                                    <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">{item.name}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            triggerHaptic(ImpactStyle.Light);
+                                                            toggleShoppingItem(item.id);
+                                                        }}
+                                                        className="flex items-center gap-1.5 bg-green-600 active:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                        Coger
+                                                    </button>
+                                                </motion.div>
+                                            ))}
+                                    </div>
+                                </AnimatePresence>
+                            ) : (
+                                /* ── Vista supermercados ── */
+                                (() => {
+                                    const groups: Record<string, number> = {};
+                                    shoppingItems.forEach(item => {
+                                        const key = item.supermarket?.trim() || 'Sin supermercado';
+                                        groups[key] = (groups[key] || 0) + 1;
+                                    });
+                                    const sortedKeys = Object.keys(groups).sort((a, b) =>
+                                        a === 'Sin supermercado' ? 1 : b === 'Sin supermercado' ? -1 : a.localeCompare(b)
+                                    );
+                                    return (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {sortedKeys.map(name => {
+                                                const cfg = resolveMarket(name);
+                                                return (
+                                                    <motion.button
+                                                        key={name}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => { triggerHaptic(ImpactStyle.Light); setSelectedSupermarketView(name); }}
+                                                        className="aspect-square bg-white dark:bg-slate-900 rounded-[24px] flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-100 dark:border-slate-800 p-4"
+                                                    >
+                                                        {cfg?.logo ? (
+                                                            <img src={cfg.logo} alt={name} className="w-14 h-14 object-contain" />
+                                                        ) : (
+                                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black border-2 ${cfg ? `${cfg.bg} ${cfg.text} ${cfg.border}` : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                                {name.slice(0, 3).toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center leading-tight">{name}</span>
+                                                        <span className="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 font-semibold px-2 py-0.5 rounded-full">{groups[name]} item{groups[name] !== 1 ? 's' : ''}</span>
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Quick Note Modal */}
+            <AnimatePresence>
+                {showNoteModal && (
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                        className="fixed inset-x-0 bottom-0 bg-white dark:bg-slate-900 rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] z-[90] p-6 pb-10"
+                    >
+                        <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5" />
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="bg-yellow-50 p-2 rounded-xl">
+                                <PenLine className="w-5 h-5 text-yellow-500" />
+                            </div>
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg">Nota rápida</h3>
+                            <button onClick={() => { setShowNoteModal(false); setNoteText(''); }} className="ml-auto p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                <XIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <textarea
+                            ref={noteInputRef}
+                            value={noteText}
+                            onChange={e => setNoteText(e.target.value)}
+                            placeholder="Escribe tu nota..."
+                            rows={4}
+                            className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400 mb-4"
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={toggleNoteVoice}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-semibold text-sm transition-colors ${noteListening ? 'bg-red-100 text-red-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                            >
+                                {noteListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                {noteListening ? 'Parar' : 'Voz'}
+                            </button>
+                            <button
+                                onClick={saveQuickNote}
+                                disabled={!noteText.trim() || noteSaving}
+                                className="flex-1 flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-slate-900 font-bold py-2.5 rounded-2xl text-sm"
+                            >
+                                {noteSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                Guardar en Journal
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Quick Task Modal */}
+            <AnimatePresence>
+                {showTaskModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] bg-slate-900/50 backdrop-blur-sm flex items-end justify-center"
+                        onClick={(e) => { if (e.target === e.currentTarget) { setShowTaskModal(false); setTaskText(''); setTaskDate(''); setTaskPriority(''); } }}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="bg-white rounded-t-[32px] w-full max-w-md p-6 pb-10 shadow-2xl"
+                        >
+                            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-violet-50 p-2.5 rounded-[14px]">
+                                        <CheckSquare className="w-5 h-5 text-violet-600" />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-slate-900">Nueva Tarea</h2>
+                                </div>
+                                <button
+                                    onClick={() => { setShowTaskModal(false); setTaskText(''); setTaskDate(''); setTaskPriority(''); }}
+                                    className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                                >
+                                    <XIcon className="w-5 h-5 text-slate-400" />
+                                </button>
+                            </div>
+
+                            {/* Texto + mic */}
+                            <div className="flex gap-2 mb-4">
+                                <input
+                                    ref={taskInputRef}
+                                    type="text"
+                                    placeholder='Ej: "Llamar al médico mañana a las 10h"'
+                                    value={taskText}
+                                    onChange={(e) => setTaskText(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && !taskLoading && handleQuickTaskSubmit()}
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
+                                />
+                                <button
+                                    onClick={startVoiceTask}
+                                    disabled={taskListening}
+                                    className={`p-3.5 rounded-2xl transition-all flex-shrink-0 ${taskListening ? 'bg-red-500 text-white' : 'bg-violet-100 text-violet-600 hover:bg-violet-200'}`}
+                                >
+                                    {taskListening ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
+                                </button>
+                            </div>
+
+                            {taskListening && (
+                                <p className="text-xs text-center text-red-500 font-medium mb-3 animate-pulse">Escuchando... habla ahora</p>
+                            )}
+
+                            {/* Fecha y hora */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Fecha y hora</label>
+                                <input
+                                    type="datetime-local"
+                                    value={taskDate}
+                                    onChange={(e) => setTaskDate(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Si no pones fecha, Groq la detecta del texto</p>
+                            </div>
+
+                            {/* Prioridad */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Prioridad</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: 'low', label: 'Baja', color: taskPriority === 'low' ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-500' },
+                                        { value: 'medium', label: 'Normal', color: taskPriority === 'medium' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500' },
+                                        { value: 'high', label: 'Alta', color: taskPriority === 'high' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500' },
+                                    ] as const).map(p => (
+                                        <button
+                                            key={p.value}
+                                            onClick={() => setTaskPriority(prev => prev === p.value ? '' : p.value)}
+                                            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${p.color}`}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {!taskPriority && <p className="text-[10px] text-slate-400 mt-1 ml-1">Sin selección → Groq la detecta del texto</p>}
+                            </div>
+
+                            {/* Lista */}
+                            <div className="mb-5">
+                                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Lista</label>
+                                {taskLists.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic">Cargando listas...</p>
+                                ) : (
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                        {taskLists.map(list => (
+                                            <button
+                                                key={list.id}
+                                                onClick={() => setSelectedListId(list.id)}
+                                                className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                                                    selectedListId === list.id
+                                                        ? 'bg-violet-600 text-white shadow-sm'
+                                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                            >
+                                                {list.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Guardar */}
+                            <button
+                                onClick={handleQuickTaskSubmit}
+                                disabled={!taskText.trim() || taskLoading || !selectedListId}
+                                className="w-full bg-violet-600 text-white rounded-2xl py-4 font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 active:scale-95 transition-all"
+                            >
+                                {taskLoading ? (
+                                    <><Loader2 className="w-5 h-5 animate-spin" /> Procesando con IA...</>
+                                ) : (
+                                    <><CheckSquare className="w-5 h-5" /> Guardar Tarea</>
+                                )}
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Offline Indicator */}
             <AnimatePresence>
                 {isOffline && (
@@ -864,441 +1378,108 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     </p>
                 </motion.div>
 
-                <div className="flex justify-between items-start mb-8">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="flex-1 mr-4"
+                {/* Botones principales */}
+                <div className="grid grid-cols-2 gap-3">
+                    {/* Comprar / Despensa */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); setShowScanner(true); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
                     >
-                        <p className="text-slate-400 text-sm font-medium mb-1 tracking-wide">👋 ¡Hola de nuevo!</p>
+                        <div className="bg-orange-50 p-3 rounded-[18px]">
+                            <ShoppingCart className="w-7 h-7 text-orange-500" />
+                        </div>
+                        <div className="text-center px-2">
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">Comprar /</span>
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">Despensa</span>
+                        </div>
+                    </motion.button>
 
-                        {/* Editable Name */}
-                        {isEditingName ? (
-                            <div className="flex items-center gap-2">
-                                <input
-                                    ref={nameInputRef}
-                                    type="text"
-                                    value={editedName}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') saveNickname();
-                                        if (e.key === 'Escape') cancelEditingName();
-                                    }}
-                                    className="text-2xl font-extrabold text-slate-900 tracking-tight bg-white border-2 border-green-800 rounded-xl px-3 py-1 outline-none focus:ring-2 focus:ring-green-100 w-full max-w-[200px]"
-                                    maxLength={20}
-                                />
-                                <button
-                                    onClick={saveNickname}
-                                    disabled={savingName}
-                                    className="p-2 bg-green-800 text-white rounded-xl hover:bg-green-900 transition-colors shadow-sm"
-                                >
-                                    <Check className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={cancelEditingName}
-                                    className="p-2 bg-slate-200 text-slate-600 rounded-xl hover:bg-slate-300 transition-colors"
-                                >
-                                    <XIcon className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                    {user ? (
-                                        profile?.nickname || user?.email?.split('@')[0] || 'Usuario'
-                                    ) : (
-                                        <Link href="/login" className="text-green-800 font-bold decoration-green-100 underline underline-offset-4">
-                                            Iniciar Sesión
-                                        </Link>
-                                    )}
-                                </h1>
-                                <button
-                                    onClick={startEditingName}
-                                    className="p-1.5 text-slate-300 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all"
-                                    title="Cambiar nombre"
-                                >
-                                    <Pencil className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )}
-                    </motion.div>
-                    
-                    <div className="flex items-center gap-3 relative" ref={notifRef}>
-                        <button
-                            onClick={() => {
-                                triggerHaptic(ImpactStyle.Light);
-                                setShowSpotlight(true);
-                            }}
-                            className="p-2 text-slate-400 hover:text-green-800 hover:bg-green-50 rounded-full transition-all active:scale-90"
-                        >
-                            <Search className="w-6 h-6" />
-                        </button>
+                    {/* Tareas */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => {
+                            triggerHaptic(ImpactStyle.Medium);
+                            setShowTaskModal(true);
+                            fetchTaskLists();
+                            setTimeout(() => taskInputRef.current?.focus(), 300);
+                        }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-violet-50 p-3 rounded-[18px]">
+                            <CheckSquare className="w-7 h-7 text-violet-600" />
+                        </div>
+                        <span className="block font-bold text-slate-900 text-xs">Tareas</span>
+                    </motion.button>
 
-                        <button 
-                            onClick={() => {
-                                triggerHaptic(ImpactStyle.Light);
-                                setShowNotifications(!showNotifications);
-                            }}
-                            className="relative p-2 text-slate-400 hover:text-green-800 hover:bg-green-50 rounded-full transition-all active:scale-90"
-                        >
-                            <Bell className="w-6 h-6" />
-                            {notifications.length > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] px-1 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm">
-                                    {notifications.length}
-                                </span>
-                            )}
-                        </button>
-                        
-                        <AnimatePresence>
-                            {showNotifications && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="absolute top-full right-0 mt-2 w-72 bg-white rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 z-50 overflow-hidden"
-                                >
-                                    <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                                        <h3 className="font-bold text-slate-800 text-sm">Notificaciones</h3>
-                                        <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                            {notifications.length} Nuevas
-                                        </span>
-                                    </div>
-                                    <div className="max-h-72 overflow-y-auto p-1">
-                                        {notifications.length === 0 ? (
-                                            <div className="p-4 text-center text-slate-400">
-                                                <Bell className="w-8 h-8 opacity-20 mx-auto mb-2" />
-                                                <p className="text-xs font-medium">No tienes notificaciones</p>
-                                            </div>
-                                        ) : (
-                                            notifications.map(notif => {
-                                                const Icon = notif.icon;
-                                                const bgColors = {
-                                                    error: 'bg-red-50 text-red-600 border-red-100',
-                                                    warning: 'bg-amber-50 text-amber-600 border-amber-100',
-                                                    info: 'bg-blue-50 text-blue-600 border-blue-100'
-                                                };
-                                                return (
-                                                    <div key={notif.id} className="p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer flex gap-3">
-                                                        <div className={`mt-0.5 p-2 rounded-xl flex-shrink-0 border ${bgColors[notif.type]}`}>
-                                                            <Icon className="w-4 h-4" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-bold text-slate-800 leading-tight">{notif.title}</p>
-                                                            <p className="text-[11px] text-slate-500 mt-1 leading-snug">{notif.message}</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    {/* Lista de la Compra */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); fetchShoppingItems(); setShowShoppingList(true); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-green-50 p-3 rounded-[18px]">
+                            <ShoppingBag className="w-7 h-7 text-green-700" />
+                        </div>
+                        <div className="text-center px-2">
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">Lista de la</span>
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">Compra</span>
+                        </div>
+                    </motion.button>
 
-                        <Link href="/profile">
-                            <motion.div
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => triggerHaptic(ImpactStyle.Light)}
-                            >
-                                <Avatar className="w-14 h-14 ring-4 ring-white shadow-xl cursor-pointer">
-                                    <AvatarImage src={profile?.custom_avatar_url || user?.user_metadata?.avatar_url} className="object-cover" />
-                                    <AvatarFallback className="bg-green-800 text-white font-bold text-xl">
-                                        {profile?.nickname?.[0]?.toUpperCase() || 'Q'}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </motion.div>
-                        </Link>
-                    </div>
+                    {/* Farmacia */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); router.push('/apps/mi-hogar/pharmacy'); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-red-50 p-3 rounded-[18px]">
+                            <Pill className="w-7 h-7 text-red-500" />
+                        </div>
+                        <span className="block font-bold text-slate-900 text-xs">Farmacia</span>
+                    </motion.button>
+
+                    {/* Cuadrante */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); setShowScanRoster(true); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-indigo-50 p-3 rounded-[18px]">
+                            <Calendar className="w-7 h-7 text-indigo-600" />
+                        </div>
+                        <span className="block font-bold text-slate-900 text-xs">Cuadrante</span>
+                    </motion.button>
+
+                    {/* Economía */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); router.push('/apps/mi-hogar/savings'); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-amber-50 p-3 rounded-[18px]">
+                            <Wallet className="w-7 h-7 text-amber-500" />
+                        </div>
+                        <span className="block font-bold text-slate-900 text-xs">Economía</span>
+                    </motion.button>
+
+                    {/* Notas rápidas */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); setShowNoteModal(true); setTimeout(() => noteInputRef.current?.focus(), 300); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-yellow-50 p-3 rounded-[18px]">
+                            <PenLine className="w-7 h-7 text-yellow-500" />
+                        </div>
+                        <span className="block font-bold text-slate-900 text-xs">Notas</span>
+                    </motion.button>
                 </div>
 
-                {/* Quick Actions (Replacing Search) */}
-                <Reorder.Group
-                    axis="y"
-                    values={quickActionOrder}
-                    onReorder={handleReorder}
-                    className="grid grid-cols-2 gap-3 mt-4"
-                >
-                    {quickActionOrder.map(id => {
-                        const data = getQuickActionData(id);
-                        if (!data) return null;
-                        const Icon = data.icon;
-                        
-                        const innerBtn = (
-                            <div className="flex items-center gap-3 p-3 bg-white/80 backdrop-blur-md rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-white/60 text-left w-full cursor-grab active:cursor-grabbing hover:bg-white transition-all transform-gpu">
-                                <div className={`p-2.5 rounded-[14px] ${data.colorClass}`}>
-                                    <Icon className="w-5 h-5" />
-                                </div>
-                                <div className="leading-tight">
-                                    <span className="block text-[11px] font-bold text-slate-800">{data.label}</span>
-                                    <span className="block text-[10px] font-medium text-slate-400">{data.sublabel}</span>
-                                </div>
-                            </div>
-                        );
-
-                        return (
-                            <Reorder.Item 
-                                key={data.id} 
-                                value={data.id}
-                                className="w-full"
-                                whileDrag={{ scale: 1.05, zIndex: 10, cursor: "grabbing" }}
-                            >
-                                {data.route ? (
-                                    <Link href={data.route} className="block w-full" draggable="false">
-                                        {innerBtn}
-                                    </Link>
-                                ) : (
-                                    <button onClick={data.action} className="block w-full text-left" draggable="false">
-                                        {innerBtn}
-                                    </button>
-                                )}
-                            </Reorder.Item>
-                        );
-                    })}
-                </Reorder.Group>
             </header>
 
             {/* Main Content */}
-            <main className="px-6 relative z-10">
-                {/* Quick Access Section */}
-                {quickApps.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-8"
-                    >
-                        <div className="flex items-center justify-between mb-4 px-1">
-                            <h2 className="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-2">
-                                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                                Acceso Rápido
-                            </h2>
-                            <span className="text-[10px] font-bold text-slate-400">{quickApps.length}/3</span>
-                        </div>
-                        <div className="flex gap-4 overflow-x-auto no-scrollbar">
-                            {quickApps.map((app) => {
-                                const Icon = IconMap[app.icon_key] || LayoutGrid;
-                                const style = getAppStyle(app.key);
-                                return (
-                                    <motion.button
-                                        key={`quick-${app.id}`}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => handleAppClick(app)}
-                                        className="flex flex-col items-center gap-2 min-w-[80px]"
-                                    >
-                                        <div className={`w-16 h-16 ${style.bg} ${style.text} rounded-[22px] flex items-center justify-center border border-white/50 shadow-md transition-transform hover:scale-105`}>
-                                            <Icon className="w-7 h-7" />
-                                        </div>
-                                        <span className="text-[11px] font-semibold text-slate-600 text-center leading-tight w-[80px] truncate">
-                                            {app.name}
-                                        </span>
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* AI Inline Input */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.25 }}
-                    className="mb-6 relative"
-                >
-                    <form onSubmit={(e) => {
-                        e.preventDefault();
-                        if (inlineChatInput.trim()) {
-                            triggerHaptic(ImpactStyle.Light);
-                            setAssistantInitialMessage(inlineChatInput.trim());
-                            setInlineChatInput('');
-                            setShowAssistant(true);
-                        }
-                    }}>
-                        <div className="relative flex items-center shadow-[0_4px_16px_rgba(0,0,0,0.04)] rounded-[20px] bg-white border border-slate-100 overflow-hidden group focus-within:ring-2 focus-within:ring-green-100 transition-all">
-                            <div className="pl-4 pr-2 text-violet-500">
-                                <Sparkles className="w-5 h-5 animate-pulse" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Pregúntale a Quioba... (ej. ¿Qué tareas tengo hoy?)"
-                                value={inlineChatInput}
-                                onChange={(e) => setInlineChatInput(e.target.value)}
-                                className="flex-1 py-4 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400 font-medium"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!inlineChatInput.trim()}
-                                className="p-3 mr-1 bg-violet-50 text-violet-600 rounded-xl hover:bg-violet-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Send className="w-4 h-4 ml-0.5" />
-                            </button>
-                        </div>
-                    </form>
-                </motion.div>
-
-                {/* AI Smart Suggestion Widget */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="mb-8 relative"
-                >
-                    <div className={`p-4 rounded-[24px] flex items-start gap-4 shadow-sm relative overflow-hidden group border transition-colors duration-500 ${
-                        timeTheme === 'morning' ? 'bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-100' :
-                        timeTheme === 'afternoon' ? 'bg-gradient-to-br from-green-700/10 to-green-800/5 border-green-100' :
-                        'bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border-indigo-100'
-                    }`}>
-                        <div className="absolute inset-0 bg-white/40 group-hover:bg-white/60 transition-colors pointer-events-none" />
-                        
-                        <div className={`relative z-10 p-2.5 rounded-[16px] shadow-sm transition-colors duration-500 ${
-                            timeTheme === 'morning' ? 'bg-amber-100 text-amber-600' :
-                            timeTheme === 'afternoon' ? 'bg-green-100 text-green-800' :
-                            'bg-indigo-100 text-indigo-600'
-                        }`}>
-                            <Sparkles className="w-5 h-5 animate-pulse" />
-                        </div>
-                        
-                        <div className="relative z-10 flex-1">
-                            <h3 className="text-sm font-bold text-slate-800 mb-1">
-                                {timeTheme === 'morning' ? '¡Buenos días!' : 
-                                 timeTheme === 'afternoon' ? '¡Buenas tardes!' : '¡A relajar!'}
-                            </h3>
-                            <p className="text-xs font-medium text-slate-600 leading-snug">
-                                {timeTheme === 'morning' ? 'Revisé tu agenda y tienes 2 tareas pendientes hoy. ¿Las organizamos?' : 
-                                 timeTheme === 'afternoon' ? 'Es buen momento para pensar en la cena. Chef IA tiene 3 recetas listas para ti.' : 
-                                 'He silenciado las notificaciones no críticas para que descanses.'}
-                            </p>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Apps Grid */}
-                <div className="flex items-center justify-between mb-5 px-1">
-                    <h2 className="font-extrabold text-xl text-slate-900 tracking-tight">Mis Aplicaciones</h2>
-                    <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
-                        {apps.filter(a => a.isOwned).length} Activas
-                    </span>
-                </div>
-
-                {loadingApps ? (
-                    <div className="grid grid-cols-2 gap-5 animate-pulse">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-40 bg-white/50 rounded-[28px]" />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 gap-5 mb-20">
-                        {apps.map((app) => {
-                            const Icon = IconMap[app.icon_key] || LayoutGrid;
-                            const style = getAppStyle(app.key);
-                            const isQuick = quickAppKeys.includes(app.key);
-
-                            return (
-                                <motion.button
-                                    key={app.id}
-                                    whileHover={{ y: -4 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleAppClick(app)}
-                                    className={`
-                                        bg-white/70 backdrop-blur-md p-6 rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] 
-                                        border border-white/60 flex flex-col items-start text-left relative overflow-hidden group
-                                        ${app.isLocked ? 'opacity-80 grayscale-[0.3]' : ''}
-                                    `}
-                                >
-                                    {/* Quick App Star Toggle */}
-                                    {!app.isLocked && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleQuickApp(app.key);
-                                            }}
-                                            className={`absolute top-3 right-3 p-1.5 rounded-full transition-all z-20 ${
-                                                isQuick
-                                                    ? 'text-amber-400 bg-amber-50'
-                                                    : 'text-slate-200 hover:text-amber-300 hover:bg-amber-50/50'
-                                            }`}
-                                            title={isQuick ? 'Quitar de rápidos' : 'Añadir a rápidos'}
-                                        >
-                                            <Star className={`w-4 h-4 ${isQuick ? 'fill-amber-400' : ''}`} />
-                                        </button>
-                                    )}
-
-                                    {/* App Icon Circle */}
-                                    <div className={`w-12 h-12 ${app.isLocked ? 'bg-slate-100 text-slate-400' : style.bg + ' ' + style.text} rounded-[18px] flex items-center justify-center mb-4 border border-white/50 shadow-sm z-10 relative transition-transform group-hover:scale-110`}>
-                                        {app.isLocked ? <Lock className="w-5 h-5" /> : <Icon className="w-6 h-6" />}
-                                    </div>
-
-                                    {app.isLocked && (
-                                        <div className="absolute top-4 right-4 bg-slate-900/10 p-1.5 rounded-full backdrop-blur-sm">
-                                            <ShoppingCart className="w-3 h-3 text-slate-600" />
-                                        </div>
-                                    )}
-
-                                    <h4 className="font-bold text-slate-900 text-base leading-tight w-full truncate">
-                                        {app.name}
-                                    </h4>
-
-                                    <p className="text-[11px] font-medium text-slate-500 mt-1 leading-tight mb-3 line-clamp-1">
-                                        {app.description}
-                                    </p>
-
-                                    {/* Price Tag or Progress Bar */}
-                                    {app.isLocked ? (
-                                        <div className="mt-auto flex items-center gap-1.5 bg-violet-100 px-2 py-1 rounded-lg">
-                                            <Sparkles className="w-3 h-3 text-violet-600" />
-                                            <span className="text-xs font-bold text-violet-700">{app.price}€</span>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-auto w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                                            <motion.div
-                                                className={`h-full ${style.decoration}`}
-                                                initial={{ width: 0 }}
-                                                animate={{ width: "100%" }}
-                                                transition={{ duration: 1.5, delay: 0.2 }}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {/* Decorative Blob */}
-                                    <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-[60px] -mr-8 -mt-8 pointer-events-none transition-transform group-hover:scale-110 
-                                        ${app.isLocked ? 'bg-slate-200/20' : style.text.replace('text-', 'bg-').replace('600', '500') + '/5'}
-                                    `} />
-                                </motion.button>
-                            );
-                        })}
-                    </div>
-                )}
-            </main>
-
-            {/* Assistant Floating Panel */}
-            {showAssistant && (
-                <motion.div
-                    initial={{ y: '100%' }}
-                    animate={{ y: 0 }}
-                    exit={{ y: '100%' }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    className="fixed bottom-0 left-0 right-0 h-[25vh] bg-white dark:bg-slate-900 rounded-t-[24px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] z-[60] overflow-hidden"
-                >
-                    <div className="h-full flex flex-col">
-                        <div className="flex items-center justify-between px-4 py-2 border-b bg-violet-50 dark:bg-violet-900/20">
-                            <span className="font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-2">
-                                <MessageCircle className="w-4 h-4" /> Asistente Quioba
-                            </span>
-                            <button
-                                onClick={() => setShowAssistant(false)}
-                                className="p-1 hover:bg-violet-100 dark:hover:bg-violet-800/30 rounded-full"
-                            >
-                                <XIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <ChatInterface userId={user?.id || ''} userName={profile?.nickname} compact />
-                        </div>
-                    </div>
-                </motion.div>
-            )}
+            <main className="px-6 relative z-10" />
 
             {/* Dynamic Bottom Navigation is now handled globally by MobileNav */}
 

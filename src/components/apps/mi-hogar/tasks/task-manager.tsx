@@ -366,6 +366,31 @@ export default function TaskManager() {
             .then(({ data }) => { if (data) setMedicines(data); });
     }, [user]);
 
+    const handleTakeMedicine = async (medicineId: string, slotTime: string) => {
+        const med = medicines.find(m => m.id === medicineId);
+        if (!med) return;
+        // Inline pharmacy meta parse (formato {pharma:{...}}\nrest)
+        const PHARMA_RE = /^\{pharma:(\{[\s\S]*?\})\}\n?/;
+        const desc = med.description || '';
+        const match = desc.match(PHARMA_RE);
+        let meta: any = {};
+        const rest = match ? desc.replace(PHARMA_RE, '') : desc;
+        if (match) { try { meta = JSON.parse(match[1]); } catch { /* ignore */ } }
+        // Registrar toma
+        const [hh, mm] = slotTime.split(':').map(Number);
+        const when = new Date(); when.setHours(hh, mm, 0, 0);
+        const intakes = [...(meta.intakes || []), when.toISOString()];
+        let newMeta: any = { ...meta, intakes };
+        if (newMeta.stock && newMeta.stock.current > 0) {
+            newMeta = { ...newMeta, stock: { ...newMeta.stock, current: Math.max(0, newMeta.stock.current - 1) } };
+        }
+        const newDescription = `{pharma:${JSON.stringify(newMeta)}}\n${rest}`;
+        const { error } = await supabase.from('medicines').update({ description: newDescription }).eq('id', medicineId);
+        if (error) { toast.error('Error al registrar toma'); return; }
+        setMedicines(prev => prev.map(p => p.id === medicineId ? { ...p, description: newDescription } : p));
+        toast.success(`✓ ${med.name} marcado como tomado`);
+    };
+
     useEffect(() => {
         const interval = setInterval(() => {
             const now = new Date();
@@ -865,6 +890,21 @@ export default function TaskManager() {
                                         "flex items-center gap-3 px-3 py-2 transition-colors",
                                         slot.taken ? 'opacity-50' : past ? 'bg-rose-50/60 dark:bg-rose-900/10' : ''
                                     )}>
+                                        {/* Botón tomar / tomado */}
+                                        <button
+                                            onClick={() => !slot.taken && void handleTakeMedicine(slot.medicineId, slot.time)}
+                                            disabled={slot.taken}
+                                            className={cn(
+                                                "shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                                slot.taken
+                                                    ? 'border-emerald-400 bg-emerald-400 cursor-default'
+                                                    : 'border-amber-400 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer'
+                                            )}
+                                            title={slot.taken ? 'Ya tomado' : 'Marcar como tomado'}
+                                        >
+                                            {slot.taken && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                                        </button>
+
                                         <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base shrink-0" style={{ backgroundColor: `${formMeta.color}20` }}>
                                             {formMeta.icon}
                                         </div>

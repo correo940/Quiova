@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "WEBHOOK_SECURITY_MODE": "permissive",
+        "N8N_API_URL": "http://localhost:5678",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzBjZmE0MS0wZWFmLTQxYzAtYmQyMy0zNmRhNjFhMDMyYmQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZTMyNjJhOWItYjMwOS00ZTBiLWEyZWMtNDU0MmNjODA0MTM5IiwiaWF0IjoxNzc5OTY0MDcyfQ.l-dmIcj5XP9_z7pG9VTSPIHxza1e_oxWhTO-rJg75Lc"
+      }
+    }
+  }
+}
