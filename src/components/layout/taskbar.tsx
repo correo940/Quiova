@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Newspaper } from 'lucide-react';
+import { Home, User, Newspaper, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
@@ -67,6 +67,13 @@ export default function Taskbar() {
                     border: 'border-violet-300/50',
                     glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-violet-400/20 after:rounded-3xl after:blur-md after:-z-10'
                 };
+            case 'apps':
+                return {
+                    bg: 'bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-lg shadow-indigo-500/30',
+                    icon: 'text-white drop-shadow-sm',
+                    border: 'border-indigo-300/50',
+                    glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-indigo-400/20 after:rounded-3xl after:blur-md after:-z-10'
+                };
             default:
                 return { bg: 'bg-transparent', icon: 'text-slate-500', border: 'border-transparent', glow: '' };
         }
@@ -122,6 +129,25 @@ export default function Taskbar() {
             href: '/desktop',
         },
         {
+            id: 'apps',
+            label: 'Apps',
+            isMobileOnly: true,
+            icon: (active: boolean) => {
+                const styles = getIconStyles('apps', active);
+                return (
+                    <div className={cn(
+                        "relative w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 border shadow-sm",
+                        styles.bg,
+                        styles.border,
+                        styles.glow
+                    )}>
+                        <LayoutGrid className={cn("w-6 h-6", styles.icon)} strokeWidth={active ? 2.5 : 2} />
+                    </div>
+                );
+            },
+            href: '/',
+        },
+        {
             id: 'articles',
             label: 'Artículos',
             icon: (active: boolean) => {
@@ -137,7 +163,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/',
+            href: '/articles',
         },
         {
             id: 'profile',
@@ -170,6 +196,8 @@ export default function Taskbar() {
                 )}
             >
                 {apps.map((app) => {
+                    if (app.isMobileOnly && !isMobile) return null;
+
                     const isActive = !!(app.isStart
                         ? isStartMenuOpen
                         : (pathname === app.href || (app.href !== '/' && pathname?.startsWith(app.href))));
