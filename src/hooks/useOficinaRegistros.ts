@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 import type {
     ConsensusResult,
     CouncilReport,
@@ -161,7 +162,7 @@ interface Registros {
     producciones: ProduccionVideo[];
 }
 
-const KEY = 'quioba_oficina_registros_v1';
+const KEY = 'quioba_oficina_registros_v2';
 const DEFAULTS: Registros = {
     informes: [],
     tareas: [],
@@ -225,19 +226,62 @@ function load(): Registros {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
+async function syncFromSupabase(): Promise<Registros | null> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        const { data, error } = await supabase
+            .from('oficina_registros')
+            .select('data')
+            .eq('user_id', user.id)
+            .single();
+        if (error || !data) return null;
+        return { ...DEFAULTS, ...(data.data as Partial<Registros>) };
+    } catch {
+        return null;
+    }
+}
+
+async function syncToSupabase(registros: Registros): Promise<void> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from('oficina_registros').upsert({
+            user_id: user.id,
+            data: registros,
+            updated_at: new Date().toISOString(),
+        });
+    } catch {
+        // Fallo silencioso — localStorage actúa como caché
+    }
+}
+
 export function useOficinaRegistros() {
     const [state, setState] = useState<Registros>(DEFAULTS);
     const [cargando, setCargando] = useState(true);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        setState(load());
+        // Carga inmediata desde localStorage
+        const local = load();
+        setState(local);
         setCargando(false);
+
+        // Luego carga desde Supabase (fuente de verdad cross-device)
+        syncFromSupabase().then(server => {
+            if (!server) return;
+            setState(server);
+            localStorage.setItem(KEY, JSON.stringify(server));
+        });
     }, []);
 
     const update = useCallback((fn: (prev: Registros) => Registros) => {
         setState(prev => {
             const next = fn(prev);
             localStorage.setItem(KEY, JSON.stringify(next));
+            // Guardado en Supabase con debounce de 2s
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = setTimeout(() => syncToSupabase(next), 2000);
             return next;
         });
     }, []);

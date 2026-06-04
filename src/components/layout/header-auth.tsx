@@ -169,12 +169,15 @@ export default function HeaderAuth() {
 
                 <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
 
-                <Button variant="default" size="sm" asChild className="hidden lg:flex bg-green-700 hover:bg-green-800 text-white h-8">
-                    <Link href="/desktop">
-                        <LayoutDashboard className="mr-2 h-3.5 w-3.5" />
-                        Mi Panel
+                {user.email === 'todojuntomirar@gmail.com' && (
+                    <Link
+                        href="/apps/oficina"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-white shadow-md hover:scale-110 transition-transform text-[11px] font-black tracking-tight"
+                        title="La Oficina"
+                    >
+                        OF
                     </Link>
-                </Button>
+                )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className="h-9 w-9 rounded-full flex items-center justify-center bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer text-xl">
