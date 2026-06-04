@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Landmark, Save } from 'lucide-react';
+import { Landmark, Save, Link2 } from 'lucide-react';
+
+type LinkableAccount = { id: string; name: string; bank_name?: string; parent_account_id?: string | null };
 
 const BANKS = [
     { name: 'BBVA', color: '#004481', logo: 'https://www.google.com/s2/favicons?domain=bbva.es&sz=128', url: 'https://www.bbva.es' },
@@ -22,18 +24,22 @@ const BANKS = [
     { name: 'Otro', color: '#64748b', logo: null, url: null },
 ];
 
-export default function AddAccountDialog({ 
-    open, 
-    onOpenChange, 
+export default function AddAccountDialog({
+    open,
+    onOpenChange,
     userId,
-    onSuccess 
-}: { 
-    open: boolean; 
+    accounts = [],
+    onSuccess
+}: {
+    open: boolean;
     onOpenChange: (open: boolean) => void;
     userId: string;
+    accounts?: LinkableAccount[];
     onSuccess: () => void;
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLinked, setIsLinked] = useState(false);
+    const [parentAccountId, setParentAccountId] = useState('');
     const [form, setForm] = useState({
         name: '',
         bank_name: 'Efectivo',
@@ -41,6 +47,9 @@ export default function AddAccountDialog({
         account_type: 'libre',
         color: '#F5C400' // Quioba Gold default
     });
+
+    // Solo cuentas independientes pueden ser principales (un sobre no puede tener sobres)
+    const linkTargets = accounts.filter(a => !a.parent_account_id);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,11 +62,14 @@ export default function AddAccountDialog({
                 bank_name: form.bank_name,
                 current_balance: parseFloat(form.current_balance) || 0,
                 color: form.color,
-                logo_url: bankInfo ? bankInfo.logo : null
+                logo_url: bankInfo ? bankInfo.logo : null,
+                parent_account_id: isLinked && parentAccountId ? parentAccountId : null
             });
 
             if (error) throw error;
             toast.success('Cuenta creada con éxito');
+            setIsLinked(false);
+            setParentAccountId('');
             onSuccess();
             onOpenChange(false);
         } catch (error) {
@@ -162,6 +174,39 @@ export default function AddAccountDialog({
                         </div>
                     </div>
 
+
+                    {linkTargets.length > 0 && (
+                        <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isLinked}
+                                    onChange={e => setIsLinked(e.target.checked)}
+                                    className="h-4 w-4 accent-amber-500"
+                                />
+                                <span className="flex items-center gap-1.5 text-sm font-semibold text-amber-900">
+                                    <Link2 className="w-4 h-4" />
+                                    Vincular a otra cuenta
+                                </span>
+                            </label>
+                            <p className="text-[11px] leading-snug text-amber-700/80">
+                                El dinero se queda físicamente aquí (sigue generando intereses), pero contará como disponible
+                                para la cuenta principal. Ideal para ahorrar en una cuenta al 3% y poder gastarlo desde la del día a día.
+                            </p>
+                            {isLinked && (
+                                <select
+                                    value={parentAccountId}
+                                    onChange={e => setParentAccountId(e.target.value)}
+                                    className="flex h-10 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                >
+                                    <option value="">Selecciona la cuenta principal…</option>
+                                    {linkTargets.map(a => (
+                                        <option key={a.id} value={a.id}>🗂 Vincular a: {a.name}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    )}
 
                     <div className="pt-4 flex justify-end gap-2">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl text-slate-500 hover:text-slate-800">

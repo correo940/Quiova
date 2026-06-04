@@ -6,6 +6,11 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 const AccountDetailDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/account-detail-dialog'), { ssr: false });
 const AddAccountDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/add-account-dialog'), { ssr: false });
+const BankStatementImporter = dynamic(() => import('@/components/apps/mi-hogar/savings/bank-statement-importer'), { ssr: false });
+const PendingBalanceTab = dynamic(() => import('@/components/apps/mi-hogar/savings/pending-balance-tab'), { ssr: false });
+const ResetDataDialog = dynamic(() => import('@/components/apps/mi-hogar/savings/reset-data-dialog'), { ssr: false });
+import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savings-notification-settings';
+import type { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { toast } from 'sonner';
@@ -165,6 +170,8 @@ export default function SavingsV2Preview() {
     const [accountTransactions, setAccountTransactions] = useState<SavingsTransaction[]>([]);
     const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
     const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+    const [isImporterOpen, setIsImporterOpen] = useState(false);
+    const [isResetOpen, setIsResetOpen] = useState(false);
     const [passwords, setPasswords] = useState<any[]>([]);
 
     const selectedAccountPasswordId = selectedAccount?.password_id || null;
@@ -762,6 +769,38 @@ export default function SavingsV2Preview() {
         } catch (error) {
             console.error(error);
             toast.error('Error al eliminar cuenta');
+        }
+    };
+
+    const handleResetData = async (options: ResetOptions) => {
+        const uid = user?.id;
+        if (!uid) return;
+        try {
+            if (options.accounts) {
+                if (options.accountDeletionMode === 'single' && options.selectedAccountId) {
+                    await supabase.from('savings_accounts').delete().eq('id', options.selectedAccountId);
+                } else {
+                    await supabase.from('savings_accounts').delete().eq('user_id', uid);
+                }
+            } else if (options.transactions) {
+                const accIds = accounts.map(a => a.id);
+                if (accIds.length) {
+                    await supabase.from('savings_account_transactions').delete().in('account_id', accIds);
+                }
+                await supabase.from('savings_accounts').update({ current_balance: 0, envelope_spent: 0 }).eq('user_id', uid);
+            }
+            if (options.goals) await supabase.from('savings_goals').delete().eq('user_id', uid);
+            if (options.recurring) await supabase.from('savings_recurring_items').delete().eq('user_id', uid);
+            if (options.pending) {
+                await supabase.from('pending_balance_expenses').delete().eq('user_id', uid);
+                await supabase.from('pending_balance_projects').delete().eq('user_id', uid);
+            }
+            toast.success('Datos reseteados');
+            await fetchData(uid);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al resetear los datos');
+            throw error;
         }
     };
 
@@ -1427,6 +1466,7 @@ export default function SavingsV2Preview() {
                             <div className="qf-ai-badge">
                                 <i className="ti ti-sparkles" aria-hidden="true"></i> IA activa
                             </div>
+                            <SavingsNotificationSettings />
                         </div>
                     </div>
 
@@ -1551,7 +1591,7 @@ export default function SavingsV2Preview() {
                     <button className="qf-btn" onClick={() => toast.info('Transferencias en desarrollo')}>
                         <i className="ti ti-arrows-right-left" aria-hidden="true"></i> Transferir
                     </button>
-                    <button className="qf-btn" onClick={() => toast.info('Importación de extractos bancarios en desarrollo')}>
+                    <button className="qf-btn" onClick={() => setIsImporterOpen(true)}>
                         <i className="ti ti-upload" aria-hidden="true"></i> Importar
                     </button>
                     <button className="qf-btn" onClick={async () => {
@@ -1560,6 +1600,9 @@ export default function SavingsV2Preview() {
                         toast.success('Saldos sincronizados', { id: 'sync' });
                     }}>
                         <i className="ti ti-refresh" aria-hidden="true"></i> Sincronizar
+                    </button>
+                    <button className="qf-btn" style={{ color: '#dc2626', borderColor: '#dc262640', marginLeft: 'auto' }} onClick={() => setIsResetOpen(true)}>
+                        <i className="ti ti-trash" aria-hidden="true"></i> Resetear
                     </button>
                 </div>
 
@@ -1677,17 +1720,36 @@ export default function SavingsV2Preview() {
                             <div style={{ fontSize: '12px', color: '#B8940A', marginTop: '4px', marginBottom: '16px' }}>{accounts.length} cuentas y tarjetas registradas</div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(245,196,0,0.15)', paddingTop: '15px', marginTop: 'auto' }}>
-                                {accounts.map(acc => (
-                                    <div key={acc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7A6200', fontWeight: '500' }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: acc.color || '#F5C400' }}></span>
-                                            {acc.name}
+                                {accounts.map(acc => {
+                                    const parent = acc.parent_account_id ? accounts.find(a => a.id === acc.parent_account_id) : null;
+                                    const spent = acc.envelope_spent || 0;
+                                    const owedToMe = accounts.filter(a => a.parent_account_id === acc.id).reduce((s, e) => s + (e.envelope_spent || 0), 0);
+                                    return (
+                                        <div key={acc.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7A6200', fontWeight: '500' }}>
+                                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: acc.color || '#F5C400' }}></span>
+                                                    {parent && <span title={`Vinculada a ${parent.name}`}>🗂</span>}
+                                                    {acc.name}
+                                                </div>
+                                                <div style={{ fontWeight: '600', color: (acc.current_balance || 0) < 0 ? '#dc2626' : '#16a34a' }}>
+                                                    {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                </div>
+                                            </div>
+                                            {parent && spent > 0 && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingLeft: '16px' }}>
+                                                    <span style={{ color: '#16a34a' }}>Disponible: {(acc.current_balance - spent).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                                    <span style={{ color: '#b45309' }}>Pendiente a {parent.name}: {spent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                                </div>
+                                            )}
+                                            {owedToMe > 0 && (
+                                                <div style={{ fontSize: '11px', paddingLeft: '16px', color: '#b45309' }}>
+                                                    Incluye {owedToMe.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })} pendiente en cuentas vinculadas
+                                                </div>
+                                            )}
                                         </div>
-                                        <div style={{ fontWeight: '600', color: (acc.current_balance || 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                            {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="qf-card">
@@ -1763,7 +1825,9 @@ export default function SavingsV2Preview() {
                                                         </span>
                                                     </div>
                                                     <div className="qf-bank-card-type" style={{ fontSize: '11px', opacity: 0.85 }}>
-                                                        {acc.interest_rate ? `${acc.interest_rate}% TAE` : 'Ahorro / Corriente'}
+                                                        {acc.parent_account_id
+                                                            ? `🗂 Vinculada a ${accounts.find(a => a.id === acc.parent_account_id)?.name || '...'}`
+                                                            : (acc.interest_rate ? `${acc.interest_rate}% TAE` : 'Ahorro / Corriente')}
                                                     </div>
                                                 </div>
                                                 <div className="qf-bank-card-wireless" style={{ opacity: 0.8 }}>
@@ -1918,7 +1982,9 @@ export default function SavingsV2Preview() {
                                                                             </span>
                                                                         </div>
                                                                         <div className="qf-bank-card-type" style={{ fontSize: '10px', opacity: 0.85 }}>
-                                                                            {acc.interest_rate ? `${acc.interest_rate}% TAE` : 'Ahorro / Corriente'}
+                                                                            {acc.parent_account_id
+                                                                                ? `🗂 Vinculada a ${accounts.find(a => a.id === acc.parent_account_id)?.name || '...'}`
+                                                                                : (acc.interest_rate ? `${acc.interest_rate}% TAE` : 'Ahorro / Corriente')}
                                                                         </div>
                                                                     </div>
                                                                     <div className="qf-bank-card-wireless" style={{ opacity: 0.8 }}>
@@ -2173,61 +2239,9 @@ export default function SavingsV2Preview() {
 
                 {/* PENDING */}
                 <div className={`qf-section ${activeTab === 'pending' ? 'active' : ''}`}>
-                    <div className="qf-grid2" style={{ marginBottom: '1.25rem' }}>
-                        <div className="qf-card qf-highlight">
-                            <div className="qf-card-title"><i className="ti ti-clock" aria-hidden="true"></i> Pendiente de reposición</div>
-                            <div style={{ fontSize: '28px', fontWeight: 500, color: '#7A6200' }}>
-                                {pendingTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#B8940A', marginTop: '4px' }}>
-                                {pendingExpenses.length} gastos pendientes de liquidar
-                            </div>
-                        </div>
-                        <div className="qf-card">
-                            <div className="qf-card-title"><i className="ti ti-camera" aria-hidden="true"></i> Escanear ticket con IA</div>
-                            <div style={{ border: '1.5px dashed #F5C40070', borderRadius: 'var(--border-radius-md)', padding: '1.5rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => toast.info('Abre la aplicación actual (V1) para escanear tickets reales utilizando nuestro motor OCR con IA.')}>
-                                <i className="ti ti-camera" style={{ fontSize: '28px', color: '#F5C400', display: 'block', marginBottom: '8px' }} aria-hidden="true"></i>
-                                <div style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>Toca para escanear un recibo</div>
-                                <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Auto-rellena importe y comercio ↗</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="qf-card">
-                        <div className="qf-card-title" style={{ justifyContent: 'space-between' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><i className="ti ti-receipt" aria-hidden="true"></i> Gastos pendientes de reposición</span>
-                            <button className="qf-btn primary" style={{ padding: '5px 12px' }} onClick={() => toast.info('Añadir gasto en desarrollo')}>
-                                <i className="ti ti-plus" aria-hidden="true"></i> Añadir gasto
-                            </button>
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="qf-table">
-                                <thead><tr><th>Concepto</th><th>Comercio</th><th>Fecha</th><th>Importe</th><th>Estado</th></tr></thead>
-                                <tbody>
-                                    {pendingExpenses.map(e => (
-                                        <tr key={e.id}>
-                                            <td style={{ fontWeight: '500' }}>{e.description || e.name || 'Gasto sin concepto'}</td>
-                                            <td>{e.merchant || 'General'}</td>
-                                            <td>{e.date ? format(new Date(e.date), 'dd MMM', { locale: es }) : '—'}</td>
-                                            <td className="amount-neg">-{e.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                                            <td>
-                                                <span className={e.repay_status === 'partial' ? 'badge-risk' : 'badge-warn'}>
-                                                    {e.repay_status === 'partial' ? 'Parcial' : 'Pendiente'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {pendingExpenses.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '20px 0' }}>
-                                                ¡No tienes gastos pendientes de reposición! 🎉
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    {activeTab === 'pending' && user && (
+                        <PendingBalanceTab userId={user.id} accounts={accounts} onBalanceChange={() => fetchData(user.id)} />
+                    )}
                 </div>
             </div>
 
@@ -2255,7 +2269,27 @@ export default function SavingsV2Preview() {
                     open={isAddAccountOpen}
                     onOpenChange={setIsAddAccountOpen}
                     userId={user.id}
+                    accounts={accounts}
                     onSuccess={() => fetchData(user.id)}
+                />
+            )}
+
+            {user && (
+                <BankStatementImporter
+                    open={isImporterOpen}
+                    onOpenChange={setIsImporterOpen}
+                    accounts={accounts}
+                    userId={user.id}
+                    onImportComplete={() => fetchData(user.id)}
+                />
+            )}
+
+            {user && (
+                <ResetDataDialog
+                    isOpen={isResetOpen}
+                    onClose={() => setIsResetOpen(false)}
+                    onConfirm={handleResetData}
+                    accounts={accounts}
                 />
             )}
         </>

@@ -619,13 +619,16 @@ export default function AccountDetailDialog({
                                             </div>
 
                                             {account.parent_account_id && transactionKind === 'expense' && (
-                                                <div className="flex items-center gap-2 mt-2 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg">
+                                                <div className="flex items-start gap-2 mt-2 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg">
                                                     <Switch
                                                         checked={form.is_envelope_spend}
                                                         onCheckedChange={(checked) => setForm({ ...form, is_envelope_spend: checked })}
-                                                        className="data-[state=checked]:bg-amber-500"
+                                                        className="mt-0.5 data-[state=checked]:bg-amber-500"
                                                     />
-                                                    <span className="text-[10px] text-amber-200/90 font-medium">Pagado desde cuenta principal (No resta saldo de esta cuenta)</span>
+                                                    <span className="text-[10px] text-amber-200/90 font-medium leading-snug">
+                                                        Lo pagué con la tarjeta de <b>{accounts.find(a => a.id === account.parent_account_id)?.name || 'la cuenta principal'}</b>.
+                                                        El dinero se queda aquí (sigue generando intereses) y se marca como pendiente de devolver.
+                                                    </span>
                                                 </div>
                                             )}
                                             {editingTransactionId && (
@@ -954,10 +957,10 @@ export default function AccountDetailDialog({
                                                     </p>
                                                 </div>
                                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Vinculación (Sobre)</p>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Cuenta vinculada</p>
                                                     <div className="mt-2 flex items-center justify-between">
                                                         <p className="text-base font-bold text-slate-900">
-                                                            {account.parent_account_id ? 'Es un Sobre' : 'Independiente'}
+                                                            {account.parent_account_id ? 'Vinculada' : 'Independiente'}
                                                         </p>
                                                         <Button
                                                             variant="ghost"
@@ -971,7 +974,7 @@ export default function AccountDetailDialog({
                                                     <p className="mt-1 text-xs text-slate-500">
                                                         {account.parent_account_id
                                                             ? `Vinculada a ${accounts.find(a => a.id === account.parent_account_id)?.name || 'una cuenta principal'}.`
-                                                            : 'Esta cuenta no está vinculada como sobre de ninguna otra.'}
+                                                            : 'Esta cuenta no está vinculada a ninguna otra.'}
                                                     </p>
                                                 </div>
                                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
@@ -1283,9 +1286,11 @@ export default function AccountDetailDialog({
                                             {/* Configuración de Sobre */}
                                             <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 md:col-span-2 space-y-4">
                                                 <div>
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-amber-700">Configuración de Sobre protegido</p>
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-amber-700">Vincular a otra cuenta (Sobre)</p>
                                                     <p className="mt-1 text-sm text-slate-600">
-                                                        Puedes vincular esta cuenta a una principal y definir un saldo gastado que quieres recuperar.
+                                                        Vincula esta cuenta a una principal: el dinero se queda aquí (sigue generando intereses)
+                                                        pero contará como disponible para la principal. Lo que pagues con la tarjeta de la principal
+                                                        quedará marcado como pendiente de devolver desde esta cuenta.
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col gap-4 sm:flex-row">
@@ -1305,7 +1310,7 @@ export default function AccountDetailDialog({
                                                     </div>
                                                     {account.parent_account_id && (
                                                         <div className="flex-1 space-y-2">
-                                                            <Label className="text-amber-900">Gastado en cuenta principal (€)</Label>
+                                                            <Label className="text-amber-900">Pendiente de devolver (€)</Label>
                                                             <div className="flex gap-2">
                                                                 <Input
                                                                     type="number"

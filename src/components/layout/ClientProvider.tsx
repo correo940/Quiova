@@ -14,6 +14,7 @@ import MedicineAlarmManager from '@/components/apps/mi-hogar/pharmacy/medicine-a
 import TaskNotificationManager from '@/components/apps/mi-hogar/tasks/task-notification-manager';
 import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicle-notification-manager';
 import PlantNotificationManager from '@/components/apps/huerto/plant-notification-manager';
+import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
 import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
@@ -40,6 +41,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
                 <TaskNotificationManager />
                 <VehicleNotificationManager />
                 <PlantNotificationManager />
+                <SavingsNotificationManager />
                 <LayoutResizer>
                   {children}
                 </LayoutResizer>
