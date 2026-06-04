@@ -28,9 +28,10 @@ import { translateAuthError } from '@/lib/utils';
 import { useAi } from '@/context/AiContext';
 import { useJournal } from '@/context/JournalContext';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
-import { Mic, MicOff, Plus, CheckSquare, ShoppingCart, Wallet, Camera, Book } from 'lucide-react';
+import { Mic, MicOff, Plus, CheckSquare, ShoppingCart, Wallet, Camera, Book, Sparkles } from 'lucide-react';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useWorkSession } from '@/context/work-session-context';
 
 const QUICK_ACTIONS = [
     { label: 'Nueva tarea', icon: CheckSquare, href: '/apps/mi-hogar/tasks?action=new', color: 'bg-blue-600' },
@@ -42,7 +43,15 @@ const QUICK_ACTIONS = [
 export default function HeaderAuth() {
     const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
     const { setIsOpen: setIsJournalOpen } = useJournal();
+    const { isRunning, elapsedSec, startSession, stopSession } = useWorkSession();
     const [user, setUser] = useState<any>(null);
+
+    const formatTime = (sec: number) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
+    };
     const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
@@ -91,6 +100,23 @@ export default function HeaderAuth() {
     if (user) {
         return (
             <div className="flex items-center gap-2 md:gap-3">
+                {/* Trabajar button */}
+                <Button
+                    onClick={() => isRunning ? stopSession() : startSession()}
+                    size="sm"
+                    title={isRunning ? `Tiempo: ${formatTime(elapsedSec)} — click para parar` : 'Iniciar sesión de trabajo'}
+                    className={`gap-2 rounded-full hidden sm:flex group relative overflow-hidden ${isRunning ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+                >
+                    <Sparkles className="w-4 h-4" />
+                    {isRunning ? (
+                        <>
+                            <span className="text-xs font-bold group-hover:hidden">Trabajando...</span>
+                            <span className="text-xs font-bold font-mono tabular-nums hidden group-hover:inline">{formatTime(elapsedSec)}</span>
+                        </>
+                    ) : (
+                        <span className="text-xs font-bold">Trabajar</span>
+                    )}
+                </Button>
                 {/* Global Quick Action Button (+) */}
                 <div className="relative">
                     <button
