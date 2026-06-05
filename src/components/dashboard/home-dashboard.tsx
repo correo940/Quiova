@@ -13,7 +13,6 @@ export default function HomeDashboard() {
     // Hooks SIEMPRE deben estar al principio, antes de cualquier return condicional
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [isCalendarMinimized, setIsCalendarMinimized] = useState(false);
-    const [isSmallScreen, setIsSmallScreen] = useState(false);
     const platformInfo = usePlatform();
     const { isMobile } = platformInfo;
     const { user } = useAuth();
@@ -25,27 +24,18 @@ export default function HomeDashboard() {
         }
     }, []);
 
-    // Detectar pantallas pequeñas (navegador móvil sin ser app nativa)
-    useEffect(() => {
-        const check = () => setIsSmallScreen(window.innerWidth < 1024);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
-
     const handleToggleCalendar = () => {
         const newVal = !isCalendarMinimized;
         setIsCalendarMinimized(newVal);
         localStorage.setItem('quioba_calendar_minimized', String(newVal));
     };
 
-    // Móvil nativo O navegador en pantalla pequeña → layout móvil
-    if (isMobile || isSmallScreen) {
+    if (isMobile) {
         return <MobileDashboard />;
     }
 
     return (
-        <div className="flex flex-col lg:overflow-hidden overflow-auto" style={{ height: 'calc(100dvh - 64px)' }}>
+        <div className="flex flex-col lg:overflow-hidden lg:h-[calc(100dvh-64px)]">
             {/* Fila Superior: Resumen de Apps con Calendario Integrado */}
             <div className="shrink-0 px-4 pt-3 w-full">
                 <AppsSummaryWidget
@@ -56,7 +46,7 @@ export default function HomeDashboard() {
             </div>
 
             {/* Layout Principal: Organizador a pantalla completa */}
-            <div className="flex-1 min-h-0 flex flex-col px-4 pb-28 lg:pb-4 pt-3 w-full overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3 w-full lg:overflow-hidden pb-28 lg:pb-4">
                 <div className="flex-1 min-h-0 min-w-0 w-full">
                     <OrganizerWidget
                         selectedDate={selectedDate}
