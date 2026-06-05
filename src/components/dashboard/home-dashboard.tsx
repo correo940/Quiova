@@ -38,18 +38,18 @@ export default function HomeDashboard() {
     }
 
     return (
-        <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100dvh - 64px)' }}>
+        <div className="flex flex-col lg:overflow-hidden overflow-auto" style={{ height: 'calc(100dvh - 64px)' }}>
             {/* Fila Superior: Resumen de Apps con Calendario Integrado */}
             <div className="shrink-0 px-4 pt-3 w-full">
-                <AppsSummaryWidget 
-                    selectedDate={selectedDate} 
+                <AppsSummaryWidget
+                    selectedDate={selectedDate}
                     onDateSelect={setSelectedDate}
-                    user={user} 
+                    user={user}
                 />
             </div>
 
             {/* Layout Principal: Organizador a pantalla completa */}
-            <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3 w-full overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col px-4 pb-28 lg:pb-4 pt-3 w-full overflow-hidden">
                 <div className="flex-1 min-h-0 min-w-0 w-full">
                     <OrganizerWidget
                         selectedDate={selectedDate}
