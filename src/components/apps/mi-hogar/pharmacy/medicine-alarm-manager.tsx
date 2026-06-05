@@ -1,88 +1,162 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/lib/supabase';
 import { NotificationManager } from '@/lib/notifications';
-import { toast } from 'sonner';
+import { showNotificationToast } from '@/components/notifications/notification-toast';
+import { hasBeenShownToday, markShownToday, cleanOldNotifEntries } from '@/lib/web-notification-tracker';
+
+interface Medicine {
+  id: string;
+  name: string;
+  dosage?: string;
+  alarm_times: string[];
+}
 
 export default function MedicineAlarmManager() {
-    const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+  const webTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-    useEffect(() => {
-        // Init Check
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-        });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+      setUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
+  useEffect(() => {
+    if (!user) return;
 
-        return () => subscription.unsubscribe();
-    }, []);
+    cleanOldNotifEntries();
 
-    useEffect(() => {
-        if (!user) return;
+    if (Capacitor.isNativePlatform()) {
+      setupNativeAlarms();
+    } else {
+      setupWebAlarms();
+    }
 
-        const setupAlarms = async () => {
-            // Request permissions explicitly when component mounts/user logs in
-            const granted = await NotificationManager.requestPermissions();
-            if (!granted) return;
-
-            const { data: medicines, error } = await supabase
-                .from('medicines')
-                .select('id, name, dosage, alarm_times')
-                .eq('user_id', user.id)
-                .not('alarm_times', 'is', null);
-
-            if (error || !medicines) return;
-
-            // 1. Cancel previous medicine alarms to prevent duplicates/ghosts
-            const pending = await NotificationManager.getPending();
-            const medsToCancel = pending
-                .filter(n => n.title === '💊 Hora de tu medicación' || n.extra?.type === 'medicine')
-                .map(n => n.id);
-
-            if (medsToCancel.length > 0) {
-                await NotificationManager.cancel(medsToCancel);
-                console.log(`Cancelled ${medsToCancel.length} stale medicine alarms.`);
-            }
-
-            // 2. Schedule current alarms
-            medicines.forEach(med => {
-                if (med.alarm_times && Array.isArray(med.alarm_times)) {
-                    med.alarm_times.forEach((time: string) => {
-                        const [hours, minutes] = time.split(':').map(Number);
-                        const notifId = NotificationManager.generateId(`med_${med.id}_${time}`);
-
-                        NotificationManager.schedule({
-                            id: notifId,
-                            title: `💊 Hora de tu medicación`,
-                            body: `${med.name} - ${med.dosage || 'Toma tu dosis'}`,
-                            schedule: {
-                                on: { hour: hours, minute: minutes },
-                                allowWhileIdle: true
-                            } as any,
-                            extra: { type: 'medicine' }
-                        });
-                    });
-                }
-            });
-        };
-
-        setupAlarms();
-
-        // Optional: Subscribe to changes to auto-update
-        const channel = supabase
-            .channel('medicine_alarms_sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'medicines' }, setupAlarms)
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
+    const channel = supabase
+      .channel('medicine_alarms_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medicines' }, () => {
+        if (Capacitor.isNativePlatform()) {
+          setupNativeAlarms();
+        } else {
+          clearWebTimers();
+          setupWebAlarms();
         }
+      })
+      .subscribe();
 
-    }, [user]);
+    return () => {
+      supabase.removeChannel(channel);
+      clearWebTimers();
+    };
 
-    return null;
+    // ── Native: schedule recurring OS alarms ────────────────────────────────
+    async function setupNativeAlarms() {
+      const granted = await NotificationManager.requestPermissions();
+      if (!granted) return;
+
+      const { data: medicines } = await supabase
+        .from('medicines')
+        .select('id, name, dosage, alarm_times')
+        .eq('user_id', user.id)
+        .not('alarm_times', 'is', null);
+
+      if (!medicines) return;
+
+      const pending = await NotificationManager.getPending();
+      const stale = pending
+        .filter((n: any) => n.extra?.type === 'medicine')
+        .map((n: any) => n.id);
+      if (stale.length > 0) await NotificationManager.cancel(stale);
+
+      medicines.forEach((med: Medicine) => {
+        if (!Array.isArray(med.alarm_times)) return;
+        med.alarm_times.forEach((time: string) => {
+          const [hours, minutes] = time.split(':').map(Number);
+          const notifId = NotificationManager.generateId(`med_${med.id}_${time}`);
+          NotificationManager.schedule({
+            id: notifId,
+            title: '💊 Hora de tu medicación',
+            body: `${med.name}${med.dosage ? ` — ${med.dosage}` : ''}`,
+            schedule: { on: { hour: hours, minute: minutes }, allowWhileIdle: true } as any,
+            extra: { type: 'medicine', route: '/apps/mi-hogar/pharmacy' },
+          });
+        });
+      });
+    }
+
+    // ── Web: show toast for missed, schedule setTimeout for upcoming ─────────
+    async function setupWebAlarms() {
+      const { data: medicines } = await supabase
+        .from('medicines')
+        .select('id, name, dosage, alarm_times')
+        .eq('user_id', user.id)
+        .not('alarm_times', 'is', null);
+
+      if (!medicines) return;
+
+      const now = new Date();
+
+      medicines.forEach((med: Medicine) => {
+        if (!Array.isArray(med.alarm_times)) return;
+
+        med.alarm_times.forEach((time: string) => {
+          const trackingId = `med_${med.id}_${time}`;
+          if (hasBeenShownToday('med', `${med.id}_${time}`)) return;
+
+          const [hours, minutes] = time.split(':').map(Number);
+          const target = new Date(now);
+          target.setHours(hours, minutes, 0, 0);
+
+          const subtitle = `${med.name}${med.dosage ? ` — ${med.dosage}` : ''}`;
+          const goToPharmacy = () => router.push('/apps/mi-hogar/pharmacy');
+
+          if (target <= now) {
+            // Alarm time already passed today — show "ya pasó" toast
+            markShownToday('med', `${med.id}_${time}`);
+            showNotificationToast({
+              icon: '💊',
+              title: 'Medicación pendiente',
+              subtitle,
+              missed: true,
+              scheduledTime: time,
+              onGo: goToPharmacy,
+              duration: 16000,
+            });
+          } else {
+            // Upcoming today — schedule a setTimeout
+            const delay = target.getTime() - now.getTime();
+            const timer = setTimeout(() => {
+              if (hasBeenShownToday('med', `${med.id}_${time}`)) return;
+              markShownToday('med', `${med.id}_${time}`);
+              showNotificationToast({
+                icon: '💊',
+                title: 'Hora de tu medicación',
+                subtitle,
+                missed: false,
+                onGo: goToPharmacy,
+                duration: 14000,
+              });
+            }, delay);
+            webTimersRef.current.push(timer);
+          }
+        });
+      });
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearWebTimers() {
+    webTimersRef.current.forEach(clearTimeout);
+    webTimersRef.current = [];
+  }
+
+  return null;
 }

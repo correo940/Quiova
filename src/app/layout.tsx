@@ -102,7 +102,16 @@ export default function RootLayout({
                 <MobileNav />
               </div>
               <Toaster />
-              <SonnerToaster position="top-right" />
+              <SonnerToaster
+                position="top-right"
+                gap={8}
+                toastOptions={{
+                  unstyled: true,
+                  classNames: {
+                    toast: 'w-full',
+                  },
+                }}
+              />
               <CookieBanner />
             </ClientProvider>
           </WorkSessionProvider>
