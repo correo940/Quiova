@@ -13,17 +13,24 @@ export default function HomeDashboard() {
     // Hooks SIEMPRE deben estar al principio, antes de cualquier return condicional
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [isCalendarMinimized, setIsCalendarMinimized] = useState(false);
+    const [isSmallScreen, setIsSmallScreen] = useState(false);
     const platformInfo = usePlatform();
     const { isMobile } = platformInfo;
-    // ✅ Leer el user UNA sola vez desde el AuthProvider global
     const { user } = useAuth();
 
-    // Sincronizar estado de minimización del calendario con localStorage
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('quioba_calendar_minimized');
             if (saved === 'true') setIsCalendarMinimized(true);
         }
+    }, []);
+
+    // Detectar pantallas pequeñas (navegador móvil sin ser app nativa)
+    useEffect(() => {
+        const check = () => setIsSmallScreen(window.innerWidth < 1024);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
     const handleToggleCalendar = () => {
@@ -32,8 +39,8 @@ export default function HomeDashboard() {
         localStorage.setItem('quioba_calendar_minimized', String(newVal));
     };
 
-    // Si es móvil (iOS o Android), mostrar el dashboard móvil
-    if (isMobile) {
+    // Móvil nativo O navegador en pantalla pequeña → layout móvil
+    if (isMobile || isSmallScreen) {
         return <MobileDashboard />;
     }
 
