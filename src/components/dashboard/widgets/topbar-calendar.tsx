@@ -66,7 +66,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
         const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
 
         return (
-            <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            <div className="grid grid-cols-7 gap-0.5 w-full">
                 {weekDays.map(day => {
                     const isSelected = isSameDay(day, current);
                     const isTodayDate = isSameDay(day, new Date());
@@ -75,7 +75,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                             key={day.toISOString()}
                             onClick={() => onDateSelect(day)}
                             className={cn(
-                                "flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all duration-200 min-w-[40px]",
+                                "flex flex-col items-center justify-center py-1 px-0.5 rounded-lg transition-all duration-200",
                                 isSelected
                                     ? "bg-green-800 text-white shadow scale-105 font-bold"
                                     : isTodayDate
@@ -84,9 +84,9 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                             )}
                         >
                             <span className={cn("text-[9px] font-bold uppercase tracking-wide leading-none mb-0.5", isSelected ? "text-green-200" : "text-muted-foreground")}>
-                                {format(day, 'ee', { locale: es })}
+                                {format(day, 'EEEEE', { locale: es })}
                             </span>
-                            <span className="text-sm font-extrabold leading-none">{format(day, 'd')}</span>
+                            <span className="text-xs font-extrabold leading-none">{format(day, 'd')}</span>
                             <div className="flex gap-0.5 justify-center mt-0.5 h-1">
                                 {hasTask(day) && <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-purple-500")} />}
                                 {hasShift(day) && <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-emerald-500")} />}
