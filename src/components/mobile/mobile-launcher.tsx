@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { getProductEmoji } from '@/lib/shopping-list-ai-helpers';
 import SmartScanner from './smart-scanner';
 import ScanRosterDialog from '@/components/apps/mi-hogar/roster/scan-roster-dialog';
 import ChatInterface from '@/components/apps/asistente/chat-interface';
@@ -1070,8 +1071,11 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                                     animate={{ opacity: 1, x: 0 }}
                                                     exit={{ opacity: 0, x: 60, height: 0, marginBottom: 0 }}
                                                     transition={{ duration: 0.2 }}
-                                                    className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl px-4 py-3 shadow-sm border border-slate-100 dark:border-slate-800"
+                                                    className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl px-3 py-3 shadow-sm border border-slate-100 dark:border-slate-800"
                                                 >
+                                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 flex items-center justify-center">
+                                                        <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>{getProductEmoji(item.name)}</span>
+                                                    </div>
                                                     <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">{item.name}</span>
                                                     <button
                                                         onClick={() => {
