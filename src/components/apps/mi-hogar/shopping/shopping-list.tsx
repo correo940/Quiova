@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { getApiUrl } from '@/lib/api-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
@@ -227,6 +228,10 @@ export default function ShoppingList() {
     const [editSupermarket, setEditSupermarket] = useState("");
     const [isShopMode, setIsShopMode] = useState(false);
     const [activeTab, setActiveTab] = useState("list");
+    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(false);
+    const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+    const [pendingVerifyName, setPendingVerifyName] = useState('');
+    const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
 
     const toggleShopMode = () => {
         if (!isShopMode) {
@@ -466,6 +471,24 @@ export default function ShoppingList() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAddOrVerify = (name: string = newItemName, supermarket: string = selectedSupermarket) => {
+        if (!name.trim()) return;
+        if (verifyBeforeAdd) {
+            setPendingVerifyName(name);
+            setPendingVerifySupermarket(supermarket);
+            setIsVerifyOpen(true);
+        } else {
+            addItem(name, supermarket);
+        }
+    };
+
+    const confirmVerifyAdd = () => {
+        addItem(pendingVerifyName, pendingVerifySupermarket);
+        setIsVerifyOpen(false);
+        setPendingVerifyName('');
+        setPendingVerifySupermarket('');
     };
 
     const addItem = async (name: string = newItemName, supermarket: string = selectedSupermarket) => {
@@ -730,7 +753,7 @@ export default function ShoppingList() {
                                 placeholder="Añadir a la lista (Ej. Manzanas...)"
                                 value={newItemName}
                                 onChange={(e) => setNewItemName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddOrVerify()}
                                 className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-base h-10 px-0 placeholder:text-muted-foreground font-medium"
                             />
                         </div>
@@ -772,8 +795,25 @@ export default function ShoppingList() {
                                     <ChefHat className="h-4 w-4 text-green-800" />
                                 </Button>
                             </Link>
+                            <button
+                                type="button"
+                                onClick={() => setVerifyBeforeAdd(v => !v)}
+                                className={`flex items-center gap-1.5 h-10 rounded-full px-3 text-xs font-semibold transition-all border ${
+                                    verifyBeforeAdd
+                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:hover:text-slate-300'
+                                }`}
+                                title="Verificar producto antes de añadir"
+                            >
+                                <Checkbox
+                                    checked={verifyBeforeAdd}
+                                    onCheckedChange={(v) => setVerifyBeforeAdd(!!v)}
+                                    className="pointer-events-none h-3.5 w-3.5"
+                                />
+                                <span className="hidden sm:inline">Verificar</span>
+                            </button>
                             <Button
-                                onClick={() => addItem()}
+                                onClick={() => handleAddOrVerify()}
                                 className="rounded-full px-5 h-10 bg-green-800 hover:bg-green-900 text-white font-bold tracking-wide shadow-md transition-all hover:shadow-lg active:scale-95"
                             >
                                 Añadir
@@ -973,6 +1013,64 @@ export default function ShoppingList() {
                             </button>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── DIÁLOGO DE VERIFICACIÓN ── */}
+            <Dialog open={isVerifyOpen} onOpenChange={(open) => !open && setIsVerifyOpen(false)}>
+                <DialogContent className="sm:max-w-md rounded-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Verificar Producto</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre del producto</label>
+                            <Input
+                                value={pendingVerifyName}
+                                onChange={(e) => setPendingVerifyName(e.target.value)}
+                                className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 text-base"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dónde comprarlo <span className="opacity-50">(Opcional)</span></label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {SUPERMARKETS.map((market) => (
+                                    <button
+                                        key={market.name}
+                                        type="button"
+                                        onClick={() => setPendingVerifySupermarket(prev => prev === market.name ? '' : market.name)}
+                                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${pendingVerifySupermarket === market.name
+                                            ? 'border-green-800 bg-green-50 text-green-900 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100'
+                                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                                            }`}
+                                    >
+                                        <SupermarketLogo supermarket={market.name} className="h-7 w-7 rounded-lg" />
+                                        <span className="truncate">{market.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    value={!SUPERMARKETS.find(m => m.name === pendingVerifySupermarket) ? pendingVerifySupermarket : ''}
+                                    onChange={(e) => setPendingVerifySupermarket(e.target.value)}
+                                    className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl pl-10 pr-4 text-base"
+                                    placeholder="Otra tienda"
+                                />
+                                <Store className="w-4 h-4 absolute left-3.5 top-4 text-muted-foreground" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                            <Button variant="outline" className="h-11 rounded-xl flex-1 font-semibold" onClick={() => setIsVerifyOpen(false)}>Cancelar</Button>
+                            <Button
+                                onClick={confirmVerifyAdd}
+                                disabled={!pendingVerifyName.trim()}
+                                className="h-11 rounded-xl flex-1 bg-green-800 hover:bg-green-900 font-bold"
+                            >
+                                Añadir a la lista
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
