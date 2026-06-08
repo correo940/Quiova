@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff, Pencil, Search } from 'lucide-react';
+import { Plus, ShoppingCart, Archive, RefreshCw, Trash2, ArrowRight, Loader2, ScanBarcode, X, Keyboard, Camera, Sparkles, Store, Mic, MicOff, Pencil, Search, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -26,6 +26,7 @@ type ShoppingItem = {
     supermarket?: string;
     created_at?: string;
     status: 'to_buy' | 'in_stock';
+    photo_url?: string;
 };
 
 type SupermarketConfig = {
@@ -221,6 +222,9 @@ export default function ShoppingList() {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef<any>(null);
+    const photoInputRef = React.useRef<HTMLInputElement>(null);
+    const [uploadingPhotoForItemId, setUploadingPhotoForItemId] = useState<string | null>(null);
+    const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
     const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
     const [editName, setEditName] = useState("");
@@ -457,6 +461,7 @@ export default function ShoppingList() {
                 supermarket: item.supermarket || inferSupermarketFromText(item.name) || undefined,
                 created_at: item.created_at,
                 status: item.is_checked ? 'in_stock' : 'to_buy',
+                photo_url: item.photo_url || undefined,
             }));
 
             setItems(mappedItems);
@@ -592,6 +597,75 @@ export default function ShoppingList() {
         }
     };
 
+    const openPhotoPickerForItem = (itemId: string) => {
+        setUploadingPhotoForItemId(itemId);
+        photoInputRef.current?.click();
+    };
+
+    const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !uploadingPhotoForItemId || !user) return;
+
+        const itemId = uploadingPhotoForItemId;
+        e.target.value = '';
+        setUploadingPhotoForItemId(null);
+
+        const toastId = toast.loading('Subiendo foto...');
+        try {
+            const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+            const path = `${user.id}/${itemId}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('shopping-photos')
+                .upload(path, file, { upsert: true, contentType: file.type });
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('shopping-photos')
+                .getPublicUrl(path);
+
+            const photo_url = `${urlData.publicUrl}?t=${Date.now()}`;
+
+            const { error: dbError } = await supabase
+                .from('shopping_items')
+                .update({ photo_url: urlData.publicUrl })
+                .eq('id', itemId);
+
+            if (dbError) throw dbError;
+
+            setItems(prev => prev.map(i => i.id === itemId ? { ...i, photo_url } : i));
+            setEditingItem(prev => prev?.id === itemId ? { ...prev, photo_url } : prev);
+            toast.success('Foto añadida', { id: toastId });
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+            toast.error('Error al subir la foto', { id: toastId });
+        }
+    };
+
+    const removeItemPhoto = async (itemId: string) => {
+        try {
+            const { error: dbError } = await supabase
+                .from('shopping_items')
+                .update({ photo_url: null })
+                .eq('id', itemId);
+
+            if (dbError) throw dbError;
+
+            if (user) {
+                for (const ext of ['jpg', 'png', 'webp']) {
+                    await supabase.storage.from('shopping-photos').remove([`${user.id}/${itemId}.${ext}`]);
+                }
+            }
+
+            setItems(prev => prev.map(i => i.id === itemId ? { ...i, photo_url: undefined } : i));
+            toast.success('Foto eliminada');
+        } catch (error) {
+            console.error('Error removing photo:', error);
+            toast.error('Error al eliminar la foto');
+        }
+    };
+
     const baseFilteredItems = React.useMemo(() => {
         return items.filter(item => {
             const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -718,6 +792,43 @@ export default function ShoppingList() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-8 pb-10">
+            {/* Hidden file input for photo uploads */}
+            <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoFileChange}
+            />
+
+            {/* Photo lightbox */}
+            <AnimatePresence>
+                {expandedPhoto && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                        onClick={() => setExpandedPhoto(null)}
+                    >
+                        <motion.img
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.8 }}
+                            src={expandedPhoto}
+                            alt="Foto del producto"
+                            className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+                            onClick={e => e.stopPropagation()}
+                        />
+                        <button
+                            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                            onClick={() => setExpandedPhoto(null)}
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* ── SECCIÓN CENTRAL DE COMANDOS FLORANTE ── */}
             <div className="sticky top-4 z-40">
                 <div className="relative group">
@@ -1018,6 +1129,36 @@ export default function ShoppingList() {
                                 <Store className="w-4 h-4 absolute left-3.5 top-4 text-muted-foreground" />
                             </div>
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Foto <span className="opacity-50">(Opcional)</span></label>
+                            <div className="flex gap-3 items-center">
+                                {editingItem?.photo_url ? (
+                                    <div className="relative group/photo">
+                                        <img
+                                            src={editingItem.photo_url}
+                                            alt={editingItem.name}
+                                            className="w-20 h-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer"
+                                            onClick={() => setExpandedPhoto(editingItem.photo_url!)}
+                                        />
+                                        <button
+                                            onClick={() => { removeItemPhoto(editingItem.id); setEditingItem(prev => prev ? { ...prev, photo_url: undefined } : null); }}
+                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover/photo:opacity-100 transition-opacity"
+                                            title="Eliminar foto"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    onClick={() => editingItem && openPhotoPickerForItem(editingItem.id)}
+                                    className="flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:border-green-700 hover:text-green-700 dark:hover:border-green-600 dark:hover:text-green-500 transition-colors text-xs font-semibold"
+                                >
+                                    <Camera className="w-5 h-5" />
+                                    <span>{editingItem?.photo_url ? 'Cambiar' : 'Añadir'}</span>
+                                </button>
+                            </div>
+                        </div>
                         <div className="flex gap-2 pt-4">
                             <Button variant="outline" className="h-11 rounded-xl flex-1 font-semibold" onClick={() => setEditingItem(null)}>Cancelar</Button>
                             <Button onClick={updateItem} className="h-11 rounded-xl flex-1 bg-green-800 hover:bg-green-900 font-bold">Guardar Cambios</Button>
@@ -1202,6 +1343,30 @@ export default function ShoppingList() {
                                                         <div className={`rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-green-800 shadow-[0_0_12px_rgba(22,101,52,0.5)] ${isShopMode ? 'w-full h-full' : 'w-full h-full'}`} />
                                                     </button>
 
+                                                    {/* Photo thumbnail */}
+                                                    {item.photo_url ? (
+                                                        <button
+                                                            onClick={() => setExpandedPhoto(item.photo_url!)}
+                                                            className={`flex-shrink-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}
+                                                            title="Ver foto"
+                                                        >
+                                                            <img
+                                                                src={item.photo_url}
+                                                                alt={item.name}
+                                                                className="w-full h-full object-cover"
+                                                                loading="lazy"
+                                                            />
+                                                        </button>
+                                                    ) : isShopMode ? (
+                                                        <button
+                                                            onClick={() => openPhotoPickerForItem(item.id)}
+                                                            className="flex-shrink-0 w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:border-green-700 hover:text-green-700 transition-colors"
+                                                            title="Añadir foto"
+                                                        >
+                                                            <Camera className="w-5 h-5" />
+                                                        </button>
+                                                    ) : null}
+
                                                     <div className="flex-1 min-w-0 pr-6">
                                                         <h4 className={`font-bold text-slate-800 dark:text-slate-100 leading-tight subpixel-antialiased tracking-tight ${isShopMode ? 'text-lg' : 'text-base truncate mb-1'}`}>
                                                             {item.name}
@@ -1219,6 +1384,9 @@ export default function ShoppingList() {
                                                     </div>
 
                                                     <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                                                        <button onClick={() => openPhotoPickerForItem(item.id)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title={item.photo_url ? 'Cambiar foto' : 'Añadir foto'}>
+                                                            <ImageIcon className="w-3.5 h-3.5" />
+                                                        </button>
                                                         <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title="Editar">
                                                             <Pencil className="w-3.5 h-3.5" />
                                                         </button>
