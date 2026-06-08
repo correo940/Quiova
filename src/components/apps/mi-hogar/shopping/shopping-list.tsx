@@ -17,7 +17,7 @@ import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
 import { ChefHat, Wand2, CalendarDays, Timer, Layers } from 'lucide-react';
-import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP } from '@/lib/shopping-list-ai-helpers';
+import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP, getProductEmoji } from '@/lib/shopping-list-ai-helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ShoppingItem = {
@@ -1292,15 +1292,14 @@ export default function ShoppingList() {
                                                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                                     className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-800/50 dark:hover:border-green-800/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
                                                 >
-                                                    <button
-                                                        onClick={() => toggleStatus(item.id)}
-                                                        className={`mt-0.5 flex-shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700/50 group-hover:border-green-800 group-hover:bg-green-50 flex items-center justify-center transition-all focus:outline-none ${isShopMode ? 'w-10 h-10' : 'w-8 h-8'}`}
-                                                        title="Marcar como comprado"
-                                                    >
-                                                        <div className={`rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-green-800 shadow-[0_0_12px_rgba(22,101,52,0.5)] ${isShopMode ? 'w-full h-full' : 'w-full h-full'}`} />
-                                                    </button>
+                                                    {/* Product illustration */}
+                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center select-none overflow-hidden ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
+                                                        <span style={{ fontSize: isShopMode ? '2rem' : '1.6rem', lineHeight: 1 }}>
+                                                            {getProductEmoji(item.name)}
+                                                        </span>
+                                                    </div>
 
-                                                    <div className="flex-1 min-w-0 pr-6">
+                                                    <div className={`flex-1 min-w-0 ${isShopMode ? '' : 'pr-6'}`}>
                                                         <h4 className={`font-bold text-slate-800 dark:text-slate-100 leading-tight subpixel-antialiased tracking-tight ${isShopMode ? 'text-lg' : 'text-base truncate mb-1'}`}>
                                                             {item.name}
                                                         </h4>
@@ -1315,6 +1314,23 @@ export default function ShoppingList() {
                                                             )}
                                                         </div>
                                                     </div>
+
+                                                    {isShopMode ? (
+                                                        <button
+                                                            onClick={() => toggleStatus(item.id)}
+                                                            className="flex-shrink-0 h-10 px-4 rounded-full bg-green-700 hover:bg-green-800 text-white text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                                                        >
+                                                            <Plus className="w-4 h-4" /> Coger
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => toggleStatus(item.id)}
+                                                            className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-200 dark:border-slate-700/50 group-hover:border-green-800 group-hover:bg-green-50 flex items-center justify-center transition-all focus:outline-none"
+                                                            title="Marcar como comprado"
+                                                        >
+                                                            <div className="w-full h-full rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-green-800 shadow-[0_0_12px_rgba(22,101,52,0.5)]" />
+                                                        </button>
+                                                    )}
 
                                                     <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
                                                         <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title="Editar">
