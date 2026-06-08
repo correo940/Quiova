@@ -514,7 +514,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden"
+                    className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl relative overflow-y-auto max-h-[90dvh]"
                     style={{ backgroundColor: '#F8FAFC' }}
                 >
                     {/* Header */}
