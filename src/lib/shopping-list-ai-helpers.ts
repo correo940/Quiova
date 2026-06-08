@@ -174,7 +174,7 @@ const PRODUCT_EMOJI_MAP: [string[], string][] = [
 ];
 
 export function getProductEmoji(name: string): string {
-    const n = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     for (const [keywords, emoji] of PRODUCT_EMOJI_MAP) {
         if (keywords.some(k => n.includes(k))) return emoji;
     }
@@ -182,7 +182,7 @@ export function getProductEmoji(name: string): string {
 }
 
 export function guessCategoryAndPrice(name: string) {
-    const lowerName = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const lowerName = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
     for (const [category, data] of Object.entries(CATEGORY_MAP)) {
         if (data.keywords.some(k => lowerName.includes(k))) {

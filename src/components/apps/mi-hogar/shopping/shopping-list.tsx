@@ -1293,8 +1293,8 @@ export default function ShoppingList() {
                                                     className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-800/50 dark:hover:border-green-800/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
                                                 >
                                                     {/* Product illustration */}
-                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center select-none overflow-hidden ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
-                                                        <span style={{ fontSize: isShopMode ? '2rem' : '1.6rem', lineHeight: 1 }}>
+                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 flex items-center justify-center select-none ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
+                                                        <span style={{ fontSize: isShopMode ? '2rem' : '1.75rem', lineHeight: 1 }}>
                                                             {getProductEmoji(item.name)}
                                                         </span>
                                                     </div>
