@@ -63,12 +63,16 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [showWebScanner, setShowWebScanner] = useState(false);
     const [destination, setDestination] = useState<Destination>('shopping');
 
+    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(false);
+    const [pendingProduct, setPendingProduct] = useState<string | null>(null);
+    const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
+
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
 
     const isWeb = !Capacitor.isNativePlatform();
 
-    const saveToShoppingItems = async (productName: string): Promise<boolean> => {
+    const saveToShoppingItems = async (productName: string, supermarket?: string): Promise<boolean> => {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData.session?.user?.id;
         if (!userId) {
@@ -84,6 +88,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                 name: productName,
                 category: aiAnalysis.category,
                 is_checked: isPantry,
+                supermarket: supermarket || null,
             }]);
         if (insertError) {
             console.error('Error saving product:', insertError);
@@ -95,6 +100,11 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     };
 
     const handleSuccess = async (productName: string, barcode?: string, startNextScan = false) => {
+        if (verifyBeforeAdd) {
+            setPendingProduct(productName);
+            setPendingVerifySupermarket('');
+            return;
+        }
         const ok = await saveToShoppingItems(productName);
         if (!ok) return;
         setLastScanned(productName);
@@ -107,6 +117,17 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                 handleBarcodeScan();
             }, 800);
         }
+    };
+
+    const confirmPendingProduct = async () => {
+        if (!pendingProduct?.trim()) return;
+        const ok = await saveToShoppingItems(pendingProduct.trim(), pendingVerifySupermarket || undefined);
+        if (!ok) return;
+        setLastScanned(pendingProduct.trim());
+        setScanCount(prev => prev + 1);
+        onProductAdded({ name: pendingProduct.trim() });
+        setPendingProduct(null);
+        setPendingVerifySupermarket('');
     };
 
     const handleManualSave = () => {
@@ -512,7 +533,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                     </div>
 
                     {/* Destination selector */}
-                    <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-slate-200/70 rounded-xl">
+                    <div className="grid grid-cols-2 gap-2 mb-3 p-1 bg-slate-200/70 rounded-xl">
                         <button
                             type="button"
                             onClick={() => setDestination('shopping')}
@@ -530,6 +551,75 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                             Despensa
                         </button>
                     </div>
+
+                    {/* Verify toggle */}
+                    <button
+                        type="button"
+                        onClick={() => setVerifyBeforeAdd(v => !v)}
+                        className={`w-full flex items-center justify-between mb-4 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                            verifyBeforeAdd
+                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                : 'border-slate-200 bg-slate-50 text-slate-500'
+                        }`}
+                    >
+                        <span>Verificar producto antes de añadir</span>
+                        <span className={`w-10 h-6 rounded-full flex items-center transition-colors ${verifyBeforeAdd ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                            <span className={`w-5 h-5 bg-white rounded-full shadow mx-0.5 transition-transform ${verifyBeforeAdd ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </span>
+                    </button>
+
+                    {/* Pending verification panel */}
+                    {pendingProduct !== null && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-3"
+                        >
+                            <p className="text-indigo-800 font-bold text-sm flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" /> Verificar producto
+                            </p>
+                            <input
+                                type="text"
+                                value={pendingProduct}
+                                onChange={(e) => setPendingProduct(e.target.value)}
+                                className="w-full p-2.5 border border-indigo-200 rounded-xl text-sm font-medium bg-white focus:outline-none focus:border-indigo-400"
+                                autoFocus
+                            />
+                            <div>
+                                <p className="text-xs font-semibold text-indigo-600 mb-2 uppercase tracking-wide">Dónde comprarlo <span className="opacity-50 normal-case">(Opcional)</span></p>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {['Mercadona', 'Carrefour', 'Lidl', 'Dia', 'Aldi'].map(market => (
+                                        <button
+                                            key={market}
+                                            type="button"
+                                            onClick={() => setPendingVerifySupermarket(prev => prev === market ? '' : market)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${pendingVerifySupermarket === market ? 'border-indigo-500 bg-indigo-100 text-indigo-800' : 'border-slate-200 bg-white text-slate-600'}`}
+                                        >
+                                            {market}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input
+                                    type="text"
+                                    value={!['Mercadona', 'Carrefour', 'Lidl', 'Dia', 'Aldi'].includes(pendingVerifySupermarket) ? pendingVerifySupermarket : ''}
+                                    onChange={(e) => setPendingVerifySupermarket(e.target.value)}
+                                    placeholder="Otra tienda..."
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-indigo-400"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPendingProduct(null)}
+                                    className="flex-1 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
+                                >Cancelar</button>
+                                <button
+                                    onClick={confirmPendingProduct}
+                                    disabled={!pendingProduct?.trim()}
+                                    className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold disabled:opacity-50"
+                                >Añadir a la lista</button>
+                            </div>
+                        </motion.div>
+                    )}
 
                     {/* Web live barcode scanner */}
                     {showWebScanner && (
