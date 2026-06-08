@@ -181,14 +181,6 @@ export function getProductEmoji(name: string): string {
     return guessCategoryAndPrice(name).emoji;
 }
 
-export function getTwemojiUrl(emoji: string): string {
-    const codepoints = [...emoji]
-        .map(c => c.codePointAt(0)!.toString(16))
-        .filter(cp => cp !== 'fe0f')
-        .join('-');
-    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${codepoints}.png`;
-}
-
 export function guessCategoryAndPrice(name: string) {
     const lowerName = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 

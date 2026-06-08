@@ -16,7 +16,7 @@ import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
 import { ChefHat, Wand2, CalendarDays, Timer, Layers } from 'lucide-react';
-import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP, getProductEmoji, getTwemojiUrl } from '@/lib/shopping-list-ai-helpers';
+import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP, getProductEmoji } from '@/lib/shopping-list-ai-helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ShoppingItem = {
@@ -1195,15 +1195,10 @@ export default function ShoppingList() {
                                                     className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-800/50 dark:hover:border-green-800/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
                                                 >
                                                     {/* Product illustration */}
-                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center overflow-hidden ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
-                                                        <img
-                                                            src={getTwemojiUrl(getProductEmoji(item.name))}
-                                                            alt=""
-                                                            className={isShopMode ? 'w-10 h-10' : 'w-8 h-8'}
-                                                            loading="lazy"
-                                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('hidden'); }}
-                                                        />
-                                                        <span hidden className={`${isShopMode ? 'text-3xl' : 'text-2xl'}`}>{getProductEmoji(item.name)}</span>
+                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center select-none ${isShopMode ? 'w-16 h-16 text-4xl' : 'w-12 h-12 text-3xl'}`}
+                                                        style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}
+                                                    >
+                                                        {getProductEmoji(item.name)}
                                                     </div>
 
                                                     <div className={`flex-1 min-w-0 ${isShopMode ? '' : 'pr-6'}`}>
