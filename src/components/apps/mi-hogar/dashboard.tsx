@@ -17,7 +17,8 @@ import {
     BookOpen,
     MessageCircle,
     Leaf,
-    Brain
+    Brain,
+    CloudSun
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -137,6 +138,14 @@ const modules = [
         href: '/apps/debate',
         color: 'text-red-600',
         bg: 'bg-red-500/10',
+    },
+    {
+        title: '¿Qué me pongo?',
+        description: 'Quioba te dice qué ropa llevar según el tiempo',
+        icon: CloudSun,
+        href: '/apps/mi-hogar/tiempo',
+        color: 'text-sky-500',
+        bg: 'bg-sky-500/10',
     }
 ];
 
