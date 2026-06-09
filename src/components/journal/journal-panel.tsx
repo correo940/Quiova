@@ -916,26 +916,56 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div
-                    initial={{ x: '100%' }}
-                    animate={{ x: 0 }}
-                    exit={{ x: '100%' }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    style={{ width: `${width}%`, opacity: opacity }}
-                    className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex flex-col"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleDrop}
-                    ref={panelRef}
-                >
-                    {/* Drag resize handle */}
-                    <div
-                        className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors z-10 group"
-                        onMouseDown={handleResizeMouseDown}
+                <>
+                    {/* Overlay — solo visible en móvil */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 z-[59] md:hidden"
+                        onClick={onClose}
+                    />
+
+                    {/* Panel móvil: bottom sheet */}
+                    <motion.div
+                        key="mobile-panel"
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{ opacity: opacity }}
+                        className="fixed bottom-0 left-0 right-0 h-[60vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden md:hidden"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        ref={panelRef}
                     >
-                        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-border rounded-full group-hover:bg-primary/50 transition-colors" />
-                    </div>
-                    {JournalUI}
-                </motion.div>
+                        <div className="flex justify-center pt-2 pb-1 shrink-0">
+                            <div className="w-10 h-1 bg-border rounded-full" />
+                        </div>
+                        {JournalUI}
+                    </motion.div>
+
+                    {/* Panel escritorio: lateral derecho */}
+                    <motion.div
+                        key="desktop-panel"
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{ width: `${width}%`, opacity: opacity }}
+                        className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex-col hidden md:flex"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                    >
+                        <div
+                            className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors z-10 group"
+                            onMouseDown={handleResizeMouseDown}
+                        >
+                            <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-border rounded-full group-hover:bg-primary/50 transition-colors" />
+                        </div>
+                        {JournalUI}
+                    </motion.div>
+                </>
             )}
         </AnimatePresence>
     );
