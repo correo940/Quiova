@@ -20,8 +20,6 @@ export default function LayoutResizer({ children }: { children: React.ReactNode 
     if (isMobile) {
         return (
             <motion.div
-                animate={{ paddingBottom: isJournalOpen ? '50vh' : '0px' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="w-full"
             >
                 {children}

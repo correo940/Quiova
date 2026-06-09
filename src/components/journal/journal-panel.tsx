@@ -41,6 +41,14 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { selectedDate, width, setWidth, isBrowserPinned, setBrowserPinned, browserWindow, setBrowserWindow, setBrowserOpen } = useJournal();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -910,6 +918,41 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
         return createPortal(
             JournalUI,
             pipWindow.document.body
+        );
+    }
+
+    if (isMobile) {
+        return (
+            <AnimatePresence>
+                {isOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/40 z-[59]"
+                            onClick={onClose}
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{ opacity: opacity }}
+                            className="fixed bottom-0 left-0 right-0 h-[60vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={handleDrop}
+                            ref={panelRef}
+                        >
+                            {/* Drag handle bar */}
+                            <div className="flex justify-center pt-2 pb-1 shrink-0">
+                                <div className="w-10 h-1 bg-border rounded-full" />
+                            </div>
+                            {JournalUI}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         );
     }
 
