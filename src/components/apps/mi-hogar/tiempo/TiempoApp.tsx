@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { getApiUrl } from '@/lib/api-utils';
+import { supabase } from '@/lib/supabase';
 
 interface WeatherDay {
     date: string;
@@ -139,6 +140,26 @@ function saveTrips(trips: Record<string, TripPlan>) {
     if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_trips', JSON.stringify(trips));
 }
 
+function todayStr(): string {
+    return new Date().toISOString().split('T')[0];
+}
+
+function getDatesInRange(start: string, end: string): string[] {
+    const dates: string[] = [];
+    const cur = new Date(start + 'T12:00:00');
+    const last = new Date(end + 'T12:00:00');
+    while (cur <= last) {
+        dates.push(cur.toISOString().split('T')[0]);
+        cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+}
+
+function isWithinForecast(dateStr: string): boolean {
+    const diffDays = Math.round((new Date(dateStr + 'T12:00:00').getTime() - new Date().setHours(12, 0, 0, 0)) / 86400000);
+    return diffDays >= 0 && diffDays <= 15;
+}
+
 async function fetchWeatherForDay(lat: number, lon: number, targetDate: string): Promise<WeatherDay | null> {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,uv_index_max&timezone=auto&forecast_days=7&past_days=1`;
     const res = await fetch(url);
@@ -187,7 +208,10 @@ export default function TiempoApp() {
     const [trips, setTrips] = useState<Record<string, TripPlan>>({});
     const [showTripModal, setShowTripModal] = useState(false);
     const [tripSelectedCity, setTripSelectedCity] = useState<GeoSuggestion | null>(null);
-    const [tripSelectedDates, setTripSelectedDates] = useState<string[]>([]);
+    const [tripStartDate, setTripStartDate] = useState('');
+    const [tripEndDate, setTripEndDate] = useState('');
+    const [createTripTasks, setCreateTripTasks] = useState(true);
+    const [tripTaskListId, setTripTaskListId] = useState<string | null>(null);
     const [tripInput, setTripInput] = useState('');
     const [tripSuggestions, setTripSuggestions] = useState<GeoSuggestion[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -199,6 +223,21 @@ export default function TiempoApp() {
         setProfile(loadProfile());
         setFavorites(loadFavorites());
         setTrips(loadTrips());
+        // Pre-load user's default task list ID
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return;
+            supabase.from('task_lists').select('id').eq('owner_id', user.id).limit(1)
+                .then(({ data }) => {
+                    if (data && data.length > 0) {
+                        setTripTaskListId(data[0].id);
+                    } else {
+                        supabase.rpc('create_default_task_list_for_user').then(() => {
+                            supabase.from('task_lists').select('id').eq('owner_id', user.id).limit(1)
+                                .then(({ data: d2 }) => { if (d2 && d2.length > 0) setTripTaskListId(d2[0].id); });
+                        });
+                    }
+                });
+        });
     }, []);
 
     // Autocomplete for trip input
@@ -229,52 +268,77 @@ export default function TiempoApp() {
     }, [showTripModal, tripSelectedCity]);
 
     const openTripModal = () => {
+        const today = todayStr();
         setTripInput('');
         setTripSuggestions([]);
         setTripSelectedCity(null);
-        setTripSelectedDates([]);
+        setTripStartDate(today);
+        setTripEndDate(today);
         setShowTripModal(true);
     };
 
-    const toggleTripDate = (date: string) => {
-        setTripSelectedDates(prev =>
-            prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
-        );
+    const setTripPreset = (preset: 'today' | 'tomorrow' | 'weekend' | 'week') => {
+        const today = new Date();
+        const fmt = (d: Date) => d.toISOString().split('T')[0];
+        if (preset === 'today') {
+            setTripStartDate(fmt(today)); setTripEndDate(fmt(today));
+        } else if (preset === 'tomorrow') {
+            const t = new Date(today); t.setDate(t.getDate() + 1);
+            setTripStartDate(fmt(t)); setTripEndDate(fmt(t));
+        } else if (preset === 'weekend') {
+            const day = today.getDay();
+            const toSat = day === 6 ? 7 : (6 - day + 7) % 7 || 7;
+            const sat = new Date(today); sat.setDate(today.getDate() + toSat);
+            const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
+            setTripStartDate(fmt(sat)); setTripEndDate(fmt(sun));
+        } else {
+            const end = new Date(today); end.setDate(today.getDate() + 6);
+            setTripStartDate(fmt(today)); setTripEndDate(fmt(end));
+        }
     };
 
+    const tripDates = tripStartDate && tripEndDate && tripEndDate >= tripStartDate
+        ? getDatesInRange(tripStartDate, tripEndDate)
+        : [];
+
     const confirmTrip = async () => {
-        if (!tripSelectedCity || tripSelectedDates.length === 0) return;
+        if (!tripSelectedCity || tripDates.length === 0) return;
         setShowTripModal(false);
         setLoadingTrip(true);
         const newTrips = { ...trips };
         try {
-            for (const date of tripSelectedDates) {
-                const weatherDay = await fetchWeatherForDay(tripSelectedCity.lat, tripSelectedCity.lon, date);
-                if (!weatherDay) continue;
-                const res = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        weatherData: [{
-                            fecha: weatherDay.date,
-                            temp_max: weatherDay.temperature_max,
-                            temp_min: weatherDay.temperature_min,
-                            sensacion_max: weatherDay.apparent_temperature_max,
-                            sensacion_min: weatherDay.apparent_temperature_min,
-                            lluvia_mm: weatherDay.precipitation_sum,
-                            horas_lluvia: weatherDay.precipitation_hours,
-                            viento_kmh: weatherDay.windspeed_max,
-                            descripcion: WMO_DESCRIPTIONS[weatherDay.weathercode] || 'Variable',
-                            uv_max: weatherDay.uv_index_max,
-                        }],
-                        city: tripSelectedCity.name,
-                        profile,
-                        activity: activity || null,
-                        departureTime: null,
-                    }),
-                });
-                const result = await res.json();
-                const rec: DayRecommendation | null = result.success ? result.data?.dias?.[0] ?? null : null;
+            for (const date of tripDates) {
+                let weatherDay: WeatherDay | null = null;
+                let rec: DayRecommendation | null = null;
+                if (isWithinForecast(date)) {
+                    weatherDay = await fetchWeatherForDay(tripSelectedCity.lat, tripSelectedCity.lon, date);
+                    if (weatherDay) {
+                        const res = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                weatherData: [{
+                                    fecha: weatherDay.date,
+                                    temp_max: weatherDay.temperature_max,
+                                    temp_min: weatherDay.temperature_min,
+                                    sensacion_max: weatherDay.apparent_temperature_max,
+                                    sensacion_min: weatherDay.apparent_temperature_min,
+                                    lluvia_mm: weatherDay.precipitation_sum,
+                                    horas_lluvia: weatherDay.precipitation_hours,
+                                    viento_kmh: weatherDay.windspeed_max,
+                                    descripcion: WMO_DESCRIPTIONS[weatherDay.weathercode] || 'Variable',
+                                    uv_max: weatherDay.uv_index_max,
+                                }],
+                                city: tripSelectedCity.name,
+                                profile,
+                                activity: activity || null,
+                                departureTime: null,
+                            }),
+                        });
+                        const result = await res.json();
+                        rec = result.success ? result.data?.dias?.[0] ?? null : null;
+                    }
+                }
                 newTrips[date] = {
                     date,
                     cityName: tripSelectedCity.name,
@@ -286,9 +350,28 @@ export default function TiempoApp() {
             }
             setTrips(newTrips);
             saveTrips(newTrips);
-            toast.success(`Viaje a ${tripSelectedCity.name} guardado (${tripSelectedDates.length} día${tripSelectedDates.length > 1 ? 's' : ''})`);
+
+            // Create tasks in task app
+            if (createTripTasks && tripTaskListId) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    for (const date of tripDates) {
+                        await supabase.from('tasks').insert({
+                            user_id: user.id,
+                            list_id: tripTaskListId,
+                            title: `✈️ Viaje a ${tripSelectedCity.name}`,
+                            due_date: `${date}T00:00:00`,
+                            is_completed: false,
+                            has_alarm: false,
+                            priority: 'medium',
+                        });
+                    }
+                }
+            }
+
+            toast.success(`Viaje a ${tripSelectedCity.name} guardado — ${tripDates.length} día${tripDates.length > 1 ? 's' : ''}${createTripTasks && tripTaskListId ? ' + tareas creadas' : ''}`);
         } catch {
-            toast.error('Error al obtener el tiempo del viaje');
+            toast.error('Error al guardar el viaje');
         } finally {
             setLoadingTrip(false);
         }
@@ -535,47 +618,90 @@ export default function TiempoApp() {
                             </>
                         )}
 
-                        {/* Date selection — shown once city is picked or always if there are days */}
-                        {weatherDays.length > 0 && (
-                            <>
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-2">¿Qué días estarás allí?</p>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    {weatherDays.map(day => {
-                                        const { weekday, day: dayNum, month } = formatDate(day.date);
-                                        const selected = tripSelectedDates.includes(day.date);
-                                        const hasTrip = !!trips[day.date];
-                                        return (
-                                            <button
-                                                key={day.date}
-                                                onClick={() => toggleTripDate(day.date)}
-                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${selected ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-border bg-muted/20 hover:bg-muted/50'}`}
-                                            >
-                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selected ? 'border-sky-500 bg-sky-500' : 'border-muted-foreground/40'}`}>
-                                                    {selected && <span className="text-white text-xs font-bold">✓</span>}
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm font-medium capitalize block">
-                                                        {isToday(day.date) ? 'Hoy' : weekday.slice(0, 3)}
-                                                        {hasTrip && !selected && <span className="ml-1 text-xs text-sky-500">✈</span>}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">{dayNum} {month} · {day.temperature_max}°/{day.temperature_min}°</span>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </>
+                        {/* Date range */}
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-3">¿Cuándo?</p>
+
+                        {/* Quick presets */}
+                        <div className="flex gap-2 mb-3 flex-wrap">
+                            {([
+                                { key: 'today', label: 'Hoy' },
+                                { key: 'tomorrow', label: 'Mañana' },
+                                { key: 'weekend', label: 'Fin de semana' },
+                                { key: 'week', label: '1 semana' },
+                            ] as const).map(p => (
+                                <button
+                                    key={p.key}
+                                    onClick={() => setTripPreset(p.key)}
+                                    className="px-3 py-1.5 rounded-full text-xs font-medium border-2 border-transparent bg-muted/40 text-muted-foreground hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all"
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Date inputs */}
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div>
+                                <label className="text-xs text-muted-foreground block mb-1">Desde</label>
+                                <input
+                                    type="date"
+                                    value={tripStartDate}
+                                    min={todayStr()}
+                                    onChange={e => {
+                                        setTripStartDate(e.target.value);
+                                        if (e.target.value > tripEndDate) setTripEndDate(e.target.value);
+                                    }}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground block mb-1">Hasta</label>
+                                <input
+                                    type="date"
+                                    value={tripEndDate}
+                                    min={tripStartDate || todayStr()}
+                                    onChange={e => setTripEndDate(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                />
+                            </div>
+                        </div>
+
+                        {tripDates.length > 0 && (
+                            <p className="text-xs text-sky-600 dark:text-sky-400 text-center mb-3 font-medium">
+                                {tripDates.length} día{tripDates.length > 1 ? 's' : ''} seleccionado{tripDates.length > 1 ? 's' : ''}
+                                {tripDates.filter(d => !isWithinForecast(d)).length > 0 && (
+                                    <span className="text-muted-foreground font-normal ml-1">
+                                        · {tripDates.filter(d => isWithinForecast(d)).length} con previsión del tiempo
+                                    </span>
+                                )}
+                            </p>
                         )}
+
+                        {/* Tasks toggle */}
+                        <button
+                            onClick={() => setCreateTripTasks(v => !v)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 mb-4 transition-all ${createTripTasks ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-border bg-muted/20'}`}
+                        >
+                            <div className={`w-10 h-6 rounded-full transition-colors relative flex-shrink-0 ${createTripTasks ? 'bg-sky-500' : 'bg-muted-foreground/30'}`}>
+                                <div className={`w-4 h-4 rounded-full bg-white shadow absolute top-1 transition-all ${createTripTasks ? 'left-5' : 'left-1'}`} />
+                            </div>
+                            <div className="text-left">
+                                <span className="text-sm font-medium block">Añadir a Tareas</span>
+                                <span className="text-xs text-muted-foreground">Crea "✈️ Viaje a {tripSelectedCity?.name ?? '...'}" en tu calendario de tareas</span>
+                            </div>
+                        </button>
 
                         <Button
                             onClick={confirmTrip}
-                            disabled={!tripSelectedCity || tripSelectedDates.length === 0}
+                            disabled={!tripSelectedCity || tripDates.length === 0}
                             className="w-full bg-sky-600 hover:bg-sky-700 text-white"
                         >
                             <Plane className="h-4 w-4 mr-2" />
-                            {tripSelectedDates.length === 0
-                                ? 'Selecciona ciudad y días'
-                                : `Guardar viaje — ${tripSelectedDates.length} día${tripSelectedDates.length > 1 ? 's' : ''}`}
+                            {!tripSelectedCity
+                                ? 'Primero elige la ciudad'
+                                : tripDates.length === 0
+                                ? 'Elige las fechas'
+                                : `Guardar viaje — ${tripDates.length} día${tripDates.length > 1 ? 's' : ''}`}
                         </Button>
                     </div>
                 </div>
