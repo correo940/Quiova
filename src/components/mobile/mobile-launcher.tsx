@@ -11,7 +11,7 @@ import {
     Wallet, CreditCard, Sparkles, Star,
     Pencil, Check, X as XIcon, CheckSquare, ArrowDown,
     AlertTriangle, Info, Pill, ShieldAlert, Car, Send, Leaf, Brain, GraduationCap,
-    Mic, Loader2, PenLine, MicOff, Building2
+    Mic, Loader2, PenLine, MicOff, Building2, CloudSun
 } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Network } from '@capacitor/network';
@@ -1477,6 +1477,21 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                             <PenLine className="w-7 h-7 text-yellow-500" />
                         </div>
                         <span className="block font-bold text-slate-900 text-xs">Notas</span>
+                    </motion.button>
+
+                    {/* ¿Qué me pongo? */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); router.push('/apps/mi-hogar/tiempo'); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-sky-50 p-3 rounded-[18px]">
+                            <CloudSun className="w-7 h-7 text-sky-500" />
+                        </div>
+                        <div className="text-center px-2">
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">¿Qué me</span>
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">pongo?</span>
+                        </div>
                     </motion.button>
                 </div>
 
