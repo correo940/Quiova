@@ -714,7 +714,7 @@ export default function TiempoApp() {
                             const todayDay = isToday(day.date);
                             const trip = trips[day.date];
                             return (
-                                <div key={day.date} className="flex-shrink-0 flex flex-col items-center gap-1 min-w-[72px]">
+                                <div key={day.date} className="flex-shrink-0 flex flex-col items-center gap-1 min-w-[80px]">
                                     <button
                                         onClick={() => setSelectedDay(i)}
                                         className={`w-full flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all border-2 ${isSelected ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-transparent bg-muted/40 hover:bg-muted/70'}`}
@@ -727,26 +727,26 @@ export default function TiempoApp() {
                                         {trip && (
                                             <span className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold flex items-center gap-0.5 mt-0.5 leading-tight text-center">
                                                 <PlaneLanding className="h-2.5 w-2.5" />
-                                                {trip.cityName.slice(0, 7)}
+                                                {trip.cityName.slice(0, 8)}
                                             </span>
                                         )}
                                     </button>
-                                    {/* Add/remove trip button */}
+                                    {/* Add/remove trip — big enough tap target */}
                                     {trip ? (
                                         <button
                                             onClick={() => removeTrip(day.date)}
-                                            className="p-1 rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 transition-colors"
                                             title="Quitar viaje"
                                         >
-                                            <X className="h-3 w-3" />
+                                            <X className="h-3 w-3" /> Quitar
                                         </button>
                                     ) : (
                                         <button
                                             onClick={() => openTripModal(day.date)}
-                                            className="p-1 rounded-full text-muted-foreground hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30 transition-colors"
+                                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 transition-colors"
                                             title="Añadir viaje este día"
                                         >
-                                            <Plane className="h-3 w-3" />
+                                            <Plane className="h-3 w-3" /> Viaje
                                         </button>
                                     )}
                                 </div>

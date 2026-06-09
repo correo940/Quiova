@@ -1416,6 +1416,21 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                         <span className="block font-bold text-slate-900 text-xs">Tareas</span>
                     </motion.button>
 
+                    {/* ¿Qué me pongo? */}
+                    <motion.button
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); router.push('/apps/mi-hogar/tiempo'); }}
+                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
+                    >
+                        <div className="bg-sky-50 p-3 rounded-[18px]">
+                            <CloudSun className="w-7 h-7 text-sky-500" />
+                        </div>
+                        <div className="text-center px-2">
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">¿Qué me</span>
+                            <span className="block font-bold text-slate-900 text-xs leading-snug">pongo?</span>
+                        </div>
+                    </motion.button>
+
                     {/* Lista de la Compra */}
                     <motion.button
                         whileTap={{ scale: 0.93 }}
@@ -1479,20 +1494,6 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                         <span className="block font-bold text-slate-900 text-xs">Notas</span>
                     </motion.button>
 
-                    {/* ¿Qué me pongo? */}
-                    <motion.button
-                        whileTap={{ scale: 0.93 }}
-                        onClick={() => { triggerHaptic(ImpactStyle.Medium); router.push('/apps/mi-hogar/tiempo'); }}
-                        className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
-                    >
-                        <div className="bg-sky-50 p-3 rounded-[18px]">
-                            <CloudSun className="w-7 h-7 text-sky-500" />
-                        </div>
-                        <div className="text-center px-2">
-                            <span className="block font-bold text-slate-900 text-xs leading-snug">¿Qué me</span>
-                            <span className="block font-bold text-slate-900 text-xs leading-snug">pongo?</span>
-                        </div>
-                    </motion.button>
                 </div>
 
             </header>
