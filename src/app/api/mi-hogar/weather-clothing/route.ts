@@ -50,18 +50,15 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: `Eres Quioba, un asistente español con personalidad directa, coloquial y divertida. Tu misión es decirle a la gente qué ropa y accesorios necesitan según el tiempo. El usuario es ${profileText}. ${activityText} ${departureText} Usa español de España, tuteo, tono cercano y con gracia. Responde SOLO con JSON válido, sin texto adicional ni bloques de código markdown.`,
+            content: `Eres Quioba, un asistente español con personalidad directa, coloquial y divertida. Tu misión es decirle a la gente qué ropa y accesorios necesitan según el tiempo, dividiéndolo por franjas horarias del día para que tenga sentido real (por ejemplo: fresco por la mañana → chaqueta; calor por la tarde → camiseta). El usuario es ${profileText}. ${activityText} ${departureText} Usa español de España, tuteo, tono cercano y con gracia. Responde SOLO con JSON válido, sin texto adicional ni bloques de código markdown.`,
           },
           {
             role: 'user',
             content: `Ciudad: ${city || 'desconocida'}
-Datos del tiempo para los próximos 7 días:
+Datos del tiempo${weatherData[0]?.manana ? ' con franjas horarias' : ''}:
 ${JSON.stringify(weatherData, null, 2)}
 
-Genera recomendaciones de ropa/accesorios. Ten en cuenta:
-- El perfil térmico del usuario al decidir qué ropa recomendar
-- La actividad del día si se ha indicado
-- La hora de salida si se ha indicado
+Genera recomendaciones de ropa/accesorios POR FRANJA HORARIA. Es crucial que las recomendaciones de cada franja sean coherentes con su temperatura: si hace calor por la tarde no pongas chaqueta en esa franja. Ten en cuenta el perfil térmico del usuario en cada franja.
 
 Devuelve SOLO este JSON:
 {
@@ -69,23 +66,53 @@ Devuelve SOLO este JSON:
   "dias": [
     {
       "fecha": "YYYY-MM-DD",
-      "comentario_quioba": "Comentario directo y gracioso adaptado al perfil del usuario (máx 2 frases)",
+      "comentario_quioba": "Comentario general del día adaptado al perfil del usuario (1-2 frases)",
       ${departureField}
-      "items": [
-        { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
+      "franjas": [
+        {
+          "franja": "mañana",
+          "emoji": "🌅",
+          "horas": "7-13h",
+          "temp": "18°",
+          "comentario": "Frase corta y graciosa sobre esta franja (máx 1 frase)",
+          "items": [
+            { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
+          ]
+        },
+        {
+          "franja": "tarde",
+          "emoji": "☀️",
+          "horas": "13-20h",
+          "temp": "26°",
+          "comentario": "Frase corta y graciosa sobre esta franja",
+          "items": [
+            { "emoji": "👚", "nombre": "Camiseta", "urgente": false }
+          ]
+        },
+        {
+          "franja": "noche",
+          "emoji": "🌙",
+          "horas": "20-0h",
+          "temp": "19°",
+          "comentario": "Frase corta y graciosa sobre esta franja",
+          "items": [
+            { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
+          ]
+        }
       ],
-      "resumen_tiempo": "Descripción corta del tiempo",
+      "resumen_tiempo": "Descripción corta del tiempo del día completo",
       "nivel_calor": "calor|templado|fresco|frio|mucho_frio"
     }
   ]
 }
 
 Items posibles: 🧥 Chaqueta/Abrigo, ☔ Paraguas, 🌂 Paraguas pequeño, 🧤 Guantes, 🧣 Bufanda, 🎩 Gorra/Sombrero, 🕶️ Gafas de sol, 🧴 Crema solar, 💧 Agua fresquita, 👟 Zapatillas ligeras, 👢 Botas de agua, 🩴 Chanclas, 👚 Ropa ligera, 🩳 Pantalón corto, 👙 Ropa de verano, 🥵 Mucha hidratación, ❄️ Ropa de abrigo extra${activity ? `, y items apropiados para ${activity}` : ''}.
-"urgente" es true solo para lo imprescindible (paraguas si llueve fuerte, crema si UV alto, etc).`,
+"urgente" es true solo para lo imprescindible (paraguas si llueve fuerte, crema si UV alto, etc).
+IMPORTANTE: las franjas deben ser coherentes entre sí. Si se recomienda quitarse la chaqueta por la tarde, no vuelvas a ponerla en la tarde. Si por la tarde hace 28°, NO pongas chaqueta en esa franja.`,
           },
         ],
-        temperature: 0.8,
-        max_tokens: 2500,
+        temperature: 0.7,
+        max_tokens: 3500,
       }),
     });
 

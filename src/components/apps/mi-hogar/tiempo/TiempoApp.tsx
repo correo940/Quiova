@@ -35,11 +35,21 @@ interface ClothingItem {
     urgente: boolean;
 }
 
+interface FranjaRec {
+    franja: 'mañana' | 'tarde' | 'noche';
+    emoji: string;
+    horas: string;
+    temp: string;
+    comentario: string;
+    items: ClothingItem[];
+}
+
 interface DayRecommendation {
     fecha: string;
     comentario_quioba: string;
     hora_salida_consejo?: string;
-    items: ClothingItem[];
+    franjas?: FranjaRec[];
+    items?: ClothingItem[]; // legacy fallback
     resumen_tiempo: string;
     nivel_calor: 'calor' | 'templado' | 'fresco' | 'frio' | 'mucho_frio';
 }
@@ -142,6 +152,31 @@ function saveTrips(trips: Record<string, TripPlan>) {
 
 function todayStr(): string {
     return new Date().toISOString().split('T')[0];
+}
+
+function extractHourlySlots(hourly: any, date: string) {
+    if (!hourly?.time) return null;
+    const slot = (h0: number, h1: number) => {
+        const idxs = hourly.time.reduce((acc: number[], t: string, i: number) => {
+            if (t.startsWith(date)) {
+                const h = parseInt(t.split('T')[1]);
+                if (h >= h0 && h < h1) acc.push(i);
+            }
+            return acc;
+        }, []);
+        if (!idxs.length) return null;
+        const temps = idxs.map((i: number) => hourly.temperature_2m?.[i] ?? 0);
+        const feels = idxs.map((i: number) => hourly.apparent_temperature?.[i] ?? 0);
+        const precip = idxs.map((i: number) => hourly.precipitation_probability?.[i] ?? 0);
+        const mid = idxs[Math.floor(idxs.length / 2)];
+        return {
+            temp: Math.round(Math.max(...temps)),
+            feels_like: Math.round(Math.max(...feels)),
+            precip_prob: Math.max(...precip),
+            weathercode: hourly.weathercode?.[mid] ?? 0,
+        };
+    };
+    return { morning: slot(7, 13), afternoon: slot(13, 20), evening: slot(20, 24) };
 }
 
 function getDatesInRange(start: string, end: string): string[] {
@@ -434,7 +469,7 @@ export default function TiempoApp() {
         setCurrentLat(lat);
         setCurrentLon(lon);
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,uv_index_max&timezone=auto&forecast_days=7&past_days=1`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,uv_index_max&hourly=temperature_2m,apparent_temperature,precipitation_probability,weathercode&timezone=auto&forecast_days=7&past_days=1`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('Error al obtener el tiempo');
             const json = await res.json();
@@ -457,7 +492,7 @@ export default function TiempoApp() {
             const forecast = allDays.slice(1);
             setWeatherDays(forecast);
             setResolvedCity(cityName);
-            await fetchRecommendations(forecast, cityName);
+            await fetchRecommendations(forecast, cityName, json.hourly);
         } catch (err: any) {
             toast.error(err.message || 'Error al obtener el tiempo');
         } finally {
@@ -465,19 +500,27 @@ export default function TiempoApp() {
         }
     };
 
-    const fetchRecommendations = async (days: WeatherDay[], cityName: string) => {
-        const weatherData = days.map(d => ({
-            fecha: d.date,
-            temp_max: d.temperature_max,
-            temp_min: d.temperature_min,
-            sensacion_max: d.apparent_temperature_max,
-            sensacion_min: d.apparent_temperature_min,
-            lluvia_mm: d.precipitation_sum,
-            horas_lluvia: d.precipitation_hours,
-            viento_kmh: d.windspeed_max,
-            descripcion: WMO_DESCRIPTIONS[d.weathercode] || 'Variable',
-            uv_max: d.uv_index_max,
-        }));
+    const fetchRecommendations = async (days: WeatherDay[], cityName: string, hourly?: any) => {
+        const weatherData = days.map(d => {
+            const slots = hourly ? extractHourlySlots(hourly, d.date) : null;
+            return {
+                fecha: d.date,
+                temp_max: d.temperature_max,
+                temp_min: d.temperature_min,
+                sensacion_max: d.apparent_temperature_max,
+                sensacion_min: d.apparent_temperature_min,
+                lluvia_mm: d.precipitation_sum,
+                horas_lluvia: d.precipitation_hours,
+                viento_kmh: d.windspeed_max,
+                descripcion: WMO_DESCRIPTIONS[d.weathercode] || 'Variable',
+                uv_max: d.uv_index_max,
+                ...(slots && {
+                    manana: slots.morning ? { temp: slots.morning.temp, sensacion: slots.morning.feels_like, lluvia_prob: slots.morning.precip_prob } : undefined,
+                    tarde: slots.afternoon ? { temp: slots.afternoon.temp, sensacion: slots.afternoon.feels_like, lluvia_prob: slots.afternoon.precip_prob } : undefined,
+                    noche: slots.evening ? { temp: slots.evening.temp, sensacion: slots.evening.feels_like, lluvia_prob: slots.evening.precip_prob } : undefined,
+                }),
+            };
+        });
 
         const response = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
             method: 'POST',
@@ -1080,26 +1123,57 @@ export default function TiempoApp() {
                                 <p className="text-sm leading-relaxed italic">&ldquo;{currentRec.comentario_quioba}&rdquo;</p>
                             </div>
 
-                            <div>
-                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
-                                    <Thermometer className="h-4 w-4" />
-                                    Lo que necesitas
-                                    {activeActivity && <Badge variant="secondary" className="text-xs font-normal">{activeActivity.emoji} {activeActivity.label}</Badge>}
-                                    {profile !== 'normal' && <Badge variant="secondary" className="text-xs font-normal">{profile === 'friolero' ? '🥶' : '🥵'} {profile}</Badge>}
-                                </h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {currentRec.items.map((item, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${item.urgente ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium' : 'bg-white/60 dark:bg-black/20 border border-white/40 dark:border-white/10'}`}
-                                        >
-                                            <span className="text-lg">{item.emoji}</span>
-                                            <span className="leading-tight">{item.nombre}</span>
-                                            {item.urgente && <span className="ml-auto text-red-500 text-xs font-bold">!</span>}
+                            {/* Franjas horarias */}
+                            {currentRec.franjas && currentRec.franjas.length > 0 ? (
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                                        <Thermometer className="h-4 w-4" /> Por momentos del día
+                                        {activeActivity && <Badge variant="secondary" className="text-xs font-normal">{activeActivity.emoji} {activeActivity.label}</Badge>}
+                                        {profile !== 'normal' && <Badge variant="secondary" className="text-xs font-normal">{profile === 'friolero' ? '🥶' : '🥵'} {profile}</Badge>}
+                                    </h4>
+                                    {currentRec.franjas.map((franja, fi) => (
+                                        <div key={fi} className="rounded-xl bg-white/60 dark:bg-black/20 border border-white/40 dark:border-white/10 overflow-hidden">
+                                            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/40 dark:border-white/10 bg-white/40 dark:bg-black/10">
+                                                <span className="text-base">{franja.emoji}</span>
+                                                <span className="font-semibold text-sm capitalize">{franja.franja}</span>
+                                                <span className="text-xs text-muted-foreground">{franja.horas}</span>
+                                                <span className="ml-auto font-bold text-sm">{franja.temp}</span>
+                                            </div>
+                                            <div className="px-3 py-2 space-y-2">
+                                                <p className="text-xs text-muted-foreground italic">{franja.comentario}</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {franja.items.map((item, ii) => (
+                                                        <span
+                                                            key={ii}
+                                                            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${item.urgente ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium' : 'bg-muted/40 border border-border/50'}`}
+                                                        >
+                                                            <span>{item.emoji}</span>
+                                                            <span>{item.nombre}</span>
+                                                            {item.urgente && <span className="text-red-500 font-bold">!</span>}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            ) : currentRec.items && currentRec.items.length > 0 ? (
+                                // Legacy fallback for old recs without franjas
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                        <Thermometer className="h-4 w-4" /> Lo que necesitas
+                                    </h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {currentRec.items.map((item, idx) => (
+                                            <div key={idx} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${item.urgente ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium' : 'bg-white/60 dark:bg-black/20 border border-white/40 dark:border-white/10'}`}>
+                                                <span className="text-lg">{item.emoji}</span>
+                                                <span className="leading-tight">{item.nombre}</span>
+                                                {item.urgente && <span className="ml-auto text-red-500 text-xs font-bold">!</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
                         </CardContent>
                     </Card>
 
@@ -1143,12 +1217,17 @@ export default function TiempoApp() {
                                                 &ldquo;{(dayTrip?.recommendation ?? rec).comentario_quioba}&rdquo;
                                             </p>
                                             <div className="flex gap-1 flex-wrap">
-                                                {(dayTrip?.recommendation ?? rec).items.slice(0, 4).map((item, j) => (
-                                                    <span key={j} title={item.nombre} className="text-base">{item.emoji}</span>
-                                                ))}
-                                                {(dayTrip?.recommendation ?? rec).items.length > 4 && (
-                                                    <span className="text-xs text-muted-foreground self-center">+{(dayTrip?.recommendation ?? rec).items.length - 4}</span>
-                                                )}
+                                                {(() => {
+                                                    const activeRec = dayTrip?.recommendation ?? rec;
+                                                    const allItems = activeRec.franjas
+                                                        ? activeRec.franjas.flatMap(f => f.items).filter((item, idx, arr) => arr.findIndex(x => x.emoji === item.emoji) === idx)
+                                                        : (activeRec.items ?? []);
+                                                    return <>
+                                                        {allItems.slice(0, 5).map((item, j) => (
+                                                            <span key={j} title={item.nombre} className="text-base">{item.emoji}</span>
+                                                        ))}
+                                                    </>;
+                                                })()}
                                             </div>
                                         </button>
                                     );
