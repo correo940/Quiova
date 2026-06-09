@@ -204,6 +204,11 @@ export default function TiempoApp() {
 
     const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
 
+    // Main search autocomplete
+    const [citySuggestions, setCitySuggestions] = useState<GeoSuggestion[]>([]);
+    const [loadingCitySugg, setLoadingCitySugg] = useState(false);
+    const cityAutoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Trip planner
     const [trips, setTrips] = useState<Record<string, TripPlan>>({});
     const [showTripModal, setShowTripModal] = useState(false);
@@ -266,6 +271,25 @@ export default function TiempoApp() {
     useEffect(() => {
         if (showTripModal && !tripSelectedCity) setTimeout(() => tripInputRef.current?.focus(), 150);
     }, [showTripModal, tripSelectedCity]);
+
+    // Autocomplete for main city search
+    useEffect(() => {
+        if (cityAutoTimer.current) clearTimeout(cityAutoTimer.current);
+        if (!city.trim()) { setCitySuggestions([]); return; }
+        cityAutoTimer.current = setTimeout(async () => {
+            setLoadingCitySugg(true);
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=6&language=es&format=json`);
+                const json = await res.json();
+                setCitySuggestions((json.results || []).map((r: any) => ({
+                    name: r.name, admin1: r.admin1 || '', country: r.country || '',
+                    lat: r.latitude, lon: r.longitude,
+                })));
+            } catch { setCitySuggestions([]); }
+            finally { setLoadingCitySugg(false); }
+        }, 250);
+        return () => { if (cityAutoTimer.current) clearTimeout(cityAutoTimer.current); };
+    }, [city]);
 
     const openTripModal = () => {
         const today = todayStr();
@@ -734,24 +758,29 @@ export default function TiempoApp() {
             {/* Search + Settings */}
             <Card>
                 <CardContent className="pt-4 pb-4 space-y-3">
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Escribe tu ciudad..."
-                                value={city}
-                                onChange={e => setCity(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSearchCity()}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Button onClick={handleSearchCity} disabled={loading || !city.trim()} className="bg-sky-600 hover:bg-sky-700 text-white">
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        </Button>
-                        <Button variant="outline" onClick={handleGeolocate} disabled={loading || loadingGeo} title="Usar mi ubicación">
-                            {loadingGeo ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                        </Button>
-                        {hasResults && (
+                    <div className="space-y-1">
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                                <Input
+                                    placeholder="Escribe tu ciudad..."
+                                    value={city}
+                                    onChange={e => setCity(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { setCitySuggestions([]); handleSearchCity(); } }}
+                                    onBlur={() => setTimeout(() => setCitySuggestions([]), 200)}
+                                    className="pl-9"
+                                    autoComplete="off"
+                                />
+                                {loadingCitySugg && (
+                                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                )}
+                            </div>
+                            <Button onClick={() => { setCitySuggestions([]); handleSearchCity(); }} disabled={loading || !city.trim()} className="bg-sky-600 hover:bg-sky-700 text-white">
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="outline" onClick={handleGeolocate} disabled={loading || loadingGeo} title="Usar mi ubicación">
+                                {loadingGeo ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                            </Button>
                             <Button
                                 variant={Object.keys(trips).length > 0 ? 'default' : 'outline'}
                                 onClick={openTripModal}
@@ -760,10 +789,36 @@ export default function TiempoApp() {
                             >
                                 <Plane className="h-4 w-4" />
                             </Button>
+                            <Button variant={showSettings ? 'default' : 'outline'} onClick={() => setShowSettings(s => !s)} title="Personalizar">
+                                <Settings className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        {/* City autocomplete dropdown */}
+                        {citySuggestions.length > 0 && (
+                            <div className="rounded-xl border border-border overflow-hidden bg-background shadow-lg">
+                                {citySuggestions.map((s, i) => (
+                                    <button
+                                        key={i}
+                                        onMouseDown={() => {
+                                            setCity(s.name);
+                                            setCitySuggestions([]);
+                                            fetchWeatherByCoords(s.lat, s.lon, s.name);
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
+                                    >
+                                        <MapPin className="h-4 w-4 text-sky-500 flex-shrink-0" />
+                                        <div>
+                                            <span className="font-medium text-sm">{s.name}</span>
+                                            {(s.admin1 || s.country) && (
+                                                <span className="text-xs text-muted-foreground ml-1.5">
+                                                    {[s.admin1, s.country].filter(Boolean).join(', ')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         )}
-                        <Button variant={showSettings ? 'default' : 'outline'} onClick={() => setShowSettings(s => !s)} title="Personalizar">
-                            <Settings className="h-4 w-4" />
-                        </Button>
                     </div>
 
                     {showSettings && (
