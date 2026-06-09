@@ -186,7 +186,8 @@ export default function TiempoApp() {
     // Trip planner
     const [trips, setTrips] = useState<Record<string, TripPlan>>({});
     const [showTripModal, setShowTripModal] = useState(false);
-    const [tripModalDate, setTripModalDate] = useState('');
+    const [tripSelectedCity, setTripSelectedCity] = useState<GeoSuggestion | null>(null);
+    const [tripSelectedDates, setTripSelectedDates] = useState<string[]>([]);
     const [tripInput, setTripInput] = useState('');
     const [tripSuggestions, setTripSuggestions] = useState<GeoSuggestion[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -222,62 +223,70 @@ export default function TiempoApp() {
         return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
     }, [tripInput]);
 
-    // Focus trip input when modal opens
+    // Focus trip input when modal opens (only if no city selected yet)
     useEffect(() => {
-        if (showTripModal) setTimeout(() => tripInputRef.current?.focus(), 150);
-    }, [showTripModal]);
+        if (showTripModal && !tripSelectedCity) setTimeout(() => tripInputRef.current?.focus(), 150);
+    }, [showTripModal, tripSelectedCity]);
 
-    const openTripModal = (date: string) => {
-        setTripModalDate(date);
+    const openTripModal = () => {
         setTripInput('');
         setTripSuggestions([]);
+        setTripSelectedCity(null);
+        setTripSelectedDates([]);
         setShowTripModal(true);
     };
 
-    const selectTripCity = async (suggestion: GeoSuggestion) => {
+    const toggleTripDate = (date: string) => {
+        setTripSelectedDates(prev =>
+            prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
+        );
+    };
+
+    const confirmTrip = async () => {
+        if (!tripSelectedCity || tripSelectedDates.length === 0) return;
         setShowTripModal(false);
         setLoadingTrip(true);
+        const newTrips = { ...trips };
         try {
-            const weatherDay = await fetchWeatherForDay(suggestion.lat, suggestion.lon, tripModalDate);
-            if (!weatherDay) { toast.error('No se pudo obtener el tiempo para esa fecha'); return; }
-
-            const res = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    weatherData: [{
-                        fecha: weatherDay.date,
-                        temp_max: weatherDay.temperature_max,
-                        temp_min: weatherDay.temperature_min,
-                        sensacion_max: weatherDay.apparent_temperature_max,
-                        sensacion_min: weatherDay.apparent_temperature_min,
-                        lluvia_mm: weatherDay.precipitation_sum,
-                        horas_lluvia: weatherDay.precipitation_hours,
-                        viento_kmh: weatherDay.windspeed_max,
-                        descripcion: WMO_DESCRIPTIONS[weatherDay.weathercode] || 'Variable',
-                        uv_max: weatherDay.uv_index_max,
-                    }],
-                    city: suggestion.name,
-                    profile,
-                    activity: activity || null,
-                    departureTime: null,
-                }),
-            });
-            const result = await res.json();
-            const rec: DayRecommendation | null = result.success ? result.data?.dias?.[0] ?? null : null;
-
-            const trip: TripPlan = {
-                date: tripModalDate,
-                cityName: suggestion.name,
-                lat: suggestion.lat,
-                lon: suggestion.lon,
-                weatherDay,
-                recommendation: rec,
-            };
-            const newTrips = { ...trips, [tripModalDate]: trip };
+            for (const date of tripSelectedDates) {
+                const weatherDay = await fetchWeatherForDay(tripSelectedCity.lat, tripSelectedCity.lon, date);
+                if (!weatherDay) continue;
+                const res = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        weatherData: [{
+                            fecha: weatherDay.date,
+                            temp_max: weatherDay.temperature_max,
+                            temp_min: weatherDay.temperature_min,
+                            sensacion_max: weatherDay.apparent_temperature_max,
+                            sensacion_min: weatherDay.apparent_temperature_min,
+                            lluvia_mm: weatherDay.precipitation_sum,
+                            horas_lluvia: weatherDay.precipitation_hours,
+                            viento_kmh: weatherDay.windspeed_max,
+                            descripcion: WMO_DESCRIPTIONS[weatherDay.weathercode] || 'Variable',
+                            uv_max: weatherDay.uv_index_max,
+                        }],
+                        city: tripSelectedCity.name,
+                        profile,
+                        activity: activity || null,
+                        departureTime: null,
+                    }),
+                });
+                const result = await res.json();
+                const rec: DayRecommendation | null = result.success ? result.data?.dias?.[0] ?? null : null;
+                newTrips[date] = {
+                    date,
+                    cityName: tripSelectedCity.name,
+                    lat: tripSelectedCity.lat,
+                    lon: tripSelectedCity.lon,
+                    weatherDay,
+                    recommendation: rec,
+                };
+            }
             setTrips(newTrips);
             saveTrips(newTrips);
-            toast.success(`Viaje a ${suggestion.name} guardado`);
+            toast.success(`Viaje a ${tripSelectedCity.name} guardado (${tripSelectedDates.length} día${tripSelectedDates.length > 1 ? 's' : ''})`);
         } catch {
             toast.error('Error al obtener el tiempo del viaje');
         } finally {
@@ -456,66 +465,118 @@ export default function TiempoApp() {
             {/* Trip Modal */}
             {showTripModal && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowTripModal(false)}>
-                    <div className="bg-background rounded-t-3xl w-full max-w-lg p-6 pb-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-background rounded-t-3xl w-full max-w-lg p-6 pb-10 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="w-10 h-1 bg-muted rounded-full mx-auto mb-5" />
                         <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="font-bold text-lg flex items-center gap-2">
-                                    <Plane className="h-5 w-5 text-sky-500" />
-                                    ¿A dónde vas el {formatDate(tripModalDate).weekday}?
-                                </h3>
-                                <p className="text-xs text-muted-foreground">{formatDate(tripModalDate).day} de {formatDate(tripModalDate).month}</p>
-                            </div>
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <Plane className="h-5 w-5 text-sky-500" />
+                                Planificar viaje
+                            </h3>
                             <Button variant="ghost" size="icon" onClick={() => setShowTripModal(false)}>
                                 <X className="h-5 w-5" />
                             </Button>
                         </div>
 
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <input
-                                ref={tripInputRef}
-                                type="text"
-                                placeholder="Escribe la ciudad del viaje..."
-                                value={tripInput}
-                                onChange={e => setTripInput(e.target.value)}
-                                className="w-full pl-9 pr-4 py-3 rounded-xl border border-input bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
-                            />
-                            {loadingSuggestions && (
-                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                            )}
-                        </div>
-
-                        {/* Suggestions */}
-                        {tripSuggestions.length > 0 && (
-                            <div className="mt-2 rounded-xl border border-border overflow-hidden bg-background shadow-lg">
-                                {tripSuggestions.map((s, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => selectTripCity(s)}
-                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
-                                    >
-                                        <MapPin className="h-4 w-4 text-sky-500 flex-shrink-0" />
-                                        <div>
-                                            <span className="font-medium text-sm">{s.name}</span>
-                                            {(s.admin1 || s.country) && (
-                                                <span className="text-xs text-muted-foreground ml-1.5">
-                                                    {[s.admin1, s.country].filter(Boolean).join(', ')}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </button>
-                                ))}
+                        {/* City search */}
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">¿A dónde vas?</p>
+                        {tripSelectedCity ? (
+                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 mb-3">
+                                <MapPin className="h-4 w-4 text-sky-500 flex-shrink-0" />
+                                <span className="font-medium text-sm flex-1">{tripSelectedCity.name}
+                                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                                        {[tripSelectedCity.admin1, tripSelectedCity.country].filter(Boolean).join(', ')}
+                                    </span>
+                                </span>
+                                <button onClick={() => { setTripSelectedCity(null); setTripInput(''); setTimeout(() => tripInputRef.current?.focus(), 100); }} className="text-xs text-sky-600 hover:underline">Cambiar</button>
                             </div>
+                        ) : (
+                            <>
+                                <div className="relative mb-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <input
+                                        ref={tripInputRef}
+                                        type="text"
+                                        placeholder="Escribe la ciudad del viaje..."
+                                        value={tripInput}
+                                        onChange={e => setTripInput(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-3 rounded-xl border border-input bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                    />
+                                    {loadingSuggestions && (
+                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                    )}
+                                </div>
+                                {tripSuggestions.length > 0 && (
+                                    <div className="mb-3 rounded-xl border border-border overflow-hidden bg-background shadow-lg">
+                                        {tripSuggestions.map((s, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => { setTripSelectedCity(s); setTripSuggestions([]); }}
+                                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
+                                            >
+                                                <MapPin className="h-4 w-4 text-sky-500 flex-shrink-0" />
+                                                <div>
+                                                    <span className="font-medium text-sm">{s.name}</span>
+                                                    {(s.admin1 || s.country) && (
+                                                        <span className="text-xs text-muted-foreground ml-1.5">
+                                                            {[s.admin1, s.country].filter(Boolean).join(', ')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {tripInput.length > 0 && tripSuggestions.length === 0 && !loadingSuggestions && (
+                                    <p className="text-center text-xs text-muted-foreground mb-3">No se encontraron resultados</p>
+                                )}
+                                {tripInput.length === 0 && (
+                                    <p className="text-center text-xs text-muted-foreground mb-3">Empieza a escribir para ver sugerencias</p>
+                                )}
+                            </>
                         )}
 
-                        {tripInput.length > 0 && tripSuggestions.length === 0 && !loadingSuggestions && (
-                            <p className="text-center text-xs text-muted-foreground mt-4">No se encontraron resultados</p>
+                        {/* Date selection — shown once city is picked or always if there are days */}
+                        {weatherDays.length > 0 && (
+                            <>
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-2">¿Qué días estarás allí?</p>
+                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                    {weatherDays.map(day => {
+                                        const { weekday, day: dayNum, month } = formatDate(day.date);
+                                        const selected = tripSelectedDates.includes(day.date);
+                                        const hasTrip = !!trips[day.date];
+                                        return (
+                                            <button
+                                                key={day.date}
+                                                onClick={() => toggleTripDate(day.date)}
+                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${selected ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-border bg-muted/20 hover:bg-muted/50'}`}
+                                            >
+                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selected ? 'border-sky-500 bg-sky-500' : 'border-muted-foreground/40'}`}>
+                                                    {selected && <span className="text-white text-xs font-bold">✓</span>}
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-medium capitalize block">
+                                                        {isToday(day.date) ? 'Hoy' : weekday.slice(0, 3)}
+                                                        {hasTrip && !selected && <span className="ml-1 text-xs text-sky-500">✈</span>}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">{dayNum} {month} · {day.temperature_max}°/{day.temperature_min}°</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
                         )}
 
-                        {tripInput.length === 0 && (
-                            <p className="text-center text-xs text-muted-foreground mt-4">Empieza a escribir para ver sugerencias</p>
-                        )}
+                        <Button
+                            onClick={confirmTrip}
+                            disabled={!tripSelectedCity || tripSelectedDates.length === 0}
+                            className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                        >
+                            <Plane className="h-4 w-4 mr-2" />
+                            {tripSelectedDates.length === 0
+                                ? 'Selecciona ciudad y días'
+                                : `Guardar viaje — ${tripSelectedDates.length} día${tripSelectedDates.length > 1 ? 's' : ''}`}
+                        </Button>
                     </div>
                 </div>
             )}
@@ -564,6 +625,16 @@ export default function TiempoApp() {
                         <Button variant="outline" onClick={handleGeolocate} disabled={loading || loadingGeo} title="Usar mi ubicación">
                             {loadingGeo ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                         </Button>
+                        {hasResults && (
+                            <Button
+                                variant={Object.keys(trips).length > 0 ? 'default' : 'outline'}
+                                onClick={openTripModal}
+                                title="Planificar viaje"
+                                className={Object.keys(trips).length > 0 ? 'bg-sky-600 hover:bg-sky-700 text-white' : ''}
+                            >
+                                <Plane className="h-4 w-4" />
+                            </Button>
+                        )}
                         <Button variant={showSettings ? 'default' : 'outline'} onClick={() => setShowSettings(s => !s)} title="Personalizar">
                             <Settings className="h-4 w-4" />
                         </Button>
@@ -714,7 +785,7 @@ export default function TiempoApp() {
                             const todayDay = isToday(day.date);
                             const trip = trips[day.date];
                             return (
-                                <div key={day.date} className="flex-shrink-0 flex flex-col items-center gap-1 min-w-[80px]">
+                                <div key={day.date} className="flex-shrink-0 min-w-[72px]">
                                     <button
                                         onClick={() => setSelectedDay(i)}
                                         className={`w-full flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all border-2 ${isSelected ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-transparent bg-muted/40 hover:bg-muted/70'}`}
@@ -725,30 +796,11 @@ export default function TiempoApp() {
                                         <span className="text-lg">{day.temperature_max}°</span>
                                         <span className="text-xs text-muted-foreground">{day.temperature_min}°</span>
                                         {trip && (
-                                            <span className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold flex items-center gap-0.5 mt-0.5 leading-tight text-center">
-                                                <PlaneLanding className="h-2.5 w-2.5" />
-                                                {trip.cityName.slice(0, 8)}
+                                            <span className="text-[10px] text-sky-500 font-semibold flex items-center gap-0.5 mt-0.5 leading-tight">
+                                                ✈ {trip.cityName.slice(0, 7)}
                                             </span>
                                         )}
                                     </button>
-                                    {/* Add/remove trip — big enough tap target */}
-                                    {trip ? (
-                                        <button
-                                            onClick={() => removeTrip(day.date)}
-                                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 transition-colors"
-                                            title="Quitar viaje"
-                                        >
-                                            <X className="h-3 w-3" /> Quitar
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => openTripModal(day.date)}
-                                            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 transition-colors"
-                                            title="Añadir viaje este día"
-                                        >
-                                            <Plane className="h-3 w-3" /> Viaje
-                                        </button>
-                                    )}
                                 </div>
                             );
                         })}
@@ -760,8 +812,11 @@ export default function TiempoApp() {
                             {/* Trip indicator */}
                             {currentTrip && (
                                 <div className="flex items-center gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400 mb-2 bg-sky-50 dark:bg-sky-950/30 rounded-lg px-3 py-1.5 border border-sky-200 dark:border-sky-800">
-                                    <PlaneLanding className="h-3.5 w-3.5" />
-                                    Estarás en {currentTrip.cityName}
+                                    <PlaneLanding className="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span className="flex-1">Estarás en {currentTrip.cityName}</span>
+                                    <button onClick={() => removeTrip(currentTrip.date)} className="text-red-400 hover:text-red-600 transition-colors" title="Quitar viaje este día">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             )}
                             <div className="flex items-start justify-between gap-4">
