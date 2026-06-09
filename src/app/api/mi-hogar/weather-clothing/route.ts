@@ -73,7 +73,8 @@ Devuelve SOLO este JSON:
           "franja": "mañana",
           "emoji": "🌅",
           "horas": "7-13h",
-          "temp": "18°",
+          "temp_max": "20°",
+          "temp_min": "15°",
           "comentario": "Frase corta y graciosa sobre esta franja (máx 1 frase)",
           "items": [
             { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
@@ -83,7 +84,8 @@ Devuelve SOLO este JSON:
           "franja": "tarde",
           "emoji": "☀️",
           "horas": "13-20h",
-          "temp": "26°",
+          "temp_max": "26°",
+          "temp_min": "22°",
           "comentario": "Frase corta y graciosa sobre esta franja",
           "items": [
             { "emoji": "👚", "nombre": "Camiseta", "urgente": false }
@@ -93,7 +95,8 @@ Devuelve SOLO este JSON:
           "franja": "noche",
           "emoji": "🌙",
           "horas": "20-0h",
-          "temp": "19°",
+          "temp_max": "19°",
+          "temp_min": "16°",
           "comentario": "Frase corta y graciosa sobre esta franja",
           "items": [
             { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }

@@ -39,7 +39,8 @@ interface FranjaRec {
     franja: 'mañana' | 'tarde' | 'noche';
     emoji: string;
     horas: string;
-    temp: string;
+    temp_max: string;
+    temp_min: string;
     comentario: string;
     items: ClothingItem[];
 }
@@ -170,7 +171,8 @@ function extractHourlySlots(hourly: any, date: string) {
         const precip = idxs.map((i: number) => hourly.precipitation_probability?.[i] ?? 0);
         const mid = idxs[Math.floor(idxs.length / 2)];
         return {
-            temp: Math.round(Math.max(...temps)),
+            temp_max: Math.round(Math.max(...temps)),
+            temp_min: Math.round(Math.min(...temps)),
             feels_like: Math.round(Math.max(...feels)),
             precip_prob: Math.max(...precip),
             weathercode: hourly.weathercode?.[mid] ?? 0,
@@ -515,9 +517,9 @@ export default function TiempoApp() {
                 descripcion: WMO_DESCRIPTIONS[d.weathercode] || 'Variable',
                 uv_max: d.uv_index_max,
                 ...(slots && {
-                    manana: slots.morning ? { temp: slots.morning.temp, sensacion: slots.morning.feels_like, lluvia_prob: slots.morning.precip_prob } : undefined,
-                    tarde: slots.afternoon ? { temp: slots.afternoon.temp, sensacion: slots.afternoon.feels_like, lluvia_prob: slots.afternoon.precip_prob } : undefined,
-                    noche: slots.evening ? { temp: slots.evening.temp, sensacion: slots.evening.feels_like, lluvia_prob: slots.evening.precip_prob } : undefined,
+                    manana: slots.morning ? { temp_max: slots.morning.temp_max, temp_min: slots.morning.temp_min, sensacion: slots.morning.feels_like, lluvia_prob: slots.morning.precip_prob } : undefined,
+                    tarde: slots.afternoon ? { temp_max: slots.afternoon.temp_max, temp_min: slots.afternoon.temp_min, sensacion: slots.afternoon.feels_like, lluvia_prob: slots.afternoon.precip_prob } : undefined,
+                    noche: slots.evening ? { temp_max: slots.evening.temp_max, temp_min: slots.evening.temp_min, sensacion: slots.evening.feels_like, lluvia_prob: slots.evening.precip_prob } : undefined,
                 }),
             };
         });
@@ -1137,7 +1139,12 @@ export default function TiempoApp() {
                                                 <span className="text-base">{franja.emoji}</span>
                                                 <span className="font-semibold text-sm capitalize">{franja.franja}</span>
                                                 <span className="text-xs text-muted-foreground">{franja.horas}</span>
-                                                <span className="ml-auto font-bold text-sm">{franja.temp}</span>
+                                                <span className="ml-auto font-bold text-sm">
+                                                    {franja.temp_max ?? (franja as any).temp}
+                                                    {franja.temp_min && franja.temp_min !== franja.temp_max && (
+                                                        <span className="font-normal text-muted-foreground"> / {franja.temp_min}</span>
+                                                    )}
+                                                </span>
                                             </div>
                                             <div className="px-3 py-2 space-y-2">
                                                 <p className="text-xs text-muted-foreground italic">{franja.comentario}</p>
