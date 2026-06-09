@@ -1,21 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-    Loader2,
-    MapPin,
-    Search,
-    ArrowLeft,
-    RefreshCw,
-    CloudRain,
-    Sun,
-    Thermometer,
-    Wind,
-    MessageCircle,
+    Loader2, MapPin, Search, ArrowLeft, RefreshCw,
+    CloudRain, Sun, Thermometer, Wind, MessageCircle,
+    Settings, Star, Clock, AlertTriangle, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -25,7 +18,10 @@ interface WeatherDay {
     date: string;
     temperature_max: number;
     temperature_min: number;
+    apparent_temperature_max: number;
+    apparent_temperature_min: number;
     precipitation_sum: number;
+    precipitation_hours: number;
     windspeed_max: number;
     weathercode: number;
     uv_index_max?: number;
@@ -40,10 +36,28 @@ interface ClothingItem {
 interface DayRecommendation {
     fecha: string;
     comentario_quioba: string;
+    hora_salida_consejo?: string;
     items: ClothingItem[];
     resumen_tiempo: string;
     nivel_calor: 'calor' | 'templado' | 'fresco' | 'frio' | 'mucho_frio';
 }
+
+interface FavoriteLocation {
+    name: string;
+    lat: number;
+    lon: number;
+}
+
+type UserProfile = 'friolero' | 'normal' | 'caluroso';
+
+const ACTIVITIES = [
+    { key: 'trabajar', label: 'Trabajar', emoji: '💼' },
+    { key: 'correr', label: 'Correr', emoji: '🏃' },
+    { key: 'playa', label: 'Playa', emoji: '🏖️' },
+    { key: 'montana', label: 'Montaña', emoji: '🏔️' },
+    { key: 'salir_noche', label: 'Salir', emoji: '🍷' },
+    { key: 'compras', label: 'Compras', emoji: '🛍️' },
+];
 
 const WMO_DESCRIPTIONS: Record<number, string> = {
     0: 'Despejado', 1: 'Principalmente despejado', 2: 'Parcialmente nublado', 3: 'Cubierto',
@@ -57,11 +71,11 @@ const WMO_DESCRIPTIONS: Record<number, string> = {
 };
 
 const NIVEL_CALOR_CONFIG = {
-    calor: { bg: 'from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20', border: 'border-orange-200 dark:border-orange-800', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' },
-    templado: { bg: 'from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20', border: 'border-green-200 dark:border-green-800', badge: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-    fresco: { bg: 'from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20', border: 'border-blue-200 dark:border-blue-800', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-    frio: { bg: 'from-slate-50 to-blue-50 dark:from-slate-950/20 dark:to-blue-950/20', border: 'border-slate-200 dark:border-slate-700', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
-    mucho_frio: { bg: 'from-indigo-50 to-slate-50 dark:from-indigo-950/20 dark:to-slate-950/20', border: 'border-indigo-200 dark:border-indigo-800', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
+    calor:     { bg: 'from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20',   border: 'border-orange-200 dark:border-orange-800', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' },
+    templado:  { bg: 'from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20', border: 'border-green-200 dark:border-green-800',   badge: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+    fresco:    { bg: 'from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20',         border: 'border-blue-200 dark:border-blue-800',     badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+    frio:      { bg: 'from-slate-50 to-blue-50 dark:from-slate-950/20 dark:to-blue-950/20',       border: 'border-slate-200 dark:border-slate-700',   badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+    mucho_frio:{ bg: 'from-indigo-50 to-slate-50 dark:from-indigo-950/20 dark:to-slate-950/20',   border: 'border-indigo-200 dark:border-indigo-800', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
 };
 
 function formatDate(dateStr: string): { weekday: string; day: string; month: string } {
@@ -74,8 +88,28 @@ function formatDate(dateStr: string): { weekday: string; day: string; month: str
 }
 
 function isToday(dateStr: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
+    return dateStr === new Date().toISOString().split('T')[0];
+}
+
+function computeAlerts(day: WeatherDay): string[] {
+    const alerts: string[] = [];
+    const diff = day.temperature_max - day.temperature_min;
+    if (diff >= 12) alerts.push(`Cambio de ${diff}° entre mañana y tarde — pon capas`);
+    if (day.precipitation_hours > 0 && day.precipitation_hours < 8 && day.precipitation_sum > 0)
+        alerts.push(`Lluvia solo parte del día — lleva paraguas por si acaso`);
+    if ((day.uv_index_max ?? 0) >= 8) alerts.push(`UV muy alto (${day.uv_index_max}) — crema solar obligatoria`);
+    if (day.windspeed_max > 50) alerts.push(`Viento fuerte (${day.windspeed_max}km/h) — cuidado con paraguas`);
+    return alerts;
+}
+
+function loadProfile(): UserProfile {
+    if (typeof window === 'undefined') return 'normal';
+    return (localStorage.getItem('quioba_weather_profile') as UserProfile) || 'normal';
+}
+
+function loadFavorites(): FavoriteLocation[] {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem('quioba_weather_favorites') || '[]'); } catch { return []; }
 }
 
 export default function TiempoApp() {
@@ -83,34 +117,78 @@ export default function TiempoApp() {
     const [loading, setLoading] = useState(false);
     const [loadingGeo, setLoadingGeo] = useState(false);
     const [resolvedCity, setResolvedCity] = useState('');
+    const [currentLat, setCurrentLat] = useState<number | null>(null);
+    const [currentLon, setCurrentLon] = useState<number | null>(null);
+
     const [weatherDays, setWeatherDays] = useState<WeatherDay[]>([]);
+    const [yesterdayData, setYesterdayData] = useState<WeatherDay | null>(null);
     const [recommendations, setRecommendations] = useState<DayRecommendation[]>([]);
+    const [weeklySummary, setWeeklySummary] = useState('');
     const [selectedDay, setSelectedDay] = useState(0);
     const [hasResults, setHasResults] = useState(false);
+
+    const [profile, setProfile] = useState<UserProfile>('normal');
+    const [activity, setActivity] = useState('');
+    const [departureTime, setDepartureTime] = useState('');
+    const [showSettings, setShowSettings] = useState(false);
+
+    const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
+
+    useEffect(() => {
+        setProfile(loadProfile());
+        setFavorites(loadFavorites());
+    }, []);
+
+    const handleProfileChange = (p: UserProfile) => {
+        setProfile(p);
+        if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_profile', p);
+    };
+
+    const saveFavorite = () => {
+        if (!resolvedCity || currentLat === null || currentLon === null) return;
+        if (favorites.some(f => f.name === resolvedCity)) { toast.info('Ya está guardada'); return; }
+        const newFavs = [...favorites.slice(-4), { name: resolvedCity, lat: currentLat, lon: currentLon }];
+        setFavorites(newFavs);
+        if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_favorites', JSON.stringify(newFavs));
+        toast.success(`"${resolvedCity}" guardado en favoritos`);
+    };
+
+    const removeFavorite = (name: string) => {
+        const newFavs = favorites.filter(f => f.name !== name);
+        setFavorites(newFavs);
+        if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_favorites', JSON.stringify(newFavs));
+    };
 
     const fetchWeatherByCoords = async (lat: number, lon: number, cityName: string) => {
         setLoading(true);
         setHasResults(false);
+        setCurrentLat(lat);
+        setCurrentLon(lon);
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max&timezone=auto&forecast_days=7`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,uv_index_max&timezone=auto&forecast_days=7&past_days=1`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('Error al obtener el tiempo');
             const json = await res.json();
-            const daily = json.daily;
+            const d = json.daily;
 
-            const days: WeatherDay[] = daily.time.map((date: string, i: number) => ({
+            const allDays: WeatherDay[] = d.time.map((date: string, i: number) => ({
                 date,
-                temperature_max: Math.round(daily.temperature_2m_max[i]),
-                temperature_min: Math.round(daily.temperature_2m_min[i]),
-                precipitation_sum: daily.precipitation_sum[i] ?? 0,
-                windspeed_max: Math.round(daily.windspeed_10m_max[i]),
-                weathercode: daily.weathercode[i],
-                uv_index_max: daily.uv_index_max?.[i] ?? 0,
+                temperature_max: Math.round(d.temperature_2m_max[i]),
+                temperature_min: Math.round(d.temperature_2m_min[i]),
+                apparent_temperature_max: Math.round(d.apparent_temperature_max?.[i] ?? d.temperature_2m_max[i]),
+                apparent_temperature_min: Math.round(d.apparent_temperature_min?.[i] ?? d.temperature_2m_min[i]),
+                precipitation_sum: d.precipitation_sum[i] ?? 0,
+                precipitation_hours: d.precipitation_hours?.[i] ?? 0,
+                windspeed_max: Math.round(d.windspeed_10m_max[i]),
+                weathercode: d.weathercode[i],
+                uv_index_max: d.uv_index_max?.[i] ?? 0,
             }));
 
-            setWeatherDays(days);
+            setYesterdayData(allDays[0]);
+            const forecast = allDays.slice(1);
+            setWeatherDays(forecast);
             setResolvedCity(cityName);
-            await fetchRecommendations(days, cityName);
+            await fetchRecommendations(forecast, cityName);
         } catch (err: any) {
             toast.error(err.message || 'Error al obtener el tiempo');
         } finally {
@@ -123,7 +201,10 @@ export default function TiempoApp() {
             fecha: d.date,
             temp_max: d.temperature_max,
             temp_min: d.temperature_min,
+            sensacion_max: d.apparent_temperature_max,
+            sensacion_min: d.apparent_temperature_min,
             lluvia_mm: d.precipitation_sum,
+            horas_lluvia: d.precipitation_hours,
             viento_kmh: d.windspeed_max,
             descripcion: WMO_DESCRIPTIONS[d.weathercode] || 'Variable',
             uv_max: d.uv_index_max,
@@ -132,13 +213,19 @@ export default function TiempoApp() {
         const response = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ weatherData, city: cityName }),
+            body: JSON.stringify({
+                weatherData, city: cityName,
+                profile,
+                activity: activity || null,
+                departureTime: departureTime || null,
+            }),
         });
 
         if (!response.ok) throw new Error('Error al generar recomendaciones');
         const result = await response.json();
         if (result.success && result.data?.dias) {
             setRecommendations(result.data.dias);
+            setWeeklySummary(result.data.resumen_semana || '');
             setSelectedDay(0);
             setHasResults(true);
         } else {
@@ -149,57 +236,44 @@ export default function TiempoApp() {
     const handleSearchCity = async () => {
         const trimmed = city.trim();
         if (!trimmed) return;
-
         setLoading(true);
         try {
-            const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=1&language=es&format=json`;
-            const geoRes = await fetch(geoUrl);
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=1&language=es&format=json`);
             const geoJson = await geoRes.json();
             if (!geoJson.results?.length) {
-                toast.error(`No encontré la ciudad "${trimmed}". Prueba con otra.`);
+                toast.error(`No encontré "${trimmed}". Prueba con otra ciudad.`);
                 setLoading(false);
                 return;
             }
             const place = geoJson.results[0];
             await fetchWeatherByCoords(place.latitude, place.longitude, place.name);
-        } catch (err: any) {
+        } catch {
             toast.error('Error buscando la ciudad');
             setLoading(false);
         }
     };
 
     const handleGeolocate = () => {
-        if (!navigator.geolocation) {
-            toast.error('Tu navegador no soporta geolocalización');
-            return;
-        }
+        if (!navigator.geolocation) { toast.error('Tu navegador no soporta geolocalización'); return; }
         setLoadingGeo(true);
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
                 try {
                     const { latitude, longitude } = pos.coords;
-                    const revUrl = `https://geocoding-api.open-meteo.com/v1/search?name=&count=1&language=es&format=json`;
-                    // Use nominatim for reverse geocoding
-                    const nomUrl = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=es`;
                     let cityName = 'Tu ubicación';
                     try {
-                        const nomRes = await fetch(nomUrl, { headers: { 'User-Agent': 'QuiobaApp/1.0' } });
-                        const nomJson = await nomRes.json();
-                        cityName = nomJson.address?.city || nomJson.address?.town || nomJson.address?.village || nomJson.address?.county || 'Tu ubicación';
-                    } catch {
-                        // ignore reverse geocode error, proceed with coords
-                    }
+                        const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=es`, { headers: { 'User-Agent': 'QuiobaApp/1.0' } });
+                        const nom = await nomRes.json();
+                        cityName = nom.address?.city || nom.address?.town || nom.address?.village || nom.address?.county || 'Tu ubicación';
+                    } catch { /* ignore */ }
                     await fetchWeatherByCoords(latitude, longitude, cityName);
-                } catch (err: any) {
+                } catch {
                     toast.error('Error al obtener tu ubicación');
                 } finally {
                     setLoadingGeo(false);
                 }
             },
-            () => {
-                toast.error('No pudimos acceder a tu ubicación');
-                setLoadingGeo(false);
-            }
+            () => { toast.error('No pudimos acceder a tu ubicación'); setLoadingGeo(false); }
         );
     };
 
@@ -218,70 +292,136 @@ export default function TiempoApp() {
 
     const currentRec = recommendations[selectedDay];
     const currentWeather = weatherDays[selectedDay];
-    const nivelConfig = currentRec ? NIVEL_CALOR_CONFIG[currentRec.nivel_calor] ?? NIVEL_CALOR_CONFIG.templado : null;
+    const nivelConfig = currentRec ? (NIVEL_CALOR_CONFIG[currentRec.nivel_calor as keyof typeof NIVEL_CALOR_CONFIG] ?? NIVEL_CALOR_CONFIG.templado) : null;
+    const dayAlerts = currentWeather ? computeAlerts(currentWeather) : [];
+    const isFavorite = favorites.some(f => f.name === resolvedCity);
+    const activeActivity = ACTIVITIES.find(a => a.key === activity);
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-20 p-4">
+        <div className="max-w-4xl mx-auto space-y-4 pb-20 p-4">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-4">
                 <Link href="/apps/mi-hogar">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <span className="text-2xl">🌤️</span>
-                        ¿Qué me pongo?
+                        <span>🌤️</span> ¿Qué me pongo?
                     </h1>
                     <p className="text-muted-foreground text-sm">Quioba te dice qué llevar según el tiempo</p>
                 </div>
             </div>
 
-            {/* Search */}
+            {/* Search + Settings */}
             <Card>
-                <CardContent className="pt-6">
+                <CardContent className="pt-4 pb-4 space-y-3">
                     <div className="flex gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Escribe tu ciudad..."
                                 value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearchCity()}
+                                onChange={e => setCity(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSearchCity()}
                                 className="pl-9"
                             />
                         </div>
-                        <Button
-                            onClick={handleSearchCity}
-                            disabled={loading || !city.trim()}
-                            className="bg-sky-600 hover:bg-sky-700 text-white"
-                        >
+                        <Button onClick={handleSearchCity} disabled={loading || !city.trim()} className="bg-sky-600 hover:bg-sky-700 text-white">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                         </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handleGeolocate}
-                            disabled={loading || loadingGeo}
-                            title="Usar mi ubicación"
-                        >
+                        <Button variant="outline" onClick={handleGeolocate} disabled={loading || loadingGeo} title="Usar mi ubicación">
                             {loadingGeo ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                         </Button>
+                        <Button variant={showSettings ? 'default' : 'outline'} onClick={() => setShowSettings(s => !s)} title="Personalizar">
+                            <Settings className="h-4 w-4" />
+                        </Button>
                     </div>
+
+                    {/* Settings panel */}
+                    {showSettings && (
+                        <div className="space-y-4 pt-3 border-t">
+                            {/* Profile */}
+                            <div>
+                                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Tu sensación térmica</p>
+                                <div className="flex gap-2">
+                                    {(['friolero', 'normal', 'caluroso'] as UserProfile[]).map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => handleProfileChange(p)}
+                                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium border-2 transition-all ${profile === p ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300' : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70'}`}
+                                        >
+                                            {p === 'friolero' ? '🥶' : p === 'caluroso' ? '🥵' : '😊'}
+                                            <span className="capitalize">{p}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Activity */}
+                            <div>
+                                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Actividad del día</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {ACTIVITIES.map(a => (
+                                        <button
+                                            key={a.key}
+                                            onClick={() => setActivity(act => act === a.key ? '' : a.key)}
+                                            className={`flex items-center gap-1.5 py-1.5 px-3 rounded-full text-sm border-2 transition-all ${activity === a.key ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300' : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70'}`}
+                                        >
+                                            {a.emoji} {a.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Departure time */}
+                            <div>
+                                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">¿A qué hora sales de casa?</p>
+                                <div className="flex gap-2 items-center">
+                                    <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <input
+                                        type="time"
+                                        value={departureTime}
+                                        onChange={e => setDepartureTime(e.target.value)}
+                                        className="bg-muted/40 border border-input rounded-lg px-3 py-1.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                    />
+                                    {departureTime && (
+                                        <button onClick={() => setDepartureTime('')} className="text-xs text-muted-foreground hover:text-foreground underline">Quitar</button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
-            {/* Loading state */}
+            {/* Favorites bar */}
+            {favorites.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    {favorites.map(fav => (
+                        <div key={fav.name} className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                                onClick={() => fetchWeatherByCoords(fav.lat, fav.lon, fav.name)}
+                                disabled={loading}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 text-sm font-medium border border-sky-200 dark:border-sky-800 hover:bg-sky-100 transition-colors"
+                            >
+                                <Star className="h-3 w-3 fill-current" />
+                                {fav.name}
+                            </button>
+                            <button onClick={() => removeFavorite(fav.name)} className="p-1 text-muted-foreground hover:text-red-500 transition-colors">
+                                <Trash2 className="h-3 w-3" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Loading */}
             {loading && (
                 <Card className="text-center py-14 border-dashed">
                     <CardContent className="flex flex-col items-center gap-4">
-                        <div className="relative">
-                            <div className="text-5xl animate-bounce">🌤️</div>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="font-medium">Consultando el tiempo...</p>
-                            <p className="text-muted-foreground text-sm">Quioba está mirando las nubes para ti</p>
-                        </div>
+                        <div className="text-5xl animate-bounce">🌤️</div>
+                        <p className="font-medium">Consultando el tiempo...</p>
+                        <p className="text-muted-foreground text-sm">Quioba está mirando las nubes para ti</p>
                         <Loader2 className="h-5 w-5 animate-spin text-sky-500" />
                     </CardContent>
                 </Card>
@@ -299,8 +439,7 @@ export default function TiempoApp() {
                             </p>
                         </div>
                         <Button variant="outline" onClick={handleGeolocate} disabled={loadingGeo}>
-                            <MapPin className="h-4 w-4 mr-2" />
-                            Usar mi ubicación
+                            <MapPin className="h-4 w-4 mr-2" /> Usar mi ubicación
                         </Button>
                     </CardContent>
                 </Card>
@@ -309,33 +448,49 @@ export default function TiempoApp() {
             {/* Results */}
             {!loading && hasResults && currentRec && currentWeather && nivelConfig && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Location + refresh */}
+                    {/* Location bar */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-muted-foreground">
                             <MapPin className="h-4 w-4" />
                             <span className="font-medium text-foreground">{resolvedCity}</span>
                             <span className="text-sm">· 7 días</span>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading}>
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Regenerar
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={saveFavorite} disabled={isFavorite} title={isFavorite ? 'Ya guardado' : 'Guardar ubicación'}>
+                                <Star className={`h-4 w-4 ${isFavorite ? 'fill-amber-400 text-amber-400' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading}>
+                                <RefreshCw className="h-4 w-4 mr-1" /> Regenerar
+                            </Button>
+                        </div>
                     </div>
+
+                    {/* Weekly summary */}
+                    {weeklySummary && (
+                        <Card className="bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800">
+                            <CardContent className="pt-4 pb-4">
+                                <div className="flex gap-3 items-start">
+                                    <span className="text-2xl flex-shrink-0">📅</span>
+                                    <div>
+                                        <p className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide mb-1">Resumen de la semana</p>
+                                        <p className="text-sm italic text-muted-foreground">&ldquo;{weeklySummary}&rdquo;</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Day selector strip */}
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                         {weatherDays.map((day, i) => {
-                            const { weekday, day: dayNum, month } = formatDate(day.date);
+                            const { weekday } = formatDate(day.date);
                             const isSelected = i === selectedDay;
                             const todayDay = isToday(day.date);
                             return (
                                 <button
                                     key={day.date}
                                     onClick={() => setSelectedDay(i)}
-                                    className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all border-2 min-w-[72px] ${isSelected
-                                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30'
-                                        : 'border-transparent bg-muted/40 hover:bg-muted/70'
-                                        }`}
+                                    className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all border-2 min-w-[72px] ${isSelected ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-transparent bg-muted/40 hover:bg-muted/70'}`}
                                 >
                                     <span className={`text-xs font-medium capitalize ${todayDay ? 'text-sky-600 dark:text-sky-400' : 'text-muted-foreground'}`}>
                                         {todayDay ? 'Hoy' : weekday.slice(0, 3)}
@@ -347,74 +502,112 @@ export default function TiempoApp() {
                         })}
                     </div>
 
-                    {/* Main card */}
+                    {/* Main day card */}
                     <Card className={`overflow-hidden border-2 bg-gradient-to-br ${nivelConfig.bg} ${nivelConfig.border}`}>
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-medium capitalize text-muted-foreground">
                                             {isToday(currentWeather.date) ? 'Hoy' : formatDate(currentWeather.date).weekday}
-                                            {' · '}
-                                            {formatDate(currentWeather.date).day} {formatDate(currentWeather.date).month}
+                                            {' · '}{formatDate(currentWeather.date).day} {formatDate(currentWeather.date).month}
                                         </span>
-                                        <Badge className={`text-xs ${nivelConfig.badge}`}>
-                                            {currentRec.resumen_tiempo}
-                                        </Badge>
+                                        <Badge className={`text-xs ${nivelConfig.badge}`}>{currentRec.resumen_tiempo}</Badge>
                                     </div>
                                     <CardTitle className="text-xl">
                                         {currentWeather.temperature_max}° / {currentWeather.temperature_min}°
                                     </CardTitle>
+                                    {/* Comfort index */}
+                                    {(currentWeather.apparent_temperature_max !== currentWeather.temperature_max ||
+                                      currentWeather.apparent_temperature_min !== currentWeather.temperature_min) && (
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <Thermometer className="h-3 w-3" />
+                                            Sensación: {currentWeather.apparent_temperature_max}° / {currentWeather.apparent_temperature_min}°
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="text-right text-sm text-muted-foreground space-y-1 shrink-0">
                                     {currentWeather.precipitation_sum > 0 && (
-                                        <div className="flex items-center gap-1 justify-end">
-                                            <CloudRain className="h-3 w-3" />
-                                            {currentWeather.precipitation_sum}mm
-                                        </div>
+                                        <div className="flex items-center gap-1 justify-end"><CloudRain className="h-3 w-3" />{currentWeather.precipitation_sum}mm</div>
                                     )}
-                                    <div className="flex items-center gap-1 justify-end">
-                                        <Wind className="h-3 w-3" />
-                                        {currentWeather.windspeed_max}km/h
-                                    </div>
-                                    {currentWeather.uv_index_max !== undefined && currentWeather.uv_index_max > 0 && (
-                                        <div className="flex items-center gap-1 justify-end">
-                                            <Sun className="h-3 w-3" />
-                                            UV {currentWeather.uv_index_max}
-                                        </div>
+                                    <div className="flex items-center gap-1 justify-end"><Wind className="h-3 w-3" />{currentWeather.windspeed_max}km/h</div>
+                                    {(currentWeather.uv_index_max ?? 0) > 0 && (
+                                        <div className="flex items-center gap-1 justify-end"><Sun className="h-3 w-3" />UV {currentWeather.uv_index_max}</div>
                                     )}
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-5">
+
+                        <CardContent className="space-y-4">
+                            {/* Yesterday comparison */}
+                            {yesterdayData && isToday(currentWeather.date) && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/50 dark:bg-black/15 rounded-lg px-3 py-2">
+                                    <span className="text-base">📊</span>
+                                    <span>
+                                        Ayer hizo{' '}
+                                        {yesterdayData.temperature_max > currentWeather.temperature_max ? (
+                                            <span className="text-blue-600 dark:text-blue-400 font-medium">{yesterdayData.temperature_max - currentWeather.temperature_max}° más de máxima</span>
+                                        ) : yesterdayData.temperature_max < currentWeather.temperature_max ? (
+                                            <span className="text-orange-600 dark:text-orange-400 font-medium">{currentWeather.temperature_max - yesterdayData.temperature_max}° menos de máxima</span>
+                                        ) : (
+                                            <span className="font-medium">la misma temperatura máxima</span>
+                                        )}
+                                        {' '}({yesterdayData.temperature_max}°)
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Alerts */}
+                            {dayAlerts.length > 0 && (
+                                <div className="space-y-1.5">
+                                    {dayAlerts.map((alert, i) => (
+                                        <div key={i} className="flex items-center gap-2 text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                            {alert}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Departure advice */}
+                            {departureTime && currentRec.hora_salida_consejo && (
+                                <div className="flex items-center gap-2 text-xs bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-lg px-3 py-2">
+                                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span><strong>A las {departureTime}:</strong> {currentRec.hora_salida_consejo}</span>
+                                </div>
+                            )}
+
                             {/* Quioba comment */}
                             <div className="flex gap-3 bg-white/60 dark:bg-black/20 rounded-xl p-4 border border-white/40 dark:border-white/10">
                                 <MessageCircle className="h-5 w-5 text-sky-500 shrink-0 mt-0.5" />
-                                <p className="text-sm leading-relaxed italic">
-                                    &ldquo;{currentRec.comentario_quioba}&rdquo;
-                                </p>
+                                <p className="text-sm leading-relaxed italic">&ldquo;{currentRec.comentario_quioba}&rdquo;</p>
                             </div>
 
-                            {/* Clothing items */}
+                            {/* Items */}
                             <div>
-                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
                                     <Thermometer className="h-4 w-4" />
                                     Lo que necesitas
+                                    {activeActivity && (
+                                        <Badge variant="secondary" className="text-xs font-normal">
+                                            {activeActivity.emoji} {activeActivity.label}
+                                        </Badge>
+                                    )}
+                                    {profile !== 'normal' && (
+                                        <Badge variant="secondary" className="text-xs font-normal">
+                                            {profile === 'friolero' ? '🥶' : '🥵'} {profile}
+                                        </Badge>
+                                    )}
                                 </h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     {currentRec.items.map((item, idx) => (
                                         <div
                                             key={idx}
-                                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${item.urgente
-                                                ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium'
-                                                : 'bg-white/60 dark:bg-black/20 border border-white/40 dark:border-white/10'
-                                                }`}
+                                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${item.urgente ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium' : 'bg-white/60 dark:bg-black/20 border border-white/40 dark:border-white/10'}`}
                                         >
                                             <span className="text-lg">{item.emoji}</span>
                                             <span className="leading-tight">{item.nombre}</span>
-                                            {item.urgente && (
-                                                <span className="ml-auto text-red-500 text-xs font-bold">!</span>
-                                            )}
+                                            {item.urgente && <span className="ml-auto text-red-500 text-xs font-bold">!</span>}
                                         </div>
                                     ))}
                                 </div>
@@ -422,7 +615,7 @@ export default function TiempoApp() {
                         </CardContent>
                     </Card>
 
-                    {/* Rest of the week - mini cards */}
+                    {/* Rest of week */}
                     {recommendations.length > 1 && (
                         <div className="space-y-2">
                             <h3 className="text-sm font-semibold text-muted-foreground px-1">El resto de la semana</h3>
@@ -432,27 +625,30 @@ export default function TiempoApp() {
                                     const weather = weatherDays[dayIndex];
                                     if (!weather) return null;
                                     const { weekday } = formatDate(rec.fecha);
-                                    const cfg = NIVEL_CALOR_CONFIG[rec.nivel_calor] ?? NIVEL_CALOR_CONFIG.templado;
+                                    const cfg = NIVEL_CALOR_CONFIG[rec.nivel_calor as keyof typeof NIVEL_CALOR_CONFIG] ?? NIVEL_CALOR_CONFIG.templado;
+                                    const miniAlerts = computeAlerts(weather);
                                     return (
                                         <button
                                             key={rec.fecha}
                                             onClick={() => setSelectedDay(dayIndex)}
                                             className={`text-left p-3 rounded-xl border-2 bg-gradient-to-br ${cfg.bg} ${cfg.border} hover:opacity-80 transition-opacity`}
                                         >
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center justify-between mb-1">
                                                 <span className="text-sm font-medium capitalize">{weekday}</span>
                                                 <span className="text-sm text-muted-foreground">{weather.temperature_max}° / {weather.temperature_min}°</span>
                                             </div>
-                                            <p className="text-xs text-muted-foreground line-clamp-1 italic">
-                                                &ldquo;{rec.comentario_quioba}&rdquo;
-                                            </p>
-                                            <div className="flex gap-1 mt-2 flex-wrap">
+                                            {miniAlerts.length > 0 && (
+                                                <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mb-1">
+                                                    <AlertTriangle className="h-3 w-3" />
+                                                    {miniAlerts[0]}
+                                                </div>
+                                            )}
+                                            <p className="text-xs text-muted-foreground line-clamp-1 italic mb-2">&ldquo;{rec.comentario_quioba}&rdquo;</p>
+                                            <div className="flex gap-1 flex-wrap">
                                                 {rec.items.slice(0, 4).map((item, j) => (
                                                     <span key={j} title={item.nombre} className="text-base">{item.emoji}</span>
                                                 ))}
-                                                {rec.items.length > 4 && (
-                                                    <span className="text-xs text-muted-foreground self-center">+{rec.items.length - 4}</span>
-                                                )}
+                                                {rec.items.length > 4 && <span className="text-xs text-muted-foreground self-center">+{rec.items.length - 4}</span>}
                                             </div>
                                         </button>
                                     );

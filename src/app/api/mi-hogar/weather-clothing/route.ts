@@ -21,10 +21,23 @@ export async function POST(request: Request) {
       }
     }
 
-    const { weatherData, city } = await request.json();
+    const { weatherData, city, profile, activity, departureTime } = await request.json();
     if (!weatherData) {
       return NextResponse.json({ success: false, error: 'Datos del tiempo requeridos' }, { status: 400 });
     }
+
+    const profileText = profile === 'friolero'
+      ? 'muy friolero (siente el frío más que la media, recomienda más ropa de abrigo de lo normal)'
+      : profile === 'caluroso'
+      ? 'muy caluroso (siente el calor más que la media, recomienda ropa más ligera de lo normal)'
+      : 'con sensación térmica normal';
+
+    const activityText = activity ? `La actividad principal del día es: ${activity}.` : '';
+    const departureText = departureTime ? `El usuario sale de casa a las ${departureTime}.` : '';
+
+    const departureField = departureTime
+      ? `"hora_salida_consejo": "Consejo corto específico para salir a las ${departureTime} (1 frase)",`
+      : '';
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -37,7 +50,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: `Eres Quioba, un asistente español con personalidad directa, coloquial y divertida. Tu misión es decirle a la gente qué ropa y accesorios necesitan según el tiempo, con comentarios graciosos y cercanos, sin florituras. Usa español de España. Responde SOLO con JSON válido, sin texto adicional ni bloques de código markdown.`,
+            content: `Eres Quioba, un asistente español con personalidad directa, coloquial y divertida. Tu misión es decirle a la gente qué ropa y accesorios necesitan según el tiempo. El usuario es ${profileText}. ${activityText} ${departureText} Usa español de España, tuteo, tono cercano y con gracia. Responde SOLO con JSON válido, sin texto adicional ni bloques de código markdown.`,
           },
           {
             role: 'user',
@@ -45,33 +58,34 @@ export async function POST(request: Request) {
 Datos del tiempo para los próximos 7 días:
 ${JSON.stringify(weatherData, null, 2)}
 
-Genera recomendaciones de ropa/accesorios para cada día. Para cada día incluye:
-- Un comentario de Quioba gracioso y directo (máx 2 frases, coloquial)
-- Lista de items necesarios con emoji
+Genera recomendaciones de ropa/accesorios. Ten en cuenta:
+- El perfil térmico del usuario al decidir qué ropa recomendar
+- La actividad del día si se ha indicado
+- La hora de salida si se ha indicado
 
 Devuelve SOLO este JSON:
 {
+  "resumen_semana": "Comentario gracioso de Quioba sobre cómo será la semana en general (2-3 frases coloquiales)",
   "dias": [
     {
       "fecha": "YYYY-MM-DD",
-      "comentario_quioba": "Tu comentario gracioso aquí",
+      "comentario_quioba": "Comentario directo y gracioso adaptado al perfil del usuario (máx 2 frases)",
+      ${departureField}
       "items": [
-        { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false },
-        { "emoji": "☔", "nombre": "Paraguas", "urgente": true }
+        { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
       ],
-      "resumen_tiempo": "Soleado y cálido",
+      "resumen_tiempo": "Descripción corta del tiempo",
       "nivel_calor": "calor|templado|fresco|frio|mucho_frio"
     }
   ]
 }
 
-Items posibles: 🧥 Chaqueta/Abrigo, ☔ Paraguas, 🌂 Paraguas pequeño, 🧤 Guantes, 🧣 Bufanda, 🎩 Gorra/Sombrero, 🕶️ Gafas de sol, 🧴 Crema solar, 💧 Agua fresquita, 👟 Zapatillas ligeras, 👢 Botas de agua, 🩴 Chanclas, 👚 Ropa ligera, 🩳 Pantalón corto, 👙 Ropa de verano, 🥵 Mucha hidratación, 🌡️ Protección calor, ❄️ Ropa de abrigo extra.
-
-El campo "urgente" es true solo para lo imprescindible (ej: paraguas si llueve fuerte, crema si UV alto).`,
+Items posibles: 🧥 Chaqueta/Abrigo, ☔ Paraguas, 🌂 Paraguas pequeño, 🧤 Guantes, 🧣 Bufanda, 🎩 Gorra/Sombrero, 🕶️ Gafas de sol, 🧴 Crema solar, 💧 Agua fresquita, 👟 Zapatillas ligeras, 👢 Botas de agua, 🩴 Chanclas, 👚 Ropa ligera, 🩳 Pantalón corto, 👙 Ropa de verano, 🥵 Mucha hidratación, ❄️ Ropa de abrigo extra${activity ? `, y items apropiados para ${activity}` : ''}.
+"urgente" es true solo para lo imprescindible (paraguas si llueve fuerte, crema si UV alto, etc).`,
           },
         ],
         temperature: 0.8,
-        max_tokens: 2048,
+        max_tokens: 2500,
       }),
     });
 
