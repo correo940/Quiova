@@ -255,6 +255,7 @@ export default function TiempoApp() {
     const [citySuggestions, setCitySuggestions] = useState<GeoSuggestion[]>([]);
     const [loadingCitySugg, setLoadingCitySugg] = useState(false);
     const cityAutoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const skipCityAutoRef = useRef(false);
 
     // Trip planner
     const [trips, setTrips] = useState<Record<string, TripPlan>>({});
@@ -326,6 +327,7 @@ export default function TiempoApp() {
     useEffect(() => {
         if (cityAutoTimer.current) clearTimeout(cityAutoTimer.current);
         if (!city.trim()) { setCitySuggestions([]); return; }
+        if (skipCityAutoRef.current) { skipCityAutoRef.current = false; return; }
         cityAutoTimer.current = setTimeout(async () => {
             setLoadingCitySugg(true);
             try {
@@ -868,6 +870,7 @@ export default function TiempoApp() {
                                 <button
                                     key={i}
                                     onMouseDown={() => {
+                                        skipCityAutoRef.current = true;
                                         setCity(s.name);
                                         setCitySuggestions([]);
                                         fetchWeatherByCoords(s.lat, s.lon, s.name);
@@ -1208,7 +1211,7 @@ export default function TiempoApp() {
                                             <div className="px-3 py-2 space-y-2">
                                                 <p className="text-xs text-muted-foreground italic">{franja.comentario}</p>
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {franja.items.map((item, ii) => (
+                                                    {(franja.items || []).map((item, ii) => (
                                                         <span
                                                             key={ii}
                                                             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${item.urgente ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 font-medium' : 'bg-muted/40 border border-border/50'}`}

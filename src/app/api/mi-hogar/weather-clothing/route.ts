@@ -126,7 +126,10 @@ IMPORTANTE: las franjas deben ser coherentes entre sí. Si se recomienda quitars
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-    const parsed = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+    let jsonText = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonText = jsonMatch[0];
+    const parsed = JSON.parse(jsonText);
 
     if (user) {
       await recordApiUsage(user.id, 'weather-clothing');
