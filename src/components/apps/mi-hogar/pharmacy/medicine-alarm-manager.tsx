@@ -72,16 +72,33 @@ export default function MedicineAlarmManager() {
       if (!medicines) return;
 
       const pending = await NotificationManager.getPending();
-      const stale = pending
-        .filter((n: any) => n.extra?.type === 'medicine')
-        .map((n: any) => n.id);
-      if (stale.length > 0) await NotificationManager.cancel(stale);
+      const pendingMedMap = new Map<number, any>(
+        pending
+          .filter((n: any) => n.extra?.type === 'medicine')
+          .map((n: any) => [n.id, n])
+      );
 
+      // Compute the desired set of notification IDs from current medicines
+      const desiredIds = new Set<number>();
+      medicines.forEach((med: Medicine) => {
+        if (!Array.isArray(med.alarm_times)) return;
+        med.alarm_times.forEach((time: string) => {
+          desiredIds.add(NotificationManager.generateId(`med_${med.id}_${time}`));
+        });
+      });
+
+      // Cancel only notifications that no longer correspond to any medicine alarm
+      const staleIds = [...pendingMedMap.keys()].filter(id => !desiredIds.has(id));
+      if (staleIds.length > 0) await NotificationManager.cancel(staleIds);
+
+      // Schedule only alarms that are not already pending — avoids cancelling a
+      // notification moments before it is due to fire, which pushes it to the next day
       medicines.forEach((med: Medicine) => {
         if (!Array.isArray(med.alarm_times)) return;
         med.alarm_times.forEach((time: string) => {
           const [hours, minutes] = time.split(':').map(Number);
           const notifId = NotificationManager.generateId(`med_${med.id}_${time}`);
+          if (pendingMedMap.has(notifId)) return;
           NotificationManager.schedule({
             id: notifId,
             title: '💊 Hora de tu medicación',
@@ -120,8 +137,15 @@ export default function MedicineAlarmManager() {
           const goToPharmacy = () => router.push('/apps/mi-hogar/pharmacy');
 
           if (target <= now) {
-            // Alarm time already passed today — show "ya pasó" toast
+            // Alarm time already passed today — show browser notification + toast
             markShownToday('med', `${med.id}_${time}`);
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('💊 Medicación pendiente', {
+                body: subtitle,
+                icon: '/icon.png',
+                tag: `med-missed-${med.id}-${time}`,
+              });
+            }
             showNotificationToast({
               icon: '💊',
               title: 'Medicación pendiente',
