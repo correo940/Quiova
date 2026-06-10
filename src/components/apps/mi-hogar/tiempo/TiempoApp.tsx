@@ -151,6 +151,15 @@ function saveTrips(trips: Record<string, TripPlan>) {
     if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_trips', JSON.stringify(trips));
 }
 
+function loadHome(): FavoriteLocation | null {
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(localStorage.getItem('quioba_weather_home') || 'null'); } catch { return null; }
+}
+
+function saveHome(loc: FavoriteLocation | null) {
+    if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_home', JSON.stringify(loc));
+}
+
 function todayStr(): string {
     return new Date().toISOString().split('T')[0];
 }
@@ -240,6 +249,7 @@ export default function TiempoApp() {
     const [showSettings, setShowSettings] = useState(false);
 
     const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
+    const [homeLocation, setHomeLocation] = useState<FavoriteLocation | null>(null);
 
     // Main search autocomplete
     const [citySuggestions, setCitySuggestions] = useState<GeoSuggestion[]>([]);
@@ -265,6 +275,9 @@ export default function TiempoApp() {
         setProfile(loadProfile());
         setFavorites(loadFavorites());
         setTrips(loadTrips());
+        const home = loadHome();
+        setHomeLocation(home);
+        if (home) fetchWeatherByCoords(home.lat, home.lon, home.name);
         // Pre-load user's default task list ID
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (!user) return;
@@ -463,6 +476,26 @@ export default function TiempoApp() {
         const newFavs = favorites.filter(f => f.name !== name);
         setFavorites(newFavs);
         if (typeof window !== 'undefined') localStorage.setItem('quioba_weather_favorites', JSON.stringify(newFavs));
+    };
+
+    const setAsHome = () => {
+        if (!resolvedCity || currentLat === null || currentLon === null) return;
+        const loc = { name: resolvedCity, lat: currentLat, lon: currentLon };
+        setHomeLocation(loc);
+        saveHome(loc);
+        toast.success(`🏠 "${resolvedCity}" guardada como tu ciudad fija`);
+    };
+
+    const removeHome = () => {
+        setHomeLocation(null);
+        saveHome(null);
+        toast.info('Ciudad fija eliminada');
+    };
+
+    const goHome = () => {
+        if (!homeLocation) return;
+        setCity(homeLocation.name);
+        fetchWeatherByCoords(homeLocation.lat, homeLocation.lon, homeLocation.name);
     };
 
     const fetchWeatherByCoords = async (lat: number, lon: number, cityName: string) => {
@@ -855,8 +888,13 @@ export default function TiempoApp() {
                         </div>
                     )}
 
-                    {/* Row 2: plane (always visible, prominent) + settings */}
+                    {/* Row 2: home return (if away) + plane + settings */}
                     <div className="flex gap-2">
+                        {homeLocation && resolvedCity && resolvedCity !== homeLocation.name && (
+                            <Button variant="outline" onClick={goHome} className="gap-1.5 text-sm shrink-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100">
+                                🏠 {homeLocation.name}
+                            </Button>
+                        )}
                         <Button
                             variant="outline"
                             onClick={openTripModal}
@@ -920,6 +958,27 @@ export default function TiempoApp() {
                                         <button onClick={() => setDepartureTime('')} className="text-xs text-muted-foreground hover:text-foreground underline">Quitar</button>
                                     )}
                                 </div>
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Ciudad de residencia</p>
+                                {homeLocation ? (
+                                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                        <span>🏠</span>
+                                        <span className="font-medium text-sm flex-1">{homeLocation.name}</span>
+                                        {resolvedCity && resolvedCity !== homeLocation.name && (
+                                            <button onClick={setAsHome} className="text-xs text-sky-600 hover:underline shrink-0">Cambiar a {resolvedCity}</button>
+                                        )}
+                                        <button onClick={removeHome} className="text-xs text-red-500 hover:underline shrink-0">Quitar</button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={setAsHome}
+                                        disabled={!resolvedCity}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-muted-foreground/30 text-sm text-muted-foreground hover:border-amber-400 hover:text-amber-600 transition-all disabled:opacity-40"
+                                    >
+                                        🏠 {resolvedCity ? `Guardar "${resolvedCity}" como ciudad fija` : 'Busca una ciudad primero'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
