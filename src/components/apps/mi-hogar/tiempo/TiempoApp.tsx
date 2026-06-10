@@ -256,6 +256,7 @@ export default function TiempoApp() {
     const [loadingCitySugg, setLoadingCitySugg] = useState(false);
     const cityAutoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const skipCityAutoRef = useRef(false);
+    const fetchAbortRef = useRef<AbortController | null>(null);
 
     // Trip planner
     const [trips, setTrips] = useState<Record<string, TripPlan>>({});
@@ -501,13 +502,18 @@ export default function TiempoApp() {
     };
 
     const fetchWeatherByCoords = async (lat: number, lon: number, cityName: string) => {
+        // Cancel any in-flight request before starting a new one
+        if (fetchAbortRef.current) fetchAbortRef.current.abort();
+        const abortController = new AbortController();
+        fetchAbortRef.current = abortController;
+
         setLoading(true);
         setHasResults(false);
         setCurrentLat(lat);
         setCurrentLon(lon);
         try {
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,uv_index_max&hourly=temperature_2m,apparent_temperature,precipitation_probability,weathercode&timezone=auto&forecast_days=7&past_days=1`;
-            const res = await fetch(url);
+            const res = await fetch(url, { signal: abortController.signal });
             if (!res.ok) throw new Error('Error al obtener el tiempo');
             const json = await res.json();
             const d = json.daily;
@@ -529,15 +535,16 @@ export default function TiempoApp() {
             const forecast = allDays.slice(1);
             setWeatherDays(forecast);
             setResolvedCity(cityName);
-            await fetchRecommendations(forecast, cityName, json.hourly);
+            await fetchRecommendations(forecast, cityName, json.hourly, abortController.signal);
         } catch (err: any) {
+            if (err.name === 'AbortError') return; // Cancelled by a newer search, ignore silently
             toast.error(err.message || 'Error al obtener el tiempo');
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchRecommendations = async (days: WeatherDay[], cityName: string, hourly?: any) => {
+    const fetchRecommendations = async (days: WeatherDay[], cityName: string, hourly?: any, signal?: AbortSignal) => {
         const weatherData = days.map(d => {
             const slots = hourly ? extractHourlySlots(hourly, d.date) : null;
             return {
@@ -561,6 +568,7 @@ export default function TiempoApp() {
 
         const response = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
             method: 'POST',
+            signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 weatherData, city: cityName,
@@ -570,7 +578,10 @@ export default function TiempoApp() {
             }),
         });
 
-        if (!response.ok) throw new Error('Error al generar recomendaciones');
+        if (!response.ok) {
+            const errData = await response.json().catch(() => null);
+            throw new Error(errData?.error || 'Error al generar recomendaciones');
+        }
         const result = await response.json();
         if (result.success && result.data?.dias) {
             setRecommendations(result.data.dias);

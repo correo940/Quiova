@@ -115,7 +115,7 @@ IMPORTANTE: las franjas deben ser coherentes entre sí. Si se recomienda quitars
           },
         ],
         temperature: 0.7,
-        max_tokens: 3500,
+        max_tokens: 6000,
       }),
     });
 
