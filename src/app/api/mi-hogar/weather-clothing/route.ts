@@ -22,6 +22,7 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       temperature: 0.7,
       max_tokens: 4000,
+      response_format: { type: 'json_object' }, // garantiza JSON válido
     }),
   });
   if (!res.ok) {
@@ -47,7 +48,8 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 5000,
-        thinkingConfig: { thinkingBudget: 0 }, // disable thinking mode — avoids extra text before JSON
+        responseMimeType: 'application/json', // garantiza JSON válido
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
