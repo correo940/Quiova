@@ -3,8 +3,9 @@ import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL_FALLBACK = 'gemini-2.5-flash-lite';
 
 function parseJsonContent(content: string): any {
   let text = content.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
@@ -37,8 +38,8 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+async function callGeminiModel(model: string, systemPrompt: string, userPrompt: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -55,12 +56,27 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   });
   if (!res.ok) {
     const err = await res.text();
+    if (res.status === 503 || res.status === 429) {
+      throw Object.assign(new Error(`Gemini ${model} no disponible: ${err}`), { isRetryable: true });
+    }
     throw new Error(`Gemini error: ${err}`);
   }
   const data = await res.json();
   // Collect all non-thinking text parts
   const parts: any[] = data.candidates?.[0]?.content?.parts ?? [];
   return parts.filter((p: any) => !p.thought && p.text).map((p: any) => p.text).join('') || '';
+}
+
+async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
+  try {
+    return await callGeminiModel(GEMINI_MODEL, systemPrompt, userPrompt);
+  } catch (err: any) {
+    if (err.isRetryable) {
+      console.log(`[Weather Clothing] ${GEMINI_MODEL} sobrecargado, probando ${GEMINI_MODEL_FALLBACK}`);
+      return await callGeminiModel(GEMINI_MODEL_FALLBACK, systemPrompt, userPrompt);
+    }
+    throw err;
+  }
 }
 
 export async function POST(request: Request) {
@@ -101,62 +117,16 @@ export async function POST(request: Request) {
 
     const userPrompt = `Ciudad: ${city || 'desconocida'}
 Datos del tiempo${weatherData[0]?.manana ? ' con franjas horarias' : ''}:
-${JSON.stringify(weatherData, null, 2)}
+${JSON.stringify(weatherData)}
 
 Genera recomendaciones de ropa/accesorios POR FRANJA HORARIA. Es crucial que las recomendaciones de cada franja sean coherentes con su temperatura: si hace calor por la tarde no pongas chaqueta en esa franja. Ten en cuenta el perfil térmico del usuario en cada franja.
 
-Devuelve SOLO este JSON:
-{
-  "resumen_semana": "Comentario gracioso de Quioba sobre cómo será la semana en general (2-3 frases coloquiales)",
-  "dias": [
-    {
-      "fecha": "YYYY-MM-DD",
-      "comentario_quioba": "Comentario general del día adaptado al perfil del usuario (1-2 frases)",
-      ${departureField}
-      "franjas": [
-        {
-          "franja": "mañana",
-          "emoji": "🌅",
-          "horas": "7-13h",
-          "temp_max": "20°",
-          "temp_min": "15°",
-          "comentario": "Frase corta y graciosa sobre esta franja (máx 1 frase)",
-          "items": [
-            { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
-          ]
-        },
-        {
-          "franja": "tarde",
-          "emoji": "☀️",
-          "horas": "13-20h",
-          "temp_max": "26°",
-          "temp_min": "22°",
-          "comentario": "Frase corta y graciosa sobre esta franja",
-          "items": [
-            { "emoji": "👚", "nombre": "Camiseta", "urgente": false }
-          ]
-        },
-        {
-          "franja": "noche",
-          "emoji": "🌙",
-          "horas": "20-0h",
-          "temp_max": "19°",
-          "temp_min": "16°",
-          "comentario": "Frase corta y graciosa sobre esta franja",
-          "items": [
-            { "emoji": "🧥", "nombre": "Chaqueta ligera", "urgente": false }
-          ]
-        }
-      ],
-      "resumen_tiempo": "Descripción corta del tiempo del día completo",
-      "nivel_calor": "calor|templado|fresco|frio|mucho_frio"
-    }
-  ]
-}
+Devuelve SOLO este JSON (un objeto por día, con sus 3 franjas mañana/tarde/noche):
+{"resumen_semana":"Comentario gracioso de Quioba sobre la semana (2-3 frases coloquiales)","dias":[{"fecha":"YYYY-MM-DD","comentario_quioba":"Comentario del día adaptado al perfil (1-2 frases)",${departureField}"franjas":[{"franja":"mañana","emoji":"🌅","horas":"7-13h","temp_max":"20°","temp_min":"15°","comentario":"Frase corta y graciosa (máx 1 frase)","items":[{"emoji":"🧥","nombre":"Chaqueta ligera","urgente":false}]},{"franja":"tarde","emoji":"☀️","horas":"13-20h",...},{"franja":"noche","emoji":"🌙","horas":"20-0h",...}],"resumen_tiempo":"Descripción corta del tiempo del día","nivel_calor":"calor|templado|fresco|frio|mucho_frio"}]}
 
 Items posibles: 🧥 Chaqueta/Abrigo, ☔ Paraguas, 🌂 Paraguas pequeño, 🧤 Guantes, 🧣 Bufanda, 🎩 Gorra/Sombrero, 🕶️ Gafas de sol, 🧴 Crema solar, 💧 Agua fresquita, 👟 Zapatillas ligeras, 👢 Botas de agua, 🩴 Chanclas, 👚 Ropa ligera, 🩳 Pantalón corto, 👙 Ropa de verano, 🥵 Mucha hidratación, ❄️ Ropa de abrigo extra${activity ? `, y items apropiados para ${activity}` : ''}.
 "urgente" es true solo para lo imprescindible (paraguas si llueve fuerte, crema si UV alto, etc).
-IMPORTANTE: las franjas deben ser coherentes entre sí. Si se recomienda quitarse la chaqueta por la tarde, no vuelvas a ponerla en la tarde. Si por la tarde hace 28°, NO pongas chaqueta en esa franja.`;
+IMPORTANTE: las franjas deben ser coherentes entre sí. Si por la tarde hace 28°, NO pongas chaqueta en esa franja.`;
 
     // Try Groq first, fall back to Gemini on rate limit
     let content = '';
