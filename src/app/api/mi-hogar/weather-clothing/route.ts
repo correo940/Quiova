@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'llama-3.1-8b-instant';
 
 export async function POST(request: Request) {
   if (!GROQ_API_KEY) {
@@ -115,7 +115,7 @@ IMPORTANTE: las franjas deben ser coherentes entre sí. Si se recomienda quitars
           },
         ],
         temperature: 0.7,
-        max_tokens: 6000,
+        max_tokens: 4000,
       }),
     });
 
