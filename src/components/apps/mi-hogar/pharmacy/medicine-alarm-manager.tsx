@@ -15,6 +15,19 @@ interface Medicine {
   alarm_times: string[];
 }
 
+// Bump this string whenever the notification schedule format changes to
+// force a one-time reschedule of all existing medicine notifications.
+const MED_NOTIF_VERSION_KEY = 'med_notif_v';
+const MED_NOTIF_VERSION = '2'; // v2: exact at/repeats/every format
+
+function nextOccurrence(hours: number, minutes: number): Date {
+  const now = new Date();
+  const t = new Date(now);
+  t.setHours(hours, minutes, 0, 0);
+  if (t <= now) t.setDate(t.getDate() + 1);
+  return t;
+}
+
 export default function MedicineAlarmManager() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -58,7 +71,7 @@ export default function MedicineAlarmManager() {
       clearWebTimers();
     };
 
-    // ── Native: schedule recurring OS alarms ────────────────────────────────
+    // ── Native: schedule exact recurring OS alarms ───────────────────────────
     async function setupNativeAlarms() {
       const granted = await NotificationManager.requestPermissions();
       if (!granted) return;
@@ -78,6 +91,16 @@ export default function MedicineAlarmManager() {
           .map((n: any) => [n.id, n])
       );
 
+      // One-time migration: if the notification format changed, cancel all
+      // existing medicine notifications so they are rescheduled in the new format.
+      const needsMigration = localStorage.getItem(MED_NOTIF_VERSION_KEY) !== MED_NOTIF_VERSION;
+      if (needsMigration) {
+        const oldIds = [...pendingMedMap.keys()];
+        if (oldIds.length > 0) await NotificationManager.cancel(oldIds);
+        pendingMedMap.clear();
+        localStorage.setItem(MED_NOTIF_VERSION_KEY, MED_NOTIF_VERSION);
+      }
+
       // Compute the desired set of notification IDs from current medicines
       const desiredIds = new Set<number>();
       medicines.forEach((med: Medicine) => {
@@ -91,8 +114,10 @@ export default function MedicineAlarmManager() {
       const staleIds = [...pendingMedMap.keys()].filter(id => !desiredIds.has(id));
       if (staleIds.length > 0) await NotificationManager.cancel(staleIds);
 
-      // Schedule only alarms that are not already pending — avoids cancelling a
-      // notification moments before it is due to fire, which pushes it to the next day
+      // Schedule only alarms not already pending — never cancel a notification
+      // moments before it fires, which would push it to the next day's occurrence.
+      // Uses { at, repeats, every: 'day' } so Capacitor calls setExactAndAllowWhileIdle()
+      // on Android instead of the inexact setRepeating().
       medicines.forEach((med: Medicine) => {
         if (!Array.isArray(med.alarm_times)) return;
         med.alarm_times.forEach((time: string) => {
@@ -103,7 +128,7 @@ export default function MedicineAlarmManager() {
             id: notifId,
             title: '💊 Hora de tu medicación',
             body: `${med.name}${med.dosage ? ` — ${med.dosage}` : ''}`,
-            schedule: { on: { hour: hours, minute: minutes }, allowWhileIdle: true } as any,
+            schedule: { at: nextOccurrence(hours, minutes), repeats: true, every: 'day', allowWhileIdle: true } as any,
             extra: { type: 'medicine', route: '/apps/mi-hogar/pharmacy' },
           });
         });
@@ -126,7 +151,6 @@ export default function MedicineAlarmManager() {
         if (!Array.isArray(med.alarm_times)) return;
 
         med.alarm_times.forEach((time: string) => {
-          const trackingId = `med_${med.id}_${time}`;
           if (hasBeenShownToday('med', `${med.id}_${time}`)) return;
 
           const [hours, minutes] = time.split(':').map(Number);
@@ -137,7 +161,7 @@ export default function MedicineAlarmManager() {
           const goToPharmacy = () => router.push('/apps/mi-hogar/pharmacy');
 
           if (target <= now) {
-            // Alarm time already passed today — show browser notification + toast
+            // Alarm time already passed today — fire browser notification + toast
             markShownToday('med', `${med.id}_${time}`);
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               new Notification('💊 Medicación pendiente', {
