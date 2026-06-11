@@ -24,6 +24,7 @@ import SmartScanner from './smart-scanner';
 import ScanRosterDialog from '@/components/apps/mi-hogar/roster/scan-roster-dialog';
 import ChatInterface from '@/components/apps/asistente/chat-interface';
 import VoiceAssistantModal from './voice-assistant-modal';
+import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 import { AppWithStatus, MarketplaceApp, UserAppPurchase } from '@/types/marketplace';
 import PurchaseDialog from './purchase-dialog';
 import { useRouter } from 'next/navigation';
@@ -151,6 +152,9 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
     // Quick apps (favorites)
     const [quickAppKeys, setQuickAppKeys] = useState<string[]>([]);
 
+    // Avatar del asistente IA (leído de localStorage al montar)
+    const [aiAvatarEmoji, setAiAvatarEmoji] = useState('🤖');
+
     // Feature States
     const [showScanner, setShowScanner] = useState(false);
     const [showScanRoster, setShowScanRoster] = useState(false);
@@ -239,6 +243,8 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
     useEffect(() => {
         setMounted(true);
         setQuickAppKeys(loadQuickApps());
+        const settings = getSecretarySettings();
+        setAiAvatarEmoji(getAvatarById(settings.avatarId).emoji);
     }, []);
 
     // Network status listener
@@ -1530,24 +1536,28 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                 }}
             />
 
-            {/* FAB — Asistente IA, siempre visible encima del taskbar */}
+            {/* FAB — Asistente IA con avatar del usuario, siempre visible encima del taskbar */}
             <motion.button
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.4 }}
                 whileTap={{ scale: 0.88 }}
                 onClick={() => { triggerHaptic(ImpactStyle.Heavy); setShowVoiceAssistant(true); }}
-                className="fixed bottom-[6.5rem] left-1/2 -translate-x-1/2 z-[80] flex flex-col items-center gap-1 pointer-events-auto"
-                style={{ filter: 'drop-shadow(0 8px 24px rgba(109,40,217,0.45))' }}
+                className="fixed bottom-[6.5rem] left-1/2 -translate-x-1/2 z-[80] flex flex-col items-center gap-1.5 pointer-events-auto"
             >
                 {/* Anillo de pulso exterior */}
-                <span className="absolute inset-0 rounded-full bg-violet-400/30 animate-ping" style={{ borderRadius: '9999px' }} />
-                {/* Botón principal */}
-                <span className="relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 border-2 border-white/30 shadow-xl">
-                    <Mic className="w-7 h-7 text-white" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-violet-400/40 animate-ping" />
+                {/* Anillo interior estático */}
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-2 border-violet-400/60" />
+                {/* Avatar */}
+                <span
+                    className="relative flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(109,40,217,0.4)] border-2 border-violet-200 text-4xl"
+                    style={{ lineHeight: 1 }}
+                >
+                    {aiAvatarEmoji}
                 </span>
-                <span className="text-[10px] font-bold text-violet-700 tracking-wide bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">
-                    Hablar
+                <span className="text-[10px] font-bold text-violet-700 tracking-wide bg-white/90 backdrop-blur-sm px-2.5 py-0.5 rounded-full shadow-sm border border-violet-100">
+                    Hablar con IA
                 </span>
             </motion.button>
 

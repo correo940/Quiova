@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Search } from 'lucide-react';
 import HeaderAuth from './header-auth';
+import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 const PILLARS = [
     {
@@ -38,6 +39,9 @@ const PILLARS = [
 export default function Header() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
+    const { isLauncherMode } = useGlobalMenu();
+
+    if (isLauncherMode) return null;
 
     const handleSearch = () => {
         if (searchQuery.trim()) {
