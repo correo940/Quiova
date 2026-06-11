@@ -4,7 +4,7 @@ import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 function parseJsonContent(content: string): any {
   let text = content.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
