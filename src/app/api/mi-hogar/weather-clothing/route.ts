@@ -44,7 +44,11 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4000 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 5000,
+        thinkingConfig: { thinkingBudget: 0 }, // disable thinking mode — avoids extra text before JSON
+      },
     }),
   });
   if (!res.ok) {
@@ -52,7 +56,9 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     throw new Error(`Gemini error: ${err}`);
   }
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // Collect all non-thinking text parts
+  const parts: any[] = data.candidates?.[0]?.content?.parts ?? [];
+  return parts.filter((p: any) => !p.thought && p.text).map((p: any) => p.text).join('') || '';
 }
 
 export async function POST(request: Request) {
