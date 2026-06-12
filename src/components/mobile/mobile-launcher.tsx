@@ -1389,10 +1389,10 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     </p>
                     <button
                         onClick={() => { triggerHaptic(ImpactStyle.Heavy); setShowVoiceAssistant(true); }}
-                        className="flex items-center gap-1.5 bg-green-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        className="flex-1 mx-3 flex items-center justify-center gap-2 bg-green-800 text-white py-2.5 rounded-xl font-bold shadow-sm active:scale-95 transition-all"
                     >
-                        <span className="text-sm leading-none">{aiAvatarEmoji}</span>
-                        <span>Hablar con IA</span>
+                        <span className="text-lg leading-none">{aiAvatarEmoji}</span>
+                        <span className="text-sm">Hablar con IA</span>
                     </button>
                     <p className="text-xs font-bold text-green-800 tabular-nums">
                         {currentTime}
