@@ -25,6 +25,7 @@ import ScanRosterDialog from '@/components/apps/mi-hogar/roster/scan-roster-dial
 import ChatInterface from '@/components/apps/asistente/chat-interface';
 import VoiceAssistantModal from './voice-assistant-modal';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
+import { useJournal } from '@/context/JournalContext';
 import { AppWithStatus, MarketplaceApp, UserAppPurchase } from '@/types/marketplace';
 import PurchaseDialog from './purchase-dialog';
 import { useRouter } from 'next/navigation';
@@ -137,6 +138,7 @@ const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Light) => {
 
 export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: MobileLauncherProps) {
     const router = useRouter();
+    const { setIsOpen: setIsJournalOpen } = useJournal();
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<any>(initialUser);
     const [profile, setProfile] = useState<any>(null);
@@ -1500,7 +1502,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     {/* Notas rápidas */}
                     <motion.button
                         whileTap={{ scale: 0.93 }}
-                        onClick={() => { triggerHaptic(ImpactStyle.Medium); setShowNoteModal(true); setTimeout(() => noteInputRef.current?.focus(), 300); }}
+                        onClick={() => { triggerHaptic(ImpactStyle.Medium); setIsJournalOpen(true); }}
                         className="aspect-square bg-white/80 backdrop-blur-md rounded-[28px] flex flex-col items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-white/60"
                     >
                         <div className="bg-yellow-50 p-3 rounded-[18px]">

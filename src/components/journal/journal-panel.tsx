@@ -934,7 +934,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         style={{ opacity: opacity }}
-                        className="fixed bottom-0 left-0 right-0 h-[60vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden md:hidden"
+                        className="fixed bottom-0 left-0 right-0 h-[50vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden md:hidden"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDrop}
                         ref={panelRef}
