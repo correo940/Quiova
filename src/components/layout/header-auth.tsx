@@ -99,7 +99,7 @@ export default function HeaderAuth() {
 
     if (user) {
         return (
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
                 {/* Trabajar button */}
                 <Button
                     onClick={() => isRunning ? stopSession() : startSession()}
@@ -170,7 +170,7 @@ export default function HeaderAuth() {
                 {/* Wake Word / Mic Button - desktop only */}
                 <button
                     onClick={() => setIsWakeWordEnabled(!isWakeWordEnabled)}
-                    className={`hidden md:flex w-8 h-8 items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
+                    className={`hidden lg:flex w-8 h-8 items-center justify-center rounded-full shadow-md transition-colors ${isWakeWordEnabled
                         ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400'
                         : 'bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400'
                         }`}

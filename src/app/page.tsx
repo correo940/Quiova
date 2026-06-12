@@ -94,7 +94,7 @@ function HomeContent() {
 
   useEffect(() => {
     const isNative = Capacitor.isNativePlatform();
-    const isSmallScreen = window.innerWidth < 768;
+    const isSmallScreen = window.innerWidth < 1024;
     if (isNative || isSmallScreen) {
       setIsLauncherMode(true);
       setGlobalLauncherMode(true);

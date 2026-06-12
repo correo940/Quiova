@@ -60,7 +60,7 @@ export default function Header() {
             <div className="container flex h-16 items-center" suppressHydrationWarning>
 
                 {/* ── Logo ── */}
-                <div className="mr-6 hidden md:flex items-center">
+                <div className="mr-6 hidden lg:flex items-center">
                     <Link href="/" className="flex items-center gap-2.5 group">
                         <Image
                             src="/images/logo.png"
@@ -74,7 +74,7 @@ export default function Header() {
                 </div>
 
                 {/* ── Desktop Nav ── */}
-                <nav className="hidden md:flex items-center gap-1 flex-1">
+                <nav className="hidden lg:flex items-center gap-1 flex-1">
                     {/* Pillar buttons */}
                     {PILLARS.map((p) => (
                         <Link
@@ -100,7 +100,7 @@ export default function Header() {
                 {/* ── Mobile hamburger ── */}
                 <Sheet>
                     <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menú">
+                        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú">
                             <Menu className="h-5 w-5" />
                         </Button>
                     </SheetTrigger>
@@ -136,8 +136,8 @@ export default function Header() {
                 </Sheet>
 
                 {/* ── Search + Auth ── */}
-                <div className="flex flex-1 items-center justify-end gap-2 md:flex-none" suppressHydrationWarning>
-                    <div className="relative w-32 md:w-48 lg:w-64" suppressHydrationWarning>
+                <div className="flex flex-1 items-center justify-end gap-2 lg:flex-none" suppressHydrationWarning>
+                    <div className="relative w-32 lg:w-48 xl:w-64" suppressHydrationWarning>
                         <button
                             onClick={handleSearch}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"

@@ -26,21 +26,26 @@ export function usePlatform(): PlatformInfo {
     });
 
     useEffect(() => {
-        const currentPlatform = Capacitor.getPlatform();
-        const isNative = Capacitor.isNativePlatform();
+        const checkPlatform = () => {
+            const currentPlatform = Capacitor.getPlatform();
+            const isNative = Capacitor.isNativePlatform();
 
-        // Verificación adicional: check si tenemos capacidades nativas
-        // Esto funciona incluso cuando cargamos desde URL remota
-        const hasNativeContext = typeof (window as any).Capacitor !== 'undefined' &&
-            (currentPlatform === 'ios' || currentPlatform === 'android');
+            const hasNativeContext = typeof (window as any).Capacitor !== 'undefined' &&
+                (currentPlatform === 'ios' || currentPlatform === 'android');
+            const isSmallScreen = window.innerWidth < 1024;
 
-        setPlatformInfo({
-            isWeb: !hasNativeContext,
-            isIOS: currentPlatform === 'ios' && hasNativeContext,
-            isAndroid: currentPlatform === 'android' && hasNativeContext,
-            isMobile: hasNativeContext || isNative,
-            platform: currentPlatform as 'web' | 'ios' | 'android',
-        });
+            setPlatformInfo({
+                isWeb: !hasNativeContext,
+                isIOS: currentPlatform === 'ios' && hasNativeContext,
+                isAndroid: currentPlatform === 'android' && hasNativeContext,
+                isMobile: hasNativeContext || isNative || isSmallScreen,
+                platform: currentPlatform as 'web' | 'ios' | 'android',
+            });
+        };
+
+        checkPlatform();
+        window.addEventListener('resize', checkPlatform);
+        return () => window.removeEventListener('resize', checkPlatform);
     }, []);
 
     return platformInfo;
