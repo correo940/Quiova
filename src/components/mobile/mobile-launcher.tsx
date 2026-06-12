@@ -1385,6 +1385,13 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     <p className="text-xs font-medium text-slate-400 tracking-wide">
                         {currentDate}
                     </p>
+                    <button
+                        onClick={() => { triggerHaptic(ImpactStyle.Heavy); setShowVoiceAssistant(true); }}
+                        className="flex items-center gap-1.5 bg-green-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                    >
+                        <span className="text-sm leading-none">{aiAvatarEmoji}</span>
+                        <span>Hablar con IA</span>
+                    </button>
                     <p className="text-xs font-bold text-green-800 tabular-nums">
                         {currentTime}
                     </p>
@@ -1535,31 +1542,6 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                     if (user) fetchApps(user.id);
                 }}
             />
-
-            {/* FAB — Asistente IA con avatar del usuario, siempre visible encima del taskbar */}
-            <motion.button
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.4 }}
-                whileTap={{ scale: 0.88 }}
-                onClick={() => { triggerHaptic(ImpactStyle.Heavy); setShowVoiceAssistant(true); }}
-                className="fixed bottom-[6.5rem] left-1/2 -translate-x-1/2 z-[80] flex flex-col items-center gap-1.5 pointer-events-auto"
-            >
-                {/* Anillo de pulso exterior */}
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-violet-400/40 animate-ping" />
-                {/* Anillo interior estático */}
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-2 border-violet-400/60" />
-                {/* Avatar */}
-                <span
-                    className="relative flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-[0_4px_20px_rgba(109,40,217,0.4)] border-2 border-violet-200 text-4xl"
-                    style={{ lineHeight: 1 }}
-                >
-                    {aiAvatarEmoji}
-                </span>
-                <span className="text-[10px] font-bold text-violet-700 tracking-wide bg-white/90 backdrop-blur-sm px-2.5 py-0.5 rounded-full shadow-sm border border-violet-100">
-                    Hablar con IA
-                </span>
-            </motion.button>
 
             <VoiceAssistantModal
                 open={showVoiceAssistant}
