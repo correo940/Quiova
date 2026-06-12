@@ -922,7 +922,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/40 z-[59] md:hidden"
+                        className="fixed inset-0 bg-black/40 z-[59] lg:hidden"
                         onClick={onClose}
                     />
 
@@ -934,7 +934,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         style={{ opacity: opacity }}
-                        className="fixed bottom-0 left-0 right-0 h-[50vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden md:hidden"
+                        className="fixed bottom-0 left-0 right-0 h-[50vh] bg-background border-t border-border shadow-2xl z-[60] flex flex-col rounded-t-2xl overflow-hidden lg:hidden"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDrop}
                         ref={panelRef}
@@ -953,7 +953,7 @@ export default function JournalPanel({ isOpen, onClose }: JournalPanelProps) {
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         style={{ width: `${width}%`, opacity: opacity }}
-                        className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex-col hidden md:flex"
+                        className="fixed top-0 right-0 h-full bg-background border-l border-border shadow-2xl z-[60] flex-col hidden lg:flex"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDrop}
                     >

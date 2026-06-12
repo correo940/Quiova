@@ -1508,7 +1508,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                         <div className="bg-yellow-50 p-3 rounded-[18px]">
                             <PenLine className="w-7 h-7 text-yellow-500" />
                         </div>
-                        <span className="block font-bold text-slate-900 text-xs">Notas</span>
+                        <span className="block font-bold text-slate-900 text-xs">Mis Apuntes</span>
                     </motion.button>
 
                 </div>
