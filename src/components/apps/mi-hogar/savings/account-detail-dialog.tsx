@@ -230,8 +230,7 @@ export default function AccountDetailDialog({
         border: '1px solid rgba(148,163,184,0.15)', color: '#f8fafc',
         boxShadow: '0 20px 40px rgba(15,23,42,0.35)'
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tooltipLabelFormatter = (_: unknown, payload: any[]) => {
+    const tooltipLabelFormatter = (_: unknown, payload?: ReadonlyArray<{ payload?: { fullDate?: string } }>) => {
         const p = payload?.[0]?.payload;
         if (!p?.fullDate) return 'Balance';
         return p.fullDate === account.id ? 'Balance inicial' : format(parseISO(p.fullDate), 'dd MMM yyyy', { locale: es });
