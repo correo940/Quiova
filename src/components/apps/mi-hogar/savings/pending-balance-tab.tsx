@@ -143,16 +143,16 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
     };
 
     // --- CALCULATIONS ---
-    const totalPending = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + e.amount, 0);
-    const totalRepaid = expenses.filter(e => e.status === 'repaid').reduce((s, e) => s + e.amount, 0);
-    const totalAll = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalPending = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + Math.abs(e.amount), 0);
+    const totalRepaid = expenses.filter(e => e.status === 'repaid').reduce((s, e) => s + Math.abs(e.amount), 0);
+    const totalAll = expenses.reduce((s, e) => s + Math.abs(e.amount), 0);
 
     const getProjectStats = (projectId: string) => {
         const projExpenses = expenses.filter(e => e.project_id === projectId);
         return {
-            total: projExpenses.reduce((s, e) => s + e.amount, 0),
-            pending: projExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + e.amount, 0),
-            repaid: projExpenses.filter(e => e.status === 'repaid').reduce((s, e) => s + e.amount, 0),
+            total: projExpenses.reduce((s, e) => s + Math.abs(e.amount), 0),
+            pending: projExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + Math.abs(e.amount), 0),
+            repaid: projExpenses.filter(e => e.status === 'repaid').reduce((s, e) => s + Math.abs(e.amount), 0),
             count: projExpenses.length
         };
     };
@@ -571,7 +571,7 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
 
                                     {/* Amount */}
                                     <span className={`font-bold text-base shrink-0 ${expense.status === 'repaid' ? 'text-green-800' : 'text-orange-600'}`}>
-                                        {expense.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                        {Math.abs(expense.amount).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                     </span>
 
                                     {/* Actions */}
