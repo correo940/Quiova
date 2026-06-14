@@ -221,6 +221,12 @@ export default function AccountDetailDialog({
     const selectedMonthLabel = format(selectedMonth, 'MMM yyyy', { locale: es });
     const latestTx = enrichedDesc[0];
 
+    // Desglose para cuentas vinculadas: ingresos = para gastar, gastos = pertenecen a la principal
+    const parentAccount = account.parent_account_id ? accounts.find(a => a.id === account.parent_account_id) : null;
+    const totalIncome = transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0);
+    const totalExpense = transactions.filter(tx => tx.amount < 0).reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const availableToSpend = totalIncome - totalExpense;
+
     const chartData = enrichedAsc.length > 0
         ? [{ label: 'Inicio', balance: startingBalance, fullDate: account.id }, ...enrichedAsc.map(tx => ({ label: format(parseISO(tx.date), 'd MMM', { locale: es }), balance: tx.runningBalance, fullDate: tx.date }))]
         : [{ label: 'Hoy', balance: account.current_balance, fullDate: format(new Date(), 'yyyy-MM-dd') }];
@@ -432,6 +438,20 @@ export default function AccountDetailDialog({
                                     <p className="text-[9px] text-white/25 mt-1">{monthTxs.length} mov. en {selectedMonthLabel}</p>
                                 </div>
                             </div>
+
+                            {/* Desglose de cuenta vinculada */}
+                            {parentAccount && (
+                                <div className="mt-3 flex items-stretch gap-2">
+                                    <div className="flex-1 rounded-xl bg-green-500/15 border border-green-400/20 px-3 py-2">
+                                        <p className="text-[9px] uppercase tracking-wider text-green-200/70">Disponible para gastar</p>
+                                        <p className="text-base font-black text-green-300">{currencyFormatter.format(availableToSpend)}</p>
+                                    </div>
+                                    <div className="flex-1 rounded-xl bg-amber-500/15 border border-amber-400/20 px-3 py-2">
+                                        <p className="text-[9px] uppercase tracking-wider text-amber-200/70">Pertenece a {parentAccount.name}</p>
+                                        <p className="text-base font-black text-amber-300">{currencyFormatter.format(totalExpense)}</p>
+                                    </div>
+                                </div>
+                            )}
                         </DialogHeader>
                     </div>
 
