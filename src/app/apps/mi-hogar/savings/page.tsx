@@ -1867,13 +1867,26 @@ export default function SavingsV2Preview() {
                                                     <div className="qf-bank-card-holder-value">{acc.name}</div>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <div className="qf-bank-card-balance-label">Saldo disponible</div>
+                                                    <div className="qf-bank-card-balance-label">{acc.parent_account_id ? 'Total' : 'Saldo disponible'}</div>
                                                     <div className="qf-bank-card-balance-value">
                                                         {acc.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
+                                            {acc.parent_account_id && linkedSums[acc.id] && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '8px', padding: '6px 10px', borderRadius: '8px', background: 'rgba(0,0,0,0.18)', fontSize: '10px', color: '#ffffff' }}>
+                                                    <div>
+                                                        <div style={{ opacity: 0.7, fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Para gastar</div>
+                                                        <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ opacity: 0.7, fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>De {accounts.find(a => a.id === acc.parent_account_id)?.name || 'principal'}</div>
+                                                        <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <button className="qf-bank-card-action" onClick={(e) => { e.stopPropagation(); handleOpenAccountDetail(acc); }}>
                                                 <i className="ti ti-eye"></i>
                                             </button>
@@ -2024,13 +2037,26 @@ export default function SavingsV2Preview() {
                                                                         <div className="qf-bank-card-holder-value" style={{ fontSize: '11px' }}>{acc.name}</div>
                                                                     </div>
                                                                     <div style={{ textAlign: 'right' }}>
-                                                                        <div className="qf-bank-card-balance-label" style={{ fontSize: '9px' }}>Saldo disponible</div>
+                                                                        <div className="qf-bank-card-balance-label" style={{ fontSize: '9px' }}>{acc.parent_account_id ? 'Total' : 'Saldo disponible'}</div>
                                                                         <div className="qf-bank-card-balance-value" style={{ fontSize: '13px' }}>
                                                                             {acc.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                
+
+                                                                {acc.parent_account_id && linkedSums[acc.id] && (
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', marginTop: '6px', padding: '5px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.18)', fontSize: '9px', color: '#ffffff' }}>
+                                                                        <div>
+                                                                            <div style={{ opacity: 0.7, fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Para gastar</div>
+                                                                            <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                                        </div>
+                                                                        <div style={{ textAlign: 'right' }}>
+                                                                            <div style={{ opacity: 0.7, fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>De {accounts.find(a => a.id === acc.parent_account_id)?.name || 'principal'}</div>
+                                                                            <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
                                                                 <button className="qf-bank-card-action" style={{ height: '30px', width: '30px' }} onClick={(e) => { e.stopPropagation(); handleOpenAccountDetail(acc); }}>
                                                                     <i className="ti ti-eye" style={{ fontSize: '12px' }}></i>
                                                                 </button>
