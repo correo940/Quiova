@@ -1018,11 +1018,11 @@ export default function ShoppingList() {
 
             {/* ── DIÁLOGO DE VERIFICACIÓN ── */}
             <Dialog open={isVerifyOpen} onOpenChange={(open) => !open && setIsVerifyOpen(false)}>
-                <DialogContent className="sm:max-w-md rounded-3xl">
+                <DialogContent className="sm:max-w-md rounded-3xl flex flex-col max-h-[90vh]">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold">Verificar Producto</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 overflow-y-auto flex-1">
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre del producto</label>
                             <Input
@@ -1075,11 +1075,11 @@ export default function ShoppingList() {
             </Dialog>
 
             <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-                <DialogContent className="sm:max-w-md rounded-3xl">
+                <DialogContent className="sm:max-w-md rounded-3xl flex flex-col max-h-[90vh]">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold">Editar Producto</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 overflow-y-auto flex-1">
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nombre</label>
                             <Input

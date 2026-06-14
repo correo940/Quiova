@@ -729,7 +729,7 @@ export default function PharmacyPage() {
 
             {/* CONFIRM DELETE */}
             <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-rose-600" /> ¿Eliminar medicamento?

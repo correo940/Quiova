@@ -82,7 +82,7 @@ export default function AddAccountDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-[#faf8f0] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-2xl">
+            <DialogContent className="sm:max-w-[425px] bg-[#faf8f0] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-bold">
                         <div className="w-8 h-8 rounded-lg bg-[#F5C400]/20 flex items-center justify-center text-[#d4aa00]">
@@ -95,7 +95,7 @@ export default function AddAccountDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                <form onSubmit={handleSubmit} className="space-y-4 mt-4 overflow-y-auto flex-1 pr-1">
                     <div className="space-y-2">
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Nombre de la cuenta</label>
                         <Input 

@@ -588,14 +588,14 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
 
             {/* Add Expense Dialog */}
             <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
-                <DialogContent>
+                <DialogContent className="flex flex-col max-h-[90vh] sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <ShoppingBag className="w-5 h-5 text-orange-500" /> Registrar Gasto
                         </DialogTitle>
                         <DialogDescription>Registra un gasto hecho con dinero ahorrado. Se añadirá como pendiente de reposición.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
                         <PendingBalanceImageScanner 
                             onScanSuccess={(data) => {
                                 setNewExpense({
