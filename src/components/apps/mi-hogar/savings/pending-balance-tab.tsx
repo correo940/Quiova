@@ -266,12 +266,35 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
         }
     };
 
-    const handleDeleteExpense = async (id: string) => {
+    const handleDeleteExpense = async (expense: PendingExpense) => {
         if (!window.confirm('¿Eliminar este gasto pendiente?')) return;
         try {
-            await supabase.from('pending_balance_expenses').delete().eq('id', id);
+            // Si estaba pendiente y vinculado a una cuenta, revertir el descuento
+            if (expense.status === 'pending' && expense.source_account_id) {
+                const acc = accounts.find(a => a.id === expense.source_account_id);
+                if (acc) {
+                    await supabase.from('savings_accounts').update({
+                        current_balance: acc.current_balance + expense.amount
+                    }).eq('id', expense.source_account_id);
+
+                    // Borrar la transacción negativa original que se creó al añadir el gasto
+                    const { data: txs } = await supabase
+                        .from('savings_account_transactions')
+                        .select('id')
+                        .eq('account_id', expense.source_account_id)
+                        .eq('amount', -expense.amount)
+                        .ilike('description', `Balance Pendiente: ${expense.concept}`)
+                        .limit(1);
+                    if (txs && txs.length > 0) {
+                        await supabase.from('savings_account_transactions').delete().eq('id', txs[0].id);
+                    }
+                }
+            }
+
+            await supabase.from('pending_balance_expenses').delete().eq('id', expense.id);
             toast.success('Gasto eliminado');
             fetchAll();
+            onBalanceChange?.();
         } catch { toast.error('Error al eliminar'); }
     };
 
@@ -564,7 +587,7 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                             <Edit3 className="w-4 h-4" />
                                         </Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500"
-                                            onClick={() => handleDeleteExpense(expense.id)}>
+                                            onClick={() => handleDeleteExpense(expense)}>
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
