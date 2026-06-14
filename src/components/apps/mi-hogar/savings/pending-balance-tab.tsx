@@ -95,12 +95,16 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
     // Dialog states
     const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
     const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+    const [editingExpense, setEditingExpense] = useState<PendingExpense | null>(null);
 
     // Forms
     const [newProject, setNewProject] = useState({ name: '', icon: '📁', color: '#6366f1' });
     const [newExpense, setNewExpense] = useState({
         concept: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
         merchant: '', projectId: 'none', accountId: 'none'
+    });
+    const [editForm, setEditForm] = useState({
+        concept: '', amount: '', date: '', merchant: '', projectId: 'none'
     });
 
     // Filter
@@ -182,7 +186,7 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
     const handleCreateExpense = async () => {
         if (!newExpense.concept || !newExpense.amount) return toast.error('Concepto e importe son obligatorios');
         try {
-            const amount = parseFloat(newExpense.amount);
+            const amount = Math.abs(parseFloat(newExpense.amount));
             const payload: any = {
                 user_id: userId,
                 concept: newExpense.concept,
@@ -269,6 +273,38 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
             toast.success('Gasto eliminado');
             fetchAll();
         } catch { toast.error('Error al eliminar'); }
+    };
+
+    const openEditExpense = (expense: PendingExpense) => {
+        setEditForm({
+            concept: expense.concept,
+            amount: String(expense.amount),
+            date: expense.date,
+            merchant: expense.merchant || '',
+            projectId: expense.project_id || 'none'
+        });
+        setEditingExpense(expense);
+    };
+
+    const handleUpdateExpense = async () => {
+        if (!editingExpense || !editForm.concept || !editForm.amount) return toast.error('Concepto e importe son obligatorios');
+        try {
+            const amount = Math.abs(parseFloat(editForm.amount));
+            const { error } = await supabase.from('pending_balance_expenses').update({
+                concept: editForm.concept,
+                amount,
+                date: editForm.date,
+                merchant: editForm.merchant || null,
+                project_id: editForm.projectId === 'none' ? null : editForm.projectId
+            }).eq('id', editingExpense.id);
+            if (error) throw error;
+            toast.success('Gasto actualizado');
+            setEditingExpense(null);
+            fetchAll();
+            onBalanceChange?.();
+        } catch (err) {
+            toast.error('Error al actualizar gasto');
+        }
     };
 
     // --- FILTERED EXPENSES ---
@@ -523,6 +559,10 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
                                         )}
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-500"
+                                            onClick={() => openEditExpense(expense)} title="Editar gasto">
+                                            <Edit3 className="w-4 h-4" />
+                                        </Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500"
                                             onClick={() => handleDeleteExpense(expense.id)}>
                                             <Trash2 className="w-4 h-4" />
@@ -670,6 +710,62 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                     <DialogFooter>
                         <Button onClick={handleCreateExpense} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
                             <ShoppingBag className="w-4 h-4" /> Registrar Gasto
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Expense Dialog */}
+            <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+                <DialogContent className="flex flex-col max-h-[90vh] sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Edit3 className="w-5 h-5 text-blue-500" /> Editar Gasto
+                        </DialogTitle>
+                        <DialogDescription>Modifica los datos del gasto pendiente.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
+                        <div className="space-y-2">
+                            <Label>Concepto</Label>
+                            <Input placeholder="Ej: Hotel Mallorca..." value={editForm.concept}
+                                onChange={(e) => setEditForm({ ...editForm, concept: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Importe (€)</Label>
+                                <Input type="number" placeholder="Ej: 250" value={editForm.amount}
+                                    onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Fecha</Label>
+                                <Input type="date" value={editForm.date}
+                                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Comercio (Opcional)</Label>
+                            <Input placeholder="Ej: Booking, Amazon..." value={editForm.merchant}
+                                onChange={(e) => setEditForm({ ...editForm, merchant: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Proyecto</Label>
+                            <Select value={editForm.projectId} onValueChange={(v) => setEditForm({ ...editForm, projectId: v })}>
+                                <SelectTrigger><SelectValue placeholder="Sin proyecto" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Sin proyecto</SelectItem>
+                                    {projects.map(p => (
+                                        <SelectItem key={p.id} value={p.id}>
+                                            <span className="flex items-center gap-2">{p.icon} {p.name}</span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingExpense(null)}>Cancelar</Button>
+                        <Button onClick={handleUpdateExpense} className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
+                            <Edit3 className="w-4 h-4" /> Guardar Cambios
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -54,12 +54,12 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
             }
 
             const data = await response.json();
-            
-            toast.success('¡Recibo analizado con éxito!', { id: toastId });
-            
+
+            toast.dismiss(toastId);
+
             // Format data
             onScanSuccess({
-                amount: data.amount ? String(data.amount) : '',
+                amount: data.amount ? String(Math.abs(data.amount)) : '',
                 concept: (data.merchant ? `Compra en ${data.merchant}` : 'Suministros varios'),
                 date: data.date ? data.date : new Date().toISOString().split('T')[0],
                 merchant: data.merchant || ''
