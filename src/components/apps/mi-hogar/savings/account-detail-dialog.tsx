@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { addMonths, format, isSameMonth, parseISO, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -19,23 +19,23 @@ import {
 import {
     AreaChart as AreaChartIcon,
     ArrowDownRight,
+    ArrowLeft,
     ArrowUpRight,
     BarChart3,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
+    ChevronUp,
     CreditCard,
     Edit3,
     Landmark,
     LineChart as LineChartIcon,
-    PiggyBank,
-    ReceiptText,
+    Plus,
+    RefreshCw,
     Save,
     Search,
     ShieldCheck,
-    Sparkles,
     Trash2,
-    Wallet,
-    RefreshCw,
     X
 } from 'lucide-react';
 import {
@@ -45,22 +45,11 @@ import {
     DialogHeader,
     DialogTitle
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 type BankAccount = {
@@ -118,11 +107,7 @@ interface AccountDetailDialogProps {
     accounts?: BankAccount[];
 }
 
-const currencyFormatter = new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR'
-});
-
+const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 const compactCurrencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR',
@@ -132,13 +117,9 @@ const compactCurrencyFormatter = new Intl.NumberFormat('es-ES', {
 
 function getAccountTypeLabel(type?: BankAccount['account_type']) {
     switch (type) {
-        case 'objetivo':
-            return 'Cuenta objetivo';
-        case 'bloqueada':
-            return 'Cuenta bloqueada';
-        case 'libre':
-        default:
-            return 'Cuenta libre';
+        case 'objetivo': return 'Cuenta objetivo';
+        case 'bloqueada': return 'Cuenta bloqueada';
+        default: return 'Cuenta libre';
     }
 }
 
@@ -160,14 +141,8 @@ export default function AccountDetailDialog({
     onNavigateAccount,
     accounts = []
 }: AccountDetailDialogProps) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'details'>('overview');
     const [transactionKind, setTransactionKind] = useState<TransactionKind>('deposit');
-    const [form, setForm] = useState({
-        amount: '',
-        description: '',
-        date: format(new Date(), 'yyyy-MM-dd'),
-        is_envelope_spend: false
-    });
+    const [form, setForm] = useState({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd'), is_envelope_spend: false });
     const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
@@ -182,198 +157,133 @@ export default function AccountDetailDialog({
     const [exactDateFilter, setExactDateFilter] = useState('');
     const [isEditingBalance, setIsEditingBalance] = useState(false);
     const [manualBalanceValue, setManualBalanceValue] = useState('');
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [chartOpen, setChartOpen] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);
 
     useEffect(() => {
         if (!open) return;
-
-        setActiveTab('overview');
         setTransactionKind('deposit');
-        setForm({
-            amount: '',
-            description: '',
-            date: format(new Date(), 'yyyy-MM-dd'),
-            is_envelope_spend: !!account?.parent_account_id
-        });
+        setForm({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd'), is_envelope_spend: !!account?.parent_account_id });
         setEditingTransactionId(null);
         setSearchTerm('');
         setMovementFilter('all');
         setSelectedMonth(new Date());
         setSelectedTxIds(new Set());
+        setShowAddForm(false);
+        setChartOpen(false);
+        setShowDetails(false);
+        setIsEditingBalance(false);
     }, [open, account?.id]);
 
     const handleNextAccount = () => {
         if (!account || accounts.length <= 1 || !onNavigateAccount) return;
-        const currentIndex = accounts.findIndex(a => a.id === account.id);
-        const nextIndex = (currentIndex + 1) % accounts.length;
-        onNavigateAccount(accounts[nextIndex]);
+        const i = accounts.findIndex(a => a.id === account.id);
+        onNavigateAccount(accounts[(i + 1) % accounts.length]);
     };
 
     const handlePrevAccount = () => {
         if (!account || accounts.length <= 1 || !onNavigateAccount) return;
-        const currentIndex = accounts.findIndex(a => a.id === account.id);
-        const prevIndex = (currentIndex - 1 + accounts.length) % accounts.length;
-        onNavigateAccount(accounts[prevIndex]);
+        const i = accounts.findIndex(a => a.id === account.id);
+        onNavigateAccount(accounts[(i - 1 + accounts.length) % accounts.length]);
     };
 
-    useEffect(() => {
-        if (open) {
-            setSelectedTxIds(new Set());
-        }
-    }, [activeTab, open]);
+    if (!account) return null;
 
-    if (!account) {
-        return null;
-    }
-
-    const sortedTransactionsAsc = [...transactions].sort((a, b) => {
-        const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (dateDiff !== 0) return dateDiff;
-        return a.id.localeCompare(b.id);
+    const sortedAsc = [...transactions].sort((a, b) => {
+        const d = new Date(a.date).getTime() - new Date(b.date).getTime();
+        return d !== 0 ? d : a.id.localeCompare(b.id);
     });
 
-    const startingBalance = account.current_balance - transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const startingBalance = account.current_balance - transactions.reduce((s, tx) => s + tx.amount, 0);
 
-    let runningBalance = startingBalance;
-    const enrichedTransactionsAsc = sortedTransactionsAsc.map((tx) => {
-        runningBalance += tx.amount;
-
-        return {
-            ...tx,
-            runningBalance
-        };
+    let running = startingBalance;
+    const enrichedAsc = sortedAsc.map(tx => { running += tx.amount; return { ...tx, runningBalance: running }; });
+    const enrichedDesc = [...enrichedAsc].sort((a, b) => {
+        const d = new Date(b.date).getTime() - new Date(a.date).getTime();
+        return d !== 0 ? d : b.id.localeCompare(a.id);
     });
 
-    const enrichedTransactionsDesc = [...enrichedTransactionsAsc].sort((a, b) => {
-        const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
-        if (dateDiff !== 0) return dateDiff;
-        return b.id.localeCompare(a.id);
+    const filteredTransactions = enrichedAsc.filter(tx => {
+        const matchSearch = !searchTerm.trim() ||
+            `${tx.description} ${format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}`.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchFilter = movementFilter === 'all' || (movementFilter === 'income' && tx.amount > 0) || (movementFilter === 'expense' && tx.amount < 0);
+        const matchMonth = !exactMonthFilter || tx.date.startsWith(exactMonthFilter);
+        const matchDate = !exactDateFilter || tx.date === exactDateFilter;
+        return matchSearch && matchFilter && matchMonth && matchDate;
     });
 
-    const filteredTransactions = enrichedTransactionsDesc.filter((tx) => {
-        const matchesSearch = !searchTerm.trim() ||
-            `${tx.description} ${format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}`
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase());
-
-        const matchesFilter =
-            movementFilter === 'all' ||
-            (movementFilter === 'income' && tx.amount > 0) ||
-            (movementFilter === 'expense' && tx.amount < 0);
-
-        const matchesMonth = !exactMonthFilter || tx.date.startsWith(exactMonthFilter);
-        const matchesDate = !exactDateFilter || tx.date === exactDateFilter;
-
-        return matchesSearch && matchesFilter && matchesMonth && matchesDate;
-    });
-
-    const selectedMonthTransactions = transactions.filter((tx) =>
-        isSameMonth(parseISO(tx.date), selectedMonth)
-    );
-
-    const monthlyIncome = selectedMonthTransactions
-        .filter((tx) => tx.amount > 0)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const monthlyExpense = selectedMonthTransactions
-        .filter((tx) => tx.amount < 0)
-        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-
+    const monthTxs = transactions.filter(tx => isSameMonth(parseISO(tx.date), selectedMonth));
+    const monthlyIncome = monthTxs.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0);
+    const monthlyExpense = monthTxs.filter(tx => tx.amount < 0).reduce((s, tx) => s + Math.abs(tx.amount), 0);
     const netFlow = monthlyIncome - monthlyExpense;
-    const selectedMonthMovements = selectedMonthTransactions.length;
     const isCurrentMonth = isSameMonth(selectedMonth, new Date());
     const selectedMonthLabel = format(selectedMonth, 'MMM yyyy', { locale: es });
-    const latestTransaction = enrichedTransactionsDesc[0];
+    const latestTx = enrichedDesc[0];
 
-    const chartData = enrichedTransactionsAsc.length > 0
-        ? [
-            {
-                label: 'Inicio',
-                balance: startingBalance,
-                fullDate: account.id
-            },
-            ...enrichedTransactionsAsc.map((tx) => ({
-                label: format(parseISO(tx.date), 'd MMM', { locale: es }),
-                balance: tx.runningBalance,
-                fullDate: tx.date
-            }))
-        ]
-        : [
-            {
-                label: 'Hoy',
-                balance: account.current_balance,
-                fullDate: format(new Date(), 'yyyy-MM-dd')
-            }
-        ];
+    const chartData = enrichedAsc.length > 0
+        ? [{ label: 'Inicio', balance: startingBalance, fullDate: account.id }, ...enrichedAsc.map(tx => ({ label: format(parseISO(tx.date), 'd MMM', { locale: es }), balance: tx.runningBalance, fullDate: tx.date }))]
+        : [{ label: 'Hoy', balance: account.current_balance, fullDate: format(new Date(), 'yyyy-MM-dd') }];
 
-    const resetTransactionForm = () => {
+    const tooltipContentStyle = {
+        backgroundColor: 'rgba(15,23,42,0.96)', borderRadius: '14px',
+        border: '1px solid rgba(148,163,184,0.15)', color: '#f8fafc',
+        boxShadow: '0 20px 40px rgba(15,23,42,0.35)'
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tooltipLabelFormatter = (_: unknown, payload: any[]) => {
+        const p = payload?.[0]?.payload;
+        if (!p?.fullDate) return 'Balance';
+        return p.fullDate === account.id ? 'Balance inicial' : format(parseISO(p.fullDate), 'dd MMM yyyy', { locale: es });
+    };
+    const tooltipFormatter = (value: number) => currencyFormatter.format(value);
+
+    const groupedByDate = filteredTransactions.reduce((g, tx) => {
+        if (!g[tx.date]) g[tx.date] = [];
+        g[tx.date].push(tx);
+        return g;
+    }, {} as Record<string, typeof filteredTransactions>);
+    const groupedDates = Object.keys(groupedByDate).sort((a, b) => a.localeCompare(b));
+
+    const resetForm = () => {
         setEditingTransactionId(null);
         setTransactionKind('deposit');
-        setForm({
-            amount: '',
-            description: '',
-            date: format(new Date(), 'yyyy-MM-dd'),
-            is_envelope_spend: !!account?.parent_account_id
-        });
+        setForm({ amount: '', description: '', date: format(new Date(), 'yyyy-MM-dd'), is_envelope_spend: !!account?.parent_account_id });
+        setShowAddForm(false);
     };
 
     const handleEditTransaction = (tx: SavingsTransaction) => {
         setEditingTransactionId(tx.id);
         setTransactionKind(tx.amount >= 0 ? 'deposit' : 'expense');
-        setForm({
-            amount: String(Math.abs(tx.amount)),
-            description: tx.description || '',
-            date: tx.date,
-            is_envelope_spend: tx.is_envelope_spend || false
-        });
-        setActiveTab('overview');
+        setForm({ amount: String(Math.abs(tx.amount)), description: tx.description || '', date: tx.date, is_envelope_spend: tx.is_envelope_spend || false });
+        setShowAddForm(true);
     };
 
     const handleManualBalanceSave = async () => {
         const val = parseFloat(manualBalanceValue.replace(',', '.'));
-        if (isNaN(val)) return;
-        if (onUpdateBalance && account) {
-            await onUpdateBalance(account.id, val);
-            setIsEditingBalance(false);
-        }
+        if (isNaN(val) || !onUpdateBalance) return;
+        await onUpdateBalance(account.id, val);
+        setIsEditingBalance(false);
     };
 
     const handleSubmit = async () => {
-        const parsedAmount = Number(form.amount);
-
-        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-            return;
-        }
-
+        const parsed = Number(form.amount);
+        if (!Number.isFinite(parsed) || parsed <= 0) return;
         setIsSubmitting(true);
         try {
-            await onSubmitTransaction({
-                transactionId: editingTransactionId || undefined,
-                amount: parsedAmount,
-                date: form.date,
-                description: form.description,
-                kind: transactionKind,
-                is_envelope_spend: form.is_envelope_spend
-            });
-
-            resetTransactionForm();
-            setActiveTab('transactions');
+            await onSubmitTransaction({ transactionId: editingTransactionId || undefined, amount: parsed, date: form.date, description: form.description, kind: transactionKind, is_envelope_spend: form.is_envelope_spend });
+            resetForm();
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleDeleteMovement = async (tx: SavingsTransaction) => {
-        if (!window.confirm('Eliminar este movimiento? El saldo se recalculara.')) {
-            return;
-        }
-
+        if (!window.confirm('Eliminar este movimiento? El saldo se recalculara.')) return;
         setDeletingTransactionId(tx.id);
         try {
             await onDeleteTransaction(tx.id, tx.amount);
-
-            if (editingTransactionId === tx.id) {
-                resetTransactionForm();
-            }
+            if (editingTransactionId === tx.id) resetForm();
         } finally {
             setDeletingTransactionId(null);
         }
@@ -381,1020 +291,490 @@ export default function AccountDetailDialog({
 
     const handleIncludeInTotalChange = async (checked: boolean) => {
         setIsUpdatingIncludeInTotal(true);
-        try {
-            await onToggleIncludeInTotal(checked);
-        } finally {
-            setIsUpdatingIncludeInTotal(false);
-        }
+        try { await onToggleIncludeInTotal(checked); } finally { setIsUpdatingIncludeInTotal(false); }
     };
 
     const handleUpdateEnvelopeField = async (field: 'parent_account_id' | 'envelope_spent', value: string | null | number) => {
         if (!account || !onUpdateAccount) return;
         setIsUpdatingAccount(true);
-        try {
-            await onUpdateAccount(account.id, { [field]: value });
-        } finally {
-            setIsUpdatingAccount(false);
-        }
+        try { await onUpdateAccount(account.id, { [field]: value }); } finally { setIsUpdatingAccount(false); }
     };
 
     const handleBulkDelete = async () => {
-        if (selectedTxIds.size === 0) return;
-        if (!window.confirm(`¿Eliminar ${selectedTxIds.size} movimientos seleccionados? El saldo se recalculará automáticamente.`)) return;
-
-        if (onDeleteTransactions) {
-            setIsSubmitting(true);
-            try {
-                const txsToDelete = transactions.filter(t => selectedTxIds.has(t.id));
-                const totalAmount = txsToDelete.reduce((sum, t) => sum + t.amount, 0);
-                await onDeleteTransactions(Array.from(selectedTxIds), totalAmount);
-                setSelectedTxIds(new Set());
-            } finally {
-                setIsSubmitting(false);
-            }
-        }
+        if (!selectedTxIds.size || !onDeleteTransactions) return;
+        if (!window.confirm(`¿Eliminar ${selectedTxIds.size} movimientos? El saldo se recalculará.`)) return;
+        setIsSubmitting(true);
+        try {
+            const toDelete = transactions.filter(t => selectedTxIds.has(t.id));
+            await onDeleteTransactions(Array.from(selectedTxIds), toDelete.reduce((s, t) => s + t.amount, 0));
+            setSelectedTxIds(new Set());
+        } finally { setIsSubmitting(false); }
     };
 
     const toggleAllVisible = () => {
-        if (selectedTxIds.size >= filteredTransactions.length && filteredTransactions.length > 0) {
-            setSelectedTxIds(new Set());
-        } else {
-            setSelectedTxIds(new Set(filteredTransactions.map(tx => tx.id)));
-        }
+        if (selectedTxIds.size >= filteredTransactions.length && filteredTransactions.length > 0) setSelectedTxIds(new Set());
+        else setSelectedTxIds(new Set(filteredTransactions.map(tx => tx.id)));
     };
 
     const toggleSelection = (id: string) => {
-        const newSet = new Set(selectedTxIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedTxIds(newSet);
+        const s = new Set(selectedTxIds);
+        if (s.has(id)) s.delete(id); else s.add(id);
+        setSelectedTxIds(s);
     };
+
+    const axisProps = { tickLine: false as const, axisLine: false as const, tick: { fontSize: 10, fill: '#64748b' } };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
-                <Tabs
-                    value={activeTab}
-                    onValueChange={(value) => setActiveTab(value as 'overview' | 'transactions' | 'details')}
-                    className="flex h-full flex-col"
-                >
-                    <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 shadow-[0_30px_80px_rgba(15,23,42,0.55)]">
-                        <div
-                            className="relative overflow-hidden border-b border-white/10 px-5 py-2 sm:px-6"
-                            style={{
-                                background: `linear-gradient(145deg, ${account.color || '#0f766e'} 0%, #0f172a 55%, #020617 100%)`
-                            }}
-                        >
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_24%)] opacity-90" />
+                <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 shadow-[0_30px_80px_rgba(15,23,42,0.55)]">
 
-                            <DialogHeader className="relative z-10 space-y-0 text-left pt-2">
-                                <button
-                                    onClick={() => onOpenChange(false)}
-                                    className="absolute right-0 top-0 z-50 -mt-2 -mr-2 rounded-full bg-white/10 p-2 text-white/50 backdrop-blur-md transition-all hover:bg-white/20 hover:text-white"
-                                    aria-label="Cerrar"
-                                >
-                                    <X className="h-5 w-5" />
+                    {/* ── COMPACT HEADER ── */}
+                    <div
+                        className="relative overflow-hidden border-b border-white/10 px-4 pt-3 pb-4 shrink-0"
+                        style={{ background: `linear-gradient(145deg, ${account.color || '#0f766e'} 0%, #0f172a 55%, #020617 100%)` }}
+                    >
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_24%)] opacity-90" />
+
+                        <DialogHeader className="relative z-10 space-y-0">
+                            {/* Row 1: Logo + Name + Nav + Actions */}
+                            <div className="flex items-center gap-2">
+                                <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/95 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                                    {account.logo_url
+                                        ? <img src={account.logo_url} alt={account.bank_name} className="h-6 w-6 object-contain" />
+                                        : <Landmark className="h-4 w-4 text-slate-800" />}
+                                </div>
+
+                                {onNavigateAccount && accounts.length > 1 && (
+                                    <button onClick={handlePrevAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors" title="Cuenta anterior">
+                                        <ChevronLeft className="w-4 h-4 text-white/50 hover:text-white" />
+                                    </button>
+                                )}
+
+                                <div className="flex-1 min-w-0">
+                                    <DialogTitle className="text-base font-black text-white leading-tight truncate">{account.name}</DialogTitle>
+                                    <DialogDescription className="text-[10px] text-white/60 flex flex-wrap items-center gap-1 mt-0.5">
+                                        <span>{account.bank_name}</span>
+                                        <span className="h-0.5 w-0.5 rounded-full bg-white/30" />
+                                        <span>{getAccountTypeLabel(account.account_type)}</span>
+                                        {account.interest_rate && (<><span className="h-0.5 w-0.5 rounded-full bg-white/30" /><span className="text-amber-300">{account.interest_rate}% TAE</span></>)}
+                                    </DialogDescription>
+                                </div>
+
+                                {onNavigateAccount && accounts.length > 1 && (
+                                    <button onClick={handleNextAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors" title="Siguiente cuenta">
+                                        <ChevronRight className="w-4 h-4 text-white/50 hover:text-white" />
+                                    </button>
+                                )}
+
+                                <button onClick={() => setShowDetails(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors" title="Detalles de cuenta">
+                                    <CreditCard className="w-4 h-4" />
                                 </button>
-                                <div className="grid gap-2 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+                                <button onClick={() => onOpenChange(false)} className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
 
-                                    {/* ── IZQUIERDA: Info de la cuenta ── */}
-                                    <div className="space-y-2">
-                                        <div className="flex flex-wrap items-center gap-2.5">
-                                            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-white/95 shadow-lg">
-                                                {account.logo_url ? (
-                                                    <img
-                                                        src={account.logo_url}
-                                                        alt={account.bank_name}
-                                                        className="h-7 w-7 object-contain"
-                                                    />
-                                                ) : (
-                                                    <Landmark className="h-5 w-5 text-slate-800" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 pr-12 lg:pr-0">
-                                                <div className="flex items-center gap-2">
-                                                    {onNavigateAccount && accounts && accounts.length > 1 && (
-                                                        <button onClick={handlePrevAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors -ml-2" title="Cuenta anterior">
-                                                            <ChevronLeft className="w-5 h-5 text-white/50 hover:text-white" />
-                                                        </button>
-                                                    )}
-                                                    <DialogTitle className="text-xl font-black tracking-tight text-white">
-                                                        {account.name}
-                                                    </DialogTitle>
-                                                    {onNavigateAccount && accounts && accounts.length > 1 && (
-                                                        <button onClick={handleNextAccount} className="p-1 hover:bg-white/10 rounded-md transition-colors" title="Siguiente cuenta">
-                                                            <ChevronRight className="w-5 h-5 text-white/50 hover:text-white" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs text-white/70">
-                                                    <span>{account.bank_name}</span>
-                                                    <span className="h-0.5 w-0.5 rounded-full bg-white/40" />
-                                                    <span>{getAccountTypeLabel(account.account_type)}</span>
-                                                    {account.interest_rate ? (
-                                                        <>
-                                                            <span className="h-0.5 w-0.5 rounded-full bg-white/40" />
-                                                            <span className="text-amber-300">{account.interest_rate}% TAE</span>
-                                                        </>
-                                                    ) : null}
-                                                </DialogDescription>
-                                            </div>
+                            {/* Row 2: Balance + Month stats */}
+                            <div className="flex items-end justify-between mt-3 gap-3 flex-wrap">
+                                <div className="group">
+                                    <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 flex items-center gap-1">
+                                        Saldo actual
+                                        {onUpdateBalance && (
+                                            <button onClick={() => { setIsEditingBalance(!isEditingBalance); setManualBalanceValue(String(account.current_balance)); }} className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/10 rounded">
+                                                <Edit3 className="w-2.5 h-2.5 text-white/60" />
+                                            </button>
+                                        )}
+                                        {onSyncBalance && (
+                                            <button onClick={() => onSyncBalance(account.id)} className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-white/10 rounded" title="Sincronizar">
+                                                <RefreshCw className="w-2.5 h-2.5 text-white/60" />
+                                            </button>
+                                        )}
+                                    </p>
+                                    {isEditingBalance ? (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Input className="h-7 w-28 bg-white/10 border-white/20 text-white font-bold text-sm" value={manualBalanceValue} onChange={e => setManualBalanceValue(e.target.value)} autoFocus />
+                                            <Button size="sm" className="h-7 px-2 bg-green-500 hover:bg-green-800" onClick={handleManualBalanceSave}><Save className="w-3 h-3" /></Button>
+                                            <Button size="sm" variant="ghost" className="h-7 px-2 text-white/60 hover:text-white" onClick={() => setIsEditingBalance(false)}><X className="w-3 h-3" /></Button>
                                         </div>
+                                    ) : (
+                                        <p className="text-2xl font-black text-white tracking-tight sm:text-3xl">{currencyFormatter.format(account.current_balance)}</p>
+                                    )}
+                                </div>
 
-                                        <div className="group relative">
-                                            <p className="text-[10px] uppercase tracking-[0.3em] text-white/45 flex items-center gap-2">
-                                                Saldo actual
-                                                {onUpdateBalance && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setIsEditingBalance(!isEditingBalance);
-                                                            setManualBalanceValue(String(account.current_balance));
-                                                        }}
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
-                                                        title="Editar saldo manualmente"
-                                                    >
-                                                        <Edit3 className="w-3 h-3 text-white/60" />
-                                                    </button>
-                                                )}
-                                                {onSyncBalance && (
-                                                    <button
-                                                        onClick={() => onSyncBalance(account.id)}
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
-                                                        title="Sincronizar con historial"
-                                                    >
-                                                        <RefreshCw className="w-3 h-3 text-white/60" />
-                                                    </button>
-                                                )}
+                                <div className="text-right shrink-0">
+                                    <div className="flex items-center gap-1 justify-end mb-1.5">
+                                        <button onClick={() => setSelectedMonth(p => subMonths(p, 1))} className="h-5 w-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-colors">
+                                            <ChevronLeft className="w-3 h-3" />
+                                        </button>
+                                        <span className="text-[10px] font-bold uppercase text-white/80 min-w-[64px] text-center">{selectedMonthLabel}</span>
+                                        <button onClick={() => { if (!isCurrentMonth) setSelectedMonth(p => addMonths(p, 1)); }} disabled={isCurrentMonth} className={cn("h-5 w-5 flex items-center justify-center rounded transition-colors", isCurrentMonth ? "bg-white/5 text-white/20 cursor-not-allowed" : "bg-white/10 hover:bg-white/20 text-white/60 hover:text-white")}>
+                                            <ChevronRight className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-3 justify-end">
+                                        <div className="text-right">
+                                            <p className="text-[8px] uppercase tracking-wider text-white/40">Ing</p>
+                                            <p className="text-xs font-bold text-green-300">{compactCurrencyFormatter.format(monthlyIncome)}</p>
+                                        </div>
+                                        <div className="w-px h-5 bg-white/15" />
+                                        <div className="text-right">
+                                            <p className="text-[8px] uppercase tracking-wider text-white/40">Gas</p>
+                                            <p className="text-xs font-bold text-rose-300">{compactCurrencyFormatter.format(monthlyExpense)}</p>
+                                        </div>
+                                        <div className="w-px h-5 bg-white/15" />
+                                        <div className="text-right">
+                                            <p className="text-[8px] uppercase tracking-wider text-white/40">Dif</p>
+                                            <p className={cn("text-xs font-bold", netFlow >= 0 ? "text-green-300" : "text-rose-300")}>
+                                                {netFlow >= 0 ? '+' : ''}{compactCurrencyFormatter.format(netFlow)}
                                             </p>
-                                            {isEditingBalance ? (
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Input
-                                                        className="h-8 w-32 bg-white/10 border-white/20 text-white font-bold"
-                                                        value={manualBalanceValue}
-                                                        onChange={(e) => setManualBalanceValue(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                    <Button size="sm" className="h-8 bg-green-500 hover:bg-green-800" onClick={handleManualBalanceSave}>
-                                                        <Save className="w-3 h-3" />
-                                                    </Button>
-                                                    <Button size="sm" variant="ghost" className="h-8 text-white/60 hover:text-white" onClick={() => setIsEditingBalance(false)}>
-                                                        X
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <p className="text-xl font-black tracking-tight text-white sm:text-2xl">
-                                                    {currencyFormatter.format(account.current_balance)}
-                                                </p>
-                                            )}
                                         </div>
                                     </div>
-
-                                    {/* ── CENTRO: Formulario nuevo movimiento compacto ── */}
-                                    <div className="lg:w-[280px]">
-                                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                                            {editingTransactionId ? 'Editar movimiento' : 'Nuevo movimiento'}
-                                        </p>
-
-                                        {/* Toggle Ingreso / Gasto */}
-                                        <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-lg bg-white/5 p-0.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => setTransactionKind('deposit')}
-                                                className={cn(
-                                                    'flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition-all',
-                                                    transactionKind === 'deposit'
-                                                        ? 'bg-green-500 text-white shadow-md'
-                                                        : 'text-white/50 hover:text-white/80'
-                                                )}
-                                            >
-                                                <ArrowUpRight className="h-3 w-3" />
-                                                Ingreso
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setTransactionKind('expense')}
-                                                className={cn(
-                                                    'flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition-all',
-                                                    transactionKind === 'expense'
-                                                        ? 'bg-rose-500 text-white shadow-md'
-                                                        : 'text-white/50 hover:text-white/80'
-                                                )}
-                                            >
-                                                <ArrowDownRight className="h-3 w-3" />
-                                                Gasto
-                                            </button>
-                                        </div>
-
-                                        {/* Campos */}
-                                        <div className="space-y-1.5">
-                                            <Input
-                                                type="number"
-                                                placeholder="Importe"
-                                                value={form.amount}
-                                                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                                                className="h-8 rounded-lg border-white/15 bg-white/10 text-xs text-white placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-white/10"
-                                            />
-                                            <Input
-                                                placeholder="Concepto"
-                                                value={form.description}
-                                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                                className="h-8 rounded-lg border-white/15 bg-white/10 text-xs text-white placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-white/10"
-                                            />
-                                            <div className="flex gap-1.5">
-                                                <Input
-                                                    type="date"
-                                                    value={form.date}
-                                                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                                    className="h-8 flex-1 rounded-lg border-white/15 bg-white/10 text-xs text-white focus-visible:border-white/30 focus-visible:ring-white/10"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    onClick={handleSubmit}
-                                                    disabled={isSubmitting || !form.amount}
-                                                    className="h-8 rounded-lg bg-green-500 px-3 text-xs font-semibold text-white hover:bg-green-800 disabled:opacity-40"
-                                                >
-                                                    <Save className="mr-1 h-3 w-3" />
-                                                    {editingTransactionId ? 'Guardar' : 'Añadir'}
-                                                </Button>
-                                            </div>
-
-                                            {account.parent_account_id && transactionKind === 'expense' && (
-                                                <div className="flex items-start gap-2 mt-2 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg">
-                                                    <Switch
-                                                        checked={form.is_envelope_spend}
-                                                        onCheckedChange={(checked) => setForm({ ...form, is_envelope_spend: checked })}
-                                                        className="mt-0.5 data-[state=checked]:bg-amber-500"
-                                                    />
-                                                    <span className="text-[10px] text-amber-200/90 font-medium leading-snug">
-                                                        Lo pagué con la tarjeta de <b>{accounts.find(a => a.id === account.parent_account_id)?.name || 'la cuenta principal'}</b>.
-                                                        El dinero se queda aquí (sigue generando intereses) y se marca como pendiente de devolver.
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {editingTransactionId && (
-                                                <button
-                                                    type="button"
-                                                    onClick={resetTransactionForm}
-                                                    className="w-full rounded-lg py-1 text-[10px] font-medium text-white/40 hover:text-white/70"
-                                                >
-                                                    Cancelar edición
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* ── DERECHA: Selector de mes + KPIs ── */}
-                                    <div className="space-y-2 pr-10 lg:pr-12">
-                                        {/* Selector de mes */}
-                                        <div className="flex items-center justify-between">
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedMonth((prev) => subMonths(prev, 1))}
-                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                                            >
-                                                <ChevronLeft className="h-4 w-4" />
-                                            </button>
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-white/80">
-                                                {selectedMonthLabel}
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (!isCurrentMonth) setSelectedMonth((prev) => addMonths(prev, 1));
-                                                }}
-                                                className={cn(
-                                                    'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                                                    isCurrentMonth
-                                                        ? 'cursor-not-allowed bg-white/5 text-white/20'
-                                                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                                                )}
-                                                disabled={isCurrentMonth}
-                                            >
-                                                <ChevronRight className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                        {/* KPIs del mes seleccionado */}
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur-xl">
-                                                <CardContent className="p-2">
-                                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Ingresos</p>
-                                                    <p className="mt-1 text-base font-bold text-green-300">{compactCurrencyFormatter.format(monthlyIncome)}</p>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur-xl">
-                                                <CardContent className="p-2">
-                                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Gastos</p>
-                                                    <p className="mt-1 text-base font-bold text-rose-300">{compactCurrencyFormatter.format(monthlyExpense)}</p>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className={cn(
-                                                'border-white/10 text-white shadow-none backdrop-blur-xl',
-                                                netFlow >= 0 ? 'bg-green-500/15' : 'bg-rose-500/15'
-                                            )}>
-                                                <CardContent className="p-2">
-                                                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">Diferencia</p>
-                                                    <p className={cn(
-                                                        'mt-1 text-base font-bold',
-                                                        netFlow >= 0 ? 'text-green-300' : 'text-rose-300'
-                                                    )}>
-                                                        {netFlow >= 0 ? '+' : ''}{compactCurrencyFormatter.format(netFlow)}
-                                                    </p>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                        <p className="text-center text-[10px] text-white/40">
-                                            {selectedMonthMovements} movimiento{selectedMonthMovements !== 1 ? 's' : ''} en {selectedMonthLabel}
-                                        </p>
-                                    </div>
+                                    <p className="text-[9px] text-white/25 mt-1">{monthTxs.length} mov. en {selectedMonthLabel}</p>
                                 </div>
-                                {/* ── Tabs dentro del header ── */}
-                                <div className="relative z-10 mt-2 px-5 sm:px-6">
-                                    <TabsList className="inline-flex gap-1 rounded-xl bg-white/10 p-0.5">
-                                        <TabsTrigger value="overview" className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white/60 data-[state=active]:bg-white/20 data-[state=active]:text-white">Resumen</TabsTrigger>
-                                        <TabsTrigger value="transactions" className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white/60 data-[state=active]:bg-white/20 data-[state=active]:text-white">Movimientos</TabsTrigger>
-                                        <TabsTrigger value="details" className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white/60 data-[state=active]:bg-white/20 data-[state=active]:text-white">Detalles</TabsTrigger>
-                                    </TabsList>
-                                </div>
-                            </DialogHeader>
-                        </div>
-
-                        <div className="relative flex-1 overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] text-slate-900">
-
-                            <TabsContent value="overview" className="absolute inset-0 mt-0 overflow-y-auto px-4 py-4 sm:px-8 data-[state=inactive]:hidden">
-                                <div className="flex flex-col gap-4">
-                                    {/* Gráfico con selector de tipo */}
-                                    <Card className="flex flex-1 flex-col overflow-hidden rounded-[1.75rem] border-white/70 bg-white/80 shadow-xl shadow-slate-200/50">
-                                        <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100/80 pb-3 shrink-0">
-                                            <CardTitle className="flex items-center gap-2 text-lg">
-                                                <PiggyBank className="h-5 w-5 text-green-800" />
-                                                Evolución del saldo
-                                            </CardTitle>
-                                            <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setChartType('area')}
-                                                    className={cn(
-                                                        'flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                                                        chartType === 'area'
-                                                            ? 'bg-white text-slate-900 shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                    )}
-                                                >
-                                                    <AreaChartIcon className="h-3.5 w-3.5" />
-                                                    Área
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setChartType('line')}
-                                                    className={cn(
-                                                        'flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                                                        chartType === 'line'
-                                                            ? 'bg-white text-slate-900 shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                    )}
-                                                >
-                                                    <LineChartIcon className="h-3.5 w-3.5" />
-                                                    Línea
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setChartType('bar')}
-                                                    className={cn(
-                                                        'flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                                                        chartType === 'bar'
-                                                            ? 'bg-white text-slate-900 shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                    )}
-                                                >
-                                                    <BarChart3 className="h-3.5 w-3.5" />
-                                                    Barras
-                                                </button>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex flex-1 flex-col p-4 min-h-0">
-                                            <div className="w-full" style={{ height: 'clamp(200px, 35vh, 400px)' }}>
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    {chartType === 'bar' ? (
-                                                        <BarChart data={chartData} margin={{ top: 12, right: 12, left: -18, bottom: 12 }}>
-                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
-                                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                                                            <YAxis
-                                                                tickLine={false}
-                                                                axisLine={false}
-                                                                tick={{ fontSize: 11, fill: '#64748b' }}
-                                                                tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                                                                width={75}
-                                                            />
-                                                            <Tooltip
-                                                                contentStyle={{
-                                                                    backgroundColor: 'rgba(15, 23, 42, 0.96)',
-                                                                    borderRadius: '14px',
-                                                                    border: '1px solid rgba(148, 163, 184, 0.15)',
-                                                                    color: '#f8fafc',
-                                                                    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)'
-                                                                }}
-                                                                formatter={(value: number) => currencyFormatter.format(value)}
-                                                                labelFormatter={(_, payload) => {
-                                                                    const point = payload?.[0]?.payload;
-                                                                    if (!point?.fullDate) return 'Balance';
-                                                                    return point.fullDate === account.id
-                                                                        ? 'Balance inicial'
-                                                                        : format(parseISO(point.fullDate), 'dd MMM yyyy', { locale: es });
-                                                                }}
-                                                            />
-                                                            <Bar
-                                                                dataKey="balance"
-                                                                fill={account.color || '#10b981'}
-                                                                radius={[6, 6, 0, 0]}
-                                                                opacity={0.85}
-                                                            />
-                                                        </BarChart>
-                                                    ) : chartType === 'line' ? (
-                                                        <LineChart data={chartData} margin={{ top: 12, right: 12, left: -18, bottom: 12 }}>
-                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
-                                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                                                            <YAxis
-                                                                tickLine={false}
-                                                                axisLine={false}
-                                                                tick={{ fontSize: 11, fill: '#64748b' }}
-                                                                tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                                                                width={75}
-                                                            />
-                                                            <Tooltip
-                                                                contentStyle={{
-                                                                    backgroundColor: 'rgba(15, 23, 42, 0.96)',
-                                                                    borderRadius: '14px',
-                                                                    border: '1px solid rgba(148, 163, 184, 0.15)',
-                                                                    color: '#f8fafc',
-                                                                    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)'
-                                                                }}
-                                                                formatter={(value: number) => currencyFormatter.format(value)}
-                                                                labelFormatter={(_, payload) => {
-                                                                    const point = payload?.[0]?.payload;
-                                                                    if (!point?.fullDate) return 'Balance';
-                                                                    return point.fullDate === account.id
-                                                                        ? 'Balance inicial'
-                                                                        : format(parseISO(point.fullDate), 'dd MMM yyyy', { locale: es });
-                                                                }}
-                                                            />
-                                                            <Line
-                                                                type="monotone"
-                                                                dataKey="balance"
-                                                                stroke={account.color || '#10b981'}
-                                                                strokeWidth={3}
-                                                                dot={{ fill: account.color || '#10b981', r: 3 }}
-                                                                activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
-                                                            />
-                                                        </LineChart>
-                                                    ) : (
-                                                        <AreaChart data={chartData} margin={{ top: 12, right: 12, left: -18, bottom: 12 }}>
-                                                            <defs>
-                                                                <linearGradient id="account-balance-fill" x1="0" x2="0" y1="0" y2="1">
-                                                                    <stop offset="0%" stopColor={account.color || '#10b981'} stopOpacity={0.35} />
-                                                                    <stop offset="100%" stopColor={account.color || '#10b981'} stopOpacity={0.02} />
-                                                                </linearGradient>
-                                                            </defs>
-                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
-                                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                                                            <YAxis
-                                                                tickLine={false}
-                                                                axisLine={false}
-                                                                tick={{ fontSize: 11, fill: '#64748b' }}
-                                                                tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                                                                width={75}
-                                                            />
-                                                            <Tooltip
-                                                                contentStyle={{
-                                                                    backgroundColor: 'rgba(15, 23, 42, 0.96)',
-                                                                    borderRadius: '14px',
-                                                                    border: '1px solid rgba(148, 163, 184, 0.15)',
-                                                                    color: '#f8fafc',
-                                                                    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)'
-                                                                }}
-                                                                formatter={(value: number) => currencyFormatter.format(value)}
-                                                                labelFormatter={(_, payload) => {
-                                                                    const point = payload?.[0]?.payload;
-                                                                    if (!point?.fullDate) return 'Balance';
-                                                                    return point.fullDate === account.id
-                                                                        ? 'Balance inicial'
-                                                                        : format(parseISO(point.fullDate), 'dd MMM yyyy', { locale: es });
-                                                                }}
-                                                            />
-                                                            <Area
-                                                                type="monotone"
-                                                                dataKey="balance"
-                                                                stroke={account.color || '#10b981'}
-                                                                strokeWidth={3}
-                                                                fill="url(#account-balance-fill)"
-                                                            />
-                                                        </AreaChart>
-                                                    )}
-                                                </ResponsiveContainer>
-                                            </div>
-
-                                            <div className="mt-3 grid shrink-0 gap-2 sm:grid-cols-3">
-                                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                                                    <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Balance inicial</p>
-                                                    <p className="mt-1 text-base font-bold text-slate-900">{currencyFormatter.format(startingBalance)}</p>
-                                                </div>
-                                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                                                    <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Último mov.</p>
-                                                    <p className="mt-1 text-base font-bold text-slate-900">
-                                                        {latestTransaction
-                                                            ? format(parseISO(latestTransaction.date), 'dd MMM', { locale: es })
-                                                            : 'Sin datos'}
-                                                    </p>
-                                                </div>
-                                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 group relative">
-                                                    <div className="flex justify-between items-start">
-                                                        <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Balance actual</p>
-                                                        {onSyncBalance && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (window.confirm('¿Quieres sincronizar y recalcular el saldo desde cero sumando el historial exacto de movimientos?')) {
-                                                                        onSyncBalance(account.id);
-                                                                    }
-                                                                }}
-                                                                className="text-slate-400 hover:text-green-800 transition-colors"
-                                                                title="Sincronizar saldo con el historial"
-                                                            >
-                                                                <RefreshCw className="h-4 w-4" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <p className="mt-1 text-base font-bold text-slate-900">{currencyFormatter.format(account.current_balance)}</p>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <div className="flex flex-col gap-6">
-                                        <Card className="rounded-[1.75rem] border-white/70 bg-white/80 shadow-xl shadow-slate-200/50">
-                                            <CardHeader className="pb-4">
-                                                <CardTitle className="text-lg">Resumen operativo</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Balance general</p>
-                                                    <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {account.include_in_total === false ? 'No incluida' : 'Incluida'}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {account.include_in_total === false
-                                                            ? 'Esta cuenta no suma al total global de Mi Economia.'
-                                                            : 'Su saldo se refleja en el balance total de Mi Economia.'}
-                                                    </p>
-                                                </div>
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Credencial bancaria</p>
-                                                    <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {linkedPasswordName || 'No vinculada'}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {linkedPasswordName
-                                                            ? 'La cuenta esta conectada con una entrada del gestor de contrasenas.'
-                                                            : 'Todavia no hay una credencial asociada a esta cuenta.'}
-                                                    </p>
-                                                </div>
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Cuenta vinculada</p>
-                                                    <div className="mt-2 flex items-center justify-between">
-                                                        <p className="text-base font-bold text-slate-900">
-                                                            {account.parent_account_id ? 'Vinculada' : 'Independiente'}
-                                                        </p>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 px-2 text-[10px] text-amber-600 hover:bg-amber-100"
-                                                            onClick={() => setActiveTab('details')}
-                                                        >
-                                                            Configurar
-                                                        </Button>
-                                                    </div>
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {account.parent_account_id
-                                                            ? `Vinculada a ${accounts.find(a => a.id === account.parent_account_id)?.name || 'una cuenta principal'}.`
-                                                            : 'Esta cuenta no está vinculada a ninguna otra.'}
-                                                    </p>
-                                                </div>
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Ultima actividad</p>
-                                                    <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {latestTransaction
-                                                            ? format(parseISO(latestTransaction.date), 'dd MMM yyyy', { locale: es })
-                                                            : 'Sin movimientos'}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {latestTransaction
-                                                            ? 'Fecha del ultimo movimiento registrado.'
-                                                            : 'Aun no hay movimientos registrados.'}
-                                                    </p>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-
-
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="transactions" className="absolute inset-0 mt-0 overflow-y-auto px-6 py-6 sm:px-8 data-[state=inactive]:hidden">
-                                <Card className="rounded-[1.75rem] border-white/70 bg-white/85 shadow-xl shadow-slate-200/50">
-                                    <CardHeader className="gap-4 border-b border-slate-100/80 pb-5">
-                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                            <div>
-                                                <CardTitle className="flex items-center gap-2 text-lg">
-                                                    <ReceiptText className="h-5 w-5 text-green-800" />
-                                                    Historial de movimientos
-                                                </CardTitle>
-                                                <p className="mt-2 text-sm text-muted-foreground">
-                                                    Edita o elimina cualquier apunte sin salir del detalle de la cuenta.
-                                                </p>
-                                            </div>
-                                            <div className="flex flex-col gap-3 sm:flex-row">
-                                                <div className="relative min-w-[260px]">
-                                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                                    <Input
-                                                        value={searchTerm}
-                                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                                        placeholder="Buscar por concepto o fecha..."
-                                                        className="h-11 rounded-2xl border-slate-200 bg-slate-50 pl-10"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-100 p-1">
-                                                    {[
-                                                        { id: 'all', label: 'Todos' },
-                                                        { id: 'income', label: 'Ingresos' },
-                                                        { id: 'expense', label: 'Gastos' }
-                                                    ].map((item) => (
-                                                        <Button
-                                                            key={item.id}
-                                                            type="button"
-                                                            variant="ghost"
-                                                            onClick={() => setMovementFilter(item.id as 'all' | 'income' | 'expense')}
-                                                            className={cn(
-                                                                'rounded-xl px-4 text-sm',
-                                                                movementFilter === item.id && 'bg-white shadow-sm'
-                                                            )}
-                                                        >
-                                                            {item.label}
-                                                        </Button>
-                                                    ))}
-                                                </div>
-                                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1 shadow-sm">
-                                                    <div className="flex items-center pl-3">
-                                                        <span className="text-xs font-medium text-slate-400 mr-2 whitespace-nowrap">Filtrar para borrar:</span>
-                                                        <select
-                                                            title="Filtrar por mes"
-                                                            value={exactMonthFilter}
-                                                            onChange={(e) => {
-                                                                setExactMonthFilter(e.target.value);
-                                                                if (e.target.value) setExactDateFilter('');
-                                                            }}
-                                                            className="h-9 bg-transparent border-none text-sm outline-none cursor-pointer focus:ring-0 text-slate-700 font-medium capitalize"
-                                                        >
-                                                            <option value="">Mes completo...</option>
-                                                            {Array.from({ length: 12 }).map((_, i) => {
-                                                                const d = new Date();
-                                                                d.setMonth(d.getMonth() - i);
-                                                                const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                                                                const label = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(d);
-                                                                return <option key={val} value={val}>{label}</option>;
-                                                            })}
-                                                        </select>
-                                                    </div>
-                                                    <div className="w-px h-6 bg-slate-200 mx-1" />
-                                                    <div className="flex items-center pr-1">
-                                                        <span className="text-xs font-medium text-slate-400 mr-2">ó Día:</span>
-                                                        <Input
-                                                            type="date"
-                                                            title="Día exacto"
-                                                            value={exactDateFilter}
-                                                            onChange={(e) => {
-                                                                setExactDateFilter(e.target.value);
-                                                                if (e.target.value) setExactMonthFilter('');
-                                                            }}
-                                                            className="h-9 w-[130px] border-none bg-white shadow-sm rounded-xl text-sm"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {selectedTxIds.size > 0 && onDeleteTransactions && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        className="h-11 rounded-2xl gap-2 font-semibold shadow-sm"
-                                                        onClick={handleBulkDelete}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                        Borrar {selectedTxIds.size}
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <Table>
-                                            <TableHeader className="sticky top-0 bg-white/95 backdrop-blur-xl z-20 shadow-sm">
-                                                <TableRow>
-                                                    <TableHead className="w-12 text-center">
-                                                        <Checkbox
-                                                            checked={filteredTransactions.length > 0 && selectedTxIds.size >= filteredTransactions.length}
-                                                            onCheckedChange={toggleAllVisible}
-                                                            className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none"
-                                                        />
-                                                    </TableHead>
-                                                    <TableHead>Movimiento</TableHead>
-                                                    <TableHead className="hidden md:table-cell">Fecha</TableHead>
-                                                    <TableHead className="hidden lg:table-cell">Tipo</TableHead>
-                                                    <TableHead className="text-right">Importe</TableHead>
-                                                    <TableHead className="hidden xl:table-cell text-right">Saldo</TableHead>
-                                                    <TableHead className="text-right">Acciones</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredTransactions.length === 0 ? (
-                                                    <TableRow>
-                                                        <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                                                            No hay movimientos que coincidan con ese filtro.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ) : (
-                                                    filteredTransactions.map((tx) => (
-                                                        <TableRow
-                                                            key={tx.id}
-                                                            className={cn("hover:bg-slate-50/70 transition-colors cursor-pointer", selectedTxIds.has(tx.id) && "bg-green-50/40 hover:bg-green-50/60")}
-                                                            onClick={() => toggleSelection(tx.id)}
-                                                        >
-                                                            <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                                                                <Checkbox
-                                                                    checked={selectedTxIds.has(tx.id)}
-                                                                    onCheckedChange={() => toggleSelection(tx.id)}
-                                                                    className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none"
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div
-                                                                        className={cn(
-                                                                            'flex h-10 w-10 items-center justify-center rounded-2xl',
-                                                                            tx.amount >= 0
-                                                                                ? 'bg-green-100 text-green-900'
-                                                                                : 'bg-rose-100 text-rose-700'
-                                                                        )}
-                                                                    >
-                                                                        {tx.amount >= 0 ? (
-                                                                            <ArrowUpRight className="h-4 w-4" />
-                                                                        ) : (
-                                                                            <ArrowDownRight className="h-4 w-4" />
-                                                                        )}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-semibold text-slate-900">
-                                                                            {tx.description || 'Movimiento sin concepto'}
-                                                                        </p>
-                                                                        <p className="text-xs text-muted-foreground md:hidden">
-                                                                            {format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="hidden md:table-cell text-muted-foreground">
-                                                                {format(parseISO(tx.date), 'dd MMM yyyy', { locale: es })}
-                                                            </TableCell>
-                                                            <TableCell className="hidden lg:table-cell">
-                                                                <Badge
-                                                                    className={cn(
-                                                                        'rounded-full px-3 py-1 font-semibold',
-                                                                        tx.amount >= 0
-                                                                            ? 'bg-green-100 text-green-900 hover:bg-green-100'
-                                                                            : 'bg-rose-100 text-rose-700 hover:bg-rose-100'
-                                                                    )}
-                                                                >
-                                                                    {tx.amount >= 0 ? 'Ingreso' : 'Gasto'}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell
-                                                                className={cn(
-                                                                    'text-right font-bold',
-                                                                    tx.amount >= 0 ? 'text-green-800' : 'text-slate-900'
-                                                                )}
-                                                            >
-                                                                {tx.amount >= 0 ? '+' : '-'}{currencyFormatter.format(Math.abs(tx.amount))}
-                                                            </TableCell>
-                                                            <TableCell className="hidden xl:table-cell text-right font-semibold text-slate-600">
-                                                                {currencyFormatter.format(tx.runningBalance)}
-                                                            </TableCell>
-                                                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                                                                <div className="flex justify-end gap-2">
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-9 w-9 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                                                                        onClick={() => handleEditTransaction(tx)}
-                                                                    >
-                                                                        <Edit3 className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-9 w-9 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-                                                                        onClick={() => handleDeleteMovement(tx)}
-                                                                        disabled={deletingTransactionId === tx.id}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="details" className="absolute inset-0 mt-0 overflow-y-auto px-6 py-6 sm:px-8 data-[state=inactive]:hidden">
-                                <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                                    <Card className="rounded-[1.75rem] border-white/70 bg-white/85 shadow-xl shadow-slate-200/50">
-                                        <CardHeader className="border-b border-slate-100/80 pb-4">
-                                            <CardTitle className="flex items-center gap-2 text-lg">
-                                                <CreditCard className="h-5 w-5 text-indigo-600" />
-                                                Ficha de cuenta
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="grid gap-4 p-6 md:grid-cols-2">
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Nombre</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">{account.name}</p>
-                                            </div>
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Banco</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">{account.bank_name}</p>
-                                            </div>
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Tipo</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">{getAccountTypeLabel(account.account_type)}</p>
-                                            </div>
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Interes</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">
-                                                    {account.interest_rate ? `${account.interest_rate}% TAE` : 'Sin interes'}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Ultima actividad</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">
-                                                    {latestTransaction
-                                                        ? format(parseISO(latestTransaction.date), 'dd MMM yyyy', { locale: es })
-                                                        : 'Sin movimientos'}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Saldo en panel</p>
-                                                <p className="mt-2 text-lg font-bold text-slate-900">
-                                                    {account.include_in_total === false ? 'Oculta del balance total' : 'Visible en balance total'}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-2xl border border-green-100 bg-green-50/70 p-4 md:col-span-2">
-                                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                                    <div>
-                                                        <p className="text-xs uppercase tracking-[0.25em] text-green-900">Balance general</p>
-                                                        <p className="mt-2 text-lg font-bold text-slate-900">
-                                                            {account.include_in_total === false ? 'Excluida del computo global' : 'Incluida en el computo global'}
-                                                        </p>
-                                                        <p className="mt-1 text-sm text-slate-600">
-                                                            Decide si esta cuenta debe sumar o no al total principal de Mi Economia.
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-medium text-slate-700">
-                                                            {account.include_in_total === false ? 'Excluida' : 'Incluida'}
-                                                        </span>
-                                                        <Switch
-                                                            checked={account.include_in_total !== false}
-                                                            onCheckedChange={handleIncludeInTotalChange}
-                                                            disabled={isUpdatingIncludeInTotal}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Configuración de Sobre */}
-                                            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 md:col-span-2 space-y-4">
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-amber-700">Vincular a otra cuenta (Sobre)</p>
-                                                    <p className="mt-1 text-sm text-slate-600">
-                                                        Vincula esta cuenta a una principal: el dinero se queda aquí (sigue generando intereses)
-                                                        pero contará como disponible para la principal. Lo que pagues con la tarjeta de la principal
-                                                        quedará marcado como pendiente de devolver desde esta cuenta.
-                                                    </p>
-                                                </div>
-                                                <div className="flex flex-col gap-4 sm:flex-row">
-                                                    <div className="flex-1 space-y-2">
-                                                        <Label className="text-amber-900">Vinculado a (Cuenta Principal)</Label>
-                                                        <select
-                                                            className="w-full bg-white border border-amber-200 rounded-lg p-2 text-sm disabled:opacity-50"
-                                                            value={account.parent_account_id || 'none'}
-                                                            disabled={isUpdatingAccount}
-                                                            onChange={(e) => handleUpdateEnvelopeField('parent_account_id', e.target.value === 'none' ? null : e.target.value)}
-                                                        >
-                                                            <option value="none">Cuenta independiente (no es sobre)</option>
-                                                            {accounts.filter(a => a.id !== account.id && !a.parent_account_id).map(acc => (
-                                                                <option key={acc.id} value={acc.id}>🗂 Sobre de: {acc.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    {account.parent_account_id && (
-                                                        <div className="flex-1 space-y-2">
-                                                            <Label className="text-amber-900">Pendiente de devolver (€)</Label>
-                                                            <div className="flex gap-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    defaultValue={account.envelope_spent || 0}
-                                                                    disabled={isUpdatingAccount}
-                                                                    className="bg-white border-amber-200"
-                                                                    onBlur={(e) => handleUpdateEnvelopeField('envelope_spent', parseFloat(e.target.value) || 0)}
-                                                                />
-                                                            </div>
-                                                            <p className="text-[10px] text-amber-700/70">Pulsa fuera del campo para guardar automáticamente.</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <div className="flex flex-col gap-6">
-                                        <Card className="rounded-[1.75rem] border-white/70 bg-white/85 shadow-xl shadow-slate-200/50">
-                                            <CardHeader className="border-b border-slate-100/80 pb-4">
-                                                <CardTitle className="flex items-center gap-2 text-lg">
-                                                    <ShieldCheck className="h-5 w-5 text-green-800" />
-                                                    Vinculacion y acceso
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="space-y-4 p-6">
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Password Manager</p>
-                                                    <p className="mt-2 text-base font-bold text-slate-900">
-                                                        {linkedPasswordName || 'No hay credencial vinculada'}
-                                                    </p>
-                                                    {linkedPasswordName && onNavigateToPassword ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            className="mt-4 rounded-2xl"
-                                                            onClick={onNavigateToPassword}
-                                                        >
-                                                            Abrir contrasena vinculada
-                                                        </Button>
-                                                    ) : null}
-                                                </div>
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                                                    <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Color de cuenta</p>
-                                                    <div className="mt-3 flex items-center gap-3">
-                                                        <div
-                                                            className="h-10 w-10 rounded-2xl border border-slate-200 shadow-inner"
-                                                            style={{ backgroundColor: account.color || '#10b981' }}
-                                                        />
-                                                        <p className="font-semibold text-slate-900">{account.color || '#10b981'}</p>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card className="rounded-[1.75rem] border-rose-200 bg-gradient-to-br from-white to-rose-50 shadow-xl shadow-rose-100/60">
-                                            <CardHeader className="pb-4">
-                                                <CardTitle className="flex items-center gap-2 text-lg text-rose-700">
-                                                    <Trash2 className="h-5 w-5" />
-                                                    Zona delicada
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="space-y-4">
-                                                <p className="text-sm text-rose-700/80">
-                                                    Si eliminas esta cuenta, desaparecera tambien su historial de movimientos asociado.
-                                                </p>
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    className="w-full rounded-2xl"
-                                                    onClick={() => void onDeleteAccount()}
-                                                >
-                                                    Eliminar cuenta
-                                                </Button>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </div>
-                            </TabsContent>
-                        </div>
+                            </div>
+                        </DialogHeader>
                     </div>
-                </Tabs>
+
+                    {/* ── BODY ── */}
+                    <div className="relative flex-1 overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]">
+                        <div className="h-full overflow-y-auto">
+
+                            {/* Collapsible chart */}
+                            <div className="border-b border-slate-200/80">
+                                <button onClick={() => setChartOpen(!chartOpen)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/60 transition-colors">
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <BarChart3 className="w-3.5 h-3.5" />
+                                        <span className="text-xs font-semibold">Evolución del saldo</span>
+                                        <span className="text-[10px] text-slate-400">· {transactions.length} mov. total</span>
+                                    </div>
+                                    {chartOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                </button>
+
+                                {chartOpen && (
+                                    <div className="px-4 pb-4 bg-white/80">
+                                        <div className="flex items-center justify-end gap-1 mb-3 rounded-lg bg-slate-100 p-0.5 w-fit ml-auto">
+                                            {([
+                                                { id: 'area', label: 'Área', Icon: AreaChartIcon },
+                                                { id: 'line', label: 'Línea', Icon: LineChartIcon },
+                                                { id: 'bar', label: 'Barras', Icon: BarChart3 }
+                                            ] as const).map(({ id, label, Icon }) => (
+                                                <button key={id} type="button" onClick={() => setChartType(id)}
+                                                    className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all", chartType === id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                                                    <Icon className="h-3 w-3" />{label}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div style={{ height: '180px' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                {chartType === 'bar' ? (
+                                                    <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 4 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
+                                                        <XAxis dataKey="label" {...axisProps} />
+                                                        <YAxis {...axisProps} tickFormatter={(v: number) => compactCurrencyFormatter.format(v)} width={70} />
+                                                        <Tooltip contentStyle={tooltipContentStyle} formatter={tooltipFormatter} labelFormatter={tooltipLabelFormatter} />
+                                                        <Bar dataKey="balance" fill={account.color || '#10b981'} radius={[4, 4, 0, 0]} opacity={0.85} />
+                                                    </BarChart>
+                                                ) : chartType === 'line' ? (
+                                                    <LineChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 4 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
+                                                        <XAxis dataKey="label" {...axisProps} />
+                                                        <YAxis {...axisProps} tickFormatter={(v: number) => compactCurrencyFormatter.format(v)} width={70} />
+                                                        <Tooltip contentStyle={tooltipContentStyle} formatter={tooltipFormatter} labelFormatter={tooltipLabelFormatter} />
+                                                        <Line type="monotone" dataKey="balance" stroke={account.color || '#10b981'} strokeWidth={2} dot={{ fill: account.color || '#10b981', r: 3 }} activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} />
+                                                    </LineChart>
+                                                ) : (
+                                                    <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 4 }}>
+                                                        <defs>
+                                                            <linearGradient id="account-balance-fill" x1="0" x2="0" y1="0" y2="1">
+                                                                <stop offset="0%" stopColor={account.color || '#10b981'} stopOpacity={0.35} />
+                                                                <stop offset="100%" stopColor={account.color || '#10b981'} stopOpacity={0.02} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.35} />
+                                                        <XAxis dataKey="label" {...axisProps} />
+                                                        <YAxis {...axisProps} tickFormatter={(v: number) => compactCurrencyFormatter.format(v)} width={70} />
+                                                        <Tooltip contentStyle={tooltipContentStyle} formatter={tooltipFormatter} labelFormatter={tooltipLabelFormatter} />
+                                                        <Area type="monotone" dataKey="balance" stroke={account.color || '#10b981'} strokeWidth={2} fill="url(#account-balance-fill)" />
+                                                    </AreaChart>
+                                                )}
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-3 gap-2">
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                                                <p className="text-[9px] uppercase tracking-widest text-slate-400">Inicio</p>
+                                                <p className="text-sm font-bold text-slate-900 mt-0.5">{currencyFormatter.format(startingBalance)}</p>
+                                            </div>
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                                                <p className="text-[9px] uppercase tracking-widest text-slate-400">Último mov.</p>
+                                                <p className="text-sm font-bold text-slate-900 mt-0.5">{latestTx ? format(parseISO(latestTx.date), 'dd MMM', { locale: es }) : '—'}</p>
+                                            </div>
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 flex items-start justify-between">
+                                                <div>
+                                                    <p className="text-[9px] uppercase tracking-widest text-slate-400">Actual</p>
+                                                    <p className="text-sm font-bold text-slate-900 mt-0.5">{currencyFormatter.format(account.current_balance)}</p>
+                                                </div>
+                                                {onSyncBalance && (
+                                                    <button onClick={() => { if (window.confirm('¿Sincronizar y recalcular el saldo desde el historial?')) onSyncBalance(account.id); }} className="text-slate-400 hover:text-green-800 transition-colors mt-0.5">
+                                                        <RefreshCw className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Search + filter bar */}
+                            <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-slate-200/80 px-3 py-2 flex flex-wrap gap-2 items-center">
+                                <div className="relative flex-1 min-w-[120px]">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                    <Input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar..." className="pl-8 h-8 rounded-xl border-slate-200 bg-slate-50 text-sm" />
+                                </div>
+                                <div className="flex items-center gap-0.5 rounded-xl bg-slate-100 p-0.5">
+                                    {(['all', 'income', 'expense'] as const).map(f => (
+                                        <button key={f} onClick={() => setMovementFilter(f)} className={cn("px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all", movementFilter === f ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}>
+                                            {f === 'all' ? 'Todos' : f === 'income' ? 'Ing' : 'Gas'}
+                                        </button>
+                                    ))}
+                                </div>
+                                <select value={exactMonthFilter} onChange={e => { setExactMonthFilter(e.target.value); if (e.target.value) setExactDateFilter(''); }} className="h-8 rounded-xl border border-slate-200 bg-slate-50 text-xs px-2 text-slate-600 max-w-[110px]">
+                                    <option value="">Mes...</option>
+                                    {Array.from({ length: 12 }).map((_, i) => {
+                                        const d = new Date(); d.setMonth(d.getMonth() - i);
+                                        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                                        return <option key={val} value={val}>{new Intl.DateTimeFormat('es-ES', { month: 'short', year: '2-digit' }).format(d)}</option>;
+                                    })}
+                                </select>
+                                {selectedTxIds.size > 0 && onDeleteTransactions && (
+                                    <Button variant="destructive" size="sm" className="h-8 rounded-xl gap-1 text-xs" onClick={handleBulkDelete} disabled={isSubmitting}>
+                                        <Trash2 className="w-3 h-3" /> {selectedTxIds.size}
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Select all row */}
+                            {filteredTransactions.length > 0 && (
+                                <div className="flex items-center gap-3 px-4 py-2 bg-white/40 border-b border-slate-100">
+                                    <Checkbox checked={selectedTxIds.size > 0 && selectedTxIds.size >= filteredTransactions.length} onCheckedChange={toggleAllVisible} className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none" />
+                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-medium">{filteredTransactions.length} movimientos</span>
+                                </div>
+                            )}
+
+                            {/* Transaction list – bank statement style */}
+                            {filteredTransactions.length === 0 ? (
+                                <div className="py-20 text-center text-slate-400">
+                                    <BarChart3 className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                                    <p className="text-sm">Sin movimientos</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    {groupedDates.map(dateKey => (
+                                        <React.Fragment key={dateKey}>
+                                            <div className="px-4 py-1.5 bg-slate-100/80 border-b border-slate-200/40">
+                                                <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                                    {format(parseISO(dateKey), 'EEEE, d MMM yyyy', { locale: es })}
+                                                </p>
+                                            </div>
+                                            {groupedByDate[dateKey].map(tx => (
+                                                <div
+                                                    key={tx.id}
+                                                    className={cn("flex items-center gap-3 px-4 py-3 border-b border-slate-100 hover:bg-white/70 transition-colors cursor-pointer", selectedTxIds.has(tx.id) && "bg-green-50/60 hover:bg-green-50/80")}
+                                                    onClick={() => toggleSelection(tx.id)}
+                                                >
+                                                    <div onClick={e => e.stopPropagation()}>
+                                                        <Checkbox checked={selectedTxIds.has(tx.id)} onCheckedChange={() => toggleSelection(tx.id)} className="border-slate-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-none" />
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center shrink-0", tx.amount >= 0 ? "bg-green-100" : "bg-rose-100")}>
+                                                        {tx.amount >= 0 ? <ArrowUpRight className="w-3.5 h-3.5 text-green-800" /> : <ArrowDownRight className="w-3.5 h-3.5 text-rose-700" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-900 truncate leading-none">{tx.description || 'Sin concepto'}</p>
+                                                        {tx.is_envelope_spend && <span className="mt-0.5 inline-block text-[9px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5">sobre</span>}
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className={cn("text-sm font-bold leading-none", tx.amount >= 0 ? "text-green-800" : "text-slate-900")}>
+                                                            {tx.amount >= 0 ? '+' : '-'}{currencyFormatter.format(Math.abs(tx.amount))}
+                                                        </p>
+                                                        <p className="text-[9px] text-slate-400 mt-0.5">{currencyFormatter.format(tx.runningBalance)}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <button onClick={() => handleEditTransaction(tx)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                                                            <Edit3 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteMovement(tx)} disabled={deletingTransactionId === tx.id} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-30">
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </React.Fragment>
+                                    ))}
+                                    <div className="h-20" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── FAB ── */}
+                        <button
+                            onClick={() => setShowAddForm(true)}
+                            className="absolute bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-10"
+                            style={{ backgroundColor: account.color || '#10b981', boxShadow: `0 8px 32px ${account.color || '#10b981'}66` }}
+                        >
+                            <Plus className="w-6 h-6" />
+                        </button>
+
+                        {/* ── ADD / EDIT FORM OVERLAY ── */}
+                        {showAddForm && (
+                            <div className="absolute inset-0 bg-black/50 z-30 flex items-end backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) resetForm(); }}>
+                                <div className="w-full bg-white rounded-t-[1.75rem] shadow-2xl p-5 space-y-4 max-h-[85%] overflow-y-auto">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-base font-black text-slate-900">{editingTransactionId ? 'Editar movimiento' : 'Nuevo movimiento'}</p>
+                                        <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-xl transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                                        <button type="button" onClick={() => setTransactionKind('deposit')} className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-all", transactionKind === 'deposit' ? "bg-green-500 text-white shadow-md" : "text-slate-500 hover:text-slate-800")}>
+                                            <ArrowUpRight className="w-4 h-4" /> Ingreso
+                                        </button>
+                                        <button type="button" onClick={() => setTransactionKind('expense')} className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-all", transactionKind === 'expense' ? "bg-rose-500 text-white shadow-md" : "text-slate-500 hover:text-slate-800")}>
+                                            <ArrowDownRight className="w-4 h-4" /> Gasto
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input type="number" placeholder="Importe (€)" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-11 rounded-xl border-slate-200 text-base font-bold" autoFocus />
+                                        <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="h-11 rounded-xl border-slate-200" />
+                                    </div>
+                                    <Input placeholder="Concepto" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="h-11 rounded-xl border-slate-200" />
+
+                                    {account.parent_account_id && transactionKind === 'expense' && (
+                                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                                            <Switch checked={form.is_envelope_spend} onCheckedChange={checked => setForm({ ...form, is_envelope_spend: checked })} className="mt-0.5 data-[state=checked]:bg-amber-500" />
+                                            <span className="text-xs text-amber-800 leading-snug">
+                                                Pagado con tarjeta de <b>{accounts.find(a => a.id === account.parent_account_id)?.name || 'la cuenta principal'}</b>. Se marcará como pendiente de devolver.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <Button onClick={handleSubmit} disabled={isSubmitting || !form.amount} className="w-full h-12 rounded-xl font-bold text-base text-white disabled:opacity-40" style={{ backgroundColor: account.color || '#10b981' }}>
+                                        <Save className="w-4 h-4 mr-2" />
+                                        {isSubmitting ? 'Guardando...' : editingTransactionId ? 'Guardar cambios' : 'Añadir movimiento'}
+                                    </Button>
+
+                                    {editingTransactionId && (
+                                        <button type="button" onClick={resetForm} className="w-full text-xs text-slate-400 hover:text-slate-600 py-1 transition-colors">
+                                            Cancelar edición
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── DETAILS OVERLAY ── */}
+                        {showDetails && (
+                            <div className="absolute inset-0 overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] z-20">
+                                <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+                                    <button onClick={() => setShowDetails(false)} className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+                                        <ArrowLeft className="w-4 h-4 text-slate-600" />
+                                    </button>
+                                    <p className="text-sm font-bold text-slate-900">Detalles · {account.name}</p>
+                                </div>
+
+                                <div className="p-4 space-y-4">
+                                    <div className="rounded-2xl border border-white/70 bg-white/85 shadow-lg overflow-hidden">
+                                        <div className="border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4 text-indigo-500" />
+                                            <p className="text-sm font-bold text-slate-900">Ficha de cuenta</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3">
+                                            {[
+                                                { label: 'Nombre', value: account.name },
+                                                { label: 'Banco', value: account.bank_name },
+                                                { label: 'Tipo', value: getAccountTypeLabel(account.account_type) },
+                                                { label: 'Interés', value: account.interest_rate ? `${account.interest_rate}% TAE` : 'Sin interés' },
+                                                { label: 'Última actividad', value: latestTx ? format(parseISO(latestTx.date), 'dd MMM yyyy', { locale: es }) : 'Sin movimientos' },
+                                                { label: 'Balance general', value: account.include_in_total === false ? 'Excluida' : 'Incluida' }
+                                            ].map(({ label, value }) => (
+                                                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                                                    <p className="text-[9px] uppercase tracking-widest text-slate-400">{label}</p>
+                                                    <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-green-200 bg-green-50/70 p-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <p className="text-xs font-bold text-green-900 uppercase tracking-wider">Balance general</p>
+                                                <p className="text-sm text-slate-700 mt-1">{account.include_in_total === false ? 'Excluida del cómputo global' : 'Incluida en el cómputo global'}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">Decide si esta cuenta suma al total de Mi Economía.</p>
+                                            </div>
+                                            <Switch checked={account.include_in_total !== false} onCheckedChange={handleIncludeInTotalChange} disabled={isUpdatingIncludeInTotal} />
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3">
+                                        <div>
+                                            <p className="text-xs font-bold text-amber-900 uppercase tracking-wider">Vincular a otra cuenta (Sobre)</p>
+                                            <p className="text-xs text-slate-600 mt-1">El dinero se queda aquí generando intereses, pero contará para la cuenta principal.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-3 sm:flex-row">
+                                            <div className="flex-1 space-y-1.5">
+                                                <Label className="text-xs text-amber-900">Cuenta principal</Label>
+                                                <select className="w-full bg-white border border-amber-200 rounded-xl p-2 text-sm disabled:opacity-50" value={account.parent_account_id || 'none'} disabled={isUpdatingAccount} onChange={e => handleUpdateEnvelopeField('parent_account_id', e.target.value === 'none' ? null : e.target.value)}>
+                                                    <option value="none">Independiente (no es sobre)</option>
+                                                    {accounts.filter(a => a.id !== account.id && !a.parent_account_id).map(acc => (
+                                                        <option key={acc.id} value={acc.id}>Sobre de: {acc.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {account.parent_account_id && (
+                                                <div className="flex-1 space-y-1.5">
+                                                    <Label className="text-xs text-amber-900">Pendiente de devolver (€)</Label>
+                                                    <Input type="number" defaultValue={account.envelope_spent || 0} disabled={isUpdatingAccount} className="bg-white border-amber-200 rounded-xl" onBlur={e => handleUpdateEnvelopeField('envelope_spent', parseFloat(e.target.value) || 0)} />
+                                                    <p className="text-[9px] text-amber-700/70">Pulsa fuera del campo para guardar.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-white/70 bg-white/85 shadow-lg p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ShieldCheck className="w-4 h-4 text-green-800" />
+                                            <p className="text-sm font-bold text-slate-900">Credencial bancaria</p>
+                                        </div>
+                                        <p className="text-sm font-semibold text-slate-800">{linkedPasswordName || 'No vinculada'}</p>
+                                        <p className="text-xs text-slate-500 mt-1">{linkedPasswordName ? 'Conectada con el gestor de contraseñas.' : 'Todavía no hay credencial asociada.'}</p>
+                                        {linkedPasswordName && onNavigateToPassword && (
+                                            <Button variant="outline" size="sm" className="mt-3 rounded-xl" onClick={onNavigateToPassword}>Abrir contraseña vinculada</Button>
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-2xl border border-white/70 bg-white/85 shadow-lg p-4">
+                                        <p className="text-xs text-slate-400 uppercase tracking-widest mb-2">Color de cuenta</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 rounded-xl border border-slate-200 shadow-inner" style={{ backgroundColor: account.color || '#10b981' }} />
+                                            <p className="font-mono text-sm text-slate-700">{account.color || '#10b981'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-rose-200 bg-gradient-to-br from-white to-rose-50 p-4">
+                                        <p className="text-sm font-bold text-rose-700 flex items-center gap-2 mb-2"><Trash2 className="w-4 h-4" /> Zona delicada</p>
+                                        <p className="text-xs text-rose-600/80 mb-3">Si eliminas esta cuenta, desaparecerá también su historial de movimientos.</p>
+                                        <Button variant="destructive" className="w-full rounded-xl" onClick={() => void onDeleteAccount()}>Eliminar cuenta</Button>
+                                    </div>
+
+                                    <div className="h-4" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </DialogContent>
         </Dialog>
     );
 }
-
