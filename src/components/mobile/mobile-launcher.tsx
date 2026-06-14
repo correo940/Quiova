@@ -505,6 +505,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
             clearInterval(timer);
             clearTimeout(safetyTimeout);
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mounted]);
 
     // --- Name Editing ---
@@ -1124,6 +1125,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: M
                                                         className="aspect-square bg-white dark:bg-slate-900 rounded-[24px] flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-100 dark:border-slate-800 p-4"
                                                     >
                                                         {cfg?.logo ? (
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                                             <img src={cfg.logo} alt={name} className="w-14 h-14 object-contain" />
                                                         ) : (
                                                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black border-2 ${cfg ? `${cfg.bg} ${cfg.text} ${cfg.border}` : 'bg-slate-100 text-slate-600 border-slate-200'}`}>

@@ -93,6 +93,7 @@ export default function Taskbar() {
                         "w-full h-full bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center p-0.5 shadow-md border overflow-hidden",
                         active ? "border-green-800 shadow-green-800/20" : "border-slate-200/60"
                     )}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/images/logo.png" alt="Quioba" className="w-full h-full object-contain" />
                     </div>
                     {/* Ring animation */}
