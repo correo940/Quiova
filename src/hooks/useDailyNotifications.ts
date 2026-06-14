@@ -85,6 +85,7 @@ export function useDailyNotifications() {
             window.removeEventListener('secretarySettingsChanged', handleSettingsChange);
             LocalNotifications.removeAllListeners();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ── Legacy daily summary ───────────────────────────────────────────────────

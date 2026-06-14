@@ -48,6 +48,7 @@ export function usePredictiveShopping(
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
     analyze();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const analyze = async () => {

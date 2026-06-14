@@ -38,6 +38,7 @@ export function useDebatePermissions(debateId: string | null, userId?: string) {
         }
 
         fetchPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debateId, userId, isSuperAdmin]);
 
     const fetchPermissions = async () => {
