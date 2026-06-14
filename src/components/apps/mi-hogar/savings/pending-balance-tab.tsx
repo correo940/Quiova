@@ -96,9 +96,11 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
     const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
     const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<PendingExpense | null>(null);
+    const [editingProject, setEditingProject] = useState<PendingProject | null>(null);
 
     // Forms
     const [newProject, setNewProject] = useState({ name: '', icon: '📁', color: '#6366f1' });
+    const [editProjectForm, setEditProjectForm] = useState({ name: '', icon: '📁', color: '#6366f1' });
     const [newExpense, setNewExpense] = useState({
         concept: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
         merchant: '', projectId: 'none', accountId: 'none'
@@ -181,6 +183,26 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
             toast.success('Proyecto eliminado');
             fetchAll();
         } catch { toast.error('Error al eliminar'); }
+    };
+
+    const openEditProject = (proj: PendingProject) => {
+        setEditProjectForm({ name: proj.name, icon: proj.icon, color: proj.color });
+        setEditingProject(proj);
+    };
+
+    const handleUpdateProject = async () => {
+        if (!editingProject || !editProjectForm.name.trim()) return toast.error('Nombre obligatorio');
+        try {
+            const { error } = await supabase.from('pending_balance_projects').update({
+                name: editProjectForm.name,
+                icon: editProjectForm.icon,
+                color: editProjectForm.color
+            }).eq('id', editingProject.id);
+            if (error) throw error;
+            toast.success('Proyecto actualizado');
+            setEditingProject(null);
+            fetchAll();
+        } catch { toast.error('Error al actualizar proyecto'); }
     };
 
     const handleCreateExpense = async () => {
@@ -454,11 +476,18 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600"
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.id); }}
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </Button>
+                                            <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-400 hover:text-blue-600"
+                                                    onClick={(e) => { e.stopPropagation(); openEditProject(proj); }}
+                                                >
+                                                    <Edit3 className="w-3 h-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600"
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.id); }}
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
@@ -645,6 +674,43 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
                     </div>
                     <DialogFooter>
                         <Button onClick={handleCreateProject} className="bg-orange-500 hover:bg-orange-600 text-white">Crear Proyecto</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Project Dialog */}
+            <Dialog open={!!editingProject} onOpenChange={(open) => !open && setEditingProject(null)}>
+                <DialogContent className="flex flex-col max-h-[90vh] sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Edit3 className="w-5 h-5 text-blue-500" /> Editar Proyecto
+                        </DialogTitle>
+                        <DialogDescription>Modifica el nombre, icono o color del proyecto.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2 overflow-y-auto flex-1">
+                        <div className="space-y-2">
+                            <Label>Nombre del proyecto</Label>
+                            <Input placeholder="Ej: Vacaciones Verano 2026" value={editProjectForm.name}
+                                onChange={(e) => setEditProjectForm({ ...editProjectForm, name: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Icono</Label>
+                                <Input placeholder="Emoji" value={editProjectForm.icon} className="text-center text-xl"
+                                    onChange={(e) => setEditProjectForm({ ...editProjectForm, icon: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Color</Label>
+                                <input type="color" className="h-9 w-full p-1 rounded border cursor-pointer" value={editProjectForm.color}
+                                    onChange={(e) => setEditProjectForm({ ...editProjectForm, color: e.target.value })} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingProject(null)}>Cancelar</Button>
+                        <Button onClick={handleUpdateProject} className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
+                            <Edit3 className="w-4 h-4" /> Guardar Cambios
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
