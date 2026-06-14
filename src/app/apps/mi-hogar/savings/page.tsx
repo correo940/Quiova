@@ -169,6 +169,8 @@ export default function SavingsV2Preview() {
     const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
     const [accountTransactions, setAccountTransactions] = useState<SavingsTransaction[]>([]);
     const [isAccountDetailOpen, setIsAccountDetailOpen] = useState(false);
+    // Por cada cuenta vinculada: dinero disponible para gastar (ingresos − gastos) y lo que pertenece a la principal (suma de gastos)
+    const [linkedSums, setLinkedSums] = useState<Record<string, { available: number; toParent: number }>>({});
     const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
     const [isImporterOpen, setIsImporterOpen] = useState(false);
     const [isResetOpen, setIsResetOpen] = useState(false);
@@ -255,6 +257,28 @@ export default function SavingsV2Preview() {
                 .order('name');
             const accountsList = accs || [];
             setAccounts(accountsList);
+
+            // Calcular disponible / pertenece a la principal para cuentas vinculadas
+            const linkedIds = accountsList.filter(a => a.parent_account_id).map(a => a.id);
+            if (linkedIds.length > 0) {
+                const { data: linkedTxs } = await supabase
+                    .from('savings_account_transactions')
+                    .select('account_id, amount')
+                    .in('account_id', linkedIds);
+                const sums: Record<string, { available: number; toParent: number }> = {};
+                linkedIds.forEach(id => { sums[id] = { available: 0, toParent: 0 }; });
+                (linkedTxs || []).forEach((tx: { account_id: string; amount: number }) => {
+                    const bucket = sums[tx.account_id];
+                    if (!bucket) return;
+                    if (tx.amount >= 0) bucket.available += tx.amount;
+                    else bucket.toParent += Math.abs(tx.amount);
+                });
+                // Disponible para gastar = ingresos − gastos (lo que queda para las próximas vacaciones)
+                Object.values(sums).forEach(s => { s.available = s.available - s.toParent; });
+                setLinkedSums(sums);
+            } else {
+                setLinkedSums({});
+            }
 
             const { data: gls } = await supabase
                 .from('savings_goals')
@@ -1612,7 +1636,7 @@ export default function SavingsV2Preview() {
                     <button className={`qf-tab ${activeTab === 'accounts' ? 'active' : ''}`} onClick={() => setActiveTab('accounts')}><i className="ti ti-credit-card" aria-hidden="true"></i> <span>Cuentas</span></button>
                     <button className={`qf-tab ${activeTab === 'goals' ? 'active' : ''}`} onClick={() => setActiveTab('goals')}><i className="ti ti-target" aria-hidden="true"></i> <span>Metas</span></button>
                     <button className={`qf-tab ${activeTab === 'recurring' ? 'active' : ''}`} onClick={() => setActiveTab('recurring')}><i className="ti ti-repeat" aria-hidden="true"></i> <span>Fijos</span></button>
-                    <button className={`qf-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}><i className="ti ti-receipt" aria-hidden="true"></i> <span>Pendiente</span></button>
+                    <button className={`qf-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}><i className="ti ti-receipt" aria-hidden="true"></i> <span>Proyectos</span></button>
                 </div>
 
                 {/* OVERVIEW */}
@@ -1722,8 +1746,7 @@ export default function SavingsV2Preview() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(245,196,0,0.15)', paddingTop: '15px', marginTop: 'auto' }}>
                                 {accounts.map(acc => {
                                     const parent = acc.parent_account_id ? accounts.find(a => a.id === acc.parent_account_id) : null;
-                                    const spent = acc.envelope_spent || 0;
-                                    const owedToMe = accounts.filter(a => a.parent_account_id === acc.id).reduce((s, e) => s + (e.envelope_spent || 0), 0);
+                                    const sums = linkedSums[acc.id];
                                     return (
                                         <div key={acc.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
@@ -1736,15 +1759,10 @@ export default function SavingsV2Preview() {
                                                     {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                                 </div>
                                             </div>
-                                            {parent && spent > 0 && (
+                                            {parent && sums && (
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingLeft: '16px' }}>
-                                                    <span style={{ color: '#16a34a' }}>Disponible: {(acc.current_balance - spent).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                                    <span style={{ color: '#b45309' }}>Pendiente a {parent.name}: {spent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                                </div>
-                                            )}
-                                            {owedToMe > 0 && (
-                                                <div style={{ fontSize: '11px', paddingLeft: '16px', color: '#b45309' }}>
-                                                    Incluye {owedToMe.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })} pendiente en cuentas vinculadas
+                                                    <span style={{ color: '#16a34a' }}>Disponible para gastar: {sums.available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                                    <span style={{ color: '#b45309' }}>Pertenece a {parent.name}: {sums.toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
                                                 </div>
                                             )}
                                         </div>
