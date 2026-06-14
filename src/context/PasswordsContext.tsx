@@ -77,6 +77,7 @@ export function PasswordsProvider({ children }: { children: React.ReactNode }) {
       setEncryptionKey(null);
       setIsBiometricsEnabled(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const checkBiometrics = async () => {

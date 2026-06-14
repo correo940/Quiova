@@ -28,6 +28,7 @@ export function WorkSessionProvider({ children }: { children: React.ReactNode })
             const s = localStorage.getItem('pausas-activas-settings')
             if (s) setSettings({ ...settings, ...JSON.parse(s) })
         } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Timer principal
@@ -53,6 +54,7 @@ export function WorkSessionProvider({ children }: { children: React.ReactNode })
             lastWaterTriggerRef.current = elapsedMin
             triggerBreak('water')
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [elapsedSec, isRunning, settings])
 
     const startSession = () => {

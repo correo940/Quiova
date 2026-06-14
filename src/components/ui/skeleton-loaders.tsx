@@ -77,6 +77,7 @@ export function AuthGuardSkeleton() {
                 {/* Pulsing glow */}
                 <div className="absolute inset-0 bg-green-400/20 blur-2xl rounded-full animate-pulse" />
                 <div className="relative w-16 h-16 bg-white dark:bg-slate-900 rounded-full shadow-lg border border-slate-200/50 dark:border-white/10 flex items-center justify-center overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src="/images/logo.png"
                         alt="Quioba"
