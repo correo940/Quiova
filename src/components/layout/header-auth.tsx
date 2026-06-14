@@ -32,6 +32,7 @@ import { Mic, MicOff, Plus, CheckSquare, ShoppingCart, Wallet, Camera, Book, Spa
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWorkSession } from '@/context/work-session-context';
+import { getBetaAvatar } from '@/lib/beta/avatars';
 
 const QUICK_ACTIONS = [
     { label: 'Nueva tarea', icon: CheckSquare, href: '/apps/mi-hogar/tasks?action=new', color: 'bg-blue-600' },
@@ -45,6 +46,24 @@ export default function HeaderAuth() {
     const { setIsOpen: setIsJournalOpen } = useJournal();
     const { isRunning, elapsedSec, startSession, stopSession } = useWorkSession();
     const [user, setUser] = useState<any>(null);
+    const [betaUser, setBetaUser] = useState<{
+        nickname: string; avatar_id: string; access_token: string;
+    } | null>(null);
+    const [betaUnread, setBetaUnread] = useState(0);
+
+    // Detectar sesión beta (cookie httpOnly → leída en servidor via /api/beta/me)
+    useEffect(() => {
+        if (user) return;
+        fetch('/api/beta/me?light=1')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d?.user) {
+                    setBetaUser(d.user);
+                    setBetaUnread(d.unreadCount ?? 0);
+                }
+            })
+            .catch(() => {});
+    }, [user]);
 
     const formatTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
@@ -238,6 +257,34 @@ export default function HeaderAuth() {
     }
 
     return (
+        <div className="flex items-center gap-2">
+            {/* Botón Mi Beta con badge de notificaciones — visible solo para beta testers sin sesión Supabase */}
+            {betaUser && (
+                <div className="hidden sm:flex items-center rounded-full overflow-hidden border border-emerald-700 bg-emerald-600">
+                    <Link
+                        href={`/beta/dashboard?t=${betaUser.access_token}`}
+                        className="flex items-center gap-1.5 text-white text-xs font-bold pl-3 pr-2 py-1.5 hover:bg-emerald-700 transition-colors relative"
+                        title={`Panel Beta de ${betaUser.nickname}${betaUnread > 0 ? ` · ${betaUnread} sin leer` : ''}`}
+                    >
+                        <span className="text-sm leading-none">{getBetaAvatar(betaUser.avatar_id).emoji}</span>
+                        <span>Mi Beta</span>
+                        {betaUnread > 0 && (
+                            <span className="absolute -top-1 -right-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                                {betaUnread > 9 ? '9+' : betaUnread}
+                            </span>
+                        )}
+                    </Link>
+                    {/* Cerrar sesión beta — para PC compartido */}
+                    <a
+                        href="/api/beta/logout"
+                        className="flex items-center justify-center text-emerald-200 hover:text-white hover:bg-emerald-700 transition-colors px-2 py-1.5 text-xs border-l border-emerald-700"
+                        title={`No soy ${betaUser.nickname} — cerrar sesión Beta`}
+                    >
+                        ✕
+                    </a>
+                </div>
+            )}
+
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="default" size="sm" className="gap-2 bg-green-700 hover:bg-green-800 text-white rounded-full px-4">
@@ -303,15 +350,16 @@ export default function HeaderAuth() {
                     <p className="text-sm text-muted-foreground">
                         ¿No tienes cuenta?{' '}
                         <Link
-                            href="/apps/mi-hogar/login"
+                            href="/beta"
                             className="text-primary hover:underline font-medium"
                             onClick={() => setIsOpen(false)}
                         >
-                            Regístrate aquí
+                            Únete a la Beta
                         </Link>
                     </p>
                 </div>
             </DialogContent>
         </Dialog>
+        </div>
     );
 }

@@ -111,6 +111,77 @@ export interface PiezaProduccion {
     fechaRegistro: string;
 }
 
+// ── Biblioteca Corporativa ────────────────────────────────────────────────────
+
+export type CategoriaLibreria =
+    | 'prompts'
+    | 'normas'
+    | 'procesos'
+    | 'branding'
+    | 'decisiones-corporativas';
+
+export interface BibliotecaItem {
+    id: string;
+    categoria: CategoriaLibreria;
+    titulo: string;
+    contenido: string;
+    autor: string;
+    version: string;
+    estado: 'activo' | 'archivado';
+    fechaCreacion: string;
+    fechaActualizacion: string;
+}
+
+// ── Expedientes / nueva arquitectura ─────────────────────────────────────────
+
+export interface ExpedienteOficina {
+    id: string;
+    titulo: string;
+    resumen: string;
+    conversacionOriginal: string;
+    estado: 'pendiente' | 'en-revision' | 'cerrado';
+    directorRevisor: string; // 'director' | 'director-contenido' | etc.
+    fechaCreacion: string;
+}
+
+export interface DecisionCorporativa {
+    id: string;
+    expedienteId: string;
+    titulo: string;
+    descripcion: string;
+    directorOrigen: string;
+    directoresAfectados: string[];
+    estado: 'propuesta' | 'aprobada' | 'descartada';
+    fechaDecision: string;
+}
+
+export interface ObjetivoArea {
+    id: string;
+    expedienteId?: string;
+    decisionId?: string;
+    directorId: string;
+    titulo: string;
+    descripcion: string;
+    prioridad: 'alta' | 'media' | 'baja';
+    estado: 'activo' | 'completado' | 'cancelado';
+    fechaCreacion: string;
+    fechaObjetivo?: string;
+}
+
+export interface TareaDirector {
+    id: string;
+    expedienteId?: string;
+    decisionId?: string;
+    objetivoId?: string;
+    directorId: string;
+    directorOrigen: string;
+    titulo: string;
+    descripcion: string;
+    urgencia: 'inmediata' | 'esta-semana' | 'este-mes';
+    estado: 'pendiente' | 'en-progreso' | 'completada';
+    fechaAsignacion: string;
+}
+
 // ── Series de vídeo (Director de Contenido) ───────────────────────────────────
 
 export type EstadoProduccionVideo = 'pendiente' | 'en-produccion' | 'publicado';
@@ -160,6 +231,11 @@ interface Registros {
     executionTasks: ExecutionTask[];
     series: SerieVideo[];
     producciones: ProduccionVideo[];
+    biblioteca: BibliotecaItem[];
+    expedientesOficina: ExpedienteOficina[];
+    decisionesCorporativas: DecisionCorporativa[];
+    objetivosArea: ObjetivoArea[];
+    tareasDirector: TareaDirector[];
 }
 
 const KEY = 'quioba_oficina_registros_v2';
@@ -179,6 +255,11 @@ const DEFAULTS: Registros = {
     executionTasks: [],
     series: [],
     producciones: [],
+    biblioteca: [],
+    expedientesOficina: [],
+    decisionesCorporativas: [],
+    objetivosArea: [],
+    tareasDirector: [],
 };
 
 function genId() {
@@ -720,6 +801,247 @@ export function useOficinaRegistros() {
                     series: p.series.filter(s => s.id !== serieId),
                     producciones: p.producciones.filter(pr => pr.serieId !== serieId),
                     piezas: p.piezas.filter(pz => !idsAEliminar.has(pz.id)),
+                };
+            });
+        },
+
+        // ── Biblioteca Corporativa ───────────────────────────────────────────
+        crearBibliotecaItem(datos: Omit<BibliotecaItem, 'id' | 'fechaCreacion' | 'fechaActualizacion'>) {
+            update(p => ({
+                ...p,
+                biblioteca: [
+                    {
+                        ...datos,
+                        id: genId(),
+                        fechaCreacion: new Date().toISOString(),
+                        fechaActualizacion: new Date().toISOString(),
+                    },
+                    ...p.biblioteca,
+                ],
+            }));
+        },
+        actualizarBibliotecaItem(id: string, cambios: Partial<Pick<BibliotecaItem, 'titulo' | 'contenido' | 'autor' | 'version' | 'estado'>>) {
+            update(p => ({
+                ...p,
+                biblioteca: p.biblioteca.map(b =>
+                    b.id === id
+                        ? { ...b, ...cambios, fechaActualizacion: new Date().toISOString() }
+                        : b
+                ),
+            }));
+        },
+        eliminarBibliotecaItem(id: string) {
+            update(p => ({ ...p, biblioteca: p.biblioteca.filter(b => b.id !== id) }));
+        },
+
+        // ── Expedientes ──────────────────────────────────────────────────────
+        crearExpediente(datos: Omit<ExpedienteOficina, 'id' | 'fechaCreacion'>) {
+            update(p => ({
+                ...p,
+                expedientesOficina: [
+                    { ...datos, id: genId(), fechaCreacion: new Date().toISOString() },
+                    ...p.expedientesOficina,
+                ],
+            }));
+        },
+        actualizarEstadoExpediente(id: string, estado: ExpedienteOficina['estado']) {
+            update(p => ({
+                ...p,
+                expedientesOficina: p.expedientesOficina.map(e => e.id === id ? { ...e, estado } : e),
+            }));
+        },
+        eliminarExpediente(id: string) {
+            update(p => ({ ...p, expedientesOficina: p.expedientesOficina.filter(e => e.id !== id) }));
+        },
+
+        // ── Decisiones Corporativas ──────────────────────────────────────────
+        crearDecisionCorporativa(
+            datos: Omit<DecisionCorporativa, 'id' | 'fechaDecision'>,
+            objetivo: Omit<ObjetivoArea, 'id' | 'fechaCreacion' | 'decisionId' | 'expedienteId'> | null,
+            tareas: Omit<TareaDirector, 'id' | 'fechaAsignacion' | 'decisionId' | 'objetivoId'>[],
+        ) {
+            update(p => {
+                const decisionId = genId();
+                const ahora = new Date().toISOString();
+                const decision: DecisionCorporativa = { ...datos, id: decisionId, fechaDecision: ahora };
+
+                let objetivoId: string | undefined;
+                let objetivosNuevos = p.objetivosArea;
+                if (objetivo) {
+                    objetivoId = genId();
+                    const nuevoObj: ObjetivoArea = {
+                        ...objetivo,
+                        id: objetivoId,
+                        decisionId,
+                        expedienteId: datos.expedienteId,
+                        fechaCreacion: ahora,
+                    };
+                    objetivosNuevos = [nuevoObj, ...p.objetivosArea];
+                }
+
+                const tareasNuevas: TareaDirector[] = tareas.map(t => ({
+                    ...t,
+                    id: genId(),
+                    decisionId,
+                    objetivoId,
+                    fechaAsignacion: ahora,
+                }));
+                return {
+                    ...p,
+                    decisionesCorporativas: [decision, ...p.decisionesCorporativas],
+                    objetivosArea: objetivosNuevos,
+                    tareasDirector: [...tareasNuevas, ...p.tareasDirector],
+                    expedientesOficina: p.expedientesOficina.map(e =>
+                        e.id === datos.expedienteId ? { ...e, estado: 'en-revision' } : e
+                    ),
+                };
+            });
+        },
+        actualizarEstadoDecisionCorporativa(id: string, estado: DecisionCorporativa['estado']) {
+            update(p => ({
+                ...p,
+                decisionesCorporativas: p.decisionesCorporativas.map(d => d.id === id ? { ...d, estado } : d),
+            }));
+        },
+
+        // ── Objetivos de Área ────────────────────────────────────────────────
+        actualizarEstadoObjetivoArea(id: string, estado: ObjetivoArea['estado']) {
+            update(p => ({
+                ...p,
+                objetivosArea: p.objetivosArea.map(o => o.id === id ? { ...o, estado } : o),
+            }));
+        },
+        eliminarObjetivoArea(id: string) {
+            update(p => ({ ...p, objetivosArea: p.objetivosArea.filter(o => o.id !== id) }));
+        },
+
+        // ── Tareas de Director ───────────────────────────────────────────────
+        actualizarEstadoTareaDirector(id: string, estado: TareaDirector['estado']) {
+            update(p => ({
+                ...p,
+                tareasDirector: p.tareasDirector.map(t => t.id === id ? { ...t, estado } : t),
+            }));
+        },
+        eliminarTareaDirector(id: string) {
+            update(p => ({ ...p, tareasDirector: p.tareasDirector.filter(t => t.id !== id) }));
+        },
+
+        // ── Reinicio de datos (mantiene código y configuración) ─────────────
+        reiniciarOficina() {
+            const CHAT_KEYS = [
+                'quioba_chat_director',
+                'quioba_chat_director-contenido',
+                'quioba_chat_director-tecnico',
+                'quioba_chat_jefe-gabinete',
+                'quioba_chat_director-crecimiento',
+                'quioba_chat_consejo-estrategico',
+            ];
+
+            if (typeof window !== 'undefined') {
+                // Backup automático antes de borrar
+                try {
+                    const fundacionRaw = localStorage.getItem('quioba_fundacion_v1');
+                    const backup = {
+                        timestamp: new Date().toISOString(),
+                        version: 'quioba-backup-v1',
+                        fundacion: fundacionRaw ? JSON.parse(fundacionRaw) : null,
+                        oficina: state,
+                        chats: Object.fromEntries(
+                            CHAT_KEYS
+                                .filter(k => localStorage.getItem(k))
+                                .map(k => [k, JSON.parse(localStorage.getItem(k)!)])
+                        ),
+                    };
+                    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `quioba-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch {
+                    // Fallo silencioso — el reset continúa igualmente
+                }
+
+                CHAT_KEYS.forEach(k => localStorage.removeItem(k));
+            }
+
+            update(() => ({ ...DEFAULTS }));
+        },
+
+        // ── Creación atómica desde /registrar ───────────────────────────────
+        crearExpedienteConDecision(
+            expedienteData: { titulo: string; resumen: string; directorRevisor: string; conversacionOriginal: string },
+            decisionData: { titulo: string; descripcion: string },
+            objetivoData: { titulo: string; descripcion: string; directorId: string; prioridad: ObjetivoArea['prioridad']; fechaObjetivo?: string | null } | null,
+            tareasData: { titulo: string; descripcion: string; directorId: string; urgencia: TareaDirector['urgencia'] }[],
+        ) {
+            update(p => {
+                const expedienteId = genId();
+                const decisionId = genId();
+                const ahora = new Date().toISOString();
+
+                const nuevoExp: ExpedienteOficina = {
+                    id: expedienteId,
+                    ...expedienteData,
+                    estado: 'en-revision',
+                    fechaCreacion: ahora,
+                };
+
+                let objetivoId: string | undefined;
+                let objetivosNuevos = p.objetivosArea;
+                if (objetivoData) {
+                    objetivoId = genId();
+                    objetivosNuevos = [{
+                        id: objetivoId,
+                        decisionId,
+                        expedienteId,
+                        titulo: objetivoData.titulo,
+                        descripcion: objetivoData.descripcion,
+                        directorId: objetivoData.directorId,
+                        prioridad: objetivoData.prioridad,
+                        estado: 'activo' as const,
+                        fechaCreacion: ahora,
+                        fechaObjetivo: objetivoData.fechaObjetivo ?? undefined,
+                    }, ...p.objetivosArea];
+                }
+
+                const nuevaDecision: DecisionCorporativa = {
+                    id: decisionId,
+                    expedienteId,
+                    titulo: decisionData.titulo,
+                    descripcion: decisionData.descripcion,
+                    directorOrigen: 'director',
+                    directoresAfectados: [...new Set([
+                        ...(objetivoData ? [objetivoData.directorId] : []),
+                        ...tareasData.map(t => t.directorId),
+                    ])],
+                    estado: 'aprobada',
+                    fechaDecision: ahora,
+                };
+
+                const tareasNuevas: TareaDirector[] = tareasData.map(t => ({
+                    id: genId(),
+                    expedienteId,
+                    decisionId,
+                    objetivoId,
+                    directorId: t.directorId,
+                    directorOrigen: 'director',
+                    titulo: t.titulo,
+                    descripcion: t.descripcion,
+                    urgencia: t.urgencia,
+                    estado: 'pendiente' as const,
+                    fechaAsignacion: ahora,
+                }));
+
+                return {
+                    ...p,
+                    expedientesOficina: [nuevoExp, ...p.expedientesOficina],
+                    decisionesCorporativas: [nuevaDecision, ...p.decisionesCorporativas],
+                    objetivosArea: objetivosNuevos,
+                    tareasDirector: [...tareasNuevas, ...p.tareasDirector],
                 };
             });
         },

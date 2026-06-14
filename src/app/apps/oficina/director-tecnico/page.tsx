@@ -4,7 +4,11 @@ import { useEffect } from 'react';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Film, FolderOpen, CheckCircle2, Circle, AlertCircle, Target } from 'lucide-react';
+import {
+    ChevronLeft, Cpu, FolderOpen, Target, CheckCircle2,
+    Circle, AlertCircle, Scale, ChevronDown, ChevronUp,
+} from 'lucide-react';
+import { useState } from 'react';
 import { useOficinaRegistros } from '@/hooks/useOficinaRegistros';
 import { useFundacionQuioba } from '@/hooks/useFundacionQuioba';
 import DirectorChat from '@/components/oficina/director-chat';
@@ -14,13 +18,20 @@ import { ModalAccionPropuesta } from '@/components/oficina/modal-accion-propuest
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
+const DIR_ID = 'director-tecnico';
+
 function UrgenciaBadge({ urgencia }: { urgencia: string }) {
     const s: Record<string, string> = {
-        inmediata: 'bg-red-500/10 text-red-600 dark:text-red-400',
-        'esta-semana': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-        'este-mes': 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+        inmediata:      'bg-red-500/10 text-red-600 dark:text-red-400',
+        'esta-semana':  'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        'este-mes':     'bg-blue-500/10 text-blue-600 dark:text-blue-400',
     };
     return <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${s[urgencia] ?? 'bg-muted text-muted-foreground'}`}>{urgencia}</span>;
+}
+
+function PrioridadDot({ prioridad }: { prioridad?: string }) {
+    const color = prioridad === 'alta' ? 'bg-red-500' : prioridad === 'media' ? 'bg-amber-500' : 'bg-blue-400';
+    return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
 }
 
 function EstadoIcon({ estado }: { estado: string }) {
@@ -29,12 +40,19 @@ function EstadoIcon({ estado }: { estado: string }) {
     return <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />;
 }
 
-function PrioridadDot({ prioridad }: { prioridad?: string }) {
-    const color = prioridad === 'alta' ? 'bg-red-500' : prioridad === 'media' ? 'bg-amber-500' : 'bg-blue-400';
-    return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+function EstadoBadge({ estado }: { estado: string }) {
+    const s: Record<string, string> = {
+        pendiente:      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        'en-revision':  'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+        cerrado:        'bg-muted text-muted-foreground',
+        aprobada:       'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        propuesta:      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        descartada:     'bg-red-500/10 text-red-600 dark:text-red-400',
+    };
+    return <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${s[estado] ?? 'bg-muted text-muted-foreground'}`}>{estado}</span>;
 }
 
-export default function DirectorContenidoPage() {
+export default function DirectorTecnicoPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const {
@@ -49,8 +67,9 @@ export default function DirectorContenidoPage() {
     } = useOficinaRegistros();
 
     const { handleRegistrar, estructurando, accionPendiente, confirmarAccion, cancelarAccion } =
-        useRegistrar('director-contenido', crearExpedienteConDecision);
+        useRegistrar('director-tecnico', crearExpedienteConDecision);
     const { fundacion } = useFundacionQuioba();
+    const [expandedExp, setExpandedExp] = useState<string | null>(null);
 
     useEffect(() => {
         if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.replace('/');
@@ -59,19 +78,23 @@ export default function DirectorContenidoPage() {
     if (loading || !user || user.email !== ADMIN_EMAIL) return null;
 
     const misExpedientes = expedientesOficina.filter(
-        e => e.directorRevisor === 'director-contenido' && e.estado !== 'cerrado'
+        e => e.directorRevisor === DIR_ID && e.estado !== 'cerrado'
     );
     const misObjetivos = objetivosArea.filter(
-        o => o.directorId === 'director-contenido' && o.estado === 'activo'
-    );
-    const tareasReales = filtrarTareasReales(
-        tareasDirector.filter(t => t.directorId === 'director-contenido'),
-        objetivosArea,
-        'director-contenido',
+        o => o.directorId === DIR_ID && o.estado === 'activo'
     );
 
+    const tareasReales = filtrarTareasReales(
+        tareasDirector.filter(t => t.directorId === DIR_ID),
+        objetivosArea,
+        DIR_ID,
+    );
     const tareasPendientes = tareasReales.filter(t => t.estado !== 'completada');
     const tareasCompletadas = tareasReales.filter(t => t.estado === 'completada');
+
+    const decisionesRelacionadas = decisionesCorporativas
+        .filter(d => d.directoresAfectados?.includes(DIR_ID))
+        .slice(0, 8);
 
     const contextoChat = {
         fundacion,
@@ -99,12 +122,12 @@ export default function DirectorContenidoPage() {
                         <ChevronLeft className="w-5 h-5" />
                     </Link>
                     <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                            <Film className="w-4 h-4" />
+                        <div className="p-2 rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
+                            <Cpu className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400 leading-none">Despacho 04</p>
-                            <h1 className="font-black text-base leading-tight">Director de Contenido</h1>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-none">Despacho 06</p>
+                            <h1 className="font-black text-base leading-tight">Director Técnico</h1>
                         </div>
                     </div>
                 </div>
@@ -121,15 +144,17 @@ export default function DirectorContenidoPage() {
                 {/* Chat */}
                 <div className="flex flex-col min-h-0 border-r border-border/30">
                     <div className="px-4 py-2 border-b border-border/20 flex-shrink-0">
-                        <p className="text-[11px] text-muted-foreground/60 font-medium">Solo respondo usando datos registrados en Quioba</p>
+                        <p className="text-[11px] text-muted-foreground/60 font-medium">
+                            Solo respondo usando datos registrados en Quioba
+                        </p>
                     </div>
                     <div className="flex-1 min-h-0">
                         <DirectorChat
-                            directorId="director-contenido"
-                            directorNombre="Director de Contenido"
-                            accentColor="bg-sky-500"
+                            directorId={DIR_ID}
+                            directorNombre="Director Técnico"
+                            accentColor="bg-slate-600"
                             contexto={contextoChat}
-                            placeholder="¿Qué objetivos tengo? ¿Qué tenemos hoy?"
+                            placeholder="¿Qué desarrollos tenemos pendientes? ¿Qué bugs siguen abiertos?"
                             onRegistrar={(contenido) => handleRegistrar(contenido, contextoChat)}
                         />
                     </div>
@@ -139,24 +164,48 @@ export default function DirectorContenidoPage() {
                 <div className="overflow-y-auto divide-y divide-border/30">
 
                     {/* Expedientes asignados */}
-                    {misExpedientes.length > 0 && (
-                        <div className="p-4 space-y-3">
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                <FolderOpen className="w-3.5 h-3.5" /> Expedientes Asignados
-                            </p>
+                    <div className="p-4 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                            <FolderOpen className="w-3.5 h-3.5" /> Expedientes Asignados
+                        </p>
+                        {misExpedientes.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1">Sin expedientes asignados.</p>
+                        ) : (
                             <div className="space-y-2">
                                 {misExpedientes.map(exp => (
-                                    <div key={exp.id} className="p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl space-y-1.5">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                                            {exp.estado}
-                                        </span>
-                                        <p className="text-xs font-semibold">{exp.titulo}</p>
-                                        <p className="text-[11px] text-muted-foreground leading-snug">{exp.resumen}</p>
+                                    <div key={exp.id} className="bg-muted/30 border border-border/40 rounded-xl overflow-hidden">
+                                        <button
+                                            onClick={() => setExpandedExp(expandedExp === exp.id ? null : exp.id)}
+                                            className="w-full text-left p-3 flex items-start justify-between gap-2"
+                                        >
+                                            <div className="space-y-1 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <EstadoBadge estado={exp.estado} />
+                                                    <span className="text-[10px] text-muted-foreground/60">{exp.fechaCreacion.slice(0, 10)}</span>
+                                                </div>
+                                                <p className="text-xs font-semibold leading-snug">{exp.titulo}</p>
+                                            </div>
+                                            {expandedExp === exp.id
+                                                ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                                : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                            }
+                                        </button>
+                                        {expandedExp === exp.id && (
+                                            <div className="px-3 pb-3 space-y-2">
+                                                <p className="text-xs text-muted-foreground leading-relaxed">{exp.resumen}</p>
+                                                {exp.conversacionOriginal && (
+                                                    <details className="text-[11px]">
+                                                        <summary className="cursor-pointer text-muted-foreground/70 font-medium">Ver conversación original</summary>
+                                                        <pre className="mt-2 text-[10px] text-muted-foreground/60 whitespace-pre-wrap font-mono bg-muted/30 p-2 rounded-lg max-h-40 overflow-y-auto">{exp.conversacionOriginal}</pre>
+                                                    </details>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Objetivos activos */}
                     <div className="p-4 space-y-3">
@@ -167,14 +216,14 @@ export default function DirectorContenidoPage() {
                             <span className="text-[10px] text-muted-foreground">{misObjetivos.length}</span>
                         </div>
                         {misObjetivos.length === 0 ? (
-                            <p className="text-xs text-muted-foreground/60 py-1">Sin objetivos asignados aún.</p>
+                            <p className="text-xs text-muted-foreground/60 py-1">Sin objetivos técnicos activos.</p>
                         ) : (
                             <div className="space-y-2">
                                 {misObjetivos.map(obj => (
-                                    <div key={obj.id} className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-1.5">
+                                    <div key={obj.id} className="p-3 bg-slate-500/5 border border-slate-500/20 rounded-xl space-y-1.5">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <PrioridadDot prioridad={obj.prioridad} />
-                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                                                 {obj.prioridad ?? 'media'}
                                             </span>
                                             {obj.fechaObjetivo && (
@@ -222,6 +271,29 @@ export default function DirectorContenidoPage() {
                                             </div>
                                         </div>
                                     </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Decisiones relacionadas */}
+                    <div className="p-4 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                            <Scale className="w-3.5 h-3.5" /> Decisiones Relacionadas
+                        </p>
+                        {decisionesRelacionadas.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1">Sin decisiones que afecten al área técnica.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {decisionesRelacionadas.map(d => (
+                                    <div key={d.id} className="p-3 bg-muted/20 border border-border/30 rounded-xl space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <EstadoBadge estado={d.estado} />
+                                            <span className="text-[10px] text-muted-foreground/60">{d.fechaDecision.slice(0, 10)}</span>
+                                        </div>
+                                        <p className="text-xs font-semibold">{d.titulo}</p>
+                                        {d.descripcion && <p className="text-[11px] text-muted-foreground leading-snug">{d.descripcion}</p>}
+                                    </div>
                                 ))}
                             </div>
                         )}

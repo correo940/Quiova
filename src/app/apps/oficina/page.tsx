@@ -2,12 +2,13 @@
 
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     Building2, Crown, Briefcase, TrendingUp, Film, Megaphone, Search, Layers,
     CircleDollarSign, Zap, Lock, CalendarClock, ChevronRight, Swords, User, Clapperboard,
-    Users, DollarSign, Clock, Settings, Scale
+    Users, DollarSign, Clock, Settings, Scale, FolderOpen, Plus, BookOpen, Cpu,
+    RotateCcw, AlertTriangle, X,
 } from 'lucide-react';
 import { useFundacionQuioba } from '@/hooks/useFundacionQuioba';
 import { useOficinaRegistros } from '@/hooks/useOficinaRegistros';
@@ -79,8 +80,20 @@ const DESPACHOS = [
         disponible: true,
     },
     {
-        id: 'marketing',
+        id: 'director-tecnico',
         numero: '06',
+        nombre: 'Director Técnico',
+        descripcion: 'Desarrollo, arquitectura, bugs, infraestructura e integraciones.',
+        icono: Cpu,
+        color: 'from-slate-500 to-slate-700',
+        sombra: 'shadow-slate-500/20',
+        borde: 'border-slate-500/30',
+        href: '/apps/oficina/director-tecnico',
+        disponible: true,
+    },
+    {
+        id: 'marketing',
+        numero: '07',
         nombre: 'Marketing',
         descripcion: 'Estrategia de captación, campañas y audiencias.',
         icono: Megaphone,
@@ -92,7 +105,7 @@ const DESPACHOS = [
     },
     {
         id: 'seo',
-        numero: '07',
+        numero: '08',
         nombre: 'SEO',
         descripcion: 'Posicionamiento orgánico, contenidos y palabras clave.',
         icono: Search,
@@ -104,7 +117,7 @@ const DESPACHOS = [
     },
     {
         id: 'producto',
-        numero: '08',
+        numero: '09',
         nombre: 'Producto',
         descripcion: 'Roadmap, features, diseño y experiencia de usuario.',
         icono: Layers,
@@ -116,7 +129,7 @@ const DESPACHOS = [
     },
     {
         id: 'monetizacion',
-        numero: '09',
+        numero: '10',
         nombre: 'Monetización',
         descripcion: 'Modelo de negocio, pricing y conversión.',
         icono: CircleDollarSign,
@@ -128,7 +141,7 @@ const DESPACHOS = [
     },
     {
         id: 'automatizaciones',
-        numero: '10',
+        numero: '11',
         nombre: 'Automatizaciones',
         descripcion: 'Flujos, integraciones y operaciones automáticas.',
         icono: Zap,
@@ -146,8 +159,9 @@ export default function OficinaPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const { fundacion, cargando: fundCargando } = useFundacionQuioba();
-    const { documentos } = useOficinaRegistros();
+    const { documentos, reiniciarOficina } = useOficinaRegistros();
     const nuevosDespacho = documentos.filter(d => d.estado === 'nuevo').length;
+    const [confirmandoReinicio, setConfirmandoReinicio] = useState(false);
 
     useEffect(() => {
         if (!loading && (!user || user.email !== ADMIN_EMAIL)) {
@@ -155,18 +169,10 @@ export default function OficinaPage() {
         }
     }, [user, loading, router]);
 
-    useEffect(() => {
-        if (!loading && !fundCargando && user?.email === ADMIN_EMAIL) {
-            if (!fundacion || (!fundacion.completada && !fundacion.saltada)) {
-                router.push('/apps/oficina/fundacion');
-            }
-        }
-    }, [loading, fundCargando, fundacion, user, router]);
-
-    if (loading || fundCargando || !user || user.email !== ADMIN_EMAIL) return null;
-    if (!fundacion || (!fundacion.completada && !fundacion.saltada)) return null;
+    if (loading || !user || user.email !== ADMIN_EMAIL) return null;
 
     return (
+        <>
         <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 space-y-10 animate-in fade-in duration-500">
 
             {/* ── Lobby ── */}
@@ -268,6 +274,41 @@ export default function OficinaPage() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                 </Link>
             )}
+
+            {/* ── Acciones principales ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Link
+                href="/apps/oficina/expedientes/nuevo"
+                className="flex items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-indigo-500/5 border-2 border-indigo-500/40 hover:border-indigo-500/70 hover:shadow-lg transition-all group"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-indigo-500/15 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
+                        <FolderOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="font-black text-sm">Abrir Expediente</p>
+                        <p className="text-xs text-muted-foreground">Entrega una conversación o decisión</p>
+                    </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </Link>
+
+            <Link
+                href="/apps/oficina/biblioteca"
+                className="flex items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-violet-500/10 to-violet-500/5 border border-violet-500/25 hover:border-violet-500/50 hover:shadow-md transition-all group"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-violet-500/15 rounded-xl text-violet-600 dark:text-violet-400 shrink-0">
+                        <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="font-black text-sm">Biblioteca Corporativa</p>
+                        <p className="text-xs text-muted-foreground">Prompts, normas, procesos y branding</p>
+                    </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </Link>
+            </div>
 
             {/* ── Zonas comunes ── */}
             <div className="space-y-3">
@@ -408,6 +449,70 @@ export default function OficinaPage() {
                 </div>
             </div>
 
+            {/* ── Reiniciar Oficina ── */}
+            <div className="flex justify-center pt-4 border-t border-border/20">
+                <button
+                    onClick={() => setConfirmandoReinicio(true)}
+                    className="inline-flex items-center gap-2 text-xs text-muted-foreground/50 hover:text-red-500 transition-colors"
+                >
+                    <RotateCcw className="w-3 h-3" />
+                    Reiniciar Oficina
+                </button>
+            </div>
+
         </div>
+
+        {/* ── Modal de confirmación de reinicio ── */}
+        {confirmandoReinicio && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-card border border-border/50 rounded-2xl w-full max-w-md shadow-2xl">
+                    <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
+                                <AlertTriangle className="w-4 h-4" />
+                            </div>
+                            <h2 className="font-bold text-sm">Reiniciar Oficina</h2>
+                        </div>
+                        <button onClick={() => setConfirmandoReinicio(false)} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="px-6 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            Se eliminarán todos los datos registrados de la Oficina. La estructura y configuración se mantendrán.
+                        </p>
+                        <ul className="text-xs text-muted-foreground/70 space-y-1.5">
+                            {['Expedientes', 'Decisiones', 'Objetivos', 'Tareas', 'Biblioteca', 'Conversaciones de directores'].map(item => (
+                                <li key={item} className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500/60 flex-shrink-0" />
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-xs font-bold text-muted-foreground">
+                            Se mantiene: Contexto Corporativo, despachos, código y configuración.
+                        </p>
+                    </div>
+                    <div className="px-6 py-4 border-t border-border/30 flex justify-end gap-2">
+                        <button
+                            onClick={() => setConfirmandoReinicio(false)}
+                            className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-muted/40 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={() => {
+                                reiniciarOficina();
+                                setConfirmandoReinicio(false);
+                            }}
+                            className="text-sm font-bold px-5 py-2 bg-red-500 text-white rounded-xl hover:bg-red-400 transition-colors"
+                        >
+                            Reiniciar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

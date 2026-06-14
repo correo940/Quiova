@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Lock, Mail, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { translateAuthError } from '@/lib/utils'
@@ -45,9 +46,29 @@ export default function LoginPage() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+    // Registro normal desactivado durante la fase Beta privada: solo inicio de sesión.
+    const mode = 'signin' as const
     const [showPassword, setShowPassword] = useState(false)
+    const [forgotMode, setForgotMode] = useState(false)
+    const [forgotSent, setForgotSent] = useState(false)
     const router = useRouter()
+
+    const handleForgot = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError(null)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            })
+            if (error) throw error
+            setForgotSent(true)
+        } catch (err: any) {
+            setError(translateAuthError(err.message))
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const handleClearCache = async () => {
         if (confirm('¿Estás seguro de que quieres limpiar la caché y recargar? Esto puede solucionar problemas de conexión.')) {
@@ -69,29 +90,20 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            if (mode === 'signup') {
-                const { error } = await supabase.auth.signUp({
+            const result = await Promise.race([
+                supabase.auth.signInWithPassword({
                     email,
                     password,
-                })
-                if (error) throw error
-                setError('Revisa tu email para confirmar tu cuenta.')
-            } else {
-                const result = await Promise.race([
-                    supabase.auth.signInWithPassword({
-                        email,
-                        password,
-                    }),
-                    new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
-                    ),
-                ])
-                console.log('[LOGIN] result:', JSON.stringify(result)); const { error } = result
-                if (error) throw error
+                }),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Tiempo de espera agotado al iniciar sesión')), AUTH_TIMEOUT_MS)
+                ),
+            ])
+            const { error } = result
+            if (error) throw error
 
-                router.replace('/')
-                router.refresh()
-            }
+            router.replace('/')
+            router.refresh()
         } catch (err: any) {
             setError(translateAuthError(err.message))
         } finally {
@@ -194,6 +206,47 @@ export default function LoginPage() {
                         : 'Regístrate para acceder al ecosistema'}
                 </motion.p>
 
+                {/* Forgot password mode */}
+                {forgotMode ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        {forgotSent ? (
+                            <div className="text-center py-4 space-y-3">
+                                <div className="text-4xl">✉️</div>
+                                <p className="text-sm font-medium" style={{ color: '#374151' }}>
+                                    Revisa tu email. Hemos enviado un enlace para restablecer tu contraseña a <b>{email}</b>.
+                                </p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleForgot} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold tracking-wider uppercase ml-1" style={{ color: '#065f46' }}>Email</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#9ca3af' }} />
+                                        <input
+                                            type="email" value={email} onChange={e => setEmail(e.target.value)}
+                                            className="w-full rounded-2xl py-4 pl-12 pr-4 text-sm outline-none"
+                                            style={{ background: '#ffffff', border: '1px solid #e5e7eb', color: '#111827' }}
+                                            onFocus={e => { e.target.style.borderColor = '#10b981'; e.target.style.boxShadow = '0 0 0 4px rgba(16,185,129,0.1)' }}
+                                            onBlur={e => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none' }}
+                                            placeholder="tu@email.com" required autoFocus
+                                        />
+                                    </div>
+                                </div>
+                                {error && <div className="p-4 rounded-2xl text-sm text-center border font-medium" style={{ background: '#fef2f2', borderColor: '#fee2e2', color: '#b91c1c' }}>{error}</div>}
+                                <button type="submit" disabled={loading}
+                                    className="w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 disabled:opacity-50"
+                                    style={{ background: 'linear-gradient(135deg, #228b22 0%, #1a6d1a 100%)', color: '#ffffff' }}>
+                                    {loading ? <LogoLoader size="sm" className="gap-0" /> : 'Enviar enlace'}
+                                </button>
+                            </form>
+                        )}
+                        <button onClick={() => { setForgotMode(false); setForgotSent(false); setError(null) }}
+                            className="w-full text-sm text-center" style={{ color: '#6b7280' }}>
+                            ← Volver al inicio de sesión
+                        </button>
+                    </motion.div>
+                ) : (
+                <>
                 {/* Form */}
                 <motion.form
                     initial={{ opacity: 0 }}
@@ -240,12 +293,15 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label
-                            className="text-xs font-semibold tracking-wider uppercase ml-1"
-                            style={{ color: '#065f46' }}
-                        >
-                            Contraseña
-                        </label>
+                        <div className="flex items-center justify-between ml-1">
+                            <label className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#065f46' }}>
+                                Contraseña
+                            </label>
+                            <button type="button" onClick={() => { setForgotMode(true); setError(null) }}
+                                className="text-xs font-semibold hover:underline" style={{ color: '#228b22' }}>
+                                ¿Olvidaste tu contraseña?
+                            </button>
+                        </div>
                         <div className="relative group">
                             <Lock
                                 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200"
@@ -311,25 +367,26 @@ export default function LoginPage() {
                     >
                         {loading ? (
                             <LogoLoader size="sm" className="gap-0" />
-                        ) : mode === 'signin' ? (
-                            'Iniciar Sesión'
                         ) : (
-                            'Registrarse'
+                            'Iniciar Sesión'
                         )}
                     </button>
                 </motion.form>
 
-                <div className="mt-8 text-center">
-                    <button
-                        onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                        className="text-sm font-semibold transition-all duration-200 hover:underline"
+                <div className="mt-8 text-center space-y-2">
+                    <p className="text-xs" style={{ color: '#6b7280' }}>
+                        ¿No tienes cuenta?
+                    </p>
+                    <Link
+                        href="/beta"
+                        className="inline-block text-sm font-semibold transition-all duration-200 hover:underline"
                         style={{ color: '#228b22' }}
                     >
-                        {mode === 'signin'
-                            ? '¿No tienes cuenta? Regístrate gratis'
-                            : '¿Ya tienes cuenta? Inicia sesión'}
-                    </button>
+                        Únete al programa Beta →
+                    </Link>
                 </div>
+                </>
+                )}
 
                 <div className="mt-8 pt-6 border-t flex flex-col items-center" style={{ borderColor: 'rgba(16, 185, 129, 0.1)' }}>
                     <p className="text-xs text-center mb-3 max-w-[280px]" style={{ color: '#6b7280' }}>

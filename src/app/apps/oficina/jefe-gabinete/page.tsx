@@ -1,307 +1,297 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-    ChevronLeft, Briefcase, Crown, CalendarClock, Plus, X,
-    CheckCircle2, CircleDot, Circle, ListTodo, Zap, Lock, Trash2
+    ChevronLeft, Briefcase, FolderOpen, Target,
+    AlertTriangle, Users, CheckCircle2, AlertCircle, Circle,
 } from 'lucide-react';
-import { useOficinaRegistros, type TareaGabinete } from '@/hooks/useOficinaRegistros';
+import { useOficinaRegistros } from '@/hooks/useOficinaRegistros';
+import { useFundacionQuioba } from '@/hooks/useFundacionQuioba';
+import DirectorChat from '@/components/oficina/director-chat';
+import { filtrarTareasReales } from '@/lib/oficina/tareas-reales';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
-function UrgenciaBadge({ valor }: { valor: TareaGabinete['urgencia'] }) {
-    if (valor === 'inmediata') return (
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">Inmediata</span>
-    );
-    if (valor === 'esta-semana') return (
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">Esta semana</span>
-    );
-    return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Este mes</span>;
+const DIR_LABEL: Record<string, string> = {
+    'director':              'Dir. General',
+    'director-contenido':    'Dir. Contenido',
+    'director-crecimiento':  'Dir. Crecimiento',
+    'director-tecnico':      'Dir. Técnico',
+    'jefe-gabinete':         'Jefe Gabinete',
+    'consejo-estrategico':   'Consejo',
+};
+
+const DIR_COMPLETO: Record<string, string> = {
+    'director':              'Director General',
+    'director-contenido':    'Director de Contenido',
+    'director-crecimiento':  'Director de Crecimiento',
+    'director-tecnico':      'Director Técnico',
+    'jefe-gabinete':         'Jefe de Gabinete',
+    'consejo-estrategico':   'Consejo Estratégico',
+};
+
+function PrioridadDot({ prioridad }: { prioridad?: string }) {
+    const color = prioridad === 'alta' ? 'bg-red-500' : prioridad === 'media' ? 'bg-amber-500' : 'bg-blue-400';
+    return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
 }
 
 export default function JefeGabinetePage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const {
-        tareas,
-        executionTasks,
-        cargando,
-        agregarTarea,
-        toggleEstadoExecutionTask,
-        eliminarExecutionTask,
+        expedientesOficina,
+        decisionesCorporativas,
+        tareasDirector,
+        objetivosArea,
+        biblioteca,
     } = useOficinaRegistros();
-
-    const [formOpen, setFormOpen] = useState(false);
-    const [form, setForm] = useState({
-        titulo: '',
-        urgencia: 'esta-semana' as TareaGabinete['urgencia'],
-        estado: 'pendiente' as TareaGabinete['estado'],
-        contexto: '',
-    });
-    const [err, setErr] = useState('');
+    const { fundacion } = useFundacionQuioba();
 
     useEffect(() => {
         if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.replace('/');
     }, [user, loading, router]);
 
-    if (loading || cargando || !user || user.email !== ADMIN_EMAIL) return null;
+    if (loading || !user || user.email !== ADMIN_EMAIL) return null;
 
-    function submit() {
-        if (!form.titulo.trim()) { setErr('El título es obligatorio.'); return; }
-        agregarTarea(form.titulo.trim(), form.urgencia, form.estado, form.contexto.trim());
-        setForm({ titulo: '', urgencia: 'esta-semana', estado: 'pendiente', contexto: '' });
-        setErr('');
-        setFormOpen(false);
-    }
+    // Expedientes sin decisión (filtro robusto: ignorar expedienteId nulos)
+    const expedienteIdConDecision = new Set(
+        decisionesCorporativas.map(d => d.expedienteId).filter(Boolean)
+    );
+    const expedientesSinDecision = expedientesOficina.filter(
+        e => e.estado !== 'cerrado' && !expedienteIdConDecision.has(e.id)
+    );
 
-    const completadas = executionTasks.filter(t => t.estado === 'completada').length;
-    const enProgreso = executionTasks.filter(t => t.estado === 'en-progreso').length;
-    const pendientes = executionTasks.length - completadas - enProgreso;
-    const pct = executionTasks.length > 0 ? Math.round((completadas / executionTasks.length) * 100) : 0;
-    const legacyCompletadas = tareas.filter(t => t.estado === 'completada').length;
+    // Tareas reales: excluir agrupadoras con lógica canónica (global, sin scope de director)
+    const tareasReales = filtrarTareasReales(
+        tareasDirector.filter(t => t.estado !== 'completada'),
+        objetivosArea,
+    );
 
-    const grupos: { urgencia: TareaGabinete['urgencia']; label: string }[] = [
-        { urgencia: 'inmediata', label: 'Inmediata' },
-        { urgencia: 'esta-semana', label: 'Esta semana' },
-        { urgencia: 'este-mes', label: 'Este mes' },
-    ];
+    // Objetivos con ALGUNA tarea (incluye agrupadoras para no marcar como huérfano un objetivo
+    // que el DG ya está gestionando aunque sea con tarea-resumen)
+    const objetivosConTareas = new Set(
+        tareasDirector.filter(t => t.objetivoId && t.estado !== 'completada').map(t => t.objetivoId!)
+    );
+    const objetivosSinTareas = objetivosArea.filter(
+        o => o.estado === 'activo' && !objetivosConTareas.has(o.id)
+    );
+
+    // Objetivos vencidos
+    const hoy = new Date().toISOString().slice(0, 10);
+    const objetivosVencidos = objetivosArea.filter(
+        o => o.estado === 'activo' && o.fechaObjetivo && o.fechaObjetivo < hoy
+    );
+
+    // Carga por director (solo tareas reales, sin agrupadoras)
+    const directoresActivos = [...new Set(tareasReales.map(t => t.directorId))];
+    const cargaDirectores = directoresActivos.map(id => ({
+        id,
+        label: DIR_COMPLETO[id] ?? id,
+        pendientes: tareasReales.filter(t => t.directorId === id).length,
+        enProgreso: tareasReales.filter(t => t.directorId === id && t.estado === 'en-progreso').length,
+    })).sort((a, b) => b.pendientes - a.pendientes);
+
+    const totalAlertas = expedientesSinDecision.length + objetivosSinTareas.length + objetivosVencidos.length;
+
+    const contextoChat = {
+        fundacion,
+        expedientes: expedientesOficina,
+        decisiones: decisionesCorporativas,
+        objetivos: objetivosArea,
+        tareas: tareasDirector,
+        biblioteca,
+    };
 
     return (
-        <div className="max-w-3xl mx-auto p-4 md:p-6 pb-24 space-y-6 animate-in fade-in duration-500">
-
-            <Link href="/apps/oficina" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Oficina
-            </Link>
+        <div className="h-[calc(100dvh-64px)] flex flex-col overflow-hidden">
 
             {/* Header */}
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-teal-950 via-slate-900 to-slate-950 p-8 md:p-10 shadow-xl">
-                <div className="absolute inset-0 opacity-[0.06] pointer-events-none"
-                    style={{ backgroundImage: 'linear-gradient(45deg, #14b8a6 1px, transparent 1px), linear-gradient(-45deg, #14b8a6 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-                <div className="relative space-y-4">
-                    <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-teal-400/70 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-                        <Briefcase className="w-3.5 h-3.5" /> Despacho 02 · Jefe de Gabinete
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">Jefe de<br />Gabinete</h1>
-                    <p className="text-teal-200/40 text-xs font-mono">
-                        Tareas registradas · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                </div>
-            </div>
-
-            {/* Registrar tarea */}
-            <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
-                <button
-                    onClick={() => setFormOpen(v => !v)}
-                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors"
-                >
+            <div className="px-4 md:px-6 pt-4 pb-3 border-b border-border/30 flex items-center justify-between gap-4 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                    <Link href="/apps/oficina" className="text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronLeft className="w-5 h-5" />
+                    </Link>
                     <div className="flex items-center gap-2">
-                        <Plus className="w-4 h-4 text-teal-500" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">Registrar tarea</span>
+                        <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                            <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400 leading-none">Despacho 02</p>
+                            <h1 className="font-black text-base leading-tight">Jefe de Gabinete</h1>
+                        </div>
                     </div>
-                    <span className="text-muted-foreground text-xs">{formOpen ? '▲' : '▼'}</span>
-                </button>
-                {formOpen && (
-                    <div className="border-t border-border/40 p-5 space-y-4">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tarea</label>
-                            <input
-                                className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="Ej: Preparar deck para la próxima reunión"
-                                value={form.titulo}
-                                onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Urgencia</label>
-                                <select
-                                    className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                    value={form.urgencia}
-                                    onChange={e => setForm(f => ({ ...f, urgencia: e.target.value as TareaGabinete['urgencia'] }))}
-                                >
-                                    <option value="inmediata">Inmediata</option>
-                                    <option value="esta-semana">Esta semana</option>
-                                    <option value="este-mes">Este mes</option>
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Estado</label>
-                                <select
-                                    className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                    value={form.estado}
-                                    onChange={e => setForm(f => ({ ...f, estado: e.target.value as TareaGabinete['estado'] }))}
-                                >
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="en-progreso">En progreso</option>
-                                    <option value="completada">Completada</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Contexto (opcional)</label>
-                            <textarea
-                                className="w-full bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-                                rows={3}
-                                placeholder="Detalles adicionales..."
-                                value={form.contexto}
-                                onChange={e => setForm(f => ({ ...f, contexto: e.target.value }))}
-                            />
-                        </div>
-                        {err && <p className="text-xs text-red-500">{err}</p>}
-                        <div className="flex gap-2">
-                            <button onClick={submit} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold transition-colors">
-                                Registrar tarea
-                            </button>
-                            <button onClick={() => { setFormOpen(false); setErr(''); }} className="p-2.5 rounded-xl bg-muted hover:bg-muted/70 transition-colors">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
+                </div>
+                {totalAlertas > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        {totalAlertas} alerta{totalAlertas !== 1 ? 's' : ''}
                     </div>
                 )}
             </div>
 
-            {/* Tareas */}
-            {executionTasks.length === 0 ? (
-                <div className="rounded-2xl border-2 border-dashed border-border/60 p-10 text-center space-y-3">
-                    <ListTodo className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                    <p className="font-semibold text-muted-foreground">Sin tareas registradas</p>
-                    <p className="text-xs text-muted-foreground/60 max-w-xs mx-auto leading-relaxed">
-                        El Jefe de Gabinete solo organiza tareas existentes. Registra la primera tarea para activar este despacho.
-                    </p>
+            {/* Layout */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_360px] min-h-0 overflow-hidden">
+
+                {/* Chat */}
+                <div className="flex flex-col min-h-0 border-r border-border/30">
+                    <div className="px-4 py-2 border-b border-border/20 flex-shrink-0">
+                        <p className="text-[11px] text-muted-foreground/60 font-medium">Coordinador operativo — visión global de Quioba</p>
+                    </div>
+                    <div className="flex-1 min-h-0">
+                        <DirectorChat
+                            directorId="jefe-gabinete"
+                            directorNombre="Jefe de Gabinete"
+                            accentColor="bg-teal-600"
+                            contexto={contextoChat}
+                            placeholder="¿Qué tenemos pendiente hoy?"
+                        />
+                    </div>
                 </div>
-            ) : (
-                <>
-                    {/* Barra de progreso global */}
-                    <div className="bg-card border border-teal-500/20 rounded-2xl p-5 shadow-sm space-y-3">
+
+                {/* Panel lateral */}
+                <div className="overflow-y-auto divide-y divide-border/30">
+
+                    {/* Alertas */}
+                    <div className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">Progreso global</span>
-                            <span className="text-sm font-bold tabular-nums">
-                                {completadas}<span className="text-muted-foreground font-normal">/{executionTasks.length}</span>
-                            </span>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Alertas
+                            </p>
+                            {totalAlertas === 0 && (
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Todo en orden</span>
+                            )}
                         </div>
-                        <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                                className="h-full rounded-full bg-teal-500 transition-all duration-500"
-                                style={{ width: `${pct}%` }}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>
-                                {enProgreso > 0 && <>{enProgreso} en progreso · </>}
-                                {pendientes} pendiente{pendientes !== 1 ? 's' : ''}
-                            </span>
-                            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{pct}%</span>
-                        </div>
-                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs space-y-1">
-                            <p className="font-semibold text-amber-700 dark:text-amber-300">Debug temporal</p>
-                            <p>Total tareas: {executionTasks.length}</p>
-                            <p>Completadas: {completadas}</p>
-                            <p>Total tareas legacy: {tareas.length}</p>
-                            <p>Completadas legacy: {legacyCompletadas}</p>
-                        </div>
+                        {totalAlertas === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Sin alertas activas.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {objetivosVencidos.map(o => (
+                                    <div key={o.id} className="flex items-start gap-2 p-2.5 bg-red-500/5 border border-red-500/20 rounded-xl">
+                                        <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Objetivo vencido</p>
+                                            <p className="text-xs font-semibold leading-snug truncate">{o.titulo}</p>
+                                            <p className="text-[10px] text-muted-foreground/60">📅 {o.fechaObjetivo} · {DIR_LABEL[o.directorId] ?? o.directorId}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {expedientesSinDecision.length > 0 && (
+                                    <div className="flex items-center gap-2 p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Sin decisión</p>
+                                            <p className="text-xs text-muted-foreground">{expedientesSinDecision.length} expediente{expedientesSinDecision.length !== 1 ? 's' : ''} sin procesar</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {objetivosSinTareas.length > 0 && (
+                                    <div className="flex items-center gap-2 p-2.5 bg-muted/40 border border-border/40 rounded-xl">
+                                        <Circle className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sin tareas</p>
+                                            <p className="text-xs text-muted-foreground">{objetivosSinTareas.length} objetivo{objetivosSinTareas.length !== 1 ? 's' : ''} huérfano{objetivosSinTareas.length !== 1 ? 's' : ''}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Grupos por urgencia */}
-                    {grupos.map(({ urgencia }) => {
-                        const items = executionTasks.filter(t => t.urgencia === urgencia);
-                        if (items.length === 0) return null;
-                        const itemsHechos = items.filter(t => t.estado === 'completada').length;
-                        return (
-                            <div key={urgencia} className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
-                                <div className="px-5 py-3 border-b border-border/40 flex items-center justify-between">
-                                    <UrgenciaBadge valor={urgencia} />
-                                    <span className="text-xs text-muted-foreground tabular-nums">
-                                        {itemsHechos}/{items.length}
-                                    </span>
-                                </div>
-                                <ul className="divide-y divide-border/40">
-                                    {items.map(tarea => (
-                                        <li
-                                            key={tarea.id}
-                                            className={`p-4 flex items-start gap-3 transition-colors ${tarea.estado === 'completada' ? 'bg-muted/20' : ''}`}
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    console.log(tarea.id, tarea.estado);
-                                                    toggleEstadoExecutionTask(tarea.id);
-                                                }}
-                                                className="shrink-0 mt-0.5 hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                                                title={
-                                                    tarea.estado === 'pendiente' ? 'Marcar como en progreso' :
-                                                    tarea.estado === 'en-progreso' ? 'Marcar como completada' :
-                                                    'Volver a pendiente'
-                                                }
-                                            >
-                                                {tarea.estado === 'completada' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-                                                {tarea.estado === 'en-progreso' && <CircleDot className="w-5 h-5 text-teal-500" />}
-                                                {tarea.estado === 'pendiente' && <Circle className="w-5 h-5 text-muted-foreground/40" />}
-                                            </button>
-                                            <div className="flex-1 min-w-0 space-y-1">
-                                                <p className={`text-sm font-semibold leading-snug ${tarea.estado === 'completada' ? 'line-through text-muted-foreground/60' : ''}`}>
-                                                    {tarea.title}
-                                                </p>
-                                                {tarea.contexto && tarea.contexto !== 'Analizado desde informe estratégico' && (
-                                                    <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-border pl-3">
-                                                        {tarea.contexto}
-                                                    </p>
-                                                )}
-                                                {tarea.estado === 'en-progreso' && (
-                                                    <span className="inline-block text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">En progreso</span>
-                                                )}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => eliminarExecutionTask(tarea.id)}
-                                                className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        );
-                    })}
-                </>
-            )}
-
-            {/* Acciones rápidas */}
-            <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1">Acciones rápidas</p>
-                <div className="grid grid-cols-2 gap-3">
-                    <Link
-                        href="/apps/oficina/director"
-                        className="flex flex-col items-start gap-3 p-5 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:scale-[1.02] hover:shadow-xl transition-all"
-                    >
-                        <Crown className="w-6 h-6 opacity-90" />
-                        <div><p className="font-bold text-sm">Director General</p><p className="text-xs opacity-70 mt-0.5">Informes estratégicos</p></div>
-                    </Link>
-                    <Link
-                        href="/apps/oficina/reunion-semanal"
-                        className="flex flex-col items-start gap-3 p-5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:scale-[1.02] hover:shadow-xl transition-all"
-                    >
-                        <CalendarClock className="w-6 h-6 opacity-90" />
-                        <div><p className="font-bold text-sm">Reunión Semanal</p><p className="text-xs opacity-70 mt-0.5">Plan de la semana</p></div>
-                    </Link>
-                    {[
-                        { label: 'Seguimiento', sub: 'Estado de tareas', icono: ListTodo },
-                        { label: 'Automatizaciones', sub: 'Flujos operativos', icono: Zap },
-                    ].map(a => (
-                        <div key={a.label} className="flex flex-col items-start gap-3 p-5 rounded-2xl bg-muted/40 border-2 border-dashed border-border/60 opacity-50 cursor-not-allowed">
-                            <div className="flex items-start justify-between w-full">
-                                <a.icono className="w-6 h-6 text-muted-foreground" />
-                                <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
-                            </div>
-                            <div><p className="font-bold text-sm text-foreground">{a.label}</p><p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p></div>
+                    {/* Expedientes sin decisión */}
+                    <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                                <FolderOpen className="w-3.5 h-3.5" /> Sin decisión
+                            </p>
+                            <span className="text-[10px] text-muted-foreground">{expedientesSinDecision.length}</span>
                         </div>
-                    ))}
+                        {expedientesSinDecision.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Todos los expedientes tienen decisión.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {expedientesSinDecision.map(e => (
+                                    <div key={e.id} className="p-3 bg-muted/30 border border-border/40 rounded-xl space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">{e.estado}</span>
+                                            <span className="text-[10px] text-muted-foreground/60">{e.fechaCreacion.slice(0, 10)}</span>
+                                        </div>
+                                        <p className="text-xs font-semibold leading-snug">{e.titulo}</p>
+                                        <p className="text-[11px] text-muted-foreground/60">→ {DIR_LABEL[e.directorRevisor] ?? e.directorRevisor}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Objetivos sin tareas */}
+                    <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                                <Target className="w-3.5 h-3.5" /> Objetivos huérfanos
+                            </p>
+                            <span className="text-[10px] text-muted-foreground">{objetivosSinTareas.length}</span>
+                        </div>
+                        {objetivosSinTareas.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Todos los objetivos tienen tareas.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {objetivosSinTareas.map(o => (
+                                    <div key={o.id} className="p-3 bg-muted/30 border border-border/40 rounded-xl space-y-1.5">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <PrioridadDot prioridad={o.prioridad} />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{o.prioridad}</span>
+                                            <span className="text-[10px] text-muted-foreground/60">→ {DIR_LABEL[o.directorId] ?? o.directorId}</span>
+                                        </div>
+                                        <p className="text-xs font-semibold leading-snug">{o.titulo}</p>
+                                        {o.fechaObjetivo && (
+                                            <p className="text-[10px] text-muted-foreground/50">📅 {o.fechaObjetivo}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Carga por director */}
+                    <div className="p-4 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" /> Carga por director
+                        </p>
+                        {cargaDirectores.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 py-1 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Sin tareas activas.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {cargaDirectores.map(d => (
+                                    <div key={d.id} className="flex items-center gap-3 p-2.5 bg-muted/20 border border-border/30 rounded-xl">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold truncate">{d.label}</p>
+                                            {d.enProgreso > 0 && (
+                                                <p className="text-[10px] text-teal-600 dark:text-teal-400">{d.enProgreso} en progreso</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <span className="text-sm font-black tabular-nums">{d.pendientes}</span>
+                                            <p className="text-[10px] text-muted-foreground/60">pendientes</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </div>
-
         </div>
     );
 }
