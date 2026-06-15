@@ -86,32 +86,63 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
         const toastId = toast.loading('Analizando archivo con IA...', { duration: Infinity });
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
+            if (isPdf) {
+                // PDFs use OCR pipeline
+                const formData = new FormData();
+                formData.append('file', file);
 
-            const apiUrl = getApiUrl('api/expenses/parse-receipt');
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                body: formData
-            });
+                const response = await fetch(getApiUrl('api/expenses/parse-receipt'), {
+                    method: 'POST',
+                    body: formData
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al analizar el archivo');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al analizar el PDF');
+                }
+
+                const data = await response.json();
+                toast.dismiss(toastId);
+
+                const analysis = data.analysis;
+                onScanSuccess({
+                    amount: analysis?.amount != null ? String(Math.abs(analysis.amount)) : '',
+                    concept: analysis?.issuer
+                        ? `Compra en ${analysis.issuer}`
+                        : analysis?.title || 'Gasto registrado',
+                    date: analysis?.date || new Date().toISOString().split('T')[0],
+                    merchant: analysis?.issuer || analysis?.title || ''
+                });
+            } else {
+                // Images use the same vision AI as the camera button
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const response = await fetch(getApiUrl('api/scan-receipt'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64 })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al analizar la imagen');
+                }
+
+                const data = await response.json();
+                toast.dismiss(toastId);
+
+                onScanSuccess({
+                    amount: data.amount ? String(Math.abs(data.amount)) : '',
+                    concept: data.merchant ? `Compra en ${data.merchant}` : 'Suministros varios',
+                    date: data.date || new Date().toISOString().split('T')[0],
+                    merchant: data.merchant || ''
+                });
             }
-
-            const data = await response.json();
-            toast.dismiss(toastId);
-
-            const analysis = data.analysis;
-            onScanSuccess({
-                amount: analysis?.amount != null ? String(Math.abs(analysis.amount)) : '',
-                concept: analysis?.issuer
-                    ? `Compra en ${analysis.issuer}`
-                    : analysis?.title || 'Gasto registrado',
-                date: analysis?.date || new Date().toISOString().split('T')[0],
-                merchant: analysis?.issuer || analysis?.title || ''
-            });
 
         } catch (error: any) {
             console.error('File scan error:', error);
