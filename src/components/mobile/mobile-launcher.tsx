@@ -126,7 +126,6 @@ export interface NotificationItem {
 interface MobileLauncherProps {
     onLaunchDesktop: () => void;
     user: any;
-    onSwitchToSmart?: () => void;
 }
 
 const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Light) => {
@@ -137,7 +136,7 @@ const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Light) => {
     }
 };
 
-export default function MobileLauncher({ onLaunchDesktop, user: initialUser, onSwitchToSmart }: MobileLauncherProps) {
+export default function MobileLauncher({ onLaunchDesktop, user: initialUser }: MobileLauncherProps) {
     const router = useRouter();
     const { setIsOpen: setIsJournalOpen } = useJournal();
     const [mounted, setMounted] = useState(false);
@@ -1516,15 +1515,6 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser, onS
 
                 </div>
 
-                {onSwitchToSmart && (
-                    <button
-                        onClick={onSwitchToSmart}
-                        className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-indigo-400 active:text-indigo-600 active:scale-95 transition-all"
-                    >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Inicio Inteligente
-                    </button>
-                )}
 
             </header>
 

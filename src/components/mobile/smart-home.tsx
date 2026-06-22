@@ -4,14 +4,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
     Sparkles, CheckSquare, ShoppingCart, LayoutGrid,
-    Lock, ChevronRight, ArrowLeft,
+    Lock, ChevronRight,
     Settings, ShoppingBag, ChefHat, ListTodo, Calendar,
     FileText, KeyRound, MessageCircle, Monitor,
     Leaf, Brain, GraduationCap, Building2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAi } from '@/context/AiContext';
-import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import { AppWithStatus } from '@/types/marketplace';
 
 // ── Icon mapping (mismo subconjunto que MobileLauncher) ──────────────
@@ -110,7 +109,6 @@ function SkeletonLines({ count }: { count: number }) {
 // ── Componente principal ──────────────────────────────────────────────
 export default function SmartHome({ user }: SmartHomeProps) {
     const { setIsOpen: openAi } = useAi();
-    const { setHomeMode } = useGlobalMenu();
 
     const [mounted, setMounted] = useState(false);
     const [profile, setProfile] = useState<{ nickname?: string } | null>(null);
@@ -395,20 +393,6 @@ export default function SmartHome({ user }: SmartHomeProps) {
                 )}
             </section>
 
-            {/* ── Footer fijo: volver a Inicio Clásico ─────────── */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 px-5 py-3 flex items-center justify-between">
-                <button
-                    onClick={() => setHomeMode('classic')}
-                    className="flex items-center gap-2 text-sm text-slate-500 active:text-slate-800 active:scale-95 transition-all"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Volver a Inicio Clásico
-                </button>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                </div>
-            </div>
 
         </main>
     );

@@ -113,7 +113,7 @@ export default function Taskbar() {
         },
         {
             id: 'home',
-            label: 'Dashboard',
+            label: 'Inicio',
             icon: (active: boolean) => {
                 const styles = getIconStyles('home', active);
                 return (
@@ -127,7 +127,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/desktop',
+            href: isMobile ? '/' : '/desktop',
         },
         {
             id: 'apps',
@@ -146,7 +146,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/',
+            href: '/launcher',
         },
         {
             id: 'articles',

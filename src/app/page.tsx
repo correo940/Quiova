@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
-import MobileLauncher from '@/components/mobile/mobile-launcher';
 import SmartHome from '@/components/mobile/smart-home';
 import { Capacitor } from '@capacitor/core';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
@@ -34,7 +32,7 @@ function HomeContent() {
   const { user, loading } = useAuth();
   const [isLauncherMode, setIsLauncherMode] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const { setIsLauncherMode: setGlobalLauncherMode, homeMode, setHomeMode } = useGlobalMenu();
+  const { setIsLauncherMode: setGlobalLauncherMode } = useGlobalMenu();
 
   useEffect(() => {
     const isNative = Capacitor.isNativePlatform();
@@ -76,16 +74,7 @@ function HomeContent() {
   }
 
   if (isLauncherMode && user) {
-    if (homeMode === 'smart') {
-      return <SmartHome user={user} />;
-    }
-    return (
-      <MobileLauncher
-        user={user}
-        onLaunchDesktop={() => setIsLauncherMode(false)}
-        onSwitchToSmart={() => setHomeMode('smart')}
-      />
-    );
+    return <SmartHome user={user} />;
   }
 
   return (
