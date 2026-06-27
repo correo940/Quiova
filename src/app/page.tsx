@@ -17,6 +17,8 @@ const PILLARS_KNOWLEDGE = [
   {
     name: 'Cuerpo',
     logo: '/images/logo-cuerpo.png',
+    photo: '/images/photo-cuerpo.jpg',
+    photoPosition: 'center center',
     color: '#1a5c2e',
     tagColor: '#166534',
     desc: 'Entiende tu cuerpo y mejora tu bienestar diario.',
@@ -28,6 +30,8 @@ const PILLARS_KNOWLEDGE = [
   {
     name: 'Mente',
     logo: '/images/logo-mente.png',
+    photo: '/images/photo-mente.jpg',
+    photoPosition: 'right center',
     color: '#1558a8',
     tagColor: '#1d4ed8',
     desc: 'Desarrolla tu mente y alcanza tu mejor versión.',
@@ -39,6 +43,8 @@ const PILLARS_KNOWLEDGE = [
   {
     name: 'Finanzas',
     logo: '/images/logo-finanzas.png',
+    photo: '/images/photo-finanzas.jpg',
+    photoPosition: 'right center',
     color: '#b87514',
     tagColor: '#b45309',
     desc: 'Toma el control de tu dinero y tu futuro.',
@@ -356,92 +362,207 @@ export default function HomePage() {
       <VideoScenarios />
 
       {/* ── 3 + 4. CONOCIMIENTO + HERRAMIENTAS ──────────────────────────────── */}
-      <section className="py-20 px-6" style={{ backgroundColor: '#f8fafc' }}>
-        <div className="max-w-7xl mx-auto grid md:grid-cols-5 gap-10 xl:gap-16 items-start">
+      <section className="py-24 px-6" style={{ backgroundColor: '#f8fafc' }}>
+        <div className="max-w-7xl mx-auto">
 
-          {/* LEFT: Lo que puedes aprender (3 cols) */}
-          <div className="md:col-span-3">
-            <div className="flex items-end justify-between mb-8 flex-wrap gap-3">
-              <h2 className="text-2xl md:text-3xl font-black leading-tight" style={{ color: '#0f172a' }}>
-                Lo que puedes aprender en QUIOBA
-              </h2>
-              <Link href="/articles" className="text-sm font-bold flex items-center gap-1 flex-shrink-0 transition-opacity hover:opacity-70" style={{ color: '#1a5c2e' }}>
-                Ver todo el contenido <ArrowRight size={13} />
-              </Link>
+          {/* Two-column layout: 65% left / 35% right */}
+          <div className="grid md:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-10 xl:gap-14 items-start">
+
+            {/* ── LEFT: Lo que puedes aprender ── */}
+            <div>
+              {/* Header */}
+              <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-black leading-tight mb-2" style={{ color: '#0f172a' }}>
+                    Lo que puedes aprender<br className="hidden sm:block" /> en QUIOBA
+                  </h2>
+                  <p className="text-base" style={{ color: '#64748b' }}>
+                    Conocimiento práctico para mejorar tu vida, mente y dinero.
+                  </p>
+                </div>
+                <Link
+                  href="/articles"
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-bold transition-opacity hover:opacity-70 mt-1"
+                  style={{ color: '#1a5c2e' }}
+                >
+                  Ver todo el contenido <ArrowRight size={13} />
+                </Link>
+              </div>
+
+              {/* Pillar cards */}
+              <div className="flex flex-col gap-5">
+                {PILLARS_KNOWLEDGE.map((p) => (
+                  <div
+                    key={p.name}
+                    className="rounded-2xl overflow-hidden flex"
+                    style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 20px rgba(0,0,0,0.07)', border: '1px solid #f1f5f9' }}
+                  >
+                    {/* Content — fills available space */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-6 pt-6 pb-4 gap-4">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: p.color + '12', boxShadow: `0 0 0 1px ${p.color}20` }}
+                          >
+                            <Image src={p.logo} alt={p.name} width={26} height={26} className="object-contain" />
+                          </div>
+                          <div>
+                            <p className="font-black text-lg leading-tight" style={{ color: p.color }}>
+                              QUIOBA {p.name}
+                            </p>
+                            <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>{p.desc}</p>
+                          </div>
+                        </div>
+                        <Link
+                          href={p.href}
+                          className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-opacity hover:opacity-70"
+                          style={{ backgroundColor: p.color + '12', color: p.color }}
+                        >
+                          Ver más →
+                        </Link>
+                      </div>
+
+                      {/* Category chips */}
+                      <div className="flex flex-wrap gap-2 px-6 pb-4">
+                        {p.cats.map((cat) => (
+                          <span
+                            key={cat}
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                            style={{ backgroundColor: p.color + '0d', color: p.tagColor }}
+                          >
+                            <span style={{ color: p.color, fontWeight: 700 }}>✓</span> {cat}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Featured article */}
+                      <div className="px-6 pb-6 mt-auto">
+                        <Link
+                          href={p.articleHref}
+                          className="group/art flex items-center gap-3 p-4 rounded-xl transition-all hover:scale-[1.01]"
+                          style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}
+                        >
+                          <div
+                            className="w-14 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+                            style={{ backgroundColor: p.color + '18' }}
+                          >
+                            <Image src={p.logo} alt="" width={20} height={20} className="object-contain opacity-60" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Artículo destacado</p>
+                            <p className="text-sm font-black leading-tight truncate" style={{ color: '#0f172a' }}>{p.articleTitle}</p>
+                          </div>
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover/art:translate-x-0.5"
+                            style={{ backgroundColor: p.color + '15', color: p.color }}
+                          >
+                            <ArrowRight size={12} />
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Photo — clamp(220px, 32%, 360px), hidden below lg */}
+                    <div
+                      className="group hidden lg:block relative flex-shrink-0 overflow-hidden"
+                      style={{ width: 'clamp(220px, 32%, 360px)' }}
+                    >
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 z-10 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,.7) 25%, rgba(255,255,255,.2) 50%, rgba(255,255,255,0) 70%)',
+                        }}
+                      />
+                      <Image
+                        src={p.photo}
+                        alt={p.name}
+                        fill
+                        className="object-cover transition-[transform,filter] duration-300 ease-out group-hover:scale-[1.03] group-hover:brightness-105"
+                        style={{ objectPosition: p.photoPosition }}
+                        sizes="260px"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-col divide-y divide-slate-200">
-              {PILLARS_KNOWLEDGE.map((p, idx) => (
-                <div key={p.name} className={`flex flex-col gap-4 ${idx === 0 ? 'pb-7' : idx === PILLARS_KNOWLEDGE.length - 1 ? 'pt-7' : 'py-7'}`}>
-                  {/* Pillar header */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+            {/* ── RIGHT: Las herramientas ── */}
+            <div className="sticky top-24 flex flex-col gap-6">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-black leading-tight mb-2" style={{ color: '#0f172a' }}>
+                  Las herramientas<br /> de QUIOBA
+                </h2>
+                <p className="text-base mb-6" style={{ color: '#64748b' }}>
+                  Todo lo que necesitas en un único lugar.
+                </p>
+              </div>
+
+              <ProductMockup />
+
+              {/* Benefits card */}
+              <div
+                className="rounded-2xl p-5"
+                style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9' }}
+              >
+                <div className="flex flex-col gap-4">
+                  {[
+                    { icon: '📂', title: 'Todo centralizado', desc: 'Documentos, seguros, recordatorios y más en un panel.' },
+                    { icon: '🔔', title: 'Sin olvidar nada', desc: 'Recordatorios automáticos de vencimientos y citas.' },
+                    { icon: '🎓', title: 'Aprende mientras organizas', desc: 'El Campus QUIOBA conecta conocimiento con tu vida real.' },
+                  ].map((b) => (
+                    <div key={b.title} className="flex items-start gap-3">
                       <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                        style={{ backgroundColor: '#f1f5f9' }}
                       >
-                        <Image src={p.logo} alt={p.name} width={22} height={22} className="object-contain" />
+                        {b.icon}
                       </div>
                       <div>
-                        <p className="font-black text-base leading-tight" style={{ color: p.color }}>
-                          QUIOBA {p.name}
-                        </p>
-                        <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>{p.desc}</p>
+                        <p className="font-black text-sm leading-tight" style={{ color: '#0f172a' }}>{b.title}</p>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#64748b' }}>{b.desc}</p>
                       </div>
                     </div>
-                    <Link href={p.href} className="text-xs font-bold flex-shrink-0 transition-opacity hover:opacity-70" style={{ color: p.color }}>
-                      Ver más →
-                    </Link>
-                  </div>
-
-                  {/* Categories */}
-                  <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-                    {p.cats.map((cat) => (
-                      <span key={cat} className="flex items-center gap-1.5 text-sm">
-                        <span style={{ color: p.color, fontWeight: 700 }}>✓</span>
-                        <span style={{ color: '#374151' }}>{cat}</span>
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Featured article */}
-                  <Link
-                    href={p.articleHref}
-                    className="group flex items-center gap-3 p-3.5 rounded-xl transition-all hover:scale-[1.01]"
-                    style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0' }}
-                  >
-                    {/* Thumbnail placeholder */}
-                    <div
-                      className="w-16 h-12 rounded-lg flex-shrink-0 flex items-center justify-center"
-                      style={{ backgroundColor: p.color + '18' }}
-                    >
-                      <Image src={p.logo} alt="" width={22} height={22} className="object-contain opacity-60" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold mb-0.5" style={{ color: '#94a3b8' }}>Artículo destacado</p>
-                      <p className="text-sm font-black leading-tight truncate" style={{ color: '#0f172a' }}>{p.articleTitle}</p>
-                    </div>
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-                      style={{ backgroundColor: p.color + '15', color: p.color }}
-                    >
-                      <ArrowRight size={12} />
-                    </div>
-                  </Link>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* RIGHT: Las herramientas (2 cols) */}
-          <div className="md:col-span-2">
-            <h2 className="text-2xl md:text-3xl font-black mb-6 leading-tight" style={{ color: '#0f172a' }}>
-              Las herramientas de QUIOBA
-            </h2>
-            <div className="sticky top-24">
-              <ProductMockup />
+          {/* ── BOTTOM: Campus full-width card ── */}
+          <div
+            className="mt-12 rounded-3xl overflow-hidden relative flex flex-col md:flex-row items-center justify-between gap-8 px-10 py-10"
+            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1a5c2e 100%)', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+          >
+            {/* Decorative circle */}
+            <div
+              aria-hidden="true"
+              className="absolute right-0 top-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
+              style={{ background: 'radial-gradient(circle, #4ade80, transparent)', transform: 'translate(30%, -30%)' }}
+            />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#bbf7d0' }}>
+                🎓 El Campus QUIOBA
+              </div>
+              <h3 className="text-2xl md:text-3xl font-black text-white leading-tight mb-2">
+                Aprende. Aplica. Mejora.
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: 480 }}>
+                Artículos, guías y recursos prácticos sobre cuerpo, mente y finanzas — diseñados para que el conocimiento cambie tu vida real.
+              </p>
             </div>
+            <Link
+              href="/articles"
+              className="relative z-10 flex-shrink-0 inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl text-sm font-black transition-all hover:scale-[1.03] active:scale-95"
+              style={{ backgroundColor: '#ffffff', color: '#0f172a', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+            >
+              Ir al Campus <ArrowRight size={14} />
+            </Link>
           </div>
+
         </div>
       </section>
 
