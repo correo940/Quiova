@@ -1,5 +1,5 @@
 'use client';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
 const VIDEO_SCENARIOS = [
   {
@@ -50,21 +50,45 @@ const VIDEO_SCENARIOS = [
 
 function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnter = () => {
-    videoRef.current?.play();
-  };
+  // En móvil/táctil: reproducir al entrar en viewport
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container || !s.videoSrc) return;
 
+    const isTouchDevice = window.matchMedia('(hover: none)').matches;
+    if (!isTouchDevice) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+            video.currentTime = 0;
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [s.videoSrc]);
+
+  // En desktop: reproducir al hacer hover
+  const handleMouseEnter = () => { videoRef.current?.play(); };
   const handleMouseLeave = () => {
     const v = videoRef.current;
-    if (v) {
-      v.pause();
-      v.currentTime = 0;
-    }
+    if (v) { v.pause(); v.currentTime = 0; }
   };
 
   return (
     <div
+      ref={containerRef}
       className="flex flex-col rounded-2xl overflow-hidden"
       style={{
         backgroundColor: '#ffffff',
