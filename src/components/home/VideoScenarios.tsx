@@ -36,6 +36,7 @@ const VIDEO_SCENARIOS = [
     colorLight: '#ecfeff',
     title: 'Toda tu información, organizada',
     desc: 'Accede en segundos a todo lo importante desde un único panel diseñado para simplificar tu vida.',
+    videoSrc: '/videos/documentos.mp4',
   },
   {
     id: 'recordatorios',
