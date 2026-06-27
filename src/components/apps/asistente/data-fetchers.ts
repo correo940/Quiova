@@ -111,9 +111,8 @@ export async function fetchMedicines(ctx: AssistantDataContext) {
 // Fetch insurances
 export async function fetchInsurances(ctx: AssistantDataContext) {
     const { data: insurances } = await supabase
-        .from('insurances')
+        .from('v_insurance_policies')
         .select('id, name, provider, policy_number, expiration_date, cost')
-        .eq('user_id', ctx.userId)
         .order('expiration_date', { ascending: true });
 
     const expiringSoon = insurances?.filter(i => {

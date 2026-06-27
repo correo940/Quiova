@@ -114,7 +114,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
 
                 <div className="flex-1 flex justify-center">
                     {viewMode === 'day' ? (
-                        <div className="flex flex-col items-center justify-center py-1 px-3 rounded-lg bg-green-800 text-white shadow font-bold min-w-[80px]">
+                        <div className="flex flex-col items-center justify-center py-1 px-3 rounded-lg bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 font-bold min-w-[80px]">
                             <span className="text-[10px] uppercase tracking-wide leading-none mb-0.5 text-green-200">
                                 {format(current, 'eeee', { locale: es })}
                             </span>
@@ -152,7 +152,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                                 className={cn(
                                     "flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-200 active:scale-95",
                                     isSelected
-                                        ? "bg-green-800 text-white shadow-md font-bold"
+                                        ? "bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 font-bold"
                                         : isTodayDate
                                             ? "bg-green-50 text-slate-800 border border-green-500/50 hover:bg-green-100 dark:bg-green-900/30 dark:text-slate-100"
                                             : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"

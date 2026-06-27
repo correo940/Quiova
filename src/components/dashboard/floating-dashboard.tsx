@@ -102,7 +102,6 @@ export default function FloatingDashboard() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        toast.success('Sesión cerrada');
         router.refresh();
     };
 

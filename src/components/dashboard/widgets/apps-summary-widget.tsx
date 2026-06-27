@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAi } from '@/context/AiContext';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { useDailyNotifications } from '@/hooks/useDailyNotifications';
@@ -68,6 +69,7 @@ function saveOrder(userId: string, keys: string[]) {
 
 export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: { selectedDate?: Date; onDateSelect?: (date: Date | undefined) => void; user: User | null }) {
     const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
+    const pathname = usePathname();
     const [stats, setStats] = useState({
         shoppingCount: 0,
         taskCount: 0,
@@ -188,7 +190,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', user.id); rCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { }
                 try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }).eq('user_id', user.id); passCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('insurances').select('*', { count: 'exact', head: true }).eq('user_id', user.id); iCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('knowledge_entities').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('entity_type', 'insurance_policy').eq('status', 'active'); iCount = count || 0; } catch (e) { }
                 setStats({
                     shoppingCount: sCount || 0,
                     taskCount: tCount || 0,
@@ -363,66 +365,91 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
     const displayedItems = showAll ? sortedItems : sortedItems.slice(0, VISIBLE_COUNT);
     const hiddenCount = sortedItems.length - VISIBLE_COUNT;
 
+    const isCalm = !loading && stats.taskCount === 0;
+    const statusColor = isCalm
+        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+        : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400';
+    const statusDot = isCalm ? 'bg-emerald-500' : 'bg-amber-500';
+    const statusLabel = isCalm ? 'Todo está bajo control' : 'Hoy tienes cosas importantes';
+    const statusDesc = isCalm
+        ? 'No tienes tareas urgentes ni vencimientos importantes hoy.'
+        : `Tienes ${stats.taskCount} tarea${stats.taskCount > 1 ? 's' : ''} pendiente${stats.taskCount > 1 ? 's' : ''} para hoy.`;
+
     return (
         <Card className="h-full overflow-hidden border-none shadow-md bg-white dark:bg-slate-950 flex flex-col relative">
-            <CardHeader className="pb-2 pt-3 shrink-0 relative z-10 px-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <CardTitle className="text-xl font-bold flex items-center gap-3 text-slate-800 dark:text-slate-100 font-headline tracking-tight">
-                            <Link href="/profile">
-                                <Avatar className="w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-primary/20">
-                                    <AvatarImage src={userProfile?.profile?.custom_avatar_url || userProfile?.user_metadata?.avatar_url} className="object-cover" />
-                                    <AvatarFallback>{userProfile?.profile?.nickname?.[0] || 'U'}</AvatarFallback>
-                                </Avatar>
-                            </Link>
-                            {dateInfo.greeting}{userProfile?.profile?.nickname ? `, ${userProfile.profile.nickname.split(' ')[0]}` : ''}
-                        </CardTitle>
-                        <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 hidden sm:block">
-                            {dateInfo.fullDate} • {dateInfo.time}
-                        </span>
+            <CardHeader className="pb-2 pt-3 shrink-0 relative z-10 px-6 lg:px-8">
+                <div className="flex items-center justify-between gap-4">
+
+                    {/* ── Bienvenida ─────────────────────────────────────── */}
+                    <div className="flex flex-col gap-1 min-w-0">
+                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white">
+                            {dateInfo.greeting}{userProfile?.profile?.nickname ? `, ${userProfile.profile.nickname.split(' ')[0]}` : ''} 👋
+                        </h1>
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500 capitalize">
+                            {dateInfo.fullDate}
+                        </p>
+                        {!loading && (
+                            <span className={`self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot}`} />
+                                {statusLabel}
+                            </span>
+                        )}
                     </div>
 
-                    {/* NUEVO CALENDARIO EN MEDIO */}
+                    {/* ── Calendario (desktop) ────────────────────────────── */}
                     <div className="flex-1 min-w-0 hidden lg:flex justify-center px-4 max-w-2xl">
                         {onDateSelect && (
-                            <TopbarCalendar 
-                                selectedDate={selectedDate} 
-                                onDateSelect={onDateSelect} 
-                                user={user} 
+                            <TopbarCalendar
+                                selectedDate={selectedDate}
+                                onDateSelect={onDateSelect}
+                                user={user}
                             />
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    {/* ── Botón Apps + Diario ─────────────────────────────── */}
+                    <div className="shrink-0 flex items-center gap-2">
                         <button
                             onClick={() => {
                                 const newVal = !isAppsMinimized;
                                 setIsAppsMinimized(newVal);
                                 localStorage.setItem('quioba_apps_minimized', String(newVal));
                             }}
-                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
-                                isAppsMinimized 
-                                    ? 'bg-primary/10 text-primary hover:bg-primary/20' 
-                                    : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
-                            }`}
+                            className="w-[52px] h-[22px] flex items-center justify-center gap-1 rounded-full text-[10px] font-semibold transition-all duration-200 bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:shadow-green-900/50 hover:scale-105"
                             title={isAppsMinimized ? 'Mostrar aplicaciones' : 'Minimizar aplicaciones'}
                         >
-                            <span className="hidden sm:inline">{isAppsMinimized ? 'Apps' : 'Apps'}</span>
-                            {isAppsMinimized ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                            <span className="hidden sm:inline">Apps</span>
+                            {isAppsMinimized ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                         </button>
+                        <span className="w-px h-3 bg-border" />
+                        <div className="hidden sm:flex flex-col items-center gap-1">
+                            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-700/50 leading-none text-center w-full">Dashboard</span>
+                            <div className="relative flex items-center bg-amber-50 border border-amber-200/60 rounded-full p-0.5 gap-0">
+                                <div className={`absolute top-0.5 h-[22px] w-[52px] rounded-full bg-amber-200 shadow-sm transition-all duration-200 ease-out ${pathname === '/apps/resumen-diario' ? 'left-[54px]' : 'left-0.5'}`} />
+                                <Link
+                                    href="/desktop"
+                                    className={`relative z-10 w-[52px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-semibold transition-colors duration-150 ${pathname === '/desktop' ? 'text-amber-900' : 'text-amber-400 hover:text-amber-600'}`}
+                                >
+                                    Classic
+                                </Link>
+                                <Link
+                                    href="/apps/resumen-diario"
+                                    className={`relative z-10 w-[52px] h-[22px] flex items-center justify-center rounded-full text-[10px] font-semibold transition-colors duration-150 ${pathname === '/apps/resumen-diario' ? 'text-amber-900' : 'text-amber-400 hover:text-amber-600'}`}
+                                >
+                                    Modern
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {/* Mobile Date fallback & Calendar */}
-                <div className="lg:hidden flex flex-col gap-2 mt-2 w-full">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest sm:hidden">
-                        {dateInfo.fullDate} • {dateInfo.time}
-                    </div>
+
+                {/* ── Calendario (mobile) ─────────────────────────────────── */}
+                <div className="lg:hidden mt-4">
                     {onDateSelect && (
-                        <TopbarCalendar 
-                            selectedDate={selectedDate} 
-                            onDateSelect={onDateSelect} 
-                            user={user} 
+                        <TopbarCalendar
+                            selectedDate={selectedDate}
+                            onDateSelect={onDateSelect}
+                            user={user}
                         />
                     )}
                 </div>
@@ -431,7 +458,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 isAppsMinimized ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
             }`}>
                 <div className="overflow-hidden">
-                    <CardContent className="flex-1 min-h-0 flex flex-col gap-2 pb-3">
+                    <CardContent className="flex-1 min-h-0 flex flex-col gap-2 pb-2 pt-0">
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <LogoLoader size="md" />
@@ -465,7 +492,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                 }}
                                                 draggable={false}
                                             >
-                                                <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[72px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
+                                                <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[60px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
                                                     ? 'border-primary/70 shadow-sm shadow-primary/10'
                                                     : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
                                                     } ${item.count === 0 ? 'opacity-50' : ''}`}>

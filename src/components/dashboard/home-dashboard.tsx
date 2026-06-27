@@ -38,9 +38,9 @@ export default function HomeDashboard() {
     if (isMobile) return null;
 
     return (
-        <div className="flex flex-col lg:overflow-hidden lg:h-[calc(100dvh-64px)]">
+        <div className="flex flex-col overflow-hidden h-[calc(100dvh-64px)]">
             {/* Fila Superior: Resumen de Apps con Calendario Integrado */}
-            <div className="shrink-0 px-4 pt-3 w-full">
+            <div className="shrink-0 px-4 pt-2 w-full">
                 <AppsSummaryWidget
                     selectedDate={selectedDate}
                     onDateSelect={setSelectedDate}
@@ -49,7 +49,7 @@ export default function HomeDashboard() {
             </div>
 
             {/* Layout Principal: Organizador a pantalla completa */}
-            <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3 w-full lg:overflow-hidden pb-28 lg:pb-4">
+            <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-2 w-full overflow-hidden pb-28 lg:pb-4">
                 <div className="flex-1 min-h-0 min-w-0 w-full">
                     <OrganizerWidget
                         selectedDate={selectedDate}

@@ -12,6 +12,7 @@ import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { classifyInsuranceType, labelForInsuranceType } from '@/lib/document-engine/classify-insurance';
 
 type Insurance = {
     id: string;
@@ -48,13 +49,13 @@ export default function InsuranceManager() {
         try {
             setLoading(true);
             const { data, error } = await supabase
-                .from('insurances')
-                .select('*')
+                .from('v_insurance_policies')
+                .select('id, name, provider, cost, expiration_date, notes')
                 .order('expiration_date', { ascending: true });
 
             if (error) throw error;
 
-            const mappedPolicies: Insurance[] = data.map((item: any) => ({
+            const mappedPolicies: Insurance[] = (data || []).map((item: any) => ({
                 id: item.id,
                 type: item.name,
                 company: item.provider || '',
@@ -80,29 +81,34 @@ export default function InsuranceManager() {
 
         try {
             const { data, error } = await supabase
-                .from('insurances')
-                .insert([
-                    {
-                        user_id: user.id,
-                        name: type,
-                        provider: company,
-                        cost: Number(price) || 0,
-                        expiration_date: expirationDate,
-                        notes: notes,
+                .from('knowledge_entities')
+                .insert([{
+                    user_id: user.id,
+                    entity_type: 'insurance_policy',
+                    business_key: `manual_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    source_document_id: null,
+                    attributes: {
+                        name: `${type}${company ? ` ${company}` : ''}`.trim(),
+                        insurance_type: classifyInsuranceType(`${type} ${company}`),
+                        provider: company || null,
+                        annual_cost: price ? String(Number(price)) : null,
+                        coverage_summary: notes || null,
                     },
-                ])
-                .select()
+                    valid_until: expirationDate || null,
+                    status: 'active',
+                }])
+                .select('id')
                 .single();
 
             if (error) throw error;
 
             const newPolicy: Insurance = {
                 id: data.id,
-                type: data.name,
-                company: data.provider || '',
-                price: Number(data.cost) || 0,
-                expirationDate: data.expiration_date,
-                notes: data.notes || '',
+                type,
+                company,
+                price: Number(price) || 0,
+                expirationDate: expirationDate,
+                notes: notes || '',
             };
 
             setPolicies([...policies, newPolicy].sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
@@ -120,7 +126,7 @@ export default function InsuranceManager() {
 
         try {
             const { error } = await supabase
-                .from('insurances')
+                .from('knowledge_entities')
                 .delete()
                 .eq('id', id);
 

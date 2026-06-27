@@ -99,9 +99,9 @@ export default function SecretariaMonthlySyncPage() {
         supabase.from('documents').select('name, expiry_date')
           .eq('user_id', u.id).not('expiry_date', 'is', null)
           .gte('expiry_date', now.toISOString()).lte('expiry_date', in30Days),
-        supabase.from('insurances').select('name, renewal_date')
-          .eq('user_id', u.id).not('renewal_date', 'is', null)
-          .gte('renewal_date', now.toISOString()).lte('renewal_date', in30Days),
+        supabase.from('v_insurance_policies').select('name, expiration_date')
+          .not('expiration_date', 'is', null)
+          .gte('expiration_date', now.toISOString()).lte('expiration_date', in30Days),
         supabase.from('medicines').select('name, expiration_date')
           .eq('user_id', u.id).not('expiration_date', 'is', null)
           .gte('expiration_date', now.toISOString()).lte('expiration_date', in30Days),
@@ -109,7 +109,7 @@ export default function SecretariaMonthlySyncPage() {
 
       const expirations = [
         ...(docs.data || []).map((d: any) => ({ type: '📄', name: d.name, date: d.expiry_date })),
-        ...(insurances.data || []).map((i: any) => ({ type: '🛡️', name: i.name, date: i.renewal_date })),
+        ...(insurances.data || []).map((i: any) => ({ type: '🛡️', name: i.name, date: i.expiration_date })),
         ...(meds.data || []).map((m: any) => ({ type: '💊', name: m.name, date: m.expiration_date })),
       ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setUpcomingExpirations(expirations);

@@ -112,7 +112,6 @@ export default function HeaderAuth() {
     const handleLogout = async () => {
         if (!window.confirm('¿Seguro que quieres cerrar sesión?')) return;
         await supabase.auth.signOut();
-        toast.success('Sesión cerrada');
         router.refresh();
     };
 
@@ -124,7 +123,7 @@ export default function HeaderAuth() {
                     onClick={() => isRunning ? stopSession() : startSession()}
                     size="sm"
                     title={isRunning ? `Tiempo: ${formatTime(elapsedSec)} — click para parar` : 'Iniciar sesión de trabajo'}
-                    className={`gap-2 rounded-full hidden sm:flex group relative overflow-hidden ${isRunning ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+                    className="gap-2 rounded-full hidden sm:flex group relative overflow-hidden bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:shadow-green-900/50"
                 >
                     <Sparkles className="w-4 h-4" />
                     {isRunning ? (
@@ -140,7 +139,7 @@ export default function HeaderAuth() {
                 <div className="relative">
                     <button
                         onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-green-800 text-white shadow-md hover:scale-110 transition-transform"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:scale-110 transition-transform"
                         title="Acciones Rápidas"
                     >
                         <motion.div animate={{ rotate: isActionMenuOpen ? 45 : 0 }}>
@@ -201,7 +200,7 @@ export default function HeaderAuth() {
                 {/* Quioba Bot Button */}
                 <button
                     onClick={() => setAiPanelOpen(true)}
-                    className="relative w-8 h-8 flex items-center justify-center rounded-full bg-green-800 shadow-md hover:scale-110 transition-transform overflow-hidden"
+                    className="relative w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-green-600 to-green-800 shadow-md shadow-green-900/30 hover:scale-110 transition-transform overflow-hidden"
                     title="IA de Quioba"
                 >
                     <div className="relative w-6 h-6 overflow-hidden rounded-full border border-indigo-200 bg-white flex items-center justify-center text-sm">

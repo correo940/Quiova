@@ -223,7 +223,6 @@ export default function StartMenu() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        toast.success('Sesión cerrada');
         router.refresh();
         closeStartMenu();
     };

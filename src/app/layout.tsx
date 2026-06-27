@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as SonnerToaster } from 'sonner';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import Taskbar from '@/components/layout/taskbar';
@@ -101,17 +99,6 @@ export default function RootLayout({
                 <Taskbar />
                 <MobileNav />
               </div>
-              <Toaster />
-              <SonnerToaster
-                position="top-right"
-                gap={8}
-                toastOptions={{
-                  unstyled: true,
-                  classNames: {
-                    toast: 'w-full',
-                  },
-                }}
-              />
               <CookieBanner />
             </ClientProvider>
           </WorkSessionProvider>

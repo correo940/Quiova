@@ -1,10 +1,11 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { extractTextFromFile } from '@/lib/document-engine/ocr';
+import { extractStructuredJson } from '@/lib/document-engine/llm-extract';
 
 export const runtime = 'nodejs';
 
-const OPENROUTER_MODEL = 'meta-llama/llama-3.3-70b-instruct';
-const ALLOWED_CATEGORIES = ['Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Otros'];
+const ALLOWED_CATEGORIES = ['Identidad', 'Vehiculo', 'Seguro', 'Hogar', 'Salud', 'Finanzas', 'Hipoteca', 'Suministro', 'Otros'];
 const MAX_METADATA_FIELDS = 12;
 const MIN_EXTRACTED_TEXT_LENGTH = 20;
 
@@ -72,7 +73,23 @@ function inferDocumentType(category: string, lower: string) {
   if (category === 'Seguro') return /hogar/.test(lower) ? 'Seguro de hogar' : /salud/.test(lower) ? 'Seguro de salud' : /coche|vehiculo/.test(lower) ? 'Seguro de vehiculo' : 'Poliza';
   if (category === 'Salud') return /receta/.test(lower) ? 'Receta' : /analitica/.test(lower) ? 'Analitica' : /informe/.test(lower) ? 'Informe medico' : 'Documento de salud';
   if (category === 'Finanzas') return /factura/.test(lower) ? 'Factura' : /recibo/.test(lower) ? 'Recibo' : /nomina/.test(lower) ? 'Nomina' : 'Documento financiero';
-  if (category === 'Hogar') return /contrato/.test(lower) ? 'Contrato' : /garantia/.test(lower) ? 'Garantia' : /suministro|luz|agua|gas/.test(lower) ? 'Suministro' : 'Documento de hogar';
+  if (category === 'Hogar') return /contrato/.test(lower) ? 'Contrato' : /garantia/.test(lower) ? 'Garantia' : 'Documento de hogar';
+  if (category === 'Suministro') {
+    if (/electricidad|\bluz\b|kwh|endesa|iberdrola|naturgy/i.test(lower)) return 'Factura de electricidad';
+    if (/\bagua\b|suministro.{0,10}agua/i.test(lower)) return 'Factura de agua';
+    if (/\bgas\b|gas\s+natural|butano|propano/i.test(lower)) return 'Factura de gas';
+    if (/internet|fibra|adsl|\bwifi\b/i.test(lower)) return 'Factura de internet';
+    if (/m[oó]vil|tarifa\s+m[oó]vil|\bgb\b|\bsim\b/i.test(lower)) return 'Factura de móvil';
+    if (/contrato/i.test(lower)) return 'Contrato de suministro';
+    return 'Documento de suministro';
+  }
+  if (category === 'Hipoteca') {
+    if (/escritura|notari/.test(lower)) return 'Escritura de hipoteca';
+    if (/amortizaci[oó]n|cuadro/.test(lower)) return 'Cuadro de amortizacion';
+    if (/saldo\s+pendiente|certif/.test(lower)) return 'Certificado de saldo pendiente';
+    if (/novaci[oó]n|subrogaci[oó]n/.test(lower)) return 'Novacion hipotecaria';
+    return 'Documento hipotecario';
+  }
   return null;
 }
 
@@ -103,8 +120,16 @@ function buildMetadataHints(category: string, extractedText: string) {
   if (category === 'Seguro') {
     const policy = text.match(/(?:poliza|p\u00f3liza)\s*[:#-]?\s*([A-Z0-9\-\/]+)/i)?.[1] || null;
     const phone = text.match(/\b(?:6|7|8|9)\d{8}\b/)?.[0] || null;
+    // Detectar prima/coste anual y normalizar siempre a la clave 'prima'
+    const priceMatch =
+      text.match(/(?:prima|importe|coste|precio|recibo)\s*(?:anual|total)?\s*:?\s*([\d.,]+)\s*\u20ac/i) ||
+      text.match(/\u20ac\s*([\d.,]+)\s*(?:al a\u00f1o|anuales?)/i) ||
+      text.match(/\b([\d]{2,5}[.,]\d{2})\s*\u20ac/);
+    const price = priceMatch?.[1] ?? null;
     if (policy) metadata.numero_poliza = policy;
     if (phone) metadata.telefono_asistencia = phone;
+    // Normalizar a punto decimal y guardar como 'prima' (clave can\u00f3nica)
+    if (price) metadata.prima = price.replace(/\./g, '').replace(',', '.');
   }
 
   if (category === 'Salud') {
@@ -120,6 +145,48 @@ function buildMetadataHints(category: string, extractedText: string) {
     if (iban) metadata.iban = `${iban.slice(0, 6)}...${iban.slice(-4)}`;
   }
 
+  if (category === 'Suministro') {
+    const reference = text.match(/(?:referencia|n[u\u00fa]mero\s+de\s+contrato|contrato)\s*[:#-]?\s*([A-Z0-9][\w\-\/]{4,})/i)?.[1] || null;
+    const cups = text.match(/\bES\d{16}[A-Z0-9]{0,4}\b/i)?.[0] || null;
+    const monthly =
+      text.match(/(?:importe|total|cuota|coste)\s*(?:mensual|a\s+pagar)?\s*:?\s*([\d.,]+)\s*\u20ac/i)?.[1] ||
+      text.match(/\b(\d{1,4}[.,]\d{2})\s*\u20ac/)?.[1] || null;
+    const tariff = text.match(/tarifa\s*:?\s*([^\n,]{3,30})/i)?.[1]?.trim() || null;
+    const power =
+      text.match(/potencia\s+(?:contratada|instalada|facturada)?\s*:?\s*([\d.,]+)\s*kW/i)?.[1] ||
+      text.match(/(\d+[.,]\d+)\s*kW\b/i)?.[1] || null;
+    if (reference) metadata.referencia_contrato = reference.toUpperCase();
+    if (cups) metadata.cups = cups.toUpperCase();
+    if (monthly) metadata.importe_mensual = monthly.replace(/\./g, '').replace(',', '.');
+    if (tariff) metadata.tarifa = tariff;
+    if (power) metadata.potencia_contratada = power.replace(',', '.');
+    if (dates[0]) metadata.fecha_inicio = normalizeDate(dates[0]);
+  }
+
+  if (category === 'Hipoteca') {
+    const loanNumber = text.match(/(?:pr[e\u00e9]stamo|hipoteca)[^A-Z0-9]{0,5}([A-Z0-9][\w\-\/]{4,})/i)?.[1] || null;
+    const tin = text.match(/\bTIN\b\s*:?\s*(\d+[.,]\d+)\s*%/i)?.[1] || null;
+    const tae = text.match(/\bTAE\b\s*:?\s*(\d+[.,]\d+)\s*%/i)?.[1] || null;
+    const spread = text.match(/diferencial\s*:?\s*(\d+[.,]\d+)\s*%/i)?.[1] || null;
+    const monthly = text.match(/cuota\s*(?:mensual)?\s*:?\s*([\d.,]+)\s*\u20ac/i)?.[1] || null;
+    const capital = text.match(/capital\s*(?:inicial|concedido|prestado)?\s*:?\s*([\d.,]+)\s*\u20ac/i)?.[1] || null;
+    const pending = text.match(/(?:capital|saldo|deuda)\s+pendiente\s*:?\s*([\d.,]+)\s*\u20ac/i)?.[1] || null;
+    if (loanNumber) metadata.numero_prestamo = loanNumber.toUpperCase();
+    if (tin) metadata.tin = tin.replace(',', '.');
+    if (tae) metadata.tae = tae.replace(',', '.');
+    if (spread) metadata.diferencial = spread.replace(',', '.');
+    if (monthly) metadata.cuota_mensual = monthly;
+    if (capital) metadata.capital_inicial = capital;
+    if (pending) metadata.capital_pendiente = pending;
+    if (dates[0]) metadata.fecha_inicio = normalizeDate(dates[0]);
+    if (dates.length > 1) metadata.fecha_revision = normalizeDate(dates[dates.length - 1]);
+    if (/euribor/i.test(lower)) metadata.indice_referencia = 'euribor';
+    else if (/irph/i.test(lower)) metadata.indice_referencia = 'irph';
+    if (/\bmixto\b|\bmixta\b/i.test(lower)) metadata.tipo_tasa = 'mixto';
+    else if (/tipo\s+fijo|\btasa\s+fija\b|\bfijo\b/i.test(lower) && !/variable/i.test(lower)) metadata.tipo_tasa = 'fijo';
+    else if (/variable|euribor|irph/i.test(lower)) metadata.tipo_tasa = 'variable';
+  }
+
   return sanitizeMetadata(metadata);
 }
 
@@ -132,7 +199,9 @@ function buildFallbackAnalysis(fileName: string, extractedText: string): Documen
   else if (/(factura|iban|banco|recibo|nomina|impuesto)/.test(lower)) category = 'Finanzas';
   else if (/(salud|medico|clinica|hospital|receta|analitica)/.test(lower)) category = 'Salud';
   else if (/(coche|vehiculo|itv|matricula|circulacion|bastidor)/.test(lower)) category = 'Vehiculo';
-  else if (/(hogar|vivienda|alquiler|comunidad|luz|agua|gas|hipoteca|garantia)/.test(lower)) category = 'Hogar';
+  else if (/(hipoteca|euribor|prestamo|pr[eé]stamo|amortizaci[oó]n|\btin\b|\btae\b)/.test(lower)) category = 'Hipoteca';
+  else if (/(electricidad|\bluz\b|kwh|endesa|iberdrola|\bagua\b|\bgas\b|gas\s+natural|internet|fibra|adsl|\bwifi\b|tarifa\s+m[oó]vil|telefon[ií]a\s+m[oó]vil|factura.*suministro)/.test(lower)) category = 'Suministro';
+  else if (/(hogar|vivienda|alquiler|comunidad|garantia)/.test(lower)) category = 'Hogar';
 
   const rawTitle = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
   const title = rawTitle ? rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1) : 'Documento';
@@ -180,95 +249,19 @@ function normalizeAnalysis(data: any, fallback: DocumentAnalysis): DocumentAnaly
   };
 }
 
-function extractJson(text: string) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return null;
-    }
-  }
+const DOCUMENT_ANALYSIS_SYSTEM_PROMPT = `Eres un clasificador documental preciso. Debes extraer metadatos utiles de documentos personales y del hogar. En el campo summary incluye los datos clave visibles de forma breve y util. Para documentos de identidad intenta mencionar nombre completo, numero de documento, fecha de nacimiento, fecha de validez y si falta la cara trasera. Para vehiculo intenta matricula, bastidor e ITV. Para seguros extrae: numero de poliza (clave 'numero_poliza'), cobertura (clave 'cobertura'), telefono de asistencia (clave 'telefono_asistencia') e importe o prima anual en euros (clave 'prima' — usa SIEMPRE esta clave, nunca prima_anual, importe, coste_anual ni precio_anual). Para salud intenta paciente, centro, fecha y tipo de informe. Para finanzas intenta emisor, importe, periodo e iban parcial. Para hipotecas extrae: entidad prestamista, numero de prestamo, capital inicial, capital pendiente, cuota mensual, TIN (%), TAE (%), diferencial (%), indice de referencia (euribor/irph/fijo), tipo (fijo/variable/mixto), fecha de inicio y fecha proxima revision del tipo; usa las claves: numero_prestamo, capital_inicial, capital_pendiente, cuota_mensual, tin, tae, diferencial, indice_referencia, tipo_tasa, fecha_inicio, fecha_revision. Para suministros (luz, agua, gas, internet, movil) extrae: referencia de contrato (clave 'referencia_contrato'), importe o cuota mensual en euros (clave 'importe_mensual' — usa SIEMPRE esta clave), tarifa contratada (clave 'tarifa'), potencia contratada en kW para electricidad (clave 'potencia_contratada'), CUPS si aparece (clave 'cups'), direccion de suministro (clave 'direccion_suministro') y numero de linea movil si aplica (clave 'numero_linea'). Responde solo JSON valido con este esquema exacto:
+{
+  "title": "string",
+  "category": "Identidad|Vehiculo|Seguro|Hogar|Salud|Finanzas|Hipoteca|Suministro|Otros",
+  "document_type": "string o null",
+  "expiration_date": "YYYY-MM-DD o null",
+  "issuer": "string o null",
+  "summary": "string breve en espanol",
+  "tags": ["tag1", "tag2"],
+  "confidence": 0.0,
+  "metadata": {"clave": "valor"}
 }
-
-async function extractTextWithOcrSpace(fileLike: Blob, fileName: string) {
-  const formData = new FormData();
-  formData.append('file', fileLike, fileName);
-  formData.append('language', 'spa');
-  formData.append('isOverlayRequired', 'false');
-  formData.append('OCREngine', '2');
-  formData.append('isCreateSearchablePdf', 'false');
-
-  const response = await fetch('https://api.ocr.space/parse/image', {
-    method: 'POST',
-    headers: {
-      apikey: process.env.OCR_SPACE_API_KEY || 'helloworld',
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`OCR.space API error: ${await response.text()}`);
-  }
-
-  const data = await response.json();
-
-  if (data?.IsErroredOnProcessing) {
-    const details = Array.isArray(data?.ErrorMessage) ? data.ErrorMessage.join(' ') : data?.ErrorMessage;
-    throw new Error(details || 'OCR.space no pudo procesar el archivo.');
-  }
-
-  const parsedText = Array.isArray(data?.ParsedResults)
-    ? data.ParsedResults.map((item: any) => item?.ParsedText || '').join('\n')
-    : '';
-
-  return parsedText.trim();
-}
-
-async function extractTextFromPdf(file: File) {
-  return extractTextWithOcrSpace(file, file.name || 'documento.pdf');
-}
-
-async function extractTextFromImage(file: File) {
-  return extractTextWithOcrSpace(file, file.name || 'documento.png');
-}
-
-async function analyzeWithOpenRouter(fileName: string, extractedText: string) {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://quioba.com',
-      'X-Title': 'Quioba Document Center',
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      temperature: 0.1,
-      max_tokens: 900,
-      messages: [
-        {
-          role: 'system',
-          content: `Eres un clasificador documental preciso. Debes extraer metadatos utiles de documentos personales y del hogar. En el campo summary incluye los datos clave visibles de forma breve y util. Para documentos de identidad intenta mencionar nombre completo, numero de documento, fecha de nacimiento, fecha de validez y si falta la cara trasera. Para vehiculo intenta matricula, bastidor e ITV. Para seguros intenta poliza, cobertura y telefono de asistencia. Para salud intenta paciente, centro, fecha y tipo de informe. Para finanzas intenta emisor, importe, periodo e iban parcial. Responde solo JSON valido con este esquema exacto:\n{\n  "title": "string",\n  "category": "Identidad|Vehiculo|Seguro|Hogar|Salud|Finanzas|Otros",\n  "document_type": "string o null",\n  "expiration_date": "YYYY-MM-DD o null",\n  "issuer": "string o null",\n  "summary": "string breve en espanol",\n  "tags": ["tag1", "tag2"],\n  "confidence": 0.0,\n  "metadata": {"clave": "valor"}\n}\nSi un dato no esta claro, usa null o no lo pongas en metadata.`,
-        },
-        {
-          role: 'user',
-          content: `Nombre del archivo: ${fileName}\n\nTexto extraido:\n${extractedText.slice(0, 14000)}`,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${await response.text()}`);
-  }
-
-  const data = await response.json();
-  return data?.choices?.[0]?.message?.content || '';
-}
+Si un dato no esta claro, usa null o no lo pongas en metadata.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -306,7 +299,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const extractedText = isPdf ? await extractTextFromPdf(file) : await extractTextFromImage(file);
+    const extractedText = await extractTextFromFile(file, fileName, fileType || (isPdf ? 'application/pdf' : 'image/jpeg'));
 
     if (!extractedText || extractedText.trim().length < MIN_EXTRACTED_TEXT_LENGTH) {
       return NextResponse.json(
@@ -318,16 +311,10 @@ export async function POST(request: NextRequest) {
     const fallback = buildFallbackAnalysis(fileName, extractedText);
     let analysis = fallback;
 
-    if (process.env.OPENROUTER_API_KEY) {
-      try {
-        const content = await analyzeWithOpenRouter(fileName, extractedText);
-        const parsed = extractJson(content);
-        if (parsed) {
-          analysis = normalizeAnalysis(parsed, fallback);
-        }
-      } catch (error) {
-        console.error('[Document Analyze] OpenRouter error:', error);
-      }
+    const userPrompt = `Nombre del archivo: ${fileName}\n\nTexto extraido:\n${extractedText.slice(0, 14000)}`;
+    const { data: parsed, provider } = await extractStructuredJson(DOCUMENT_ANALYSIS_SYSTEM_PROMPT, userPrompt);
+    if (parsed) {
+      analysis = normalizeAnalysis(parsed, fallback);
     }
 
     await recordApiUsage(user.id, 'document-analysis');
@@ -335,7 +322,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       analysis,
       source: isPdf ? 'pdf' : 'image',
-      model: process.env.OPENROUTER_API_KEY ? OPENROUTER_MODEL : 'fallback',
+      model: provider || 'fallback',
     });
   } catch (error: any) {
     console.error('[Document Analyze] Error:', error);

@@ -226,7 +226,6 @@ export default function ProfilePage() {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push('/login');
-        toast.success('Sesión cerrada correctamente');
     };
 
     const handleUpdateAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {

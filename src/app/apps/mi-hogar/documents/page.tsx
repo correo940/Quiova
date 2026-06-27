@@ -809,10 +809,25 @@ export default function DocumentsPage() {
         return { nextDocuments, nextReminders };
     };
 
+    const syncKnowledgeLayer = async (documentId: string) => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+            await fetch(getApiUrl('api/documents/sync-knowledge'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                body: JSON.stringify({ document_id: documentId }),
+            });
+        } catch (error) {
+            console.error('Knowledge layer sync error:', error);
+        }
+    };
+
     const finalizeDocumentSave = async (documentId: string, title: string, expirationDate: string | null, nextSettings = alertSettings) => {
         try {
             await syncAutomaticReminders(documentId, title, expirationDate);
             await refreshDataAndSync(nextSettings);
+            await syncKnowledgeLayer(documentId);
         } catch (error) {
             console.error('Post-save sync error:', error);
             toast.error('El documento se ha guardado, pero no se pudieron actualizar recordatorios o calendario al momento.');

@@ -9,7 +9,8 @@ import {
     fetchExpensesSummary,
     fetchVehicles,
     fetchRecurringItems,
-    fetchPendingBalance
+    fetchPendingBalance,
+    fetchMortgages,
 } from '@/lib/server/assistant-data';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
 
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
         // Realizamos todas las consultas a la DB en paralelo para máxima velocidad
         const [
             savings, tasks, shopping, medicines,
-            insurances, expenses, vehicles, recurring, pendingBalance
+            insurances, expenses, vehicles, recurring, pendingBalance, mortgages
         ] = await Promise.all([
             fetchSavingsSummary(ctx),
             fetchPendingTasks(ctx),
@@ -47,8 +48,19 @@ export async function POST(req: Request) {
             fetchExpensesSummary(ctx),
             fetchVehicles(ctx),
             fetchRecurringItems(ctx),
-            fetchPendingBalance(ctx)
+            fetchPendingBalance(ctx),
+            fetchMortgages(ctx),
         ]);
+
+        // DEBUG TEMPORAL — eliminar tras validación
+        console.log('[AIA-DEBUG] fetchMortgages result:', JSON.stringify(mortgages, null, 2));
+        console.log('[AIA-DEBUG] mortgages.length:', mortgages.mortgages.length);
+        if (mortgages.mortgages.length > 0) {
+            const m = mortgages.mortgages[0];
+            console.log('[AIA-DEBUG] mortgage[0].monthly_payment:', m.monthly_payment, typeof m.monthly_payment);
+            console.log('[AIA-DEBUG] mortgage[0].outstanding_balance:', m.outstanding_balance, typeof m.outstanding_balance);
+            console.log('[AIA-DEBUG] mortgage[0].rate_type:', m.rate_type);
+        }
 
         // Construir el contexto en formato comprimido para el LLM
         const systemPrompt = `Eres Quioba, el asistente virtual experto, rápido y amigable de la app Quioba.
@@ -76,7 +88,15 @@ Aquí tienes el contexto COMPLETO, SECRETO y EN TIEMPO REAL del usuario. NUNCA m
 
 **4. Vehículos y Seguros:**
 - Vehículos: ${JSON.stringify(vehicles.vehicles.map(v => v.name))} (ITV pendientes: ${vehicles.pendingITV.length})
-- Seguros: ${JSON.stringify(insurances.insurances.map(i => i.name))}
+- Seguros: ${JSON.stringify(insurances.insurances.map(i => ({ n: i.name, prov: i.provider, coste: i.cost, vence: i.expiration_date })))}
+
+**5. Hipotecas:**
+${mortgages.mortgages.length === 0
+  ? '- Sin hipotecas registradas.'
+  : mortgages.mortgages.map(m =>
+      `- ${m.name || 'Hipoteca'} (${m.lender || '?'}): cuota ${m.monthly_payment ?? '?'}€/mes, pendiente ${m.outstanding_balance ?? '?'}€, TIN ${m.tin ?? '?'}%, TAE ${m.tae ?? '?'}%, tipo ${m.rate_type ?? '?'}, índice ${m.reference_index ?? '?'}, próxima revisión ${m.rate_review_date ?? 'sin fecha'}, vencimiento ${m.maturity_date ?? '?'}`
+    ).join('\n')
+}
 
 Instrucciones:
 1. Responde de forma cálida, cercana y directa a la pregunta del usuario. 
@@ -84,6 +104,10 @@ Instrucciones:
 3. SIEMPRE usa emojis para que la lectura sea agradable.
 4. Si te saludan o preguntan "¿qué puedes hacer?", resume 3 o 4 cosas de las que tienes acceso (finanzas, tareas, vehículos, salud).
 5. Usa formato markdown para listas si es necesario, pero mantén mensajes cortos y fáciles de leer en móvil.`;
+
+        // DEBUG TEMPORAL — fragmento hipotecas del prompt
+        const hipotecasFragment = systemPrompt.slice(systemPrompt.indexOf('**5. Hipotecas:**'));
+        console.log('[AIA-DEBUG] systemPrompt hipotecas section:', hipotecasFragment.slice(0, 400));
 
         const completion = await groq.chat.completions.create({
             messages: [

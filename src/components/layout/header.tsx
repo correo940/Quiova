@@ -12,21 +12,21 @@ import { useGlobalMenu } from '@/context/GlobalMenuContext';
 
 const PILLARS = [
     {
-        href: '/?pillar=salud+f%C3%ADsica#articles',
+        href: '/cuerpo',
         label: 'Cuerpo',
         logo: '/images/logo-cuerpo.png',
         color: '#1a5c2e',
         colorLight: '#e8f5ec',
     },
     {
-        href: '/?pillar=salud+mental#articles',
+        href: '/mente',
         label: 'Mente',
         logo: '/images/logo-mente.png',
         color: '#1558a8',
         colorLight: '#e6f0fa',
     },
     {
-        href: '/?pillar=finanzas+familiares#articles',
+        href: '/finanzas',
         label: 'Finanzas',
         logo: '/images/logo-finanzas.png',
         color: '#b87514',

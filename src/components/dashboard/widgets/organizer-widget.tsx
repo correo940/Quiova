@@ -560,7 +560,7 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                 <div className="flex-1 min-h-0 flex flex-col">
                     <Tabs defaultValue="agenda" className="flex-1 flex flex-col min-h-0">
                         <TabsList className="grid w-full grid-cols-4 mb-3 h-9 sm:h-10 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-lg shrink-0">
-                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs py-1.5 data-[state=active]:bg-quioba-cuerpo data-[state=active]:text-white data-[state=active]:shadow rounded-md transition-all font-medium h-full">
+                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs py-1.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-600 data-[state=active]:to-green-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-green-900/30 rounded-md transition-all font-medium h-full">
                                 <CalendarIcon className="w-3.5 h-3.5" />
                                 <span className="hidden sm:inline">Agenda</span>
                                 <span className="sm:hidden">Ag</span>

@@ -98,15 +98,15 @@ export async function fetchMedicines(ctx: AssistantDataContext) {
 
 export async function fetchInsurances(ctx: AssistantDataContext) {
   const { data: insurances } = await supabaseAdmin
-    .from('insurances')
-    .select('id, type, provider, policy_number, expiration_date, cost')
+    .from('v_insurance_policies')
+    .select('id, name, type, provider, policy_number, expiration_date, cost')
     .eq('user_id', ctx.userId)
     .order('expiration_date', { ascending: true });
 
   return {
     insurances: (insurances || []).map((insurance) => ({
       ...insurance,
-      name: insurance.type || insurance.provider || 'Seguro',
+      name: insurance.name || insurance.provider || 'Seguro',
     })),
   };
 }
@@ -184,5 +184,17 @@ export async function fetchPendingBalance(ctx: AssistantDataContext) {
 
   return {
     totalPending: safeExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0),
+  };
+}
+
+export async function fetchMortgages(ctx: AssistantDataContext) {
+  const { data: mortgages } = await supabaseAdmin
+    .from('v_mortgages')
+    .select('id, name, lender, loan_number, outstanding_balance, monthly_payment, tin, tae, rate_type, reference_index, rate_review_date, maturity_date')
+    .eq('user_id', ctx.userId)
+    .order('maturity_date', { ascending: true });
+
+  return {
+    mortgages: mortgages || [],
   };
 }
