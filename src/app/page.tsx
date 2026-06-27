@@ -300,7 +300,7 @@ export default function HomePage() {
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg leading-relaxed max-w-md" style={{ color: '#475569' }}>
+          <p className="text-lg leading-relaxed max-w-md" style={{ color: '#1e293b' }}>
             QUIOBA es el sistema operativo personal y familiar que reúne
             conocimiento, organización y herramientas en un único ecosistema.
           </p>
