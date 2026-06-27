@@ -146,7 +146,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/',
+            href: '/desktop',
         },
         {
             id: 'articles',
@@ -164,7 +164,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/',
+            href: '/articles',
         },
         {
             id: 'profile',
