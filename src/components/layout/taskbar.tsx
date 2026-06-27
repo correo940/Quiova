@@ -164,7 +164,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/articles',
+            href: '/',
         },
         {
             id: 'profile',
