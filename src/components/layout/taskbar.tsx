@@ -218,7 +218,7 @@ export default function Taskbar() {
                                 }}
                                 onMouseEnter={() => setHoveredApp(app.id)}
                                 onMouseLeave={() => setHoveredApp(null)}
-                                className="relative flex items-center justify-center active:scale-90 touch-none transition-transform duration-200 px-1"
+                                className="relative flex items-center justify-center active:scale-90 touch-manipulation transition-transform duration-200 px-1"
                             >
                                 <motion.div
                                     whileHover={{ y: -5, scale: 1.1 }}
