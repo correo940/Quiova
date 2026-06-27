@@ -250,11 +250,40 @@ export default function HomePage() {
 
       {/* ── 1. HERO ─────────────────────────────────────────────────────────── */}
       <section
-        className="grid md:grid-cols-2"
+        className="relative grid md:grid-cols-2"
         style={{ minHeight: 'calc(100vh - 64px)' }}
       >
+        {/* Mobile background video (hidden on md+) */}
+        <div className="absolute inset-0 block md:hidden overflow-hidden">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          >
+            <source src="/videos/hero.mp4" type="video/mp4" />
+          </video>
+          {/* Overlay para legibilidad del texto */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.78) 100%)',
+            }}
+          />
+        </div>
+
         {/* Left: copy */}
-        <div className="flex flex-col justify-center gap-5 px-8 md:px-14 lg:px-20 py-16 md:py-0">
+        <div className="relative z-10 flex flex-col justify-center gap-5 px-8 md:px-14 lg:px-20 py-16 md:py-0">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 self-start px-4 py-1.5 rounded-full text-sm font-semibold border" style={{ borderColor: '#bbf7d0', color: '#166534', backgroundColor: '#f0fdf4' }}>
             <span className="w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }} />
