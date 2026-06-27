@@ -1,5 +1,8 @@
 'use client';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
+
+// Referencia global al vídeo que se está reproduciendo actualmente
+let activeVideoRef: HTMLVideoElement | null = null;
 
 const VIDEO_SCENARIOS = [
   {
@@ -45,6 +48,7 @@ const VIDEO_SCENARIOS = [
     colorLight: '#fffbeb',
     title: 'Que no se te vuelva a pasar nada',
     desc: 'Recibe recordatorios de vencimientos, citas, renovaciones y tareas importantes.',
+    videoSrc: '/videos/recordatorios.mp4',
   },
 ];
 
@@ -65,10 +69,16 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            if (activeVideoRef && activeVideoRef !== video) {
+              activeVideoRef.pause();
+              activeVideoRef.currentTime = 0;
+            }
+            activeVideoRef = video;
             video.play().catch(() => {});
           } else {
             video.pause();
             video.currentTime = 0;
+            if (activeVideoRef === video) activeVideoRef = null;
           }
         });
       },
@@ -80,11 +90,26 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
   }, [s.videoSrc]);
 
   // En desktop: reproducir al hacer hover
-  const handleMouseEnter = () => { videoRef.current?.play(); };
-  const handleMouseLeave = () => {
+  const handleMouseEnter = useCallback(() => {
     const v = videoRef.current;
-    if (v) { v.pause(); v.currentTime = 0; }
-  };
+    if (!v) return;
+    if (activeVideoRef && activeVideoRef !== v) {
+      activeVideoRef.pause();
+      activeVideoRef.currentTime = 0;
+    }
+    activeVideoRef = v;
+    v.currentTime = 0;
+    v.play().catch(() => {});
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+      if (activeVideoRef === v) activeVideoRef = null;
+    }
+  }, []);
 
   return (
     <div
@@ -110,7 +135,7 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             className="w-full h-full object-cover"
             src={s.videoSrc}
           />
