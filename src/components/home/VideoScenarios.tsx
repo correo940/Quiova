@@ -1,17 +1,48 @@
 'use client';
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
+import type { ReactNode } from 'react';
 
-// Referencia global al vídeo que se está reproduciendo actualmente
 let activeVideoRef: HTMLVideoElement | null = null;
+
+type Highlight = { text: string; color: string; bg: string };
+
+function highlightText(str: string, highlights: Highlight[]): ReactNode {
+  for (const h of highlights) {
+    const idx = str.indexOf(h.text);
+    if (idx === -1) continue;
+    const before = str.slice(0, idx);
+    const after = str.slice(idx + h.text.length);
+    return (
+      <>
+        {before ? highlightText(before, highlights) : null}
+        <span
+          style={{
+            color: h.color,
+            backgroundColor: h.bg,
+            borderRadius: 5,
+            padding: '1px 6px',
+            fontWeight: 700,
+          }}
+        >
+          {h.text}
+        </span>
+        {after ? highlightText(after, highlights) : null}
+      </>
+    );
+  }
+  return str;
+}
 
 const VIDEO_SCENARIOS = [
   {
     id: 'factura',
-    emoji: '🧾',
+    emoji: '📄',
     color: '#1a5c2e',
     colorLight: '#f0fdf4',
     title: 'Nunca más pierdas un documento',
-    desc: 'Guarda facturas, contratos, garantías, seguros, contraseñas y cualquier documento importante en un único lugar.',
+    benefit: 'Todo en un lugar',
+    desc: 'Facturas, contratos, garantías y documentos importantes, siempre a mano.',
+    highlights: [{ text: 'Facturas, contratos, garantías', color: '#1a5c2e', bg: '#dcfce7' }],
     videoSrc: '/videos/factura.mp4',
   },
   {
@@ -20,25 +51,31 @@ const VIDEO_SCENARIOS = [
     color: '#1558a8',
     colorLight: '#eff6ff',
     title: 'Nunca olvides qué comprar',
-    desc: 'Organiza tus listas de la compra y tenlas siempre contigo cuando las necesites.',
+    benefit: 'Siempre contigo',
+    desc: 'Listas de la compra organizadas y accesibles cuando más las necesitas.',
+    highlights: [{ text: 'Listas de la compra', color: '#1558a8', bg: '#dbeafe' }],
     videoSrc: '/videos/lista-compra.mp4',
   },
   {
     id: 'seguros',
-    emoji: '🛡️',
+    emoji: '🏠',
     color: '#7c3aed',
     colorLight: '#f5f3ff',
     title: 'Todo tu hogar, bajo control',
-    desc: 'Seguros, garantías, vehículos, suministros y documentos importantes organizados en un solo sitio.',
+    benefit: 'Control total',
+    desc: 'Seguros, garantías, vehículos y suministros en un único sitio.',
+    highlights: [{ text: 'Seguros, garantías', color: '#7c3aed', bg: '#ede9fe' }],
     videoSrc: '/videos/seguros.mp4',
   },
   {
     id: 'documentos',
-    emoji: '📂',
+    emoji: '📊',
     color: '#0891b2',
     colorLight: '#ecfeff',
     title: 'Toda tu información, organizada',
-    desc: 'Accede en segundos a todo lo importante desde un único panel diseñado para simplificar tu vida.',
+    benefit: 'Acceso inmediato',
+    desc: 'Un panel diseñado para encontrar lo importante en segundos.',
+    highlights: [{ text: 'en segundos', color: '#0891b2', bg: '#cffafe' }],
     videoSrc: '/videos/documentos.mp4',
   },
   {
@@ -47,7 +84,9 @@ const VIDEO_SCENARIOS = [
     color: '#b87514',
     colorLight: '#fffbeb',
     title: 'Que no se te vuelva a pasar nada',
-    desc: 'Recibe recordatorios de vencimientos, citas, renovaciones y tareas importantes.',
+    benefit: 'Recordatorios inteligentes',
+    desc: 'Vencimientos, citas y renovaciones avisadas con tiempo de sobra.',
+    highlights: [{ text: 'Vencimientos, citas', color: '#b87514', bg: '#fef3c7' }],
     videoSrc: '/videos/recordatorios.mp4',
   },
 ];
@@ -55,8 +94,8 @@ const VIDEO_SCENARIOS = [
 function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
 
-  // En móvil/táctil: reproducir al entrar en viewport
   useEffect(() => {
     const video = videoRef.current;
     const container = containerRef.current;
@@ -89,8 +128,8 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
     return () => observer.disconnect();
   }, [s.videoSrc]);
 
-  // En desktop: reproducir al hacer hover
   const handleMouseEnter = useCallback(() => {
+    setHovered(true);
     const v = videoRef.current;
     if (!v) return;
     if (activeVideoRef && activeVideoRef !== v) {
@@ -103,6 +142,7 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    setHovered(false);
     const v = videoRef.current;
     if (v) {
       v.pause();
@@ -118,13 +158,17 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
       style={{
         backgroundColor: '#ffffff',
         border: '1px solid #f1f5f9',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+        boxShadow: hovered
+          ? '0 12px 36px rgba(0,0,0,0.13)'
+          : '0 2px 12px rgba(0,0,0,0.05)',
+        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+        transition: 'box-shadow 280ms ease, transform 280ms ease',
         cursor: 'default',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Área de vídeo */}
+      {/* Vídeo */}
       <div
         className="relative w-full overflow-hidden"
         style={{ aspectRatio: '4/3', backgroundColor: s.colorLight }}
@@ -147,20 +191,41 @@ function VideoCard({ s }: { s: typeof VIDEO_SCENARIOS[number] }) {
       </div>
 
       {/* Caption */}
-      <div className="px-4 py-4 flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
+      <div className="px-4 pt-4 pb-5 flex flex-col items-center text-center">
+        {/* Icono + título */}
+        <div className="flex items-start gap-2 mb-2.5 w-full">
           <div
-            className="w-5 h-5 rounded flex items-center justify-center text-sm flex-shrink-0"
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
             style={{ backgroundColor: s.colorLight }}
           >
             {s.emoji}
           </div>
-          <p className="font-black text-sm leading-tight" style={{ color: '#0f172a' }}>
+          <p className="font-black text-sm leading-snug text-left" style={{ color: '#0f172a' }}>
             {s.title}
           </p>
         </div>
-        <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>
-          {s.desc}
+
+        {/* Pill beneficio — centrada */}
+        <div className="flex justify-center w-full mb-3">
+          <span
+            className="inline-flex items-center px-3 rounded-full text-[13px] font-semibold"
+            style={{
+              backgroundColor: s.color + '14',
+              color: s.color,
+              height: 28,
+              letterSpacing: '0.01em',
+            }}
+          >
+            {s.benefit}
+          </span>
+        </div>
+
+        {/* Descripción con palabras destacadas */}
+        <p
+          className="text-xs text-left w-full"
+          style={{ color: '#64748b', lineHeight: 1.65 }}
+        >
+          {highlightText(s.desc, s.highlights)}
         </p>
       </div>
     </div>
@@ -171,12 +236,23 @@ export default function VideoScenarios() {
   return (
     <section className="py-20 px-6" style={{ backgroundColor: '#ffffff' }}>
       <div className="max-w-7xl mx-auto">
-        <h2
-          className="text-center text-3xl md:text-4xl font-black mb-12"
-          style={{ color: '#0f172a' }}
-        >
-          Así te ayuda QUIOBA
+        <div className="flex justify-center mb-5">
+          <span
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold border"
+            style={{ borderColor: '#bbf7d0', color: '#166534', backgroundColor: '#f0fdf4' }}
+          >
+            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+            CÓMO FUNCIONA
+          </span>
+        </div>
+
+        <h2 className="text-center text-3xl md:text-4xl font-black mb-4" style={{ color: '#0f172a' }}>
+          Así te ayuda <span style={{ color: '#1a5c2e' }}>QUIOBA</span>
         </h2>
+
+        <p className="text-center text-base md:text-lg mb-12" style={{ color: '#64748b' }}>
+          Cada <span style={{ color: '#b87514', fontWeight: 700 }}>herramienta</span> resuelve un problema real de tu <span style={{ color: '#1558a8', fontWeight: 700 }}>día a día</span>.
+        </p>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {VIDEO_SCENARIOS.map((s) => (

@@ -374,7 +374,7 @@ export default function HomePage() {
               <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
                 <div>
                   <h2 className="text-3xl md:text-4xl font-black leading-tight mb-2" style={{ color: '#0f172a' }}>
-                    Lo que puedes aprender<br className="hidden sm:block" /> en QUIOBA
+                    Lo que puedes aprender<br className="hidden sm:block" /> en <span style={{ color: '#1a5c2e' }}>QUIOBA</span>
                   </h2>
                   <p className="text-base" style={{ color: '#64748b' }}>
                     Conocimiento práctico para mejorar tu vida, mente y dinero.
@@ -437,26 +437,28 @@ export default function HomePage() {
                         ))}
                       </div>
 
-                      {/* Featured article */}
+                      {/* CTA acceso al pillar */}
                       <div className="px-6 pb-6 mt-auto">
                         <Link
-                          href={p.articleHref}
-                          className="group/art flex items-center gap-3 p-4 rounded-xl transition-all hover:scale-[1.01]"
-                          style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}
+                          href={p.href}
+                          className="group/cta flex items-center justify-between gap-3 p-4 rounded-xl transition-all hover:scale-[1.01]"
+                          style={{ backgroundColor: p.color + '08', border: `1px solid ${p.color}20` }}
                         >
-                          <div
-                            className="w-14 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
-                            style={{ backgroundColor: p.color + '18' }}
-                          >
-                            <Image src={p.logo} alt="" width={20} height={20} className="object-contain opacity-60" />
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: p.color + '18' }}
+                            >
+                              <Image src={p.logo} alt="" width={18} height={18} className="object-contain" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: p.color + 'aa' }}>QUIOBA {p.name}</p>
+                              <p className="text-sm font-black leading-tight" style={{ color: p.color }}>Ver todos los artículos</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Artículo destacado</p>
-                            <p className="text-sm font-black leading-tight truncate" style={{ color: '#0f172a' }}>{p.articleTitle}</p>
-                          </div>
                           <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover/art:translate-x-0.5"
-                            style={{ backgroundColor: p.color + '15', color: p.color }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover/cta:translate-x-0.5"
+                            style={{ backgroundColor: p.color + '18', color: p.color }}
                           >
                             <ArrowRight size={12} />
                           </div>
@@ -494,7 +496,7 @@ export default function HomePage() {
             <div className="sticky top-24 flex flex-col gap-6">
               <div>
                 <h2 className="text-3xl md:text-4xl font-black leading-tight mb-2" style={{ color: '#0f172a' }}>
-                  Las herramientas<br /> de QUIOBA
+                  Las herramientas<br /> de <span style={{ color: '#1a5c2e' }}>QUIOBA</span>
                 </h2>
                 <p className="text-base mb-6" style={{ color: '#64748b' }}>
                   Todo lo que necesitas en un único lugar.
@@ -534,30 +536,39 @@ export default function HomePage() {
 
           {/* ── BOTTOM: Campus full-width card ── */}
           <div
-            className="mt-12 rounded-3xl overflow-hidden relative flex flex-col md:flex-row items-center justify-between gap-8 px-10 py-10"
-            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1a5c2e 100%)', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+            className="mt-12 rounded-3xl overflow-hidden relative flex flex-col md:flex-row items-center justify-between gap-8 px-10 py-9"
+            style={{
+              background: 'linear-gradient(135deg, #1a5c2e 0%, #166534 45%, #0f4a24 100%)',
+              boxShadow: '0 8px 40px rgba(26,92,46,0.28)',
+            }}
           >
-            {/* Decorative circle */}
-            <div
-              aria-hidden="true"
-              className="absolute right-0 top-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, #4ade80, transparent)', transform: 'translate(30%, -30%)' }}
-            />
+            {/* Decorative blobs */}
+            <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div style={{ position: 'absolute', top: '-40px', right: '15%', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(187,247,208,0.18) 0%, transparent 70%)' }} />
+              <div style={{ position: 'absolute', bottom: '-30px', right: '5%', width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 70%)' }} />
+              {/* Subtle grid pattern */}
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+            </div>
+
             <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#bbf7d0' }}>
-                🎓 El Campus QUIOBA
+              {/* Badge — same style as "CÓMO FUNCIONA" but inverted */}
+              <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full border" style={{ borderColor: 'rgba(187,247,208,0.35)', backgroundColor: 'rgba(187,247,208,0.12)', color: '#bbf7d0' }}>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#4ade80' }} />
+                <span className="text-xs font-bold tracking-wide uppercase">El Campus QUIOBA</span>
               </div>
               <h3 className="text-2xl md:text-3xl font-black text-white leading-tight mb-2">
-                Aprende. Aplica. Mejora.
+                Aprende. Aplica.{' '}
+                <span style={{ color: '#86efac' }}>Mejora.</span>
               </h3>
-              <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: 480 }}>
+              <p className="text-sm md:text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)', maxWidth: 460 }}>
                 Artículos, guías y recursos prácticos sobre cuerpo, mente y finanzas — diseñados para que el conocimiento cambie tu vida real.
               </p>
             </div>
+
             <Link
               href="/articles"
               className="relative z-10 flex-shrink-0 inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl text-sm font-black transition-all hover:scale-[1.03] active:scale-95"
-              style={{ backgroundColor: '#ffffff', color: '#0f172a', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+              style={{ backgroundColor: '#ffffff', color: '#1a5c2e', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}
             >
               Ir al Campus <ArrowRight size={14} />
             </Link>

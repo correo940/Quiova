@@ -1,0 +1,37 @@
+{
+  "name": "paper_crumple",
+  "version": "1.0.0",
+  "description": "Newspaper tear/crumple transition — organic ragged edge sweeps top to bottom revealing clip_b",
+  "duration_s": 1.0,
+  "fps": 24,
+  "frame_count": 33,
+  "easing": "easeOutExpo",
+  "resolution": { "width": 720, "height": 1280 },
+  "assets": {
+    "paper_texture":    "assets/paper_texture.png",
+    "displacement_map": "assets/displacement_map.png",
+    "normal_map":       "assets/normal_map.png",
+    "paper_noise":      "assets/paper_noise.png",
+    "alpha_masks_dir":  "assets/masks",
+    "alpha_sequence":   "assets/alpha_sequence.mov"
+  },
+  "params": {
+    "displacement_x_max":    18,
+    "displacement_y_max":    22,
+    "motion_blur_opacity":   0.45,
+    "paper_texture_opacity": 0.12,
+    "shadow_offset_x":        3,
+    "shadow_offset_y":        5,
+    "shadow_blur_sigma":      7,
+    "shadow_curve_floor":   200,
+    "edge_noise_amp1":       0.14,
+    "edge_noise_amp2":       0.06,
+    "edge_noise_amp3":       0.025,
+    "edge_noise_amp4":       0.010,
+    "tear_overshoot":        0.15,
+    "island_x_start":        0.15,
+    "island_x_end":          0.28,
+    "island_amplitude":      0.08,
+    "island_delay":          0.30
+  }
+}

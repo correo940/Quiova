@@ -1,30 +1,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import { CuerpoHero } from '@/components/cuerpo/CuerpoHero';
+import { CuerpoFeatures } from '@/components/cuerpo/CuerpoFeatures';
+import { CuerpoApps } from '@/components/cuerpo/CuerpoApps';
 
 export const metadata: Metadata = {
   title: 'QUIOBA Cuerpo — Conocimiento y herramientas para tu bienestar',
   description:
     'QUIOBA Cuerpo reúne contenido y herramientas sobre salud, sueño, nutrición y bienestar para ayudarte a entender mejor tu cuerpo.',
 };
-
-const TOPICS = [
-  'Ciclos circadianos',
-  'Sueño',
-  'Nutrición',
-  'Salud preventiva',
-  'Bienestar',
-  'Hábitos',
-  'Descanso',
-  'Movimiento',
-];
-
-const TOOLS = [
-  { name: 'Botiquín', emoji: '💊', desc: 'Gestiona la medicación y el botiquín de tu familia.' },
-  { name: 'Pausas Activas', emoji: '🧘', desc: 'Pequeños descansos durante el día para cuidar tu bienestar.' },
-  { name: 'Salud Ocupacional', emoji: '🩺', desc: 'Registro y seguimiento de aspectos de salud en el trabajo.' },
-  { name: 'Meditación', emoji: '🌿', desc: 'Un espacio para la calma y la atención plena dentro de Mi Hogar.' },
-];
 
 function ArrowRight({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
@@ -38,101 +23,11 @@ export default function CuerpoPage() {
   return (
     <div className="overflow-x-hidden" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
 
-      {/* Hero */}
-      <section
-        className="relative px-6 py-24 text-center overflow-hidden"
-        style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(26,92,46,0.1) 0%, transparent 70%), #f0fdf4', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      >
-        <div className="max-w-3xl mx-auto flex flex-col items-center gap-6">
-          <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ backgroundColor: '#ffffff', boxShadow: '0 4px 20px rgba(26,92,46,0.15)' }}>
-            <Image src="/images/logo-cuerpo.png" alt="Cuerpo" width={36} height={36} className="object-contain" />
-          </div>
+      <CuerpoHero />
 
-          <div>
-            <p className="text-sm font-bold tracking-[0.2em] uppercase mb-3" style={{ color: '#16a34a' }}>Los tres pilares</p>
-            <h1 className="text-4xl md:text-6xl font-black leading-[1.05] mb-4" style={{ color: '#1a5c2e' }}>
-              QUIOBA Cuerpo
-            </h1>
-            <p className="text-lg md:text-xl max-w-xl mx-auto leading-relaxed" style={{ color: '#374151' }}>
-              Contenido y herramientas para que entiendas mejor cómo funciona tu cuerpo y puedas
-              organizar lo que aprendes sobre tu salud y bienestar.
-            </p>
-          </div>
+      <CuerpoFeatures />
 
-          <div className="flex flex-col sm:flex-row gap-3 items-center">
-            <Link
-              href="/articles"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-black transition-all hover:opacity-90"
-              style={{ backgroundColor: '#1a5c2e', color: '#ffffff', boxShadow: '0 6px 20px rgba(26,92,46,0.25)' }}
-            >
-              Explorar contenido <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/beta"
-              className="text-sm font-semibold transition-opacity hover:opacity-70"
-              style={{ color: '#1a5c2e' }}
-            >
-              Solicitar acceso →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Topics */}
-      <section className="py-20 px-6" style={{ backgroundColor: '#ffffff' }}>
-        <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-bold tracking-[0.22em] uppercase mb-4" style={{ color: '#94a3b8' }}>Qué encontrarás</p>
-          <h2 className="text-3xl md:text-4xl font-black mb-8 leading-tight" style={{ color: '#0f172a' }}>
-            Temas que cubre QUIOBA Cuerpo
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {TOPICS.map((t) => (
-              <span
-                key={t}
-                className="px-4 py-2 rounded-full text-sm font-semibold"
-                style={{ backgroundColor: '#f0fdf4', color: '#1a5c2e', border: '1.5px solid #bbf7d0' }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-          <p className="mt-8 text-base leading-relaxed" style={{ color: '#64748b' }}>
-            QUIOBA no ofrece recomendaciones médicas ni de salud. El contenido disponible tiene
-            un carácter divulgativo y está pensado para que conozcas mejor cómo funciona tu cuerpo.
-            Ante cualquier duda de salud, consulta siempre a un profesional.
-          </p>
-        </div>
-      </section>
-
-      {/* Tools */}
-      <section className="py-20 px-6" style={{ backgroundColor: '#f8fafc' }}>
-        <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-bold tracking-[0.22em] uppercase mb-4" style={{ color: '#94a3b8' }}>Herramientas</p>
-          <h2 className="text-3xl md:text-4xl font-black mb-10 leading-tight" style={{ color: '#0f172a' }}>
-            Aplicaciones relacionadas
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {TOOLS.map((tool) => (
-              <div
-                key={tool.name}
-                className="flex items-start gap-4 p-6 rounded-2xl"
-                style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0' }}
-              >
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                  style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0' }}
-                >
-                  {tool.emoji}
-                </div>
-                <div>
-                  <p className="font-black text-base" style={{ color: '#1a5c2e' }}>{tool.name}</p>
-                  <p className="text-sm leading-relaxed mt-1" style={{ color: '#64748b' }}>{tool.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <CuerpoApps />
 
       {/* Featured article */}
       <section className="py-20 px-6" style={{ backgroundColor: '#ffffff' }}>
