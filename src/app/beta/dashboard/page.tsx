@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { BETA_COOKIE, siteUrl } from '@/lib/beta/constants';
+import { BETA_COOKIE, BETA_SELECTION_END, siteUrl } from '@/lib/beta/constants';
 import { getBetaUserByToken, getUserRank, getCompetitionData, syncEmailVerification } from '@/lib/beta/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildDashboard } from '@/lib/beta/dashboard';
@@ -51,6 +51,7 @@ export default async function BetaDashboardPage({
             referralRank={referralRank}
             emailVerified={emailVerified}
             email={user.email}
+            selectionEndDate={BETA_SELECTION_END}
         />
     );
 }

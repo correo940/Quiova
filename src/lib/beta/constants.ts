@@ -2,6 +2,10 @@
 
 export const BETA_COOKIE = 'beta_token';
 
+// Fecha límite de selección — configurable vía env var.
+export const BETA_SELECTION_END =
+    process.env.NEXT_PUBLIC_BETA_SELECTION_END || '2026-07-20T23:59:59Z';
+
 // Email del administrador autorizado para el panel beta.
 export const SUPER_ADMIN_EMAIL =
     process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'todojuntomirar@gmail.com';
@@ -31,9 +35,9 @@ export const STATUS_LABELS: Record<BetaStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<BetaStatus, string> = {
-    pendiente: 'bg-amber-100 text-amber-700 border-amber-200',
-    validando: 'bg-blue-100 text-blue-700 border-blue-200',
-    aprobado: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    pendiente: 'bg-[#b87514]/10 text-[#96610f] border-[#b87514]/30',
+    validando: 'bg-slate-100 text-slate-700 border-slate-200',
+    aprobado: 'bg-[#d4edda] text-[#133f21] border-[#1a5c2e]/30',
     rechazado: 'bg-red-100 text-red-700 border-red-200',
     suspendido: 'bg-slate-200 text-slate-600 border-slate-300',
 };
