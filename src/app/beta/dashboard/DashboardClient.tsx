@@ -207,17 +207,17 @@ export default function DashboardClient({
 
                 {/* ── BANNER VERIFICACIÓN ──────────────────────── */}
                 {emailVerified ? (
-                    <div className="flex items-center gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3">
-                        <MailCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">✅ Email verificado</span>
+                    <div className="flex items-center gap-2.5 bg-[#edf7f1] dark:bg-[#1a5c2e]/10 border border-[#1a5c2e]/30 dark:border-[#1a5c2e]/40 rounded-2xl px-4 py-3">
+                        <MailCheck className="w-4 h-4 text-[#1a5c2e] shrink-0" />
+                        <span className="text-sm font-semibold text-[#133f21] dark:text-[#4ade80]">✅ Email verificado</span>
                     </div>
                 ) : (
-                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-4 space-y-3">
+                    <div className="bg-[#b87514]/10 dark:bg-[#b87514]/10 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-4 space-y-3">
                         <div className="flex items-start gap-2.5">
-                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 text-[#b87514] shrink-0 mt-0.5" />
                             <div>
                                 <p className="text-sm font-bold text-amber-800 dark:text-amber-400">⚠️ Email pendiente de verificar</p>
-                                <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">
+                                <p className="text-xs text-[#96610f] dark:text-[#b87514] mt-0.5">
                                     Verifica tu email para ganar puntos, completar misiones, aparecer en el ranking y recibir referidos.
                                 </p>
                             </div>
@@ -235,7 +235,7 @@ export default function DashboardClient({
                 {/* ── 1. CABECERA ─────────────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-3xl shrink-0">
+                        <div className="w-14 h-14 rounded-2xl bg-[#d4edda] dark:bg-[#1a5c2e]/20 flex items-center justify-center text-3xl shrink-0">
                             {avatar.emoji}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -245,7 +245,7 @@ export default function DashboardClient({
                             </span>
                         </div>
                         <div className="text-right shrink-0">
-                            <div className="text-3xl font-black text-emerald-600">{user.points}</div>
+                            <div className="text-3xl font-black text-[#1a5c2e]">{user.points}</div>
                             <div className="text-xs text-slate-400 font-medium">puntos totales</div>
                         </div>
                     </div>
@@ -258,30 +258,30 @@ export default function DashboardClient({
                                 {breakdownEntries.map(([label, pts]) => (
                                     <div key={label} className="flex items-center justify-between text-xs">
                                         <span className="text-slate-600 dark:text-slate-400">{label}</span>
-                                        <span className="font-bold text-emerald-600">+{pts}</span>
+                                        <span className="font-bold text-[#1a5c2e]">+{pts}</span>
                                     </div>
                                 ))}
                                 <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
                                     <span className="font-bold text-slate-700 dark:text-slate-200">Total</span>
-                                    <span className="font-black text-emerald-600">{user.points}</span>
+                                    <span className="font-black text-[#1a5c2e]">{user.points}</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     <div className="grid grid-cols-4 gap-2 mt-4">
-                        <Stat icon={<Trophy className="w-4 h-4 text-amber-500" />} label="Ranking" value={`#${rank}`} />
-                        <Stat icon={<Users className="w-4 h-4 text-blue-500" />} label="Ranking ref." value={referralRank > 0 ? `#${referralRank}` : '—'} />
-                        <Stat icon={<Users className="w-4 h-4 text-emerald-500" />} label="Referidos" value={String(data.referralsCount)} />
-                        <Stat icon={<KeyRound className="w-4 h-4 text-purple-500" />} label="Códigos" value={String(data.codesCompleted)} />
+                        <Stat icon={<Trophy className="w-4 h-4 text-[#b87514]" />} label="Ranking" value={`#${rank}`} />
+                        <Stat icon={<Users className="w-4 h-4 text-[#1a5c2e]" />} label="Ranking ref." value={referralRank > 0 ? `#${referralRank}` : '—'} />
+                        <Stat icon={<Users className="w-4 h-4 text-[#edf7f1]0" />} label="Referidos" value={String(data.referralsCount)} />
+                        <Stat icon={<KeyRound className="w-4 h-4 text-[#1a5c2e]" />} label="Códigos" value={String(data.codesCompleted)} />
                     </div>
                 </div>
 
                 {/* ── ACCESOS RÁPIDOS ─────────────────────────── */}
                 <div className="grid grid-cols-3 gap-3">
-                    <QuickLink href="/beta/ranking" icon="🏆" label="Ranking" color="bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900" />
-                    <QuickLink href="/beta/referrals" icon="👥" label="Referidos" color="bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900" />
-                    <QuickLink href="/beta/hall-of-fame" icon="🌟" label="Hall of Fame" color="bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900" />
+                    <QuickLink href="/beta/ranking" icon="🏆" label="Ranking" color="bg-[#b87514]/10 dark:bg-[#b87514]/10 border-[#b87514]/20 dark:border-[#b87514]/30" />
+                    <QuickLink href="/beta/referrals" icon="👥" label="Referidos" color="bg-[#edf7f1] dark:bg-[#1a5c2e]/10 border-[#1a5c2e]/20 dark:border-[#1a5c2e]/30" />
+                    <QuickLink href="/beta/hall-of-fame" icon="🌟" label="Hall of Fame" color="bg-[#b87514]/10 dark:bg-[#b87514]/10 border-[#b87514]/20 dark:border-[#b87514]/30" />
                 </div>
 
                 {/* ── 2. NOTIFICACIONES ─────────────────────── */}
@@ -291,7 +291,7 @@ export default function DashboardClient({
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
                         <div className="flex items-center gap-2">
-                            <Bell className="w-5 h-5 text-emerald-600" />
+                            <Bell className="w-5 h-5 text-[#1a5c2e]" />
                             <span className="font-black text-slate-800 dark:text-white">Notificaciones</span>
                             {unreadCount > 0 && (
                                 <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
@@ -303,7 +303,7 @@ export default function DashboardClient({
                             {unreadCount > 0 && (
                                 <button
                                     onClick={e => { e.stopPropagation(); markAllRead(); }}
-                                    className="text-xs font-semibold text-emerald-600 hover:underline"
+                                    className="text-xs font-semibold text-[#1a5c2e] hover:underline"
                                 >
                                     Marcar todas
                                 </button>
@@ -324,7 +324,7 @@ export default function DashboardClient({
                                     <button
                                         key={n.id}
                                         onClick={() => !n.is_read && markRead(n.id)}
-                                        className={`w-full text-left px-5 py-3 flex items-start gap-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${!n.is_read ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}
+                                        className={`w-full text-left px-5 py-3 flex items-start gap-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${!n.is_read ? 'bg-[#edf7f1]/60 dark:bg-[#1a5c2e]/10' : ''}`}
                                     >
                                         <span className="text-xl shrink-0 mt-0.5">{NOTIF_ICONS[n.type as NotificationType] ?? 'ℹ️'}</span>
                                         <div className="flex-1 min-w-0">
@@ -351,36 +351,36 @@ export default function DashboardClient({
                 {/* ── 3. COMPETICIÓN ──────────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5">
                     <div className="flex items-center gap-2 mb-3">
-                        <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        <TrendingUp className="w-5 h-5 text-[#1a5c2e]" />
                         <h2 className="font-black text-slate-800 dark:text-white">Tu posición en la competición</h2>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-center">
-                        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3">
-                            <div className="text-2xl font-black text-emerald-600">#{rank}</div>
+                        <div className="bg-[#edf7f1] dark:bg-[#1a5c2e]/10 rounded-xl p-3">
+                            <div className="text-2xl font-black text-[#1a5c2e]">#{rank}</div>
                             <div className="text-[10px] text-slate-500 mt-0.5">tu posición</div>
                         </div>
-                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3">
-                            <div className="text-2xl font-black text-blue-600">{totalParticipants}</div>
+                        <div className="bg-[#edf7f1] dark:bg-[#1a5c2e]/10 rounded-xl p-3">
+                            <div className="text-2xl font-black text-[#1a5c2e]">{totalParticipants}</div>
                             <div className="text-[10px] text-slate-500 mt-0.5">participantes</div>
                         </div>
-                        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3">
-                            <div className="text-2xl font-black text-amber-600">{leaderPoints}</div>
+                        <div className="bg-[#b87514]/10 dark:bg-[#b87514]/10 rounded-xl p-3">
+                            <div className="text-2xl font-black text-[#b87514]">{leaderPoints}</div>
                             <div className="text-[10px] text-slate-500 mt-0.5">pts del líder</div>
                         </div>
                     </div>
                     <div className="mt-3 space-y-1.5">
                         {!inTop10 && pointsToTop10 > 0 && (
-                            <div className="text-xs bg-purple-50 dark:bg-purple-950/30 rounded-lg px-3 py-2 font-semibold text-purple-700 dark:text-purple-300">
+                            <div className="text-xs bg-[#b87514]/10 dark:bg-[#b87514]/10 rounded-lg px-3 py-2 font-semibold text-[#96610f] dark:text-[#fcd34d]">
                                 🎯 Te faltan <b>{pointsToTop10} puntos</b> para entrar en el Top 10
                             </div>
                         )}
                         {!inTop50 && pointsToTop50 > 0 && (
-                            <div className="text-xs bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 font-semibold text-amber-700 dark:text-amber-300">
+                            <div className="text-xs bg-[#b87514]/10 dark:bg-[#b87514]/10 rounded-lg px-3 py-2 font-semibold text-[#96610f] dark:text-[#fcd34d]">
                                 🏆 Te faltan <b>{pointsToTop50} puntos</b> para entrar en el Top 50
                             </div>
                         )}
                         {inTop10 && (
-                            <div className="text-xs bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-3 py-2 font-bold text-emerald-700 dark:text-emerald-300">
+                            <div className="text-xs bg-[#edf7f1] dark:bg-[#1a5c2e]/10 rounded-lg px-3 py-2 font-bold text-[#133f21] dark:text-[#86efac]">
                                 💎 ¡Estás en el Top 10! Sigue completando misiones para mantenerte.
                             </div>
                         )}
@@ -388,27 +388,27 @@ export default function DashboardClient({
                 </div>
 
                 {/* ── 4. MENSAJE TOP 50 ───────────────────────── */}
-                <div className={`rounded-2xl p-4 ${inTop50 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                <div className={`rounded-2xl p-4 ${inTop50 ? 'bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
                     {inTop50 ? (
                         <>
                             <p className="font-black flex items-center gap-2 text-base">
                                 <Trophy className="w-5 h-5" /> ¡Estás dentro del Top 50 provisional!
                             </p>
-                            <p className="text-sm mt-1 text-emerald-50">
+                            <p className="text-sm mt-1 text-[#edf7f1]">
                                 Buen trabajo. Sigue completando misiones para mantener tu posición y destacar frente al equipo.
                             </p>
                         </>
                     ) : (
                         <>
                             <p className="font-bold flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-amber-500" /> Fuera del Top 50
+                                <Zap className="w-4 h-4 text-[#b87514]" /> Fuera del Top 50
                             </p>
                             <p className="text-sm mt-0.5 text-slate-500 dark:text-slate-400">
                                 Completa misiones, invita amigos y canjea códigos para subir.
                             </p>
                         </>
                     )}
-                    <p className={`text-xs mt-2 ${inTop50 ? 'text-emerald-100' : 'text-slate-400'}`}>
+                    <p className={`text-xs mt-2 ${inTop50 ? 'text-[#edf7f1]' : 'text-slate-400'}`}>
                         ⚠️ Estar en el Top 50 <b>no garantiza el acceso</b>. La aprobación final es siempre manual.
                     </p>
                 </div>
@@ -421,20 +421,20 @@ export default function DashboardClient({
                         <p className="text-xs text-slate-400">Vuelve pronto. Publicaremos nuevas misiones con más puntos.</p>
                     </div>
                 ) : recommended ? (
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 p-4">
-                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-[#1a5c2e]/30 dark:border-[#1a5c2e]/40 p-4">
+                        <p className="text-xs font-bold text-[#1a5c2e] uppercase tracking-wide mb-2 flex items-center gap-1.5">
                             <Target className="w-3.5 h-3.5" /> Tu siguiente misión recomendada
                         </p>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
-                                {getMissionIcon(recommended.key) ?? <Star className="w-5 h-5 text-emerald-600" />}
+                            <div className="w-10 h-10 rounded-xl bg-[#d4edda] dark:bg-[#1a5c2e]/20 flex items-center justify-center text-lg shrink-0">
+                                {getMissionIcon(recommended.key) ?? <Star className="w-5 h-5 text-[#1a5c2e]" />}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{recommended.title}</p>
                                 <p className="text-xs text-slate-500 truncate">{recommended.description}</p>
                             </div>
                             <div className="text-right shrink-0">
-                                <div className="font-black text-emerald-600">+{recommended.points}</div>
+                                <div className="font-black text-[#1a5c2e]">+{recommended.points}</div>
                                 <div className="text-[10px] text-slate-400">pts</div>
                             </div>
                         </div>
@@ -447,7 +447,7 @@ export default function DashboardClient({
                             )}
                             {SELF_DECLARABLE.has(recommended.key) && (
                                 <button onClick={() => claimMission(recommended.key)} disabled={busy === recommended.key}
-                                    className="flex-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg disabled:opacity-60">
+                                    className="flex-1 text-xs font-bold bg-[#1a5c2e] hover:bg-[#133f21] text-white px-3 py-2 rounded-lg disabled:opacity-60">
                                     {busy === recommended.key ? '...' : 'Marcar como hecha →'}
                                 </button>
                             )}
@@ -461,7 +461,7 @@ export default function DashboardClient({
                 {/* ── 6. CÓDIGO SECRETO ──────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
                     <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-xl shrink-0">🔍</div>
+                        <div className="w-10 h-10 rounded-xl bg-[#b87514]/10 dark:bg-[#b87514]/20 flex items-center justify-center text-xl shrink-0">🔍</div>
                         <div>
                             <h2 className="font-black text-slate-800 dark:text-white">Código secreto de la semana</h2>
                             <p className="text-xs text-slate-500 mt-0.5">
@@ -472,9 +472,9 @@ export default function DashboardClient({
                     <form onSubmit={redeemCode} className="flex gap-2">
                         <input value={code} onChange={e => setCode(e.target.value.toUpperCase())}
                             placeholder="Ej: QB001"
-                            className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500 uppercase" />
+                            className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-[#1a5c2e] uppercase" />
                         <button type="submit" disabled={busy === 'code'}
-                            className="px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold flex items-center gap-1.5 disabled:opacity-60">
+                            className="px-4 rounded-xl bg-[#1a5c2e] hover:bg-[#133f21] text-white text-sm font-bold flex items-center gap-1.5 disabled:opacity-60">
                             {busy === 'code' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Canjear'}
                         </button>
                     </form>
@@ -483,14 +483,14 @@ export default function DashboardClient({
                 {/* ── 7. REFERIDO ────────────────────────────── */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
                     <h2 className="font-black text-slate-800 dark:text-white flex items-center gap-2 mb-1">
-                        👥 Invita y gana <span className="text-emerald-600 font-bold text-sm">+10 pts por referido</span>
+                        👥 Invita y gana <span className="text-[#1a5c2e] font-bold text-sm">+10 pts por referido</span>
                     </h2>
                     <p className="text-xs text-slate-500 mb-3">Cada amigo que se registre con tu enlace suma puntos.</p>
                     <div className="flex gap-2">
                         <input readOnly value={refLink}
                             className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 font-mono" />
                         <button onClick={copyLink}
-                            className="px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-sm font-bold">
+                            className="px-4 rounded-xl bg-[#1a5c2e] hover:bg-[#133f21] text-white flex items-center gap-1.5 text-sm font-bold">
                             <Copy className="w-4 h-4" /> Copiar
                         </button>
                     </div>
@@ -504,7 +504,7 @@ export default function DashboardClient({
                     </h2>
                     <div className="space-y-2">
                         {pending.length === 0 && (
-                            <p className="text-sm text-emerald-600 font-bold text-center py-2">🎉 ¡Todas completadas!</p>
+                            <p className="text-sm text-[#1a5c2e] font-bold text-center py-2">🎉 ¡Todas completadas!</p>
                         )}
                         {pending.map(m => <MissionRow key={m.key} m={m} busy={busy} onClaim={claimMission} showAction />)}
                     </div>
@@ -513,7 +513,7 @@ export default function DashboardClient({
                             <button onClick={() => setShowCompleted(v => !v)}
                                 className="w-full flex items-center justify-between text-xs font-bold text-slate-500 hover:text-slate-700 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100">
                                 <span className="flex items-center gap-1.5">
-                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    <Check className="w-3.5 h-3.5 text-[#1a5c2e]" />
                                     {completed.length} completada{completed.length > 1 ? 's' : ''}
                                 </span>
                                 {showCompleted ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -538,7 +538,7 @@ export default function DashboardClient({
                                 const d = new Date(h.created_at);
                                 return (
                                     <div key={i} className="flex items-center gap-3 text-sm">
-                                        <span className={`w-12 shrink-0 text-center font-black rounded-lg py-0.5 text-xs ${h.delta >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                                        <span className={`w-12 shrink-0 text-center font-black rounded-lg py-0.5 text-xs ${h.delta >= 0 ? 'bg-[#d4edda] text-[#133f21]' : 'bg-red-100 text-red-600'}`}>
                                             {h.delta >= 0 ? '+' : ''}{h.delta}
                                         </span>
                                         <span className="flex-1 text-slate-700 dark:text-slate-300">{historyReasonLabel(h.reason)}</span>
@@ -552,7 +552,7 @@ export default function DashboardClient({
                         </div>
                         {data.history.length > 5 && (
                             <button onClick={() => setShowFullHistory(v => !v)}
-                                className="mt-3 w-full text-xs font-bold text-emerald-600 hover:underline flex items-center justify-center gap-1">
+                                className="mt-3 w-full text-xs font-bold text-[#1a5c2e] hover:underline flex items-center justify-center gap-1">
                                 {showFullHistory
                                     ? <><ChevronUp className="w-3.5 h-3.5" /> Mostrar menos</>
                                     : <><ChevronDown className="w-3.5 h-3.5" /> Ver las {data.history.length} acciones</>
@@ -563,7 +563,7 @@ export default function DashboardClient({
                 )}
 
                 {/* ── 10. BENEFICIOS ─────────────────────────── */}
-                <div className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-2xl p-4">
+                <div className="bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] text-white rounded-2xl p-4">
                     <h2 className="font-black text-base flex items-center gap-2 mb-3">
                         <Rocket className="w-5 h-5" /> Beneficios de ser Beta Tester
                     </h2>
@@ -574,7 +574,7 @@ export default function DashboardClient({
                             '🏅 Insignia exclusiva de Fundador en tu perfil',
                             '🌟 Reconocimiento permanente en la comunidad',
                             '⚡ Acceso prioritario a todas las novedades futuras',
-                        ].map((b, i) => <li key={i} className="text-sm text-emerald-50">{b}</li>)}
+                        ].map((b, i) => <li key={i} className="text-sm text-[#edf7f1]">{b}</li>)}
                     </ul>
                 </div>
 
@@ -590,7 +590,7 @@ export default function DashboardClient({
                         {data.achievements.map(a => (
                             <div key={a.key} title={a.unlocked ? a.description : '🔒 ' + a.description}
                                 className={`flex flex-col items-center text-center gap-1 p-2 rounded-xl transition-all ${
-                                    a.unlocked ? 'bg-amber-50 dark:bg-amber-950/30' : 'opacity-30 grayscale bg-slate-50 dark:bg-slate-800'
+                                    a.unlocked ? 'bg-[#b87514]/10 dark:bg-[#b87514]/10' : 'opacity-30 grayscale bg-slate-50 dark:bg-slate-800'
                                 }`}>
                                 <span className="text-2xl">{a.icon}</span>
                                 <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 leading-tight">{a.title}</span>
@@ -600,7 +600,7 @@ export default function DashboardClient({
                 </div>
 
                 <div className="flex items-center justify-between pb-4">
-                    <Link href="/beta/ranking" className="text-sm font-bold text-emerald-700 hover:underline flex items-center gap-1">
+                    <Link href="/beta/ranking" className="text-sm font-bold text-[#133f21] hover:underline flex items-center gap-1">
                         Ver ranking completo <ArrowRight className="w-4 h-4" />
                     </Link>
                     <div className="flex flex-col items-end gap-1">
@@ -645,11 +645,11 @@ function MissionRow({ m, busy, onClaim, showAction }: {
     return (
         <div className={`flex items-center gap-3 rounded-xl p-3 border ${
             m.completed
-                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900'
+                ? 'bg-[#edf7f1] dark:bg-[#1a5c2e]/10 border-[#1a5c2e]/20 dark:border-[#1a5c2e]/30'
                 : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'
         }`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                m.completed ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-700'
+                m.completed ? 'bg-[#1a5c2e] text-white' : 'bg-white dark:bg-slate-700'
             }`}>
                 {m.completed ? <Check className="w-4 h-4" /> : (icon ?? <span className="text-xs font-black text-slate-500">+{m.points}</span>)}
             </div>
@@ -658,13 +658,13 @@ function MissionRow({ m, busy, onClaim, showAction }: {
                 <p className="text-xs text-slate-400 truncate">{m.description}</p>
             </div>
             {!m.completed && m.target_url && (
-                <a href={m.target_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-600 shrink-0">
+                <a href={m.target_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-[#1a5c2e] shrink-0">
                     <ExternalLink className="w-4 h-4" />
                 </a>
             )}
             {showAction && !m.completed && SELF_DECLARABLE.has(m.key) && (
                 <button onClick={() => onClaim(m.key)} disabled={busy === m.key}
-                    className="text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 px-3 py-1.5 rounded-lg disabled:opacity-60 shrink-0">
+                    className="text-xs font-bold text-[#133f21] bg-[#d4edda] hover:bg-[#c1e3ca] dark:bg-[#1a5c2e]/20 px-3 py-1.5 rounded-lg disabled:opacity-60 shrink-0">
                     {busy === m.key ? '...' : 'Hecho'}
                 </button>
             )}
