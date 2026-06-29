@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Mail, ArrowLeft, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, ArrowLeft, AlertCircle } from 'lucide-react';
 
 const ERROR_MSGS: Record<string, string> = {
     invalid:  'El enlace de recuperación no es válido.',
@@ -17,8 +17,6 @@ function RecuperarForm() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ link: string; expiresAt: string } | null>(null);
     const [error, setError] = useState('');
-    const [copied, setCopied] = useState(false);
-
     const urlError = params?.get('error');
 
     const submit = async (e: React.FormEvent) => {
@@ -45,13 +43,6 @@ function RecuperarForm() {
         }
     };
 
-    const copy = async () => {
-        if (!result) return;
-        await navigator.clipboard.writeText(result.link).catch(() => {});
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md space-y-4">
@@ -60,15 +51,14 @@ function RecuperarForm() {
                 </Link>
 
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-5 text-white">
+                    <div className="px-5 py-5 text-white" style={{ background: 'linear-gradient(to right, #1a5c2e, #1e7a3a)' }}>
                         <h1 className="font-black text-xl">Recuperar acceso Beta</h1>
-                        <p className="text-emerald-100 text-xs mt-1">
+                        <p className="text-xs mt-1 opacity-80">
                             Introduce tu email y te generaremos un enlace de acceso directo.
                         </p>
                     </div>
 
                     <div className="p-5 space-y-4">
-                        {/* Error de URL (token inválido/caducado/usado) */}
                         {urlError && (
                             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-3 text-sm text-red-700">
                                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -77,42 +67,18 @@ function RecuperarForm() {
                         )}
 
                         {result ? (
-                            /* ── Enlace generado ── */
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3">
-                                    <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                                    <p className="text-sm text-emerald-700 font-semibold">
-                                        Enlace generado correctamente
-                                    </p>
-                                </div>
-
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Hemos intentado enviarlo a tu email. Si no lo recibes, usa el enlace directo de abajo.
-                                    Válido hasta:{' '}
-                                    <b>{new Date(result.expiresAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</b>
+                            <div className="py-4 text-center space-y-3">
+                                <div className="text-5xl">✉️</div>
+                                <p className="font-black text-slate-800 dark:text-white text-lg">Revisa tu email</p>
+                                <p className="text-sm text-slate-500 leading-relaxed">
+                                    Te hemos enviado un enlace a <b className="text-slate-700 dark:text-slate-200">{email}</b>.
+                                    Haz clic en él para establecer tu nueva contraseña.
                                 </p>
-
-                                <div className="flex gap-2">
-                                    <input readOnly value={result.link}
-                                        className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 min-w-0" />
-                                    <button onClick={copy}
-                                        className="shrink-0 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-xs font-bold">
-                                        {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                        {copied ? '¡Copiado!' : 'Copiar'}
-                                    </button>
-                                </div>
-
-                                <a href={result.link}
-                                    className="w-full flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-all">
-                                    Acceder directamente →
-                                </a>
-
-                                <p className="text-xs text-center text-slate-400">
-                                    Guarda este enlace para acceder desde cualquier dispositivo.
+                                <p className="text-xs text-slate-400">
+                                    Válido durante 24 horas. Revisa también la carpeta de spam.
                                 </p>
                             </div>
                         ) : (
-                            /* ── Formulario de email ── */
                             <form onSubmit={submit} className="space-y-4">
                                 <div>
                                     <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
@@ -123,7 +89,8 @@ function RecuperarForm() {
                                         <input type="email" required value={email}
                                             onChange={e => setEmail(e.target.value)}
                                             placeholder="tu@email.com"
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+                                            style={{ '--tw-ring-color': '#1a5c2e' } as React.CSSProperties} />
                                     </div>
                                 </div>
 
@@ -134,7 +101,8 @@ function RecuperarForm() {
                                 )}
 
                                 <button type="submit" disabled={loading}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
+                                    className="w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity hover:opacity-90"
+                                    style={{ background: 'linear-gradient(to right, #1a5c2e, #1e7a3a)' }}>
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Generar enlace de acceso'}
                                 </button>
 
@@ -152,7 +120,7 @@ function RecuperarForm() {
 
 export default function RecuperarPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-emerald-600" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin" style={{ color: '#1a5c2e' }} /></div>}>
             <RecuperarForm />
         </Suspense>
     );

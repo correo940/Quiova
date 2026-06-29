@@ -33,17 +33,7 @@ export async function GET(
 
     if (!betaUser) return NextResponse.redirect(`${base}?error=invalid`);
 
-    // Marcar token como usado
-    await supabaseAdmin
-        .from('beta_recovery_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('id', rec.id);
-
-    // Establecer cookie httpOnly y redirigir al dashboard
-    const res = NextResponse.redirect(new URL('/beta/dashboard', req.url));
-    res.cookies.set(BETA_COOKIE, betaUser.access_token, {
-        httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production',
-        path: '/', maxAge: 60 * 60 * 24 * 365,
-    });
-    return res;
+    // No marcar como usado todavía — lo marcamos cuando se confirme la nueva contraseña
+    // Redirigir al formulario de nueva contraseña pasando el token por URL
+    return NextResponse.redirect(new URL(`/beta/nueva-contrasena?token=${token}`, req.url));
 }

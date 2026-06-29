@@ -1,11 +1,18 @@
 import 'server-only';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { siteUrl } from './constants';
 
-const RESEND_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.RESEND_FROM || 'Quioba Beta <beta@quioba.com>';
-const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
+const GMAIL_USER = process.env.GMAIL_USER || 'quioba.web@gmail.com';
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
+// Crea el transporter solo si hay credenciales configuradas
+const transporter = GMAIL_APP_PASSWORD
+    ? nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+    })
+    : null;
 
 type EmailType =
     | 'welcome'
@@ -25,8 +32,6 @@ interface SendArgs {
     payload?: Record<string, unknown>;
 }
 
-// Envía vía Resend y registra SIEMPRE el evento en beta_email_events.
-// Si no hay RESEND_API_KEY configurada, el evento queda 'queued' (no se pierde).
 export async function sendBetaEmail({ type, to, subject, html, betaUserId, payload }: SendArgs): Promise<void> {
     const { data: evt } = await supabaseAdmin
         .from('beta_email_events')
@@ -43,15 +48,19 @@ export async function sendBetaEmail({ type, to, subject, html, betaUserId, paylo
 
     const eventId = evt?.id;
 
-    if (!resend) return; // sin proveedor: queda registrado como queued
+    if (!transporter) return; // sin credenciales: queda registrado como queued
 
     try {
-        const { data, error } = await resend.emails.send({ from: FROM, to, subject, html });
-        if (error) throw new Error(error.message);
+        await transporter.sendMail({
+            from: `Quioba Beta <${GMAIL_USER}>`,
+            to,
+            subject,
+            html,
+        });
         if (eventId) {
             await supabaseAdmin
                 .from('beta_email_events')
-                .update({ status: 'sent', provider_id: data?.id ?? null, sent_at: new Date().toISOString() })
+                .update({ status: 'sent', sent_at: new Date().toISOString() })
                 .eq('id', eventId);
         }
     } catch (e: any) {
@@ -69,10 +78,10 @@ export async function sendBetaEmail({ type, to, subject, html, betaUserId, paylo
 // ---------------------------------------------------------------------------
 function shell(title: string, body: string, cta?: { label: string; url: string }): string {
     const button = cta
-        ? `<a href="${cta.url}" style="display:inline-block;background:#15803d;color:#fff;text-decoration:none;padding:12px 24px;border-radius:9999px;font-weight:700;margin-top:16px">${cta.label}</a>`
+        ? `<a href="${cta.url}" style="display:inline-block;background:#1a5c2e;color:#fff;text-decoration:none;padding:12px 24px;border-radius:9999px;font-weight:700;margin-top:16px">${cta.label}</a>`
         : '';
     return `<div style="font-family:system-ui,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
-        <div style="font-size:22px;font-weight:800;color:#15803d;margin-bottom:8px">Quioba <span style="color:#0f172a">Beta</span></div>
+        <div style="font-size:22px;font-weight:800;color:#1a5c2e;margin-bottom:8px">Quioba <span style="color:#0f172a">Beta</span></div>
         <h1 style="font-size:20px;margin:16px 0 8px">${title}</h1>
         <div style="font-size:15px;line-height:1.6;color:#334155">${body}</div>
         ${button}

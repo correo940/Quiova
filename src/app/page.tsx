@@ -453,7 +453,7 @@ export default function HomePage() {
                             </div>
                             <div className="min-w-0">
                               <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: p.color + 'aa' }}>QUIOBA {p.name}</p>
-                              <p className="text-sm font-black leading-tight" style={{ color: p.color }}>Ver todos los artículos</p>
+                              <p className="text-sm font-black leading-tight" style={{ color: p.color }}>Ver todos los artículos <span className="font-normal opacity-60">(Próximamente)</span></p>
                             </div>
                           </div>
                           <div
