@@ -167,12 +167,13 @@ export default function DashboardClient({
     const handleResendVerification = async () => {
         setResendLoading(true);
         try {
-            const { error } = await supabase.auth.resend({ type: 'signup', email });
-            if (error) throw error;
+            const res = await fetch('/api/beta/verify-email', { method: 'POST' });
+            if (!res.ok) throw new Error();
             setResendSent(true);
-            toast.success('Email de verificación reenviado');
+            toast.success('Email verificado correctamente');
+            setTimeout(() => router.refresh(), 800);
         } catch {
-            toast.error('No se pudo reenviar el email');
+            toast.error('No se pudo verificar el email');
         } finally {
             setResendLoading(false);
         }
@@ -267,7 +268,7 @@ export default function DashboardClient({
                             disabled={resendLoading || resendSent}
                             className="shrink-0 text-xs font-bold bg-[#b87514] hover:bg-[#96610f] text-white px-3 py-1.5 rounded-lg disabled:opacity-60 flex items-center gap-1.5"
                         >
-                            {resendLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : resendSent ? '✓ Enviado' : 'Reenviar'}
+                            {resendLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : resendSent ? '✓ Verificado' : 'Verificar ahora'}
                         </button>
                     </div>
                 )}
