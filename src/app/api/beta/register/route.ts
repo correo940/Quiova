@@ -118,8 +118,8 @@ export async function POST(req: NextRequest) {
                 referrer_id: referrerId, referred_id: user.id, status: 'pending',
             });
         }
-        // El email de bienvenida se envía igualmente
-        emailWelcome(email, nickname, refLink, user.id).catch(() => {});
+        // El email de bienvenida se awaita para que Vercel no termine la función antes de enviarlo
+        await emailWelcome(email, nickname, refLink, user.id).catch((e) => console.error('[emailWelcome]', e));
     } else {
         // Flujo antiguo: misión de registro inmediata, referido validado al instante.
         await completeMission(user.id, 'register');
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
-        emailWelcome(email, nickname, refLink, user.id).catch(() => {});
+        await emailWelcome(email, nickname, refLink, user.id).catch((e) => console.error('[emailWelcome]', e));
     }
 
     const res = NextResponse.json({
