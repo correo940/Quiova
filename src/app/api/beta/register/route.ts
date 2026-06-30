@@ -80,12 +80,21 @@ export async function POST(req: NextRequest) {
             email_confirm: true,
         });
         if (authErr || !authUser.user) {
-            if (authErr?.message?.includes('already registered')) {
-                return NextResponse.json({ error: 'Este email ya está registrado' }, { status: 409 });
+            if (authErr?.message?.toLowerCase().includes('already registered') || authErr?.message?.toLowerCase().includes('already been registered')) {
+                // Puede que exista en auth pero no en beta_users (registro anterior interrumpido)
+                const { data: existing } = await supabaseAdmin.auth.admin.listUsers();
+                const found = existing?.users?.find(u => u.email === email);
+                if (found) {
+                    authUserId = found.id;
+                } else {
+                    return NextResponse.json({ error: 'Este email ya está registrado' }, { status: 409 });
+                }
+            } else {
+                return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 });
             }
-            return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 });
+        } else {
+            authUserId = authUser.user.id;
         }
-        authUserId = authUser.user.id;
     }
 
     const referralCode = await uniqueRefCode();
