@@ -107,9 +107,9 @@ function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): st
 
   <!-- HEADER -->
   <tr>
-    <td style="background:#1a5c2e;padding:32px 32px 24px;text-align:center">
-      <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px">QUIOBA</div>
-      <div style="font-size:11px;font-weight:700;color:#86efac;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Programa Beta</div>
+    <td style="background:#1a5c2e;padding:28px 32px 22px;text-align:center">
+      <img src="https://www.quioba.com/images/logo.png" alt="Quioba" width="120" style="display:block;margin:0 auto 8px;max-width:120px">
+      <div style="font-size:11px;font-weight:700;color:#86efac;letter-spacing:3px;text-transform:uppercase">Programa Beta</div>
     </td>
   </tr>
 
@@ -185,8 +185,22 @@ function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): st
 
   <!-- FOOTER -->
   <tr>
-    <td style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0">
-      <p style="margin:0;font-size:12px;color:#94a3b8">
+    <td style="background:#f8fafc;padding:20px 32px 24px;text-align:center;border-top:1px solid #e2e8f0">
+      <!-- Redes sociales -->
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto 14px">
+        <tr>
+          <td style="padding:0 5px">
+            <a href="https://www.tiktok.com/@quioba" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">TikTok</a>
+          </td>
+          <td style="padding:0 5px">
+            <a href="https://www.instagram.com/quioba" style="display:inline-block;background:#c13584;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">Instagram</a>
+          </td>
+          <td style="padding:0 5px">
+            <a href="https://www.youtube.com/@quioba" style="display:inline-block;background:#ff0000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">YouTube</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;font-size:11px;color:#94a3b8">
         Quioba · Programa Beta privado.<br>
         Si no te registraste, ignora este correo.
       </p>
