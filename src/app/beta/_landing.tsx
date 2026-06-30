@@ -149,23 +149,18 @@ function BetaLanding() {
         e.preventDefault();
         setLoading(true);
         try {
-            // 1. Crear cuenta Supabase Auth (envía email de confirmación automáticamente)
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: form.email,
-                password: form.password,
-                options: { emailRedirectTo: `${window.location.origin}/login` },
-            });
-            if (authError) throw new Error(authError.message);
-
-            // 2. Registrar perfil beta (nickname, avatar, puntos, etc.)
+            // Backend crea la cuenta Auth (email_confirm: true) y el perfil beta en un solo paso.
+            // Así Supabase no manda ningún email propio — solo llega el de bienvenida de Gmail.
             const res = await fetch('/api/beta/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...form, ref, authUserId: authData.user?.id }),
+                body: JSON.stringify({ ...form, ref }),
             });
             const data = await res.json();
-            // 409 = email/nickname ya existe, no es error fatal si el auth fue bien
-            if (!res.ok && res.status !== 409) throw new Error(data.error || 'Error al registrarse');
+            if (!res.ok) throw new Error(data.error || 'Error al registrarse');
+
+            // Iniciar sesión inmediatamente (la cuenta ya está confirmada)
+            await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
 
             setConfirmed(true);
         } catch (err: unknown) {

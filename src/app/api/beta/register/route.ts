@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
     const youtube = handle(body.youtube);
     const followsSocials = body.followsSocials === true;
     const ref = clean(body.ref).toUpperCase() || null;
-    const authUserId = typeof body.authUserId === 'string' && body.authUserId ? body.authUserId : null;
+    const password = typeof body.password === 'string' && body.password.length >= 6 ? body.password : null;
+    // authUserId puede venir del cliente (flujo legacy) o lo creamos nosotros desde el backend
+    let authUserId = typeof body.authUserId === 'string' && body.authUserId ? body.authUserId : null;
 
     // ---- Validaciones de servidor ----
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
@@ -68,6 +70,22 @@ export async function POST(req: NextRequest) {
             referrer.email !== email &&
             !['rechazado', 'suspendido'].includes(referrer.status);
         if (referrerValid) referrerId = referrer.id;
+    }
+
+    // ---- Crear cuenta Supabase Auth en el backend (sin email de confirmación) ----
+    if (!authUserId && password) {
+        const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+        });
+        if (authErr || !authUser.user) {
+            if (authErr?.message?.includes('already registered')) {
+                return NextResponse.json({ error: 'Este email ya está registrado' }, { status: 409 });
+            }
+            return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 });
+        }
+        authUserId = authUser.user.id;
     }
 
     const referralCode = await uniqueRefCode();
