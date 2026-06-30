@@ -7,7 +7,13 @@ function getTransporter() {
     const user = process.env.GMAIL_USER || 'quioba.web@gmail.com';
     const pass = process.env.GMAIL_APP_PASSWORD;
     if (!pass) return null;
-    return nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+    });
 }
 
 type EmailType =
