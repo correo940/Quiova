@@ -246,6 +246,7 @@ function BetaLanding() {
                                         <input type="email" required value={form.email}
                                             onChange={e => set('email', e.target.value)}
                                             placeholder="tu@email.com"
+                                            autoComplete="off"
                                             className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c2e] focus:border-transparent" />
                                     </div>
 
@@ -259,6 +260,7 @@ function BetaLanding() {
                                                 value={form.password}
                                                 onChange={e => set('password', e.target.value)}
                                                 placeholder="Mínimo 8 caracteres"
+                                                autoComplete="new-password"
                                                 className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c2e] focus:border-transparent"
                                             />
                                             <button type="button" onClick={() => setShowPassword(v => !v)}

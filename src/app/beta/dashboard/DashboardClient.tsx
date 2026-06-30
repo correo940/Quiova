@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import {
     Copy, Trophy, Users, Check, Loader2, ExternalLink, KeyRound,
     ChevronDown, ChevronUp, Target, ArrowRight, Star,
-    TrendingUp, AlertTriangle, Megaphone, Shield, Timer,
+    TrendingUp, AlertTriangle, Megaphone, Shield, Timer, X,
+    Clock, Send,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getBetaAvatar } from '@/lib/beta/avatars';
@@ -20,10 +21,12 @@ import { TikTokBadge, InstagramBadge, YouTubeBadge } from '@/lib/beta/social-ico
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Mission {
     key: string; title: string; description: string; points: number;
-    type: string; target_url: string | null; completed: boolean;
+    type: string; verification_type: string; target_url: string | null;
+    completed: boolean; reviewStatus: 'pending' | 'approved' | 'rejected' | null;
 }
+
+interface ManualForm { key: string; title: string; description: string; }
 interface Achievement { key: string; title: string; description: string; icon: string; unlocked: boolean; }
-interface HistoryItem { delta: number; reason: string; created_at: string; }
 interface Notification { id: string; type: string; title: string; message: string; is_read: boolean; created_at: string; }
 interface Novedad { id: string; title: string; description?: string; type: string; created_at: string; }
 
@@ -34,7 +37,6 @@ interface Props {
         achievements: Achievement[];
         referralsCount: number;
         codesCompleted: number;
-        history: HistoryItem[];
         notifications: Notification[];
         unreadCount: number;
         hasActiveCodes: boolean;
@@ -54,8 +56,6 @@ interface Props {
     email: string;
     selectionEndDate?: string;
 }
-
-const SELF_DECLARABLE = new Set(['follow_tiktok', 'follow_instagram', 'follow_youtube', 'share_content', 'report_bug']);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function getSmartMission(missions: Mission[], referralsCount: number, hasActiveCodes: boolean): Mission | null {
@@ -158,6 +158,9 @@ export default function DashboardClient({
     const [resendLoading, setResendLoading] = useState(false);
     const [resendSent, setResendSent] = useState(false);
     const [showCompleted, setShowCompleted] = useState(false);
+    const [manualForm, setManualForm] = useState<ManualForm | null>(null);
+    const [formTitle, setFormTitle] = useState('');
+    const [formDesc, setFormDesc] = useState('');
 
     const refresh = () => router.refresh();
 
@@ -180,7 +183,7 @@ export default function DashboardClient({
         catch { toast.error('No se pudo copiar'); }
     };
 
-    const claimMission = async (key: string) => {
+    const submitDeclaration = async (key: string) => {
         setBusy(key);
         try {
             const res = await fetch('/api/beta/mission', {
@@ -189,8 +192,28 @@ export default function DashboardClient({
             });
             const d = await res.json();
             if (!res.ok) throw new Error(d.error);
-            if (d.awarded) toast.success(`+${d.points} puntos conseguidos`);
-            else toast.info('Misión ya completada');
+            toast.success('Enviado para revisión. El equipo lo revisará en breve.');
+            refresh();
+        } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error'); }
+        finally { setBusy(null); }
+    };
+
+    const submitManual = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualForm) return;
+        const title = formTitle.trim();
+        const description = formDesc.trim();
+        if (!title || !description) { toast.error('Completa el título y la descripción'); return; }
+        setBusy(manualForm.key);
+        try {
+            const res = await fetch('/api/beta/mission', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: manualForm.key, title, description, token: user.access_token }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+            toast.success('Enviado para revisión. El equipo lo revisará en breve.');
+            setManualForm(null); setFormTitle(''); setFormDesc('');
             refresh();
         } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Error'); }
         finally { setBusy(null); }
@@ -411,7 +434,13 @@ export default function DashboardClient({
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {pending.map(m => <MissionRow key={m.key} m={m} busy={busy} onClaim={claimMission} showAction />)}
+                                    {pending.map(m => (
+                                        <MissionRow
+                                            key={m.key} m={m} busy={busy}
+                                            onDeclare={submitDeclaration}
+                                            onOpenForm={m2 => { setManualForm({ key: m2.key, title: '', description: '' }); setFormTitle(''); setFormDesc(''); }}
+                                        />
+                                    ))}
                                 </div>
                             )}
 
@@ -429,16 +458,10 @@ export default function DashboardClient({
                                     </button>
                                     {showCompleted && (
                                         <div className="space-y-2 mt-2">
-                                            {completed.map(m => <MissionRow key={m.key} m={m} busy={busy} onClaim={claimMission} showAction={false} />)}
+                                            {completed.map(m => <CompletedMissionRow key={m.key} m={m} />)}
                                         </div>
                                     )}
                                 </div>
-                            )}
-
-                            {completed.length > 0 && !showCompleted && (
-                                <Link href="/beta/ranking" className="block mt-3 text-xs font-bold text-[#1a5c2e] hover:underline flex items-center gap-1">
-                                    Ver todas las misiones <ArrowRight className="w-3 h-3" />
-                                </Link>
                             )}
                         </div>
                     </div>
@@ -472,27 +495,32 @@ export default function DashboardClient({
                                     </div>
 
                                     <div className="space-y-2">
-                                        {(recommended.target_url || SELF_DECLARABLE.has(recommended.key)) ? (
+                                        {recommended.reviewStatus === 'pending' ? (
+                                            <div className="flex items-center justify-center gap-2 bg-[#b87514]/10 text-[#96610f] text-sm font-semibold rounded-xl py-3">
+                                                <Clock className="w-4 h-4" /> Pendiente de revisión
+                                            </div>
+                                        ) : recommended.verification_type === 'automatic' ? (
+                                            <p className="text-center text-xs text-slate-400 italic py-2">Se registra automáticamente</p>
+                                        ) : recommended.verification_type === 'declaration' ? (
                                             <>
                                                 {recommended.target_url && (
                                                     <a href={recommended.target_url} target="_blank" rel="noopener noreferrer"
                                                         className="w-full flex items-center justify-center gap-2 bg-[#1a5c2e] hover:bg-[#133f21] text-white font-bold rounded-xl py-3 text-sm transition-colors">
-                                                        Completar misión <ArrowRight className="w-4 h-4" />
+                                                        Abrir <ExternalLink className="w-4 h-4" />
                                                     </a>
                                                 )}
-                                                {SELF_DECLARABLE.has(recommended.key) && (
-                                                    <button onClick={() => claimMission(recommended.key)} disabled={busy === recommended.key}
-                                                        className="w-full flex items-center justify-center gap-2 bg-[#1a5c2e] hover:bg-[#133f21] text-white font-bold rounded-xl py-3 text-sm transition-colors disabled:opacity-60">
-                                                        {busy === recommended.key
-                                                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                                                            : <>Completar misión <ArrowRight className="w-4 h-4" /></>
-                                                        }
-                                                    </button>
-                                                )}
+                                                <button onClick={() => submitDeclaration(recommended.key)} disabled={busy === recommended.key}
+                                                    className="w-full flex items-center justify-center gap-2 border border-[#1a5c2e] text-[#1a5c2e] hover:bg-[#edf7f1] font-bold rounded-xl py-2.5 text-sm transition-colors disabled:opacity-60">
+                                                    {busy === recommended.key ? <Loader2 className="w-4 h-4 animate-spin" /> : 'He realizado esta acción'}
+                                                </button>
                                             </>
-                                        ) : (
-                                            <p className="text-center text-xs text-slate-400 italic py-2">Se registra automáticamente</p>
-                                        )}
+                                        ) : recommended.verification_type === 'manual' ? (
+                                            <button
+                                                onClick={() => { setManualForm({ key: recommended.key, title: '', description: '' }); setFormTitle(''); setFormDesc(''); }}
+                                                className="w-full flex items-center justify-center gap-2 bg-[#1a5c2e] hover:bg-[#133f21] text-white font-bold rounded-xl py-3 text-sm transition-colors">
+                                                <Send className="w-4 h-4" /> Enviar formulario
+                                            </button>
+                                        ) : null}
                                     </div>
                                     <button
                                         onClick={() => setShowCompleted(v => !v)}
@@ -565,42 +593,134 @@ export default function DashboardClient({
                     </div>
                 </div>
             </div>
+
+            {/* ── MODAL: Formulario misión manual ─────────────── */}
+            {manualForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="font-black text-slate-800 dark:text-white text-lg">Enviar formulario</h2>
+                            <button onClick={() => setManualForm(null)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={submitManual} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Título</label>
+                                <input
+                                    value={formTitle}
+                                    onChange={e => setFormTitle(e.target.value)}
+                                    placeholder="Ej: Bug en la pantalla de login"
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c2e]"
+                                    maxLength={120}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Descripción detallada</label>
+                                <textarea
+                                    value={formDesc}
+                                    onChange={e => setFormDesc(e.target.value)}
+                                    placeholder="Describe con detalle lo que ocurrió, pasos para reproducirlo, etc."
+                                    rows={5}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a5c2e] resize-none"
+                                    maxLength={2000}
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1 text-right">{formDesc.length}/2000</p>
+                            </div>
+                            <div className="flex gap-3 pt-1">
+                                <button type="button" onClick={() => setManualForm(null)}
+                                    className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    Cancelar
+                                </button>
+                                <button type="submit" disabled={busy === manualForm.key || !formTitle.trim() || !formDesc.trim()}
+                                    className="flex-1 rounded-xl bg-[#1a5c2e] hover:bg-[#133f21] text-white py-2.5 text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors">
+                                    {busy === manualForm.key ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Enviar</>}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 // ── MissionRow ─────────────────────────────────────────────────────────────────
-function MissionRow({ m, busy, onClaim, showAction }: {
+function MissionRow({ m, busy, onDeclare, onOpenForm }: {
     m: Mission; busy: string | null;
-    onClaim: (key: string) => void; showAction: boolean;
+    onDeclare: (key: string) => void;
+    onOpenForm: (m: Mission) => void;
 }) {
     const icon = getMissionIcon(m.key);
+    const isPending = m.reviewStatus === 'pending';
+    const isRejected = m.reviewStatus === 'rejected';
+
     return (
-        <div className={`flex items-center gap-3 rounded-xl p-3 border ${
-            m.completed
-                ? 'bg-[#edf7f1] dark:bg-[#1a5c2e]/10 border-[#1a5c2e]/20 dark:border-[#1a5c2e]/30'
-                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'
-        }`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                m.completed ? 'bg-[#1a5c2e] text-white' : 'bg-white dark:bg-slate-700'
-            }`}>
-                {m.completed ? <Check className="w-4 h-4" /> : (icon ?? <span className="text-xs font-black text-slate-500">+{m.points}</span>)}
+        <div className="flex items-start gap-3 rounded-xl p-3 border bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-slate-700 mt-0.5">
+                {icon ?? <span className="text-xs font-black text-slate-500">+{m.points}</span>}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{m.title}</p>
+                    <span className="text-[10px] font-bold bg-[#b87514]/10 text-[#96610f] px-2 py-0.5 rounded-full">+{m.points} pts</span>
+                    {isPending && (
+                        <span className="text-[10px] font-bold bg-[#b87514]/10 text-[#96610f] px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" /> Revisión pendiente
+                        </span>
+                    )}
+                    {isRejected && (
+                        <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <X className="w-2.5 h-2.5" /> Rechazada
+                        </span>
+                    )}
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">{m.description}</p>
+
+                {!isPending && m.verification_type === 'automatic' && (
+                    <p className="text-xs text-slate-400 italic mt-1.5">Se completa automáticamente</p>
+                )}
+
+                {!isPending && m.verification_type === 'declaration' && (
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {m.target_url && (
+                            <a href={m.target_url} target="_blank" rel="noopener noreferrer"
+                                className="text-xs font-bold text-[#1a5c2e] border border-[#1a5c2e]/30 hover:bg-[#edf7f1] px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                                Abrir <ExternalLink className="w-3 h-3" />
+                            </a>
+                        )}
+                        <button onClick={() => onDeclare(m.key)} disabled={busy === m.key}
+                            className="text-xs font-bold text-white bg-[#1a5c2e] hover:bg-[#133f21] px-3 py-1.5 rounded-lg disabled:opacity-60 flex items-center gap-1 transition-colors">
+                            {busy === m.key ? <Loader2 className="w-3 h-3 animate-spin" /> : isRejected ? 'Reintentar' : 'He realizado esta acción'}
+                        </button>
+                    </div>
+                )}
+
+                {!isPending && m.verification_type === 'manual' && (
+                    <button onClick={() => onOpenForm(m)}
+                        className="mt-2 text-xs font-bold text-white bg-[#1a5c2e] hover:bg-[#133f21] px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                        <Send className="w-3 h-3" /> {isRejected ? 'Reintentar formulario' : 'Enviar formulario'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── CompletedMissionRow ────────────────────────────────────────────────────────
+function CompletedMissionRow({ m }: { m: Mission }) {
+    const icon = getMissionIcon(m.key);
+    return (
+        <div className="flex items-center gap-3 rounded-xl p-3 border bg-[#edf7f1] dark:bg-[#1a5c2e]/10 border-[#1a5c2e]/20 dark:border-[#1a5c2e]/30">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-[#1a5c2e] text-white">
+                <Check className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{m.title}</p>
                 <p className="text-xs text-slate-400 truncate">{m.description}</p>
             </div>
-            {!m.completed && m.target_url && (
-                <a href={m.target_url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-[#1a5c2e] shrink-0">
-                    <ExternalLink className="w-4 h-4" />
-                </a>
-            )}
-            {showAction && !m.completed && SELF_DECLARABLE.has(m.key) && (
-                <button onClick={() => onClaim(m.key)} disabled={busy === m.key}
-                    className="text-xs font-bold text-[#133f21] bg-[#d4edda] hover:bg-[#c1e3ca] dark:bg-[#1a5c2e]/20 px-3 py-1.5 rounded-lg disabled:opacity-60 shrink-0 transition-colors">
-                    {busy === m.key ? '...' : 'Hacer'}
-                </button>
-            )}
+            <span className="text-xs font-bold text-[#1a5c2e] shrink-0">+{m.points} pts</span>
         </div>
     );
 }

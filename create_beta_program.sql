@@ -26,8 +26,9 @@ CREATE TABLE IF NOT EXISTS public.beta_users (
     referral_code   text NOT NULL,
     referred_by     uuid REFERENCES public.beta_users(id) ON DELETE SET NULL,
     access_token    uuid NOT NULL DEFAULT gen_random_uuid(),
-    auth_user_id    uuid,                      -- se rellena al aprobar (auth.users)
-    ip              text,
+    auth_user_id       uuid,                   -- se rellena al aprobar (auth.users)
+    email_verified_at  timestamptz,            -- null = sin verificar (nuevo flujo)
+    ip                 text,
     user_agent      text,
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
@@ -58,17 +59,23 @@ CREATE INDEX IF NOT EXISTS beta_points_history_user_idx ON public.beta_points_hi
 -- 3. MISIONES
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.beta_missions (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    key         text NOT NULL UNIQUE,
-    title       text NOT NULL,
-    description text NOT NULL DEFAULT '',
-    points      integer NOT NULL DEFAULT 0,
-    type        text NOT NULL DEFAULT 'custom'
-                CHECK (type IN ('register','social','referral','code','bug','share','custom')),
-    target_url  text,
-    active      boolean NOT NULL DEFAULT true,
-    sort_order  integer NOT NULL DEFAULT 0,
-    created_at  timestamptz NOT NULL DEFAULT now()
+    id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    key               text NOT NULL UNIQUE,
+    title             text NOT NULL,
+    description       text NOT NULL DEFAULT '',
+    points            integer NOT NULL DEFAULT 0,
+    type              text NOT NULL DEFAULT 'custom'
+                      CHECK (type IN ('register','social','referral','code','bug','share','custom')),
+    -- Cómo se verifica la misión. Define el flujo de UI y la concesión de puntos:
+    --   automatic  → el sistema la completa sin intervención del usuario
+    --   declaration → el usuario declara haberla hecho; queda pendiente de revisión admin
+    --   manual     → el usuario envía un formulario; queda pendiente de revisión admin
+    verification_type text NOT NULL DEFAULT 'automatic'
+                      CHECK (verification_type IN ('automatic','declaration','manual')),
+    target_url        text,
+    active            boolean NOT NULL DEFAULT true,
+    sort_order        integer NOT NULL DEFAULT 0,
+    created_at        timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.beta_mission_completions (
@@ -256,6 +263,111 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.beta_award_points(uuid,integer,text,jsonb) FROM public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- RPC: completar misión de forma atómica (completion + puntos en una TX)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.beta_complete_mission(
+    p_user_id     uuid,
+    p_mission_key text
+)
+RETURNS TABLE (awarded boolean, points_earned integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_mission_id  uuid;
+    v_points      integer;
+    v_active      boolean;
+BEGIN
+    SELECT id, points, active INTO v_mission_id, v_points, v_active
+    FROM public.beta_missions WHERE key = p_mission_key;
+    IF NOT FOUND OR NOT v_active THEN RETURN QUERY SELECT false, 0; RETURN; END IF;
+
+    INSERT INTO public.beta_mission_completions (beta_user_id, mission_id)
+    VALUES (p_user_id, v_mission_id)
+    ON CONFLICT (beta_user_id, mission_id) DO NOTHING;
+    IF NOT FOUND THEN RETURN QUERY SELECT false, 0; RETURN; END IF;
+
+    IF v_points > 0 THEN
+        UPDATE public.beta_users SET points = points + v_points WHERE id = p_user_id;
+        INSERT INTO public.beta_points_history (beta_user_id, delta, reason, meta)
+        VALUES (p_user_id, v_points, 'mission:' || p_mission_key,
+                jsonb_build_object('mission', p_mission_key));
+    END IF;
+    RETURN QUERY SELECT true, COALESCE(v_points, 0);
+END $$;
+REVOKE ALL ON FUNCTION public.beta_complete_mission(uuid, text) FROM public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- RPC: aprobar revisión de misión de forma atómica (FOR UPDATE + TX)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.beta_approve_mission_review(
+    p_review_id   uuid,
+    p_reviewed_by text
+)
+RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_user_id uuid; v_mission_id uuid; v_status text;
+    v_key text; v_points integer; v_active boolean;
+BEGIN
+    SELECT r.beta_user_id, r.mission_id, r.status INTO v_user_id, v_mission_id, v_status
+    FROM public.beta_mission_reviews r WHERE r.id = p_review_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN 'not_found'; END IF;
+    IF v_status != 'pending' THEN RETURN 'not_pending'; END IF;
+
+    SELECT key, points, active INTO v_key, v_points, v_active
+    FROM public.beta_missions WHERE id = v_mission_id;
+
+    UPDATE public.beta_mission_reviews
+    SET status = 'approved', reviewed_by = p_reviewed_by, reviewed_at = now()
+    WHERE id = p_review_id;
+
+    IF v_active THEN
+        INSERT INTO public.beta_mission_completions (beta_user_id, mission_id)
+        VALUES (v_user_id, v_mission_id) ON CONFLICT (beta_user_id, mission_id) DO NOTHING;
+        IF FOUND AND v_points > 0 THEN
+            UPDATE public.beta_users SET points = points + v_points WHERE id = v_user_id;
+            INSERT INTO public.beta_points_history (beta_user_id, delta, reason, meta)
+            VALUES (v_user_id, v_points, 'mission:' || v_key,
+                    jsonb_build_object('mission', v_key, 'review_id', p_review_id));
+        END IF;
+    END IF;
+    RETURN 'ok';
+END $$;
+REVOKE ALL ON FUNCTION public.beta_approve_mission_review(uuid, text) FROM public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 10. REVISIONES DE MISIONES (misiones declaration/manual)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.beta_mission_reviews (
+    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    beta_user_id  uuid NOT NULL REFERENCES public.beta_users(id) ON DELETE CASCADE,
+    mission_id    uuid NOT NULL REFERENCES public.beta_missions(id) ON DELETE CASCADE,
+    status        text NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending','approved','rejected')),
+    title         text,
+    description   text,
+    reviewed_by   text,
+    reviewed_at   timestamptz,
+    created_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS beta_mission_reviews_user_idx    ON public.beta_mission_reviews (beta_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS beta_mission_reviews_status_idx  ON public.beta_mission_reviews (status);
+
+-- ---------------------------------------------------------------------------
+-- 11. NOTIFICACIONES IN-APP
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.beta_notifications (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     uuid NOT NULL REFERENCES public.beta_users(id) ON DELETE CASCADE,
+    type        text NOT NULL,
+    title       text NOT NULL,
+    message     text NOT NULL DEFAULT '',
+    is_read     boolean NOT NULL DEFAULT false,
+    metadata    jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS beta_notifications_user_idx ON public.beta_notifications (user_id, created_at DESC);
 
 -- ---------------------------------------------------------------------------
 -- RPC: posición en el ranking de un usuario (1-based)

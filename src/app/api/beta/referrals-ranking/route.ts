@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
             ]);
             const myCount = countMine.count ?? 0;
             const { data: setting } = await supabaseAdmin
-                .from('beta_settings').select('value').eq('key', 'referral').maybeSingle();
-            const ptsPerRef = setting?.value ?? 10;
+                .from('beta_config').select('value').eq('key', 'points_referral').maybeSingle();
+            const ptsPerRef = Number(setting?.value ?? 10);
             myData = {
                 rank: (rankRes.data as number | null) ?? 0,
                 referralCount: myCount,

@@ -1,6 +1,7 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { notifyAchievement, notifyRankTop50, notifyRankTop10, notifyReferral } from './notifications';
+import { emitEvent } from './events';
 
 // ============================================================================
 // Helpers de servidor para el programa Beta. Todo usa service_role (omite RLS).
@@ -55,13 +56,10 @@ export async function syncEmailVerification(user: BetaUser): Promise<boolean> {
     // Marcar como verificado en beta_users
     await supabaseAdmin.from('beta_users').update({ email_verified_at: verifiedAt }).eq('id', user.id);
 
-    // Otorgar puntos de registro pendientes (idempotente por UNIQUE en completions)
+    // Solo la misión de registro se otorga automáticamente (verification_type='automatic').
+    // Las misiones sociales (follow_*) son verification_type='declaration' y deben ir
+    // por el flujo de revisión — NO se auto-conceden aquí.
     await completeMission(user.id, 'register');
-    if (user.follows_socials) {
-        if (user.tiktok)    await completeMission(user.id, 'follow_tiktok');
-        if (user.instagram) await completeMission(user.id, 'follow_instagram');
-        if (user.youtube)   await completeMission(user.id, 'follow_youtube');
-    }
 
     // Validar referido pendiente y otorgar puntos al referidor
     if (user.referred_by) {
@@ -74,10 +72,11 @@ export async function syncEmailVerification(user: BetaUser): Promise<boolean> {
 
         if (ref && ref.status === 'pending') {
             await supabaseAdmin.from('beta_referrals').update({ status: 'validated' }).eq('id', ref.id);
-            const { data: setting } = await supabaseAdmin.from('beta_settings').select('value').eq('key', 'referral').maybeSingle();
-            const pts = (setting?.value as number) ?? 10;
+            const { data: setting } = await supabaseAdmin.from('beta_config').select('value').eq('key', 'points_referral').maybeSingle();
+            const pts = Number(setting?.value ?? 10);
             await awardPoints(user.referred_by, pts, 'referral', { referred: user.id });
             await completeMission(user.referred_by, 'invite_friend');
+            emitEvent('REFERRAL_VALIDATED', user.id, { referrerId: user.referred_by, pts });
             notifyReferral(user.referred_by, user.nickname).catch(() => {});
         }
     }
@@ -171,30 +170,22 @@ export async function awardPoints(
 }
 
 // ---------------------------------------------------------------------------
-// Completar misión (idempotente). Devuelve true si se otorgó por primera vez.
+// Completar misión — atómico vía RPC (completion + puntos en una transacción).
+// Devuelve { awarded: true } si se otorgó por primera vez, false si ya existía.
 // ---------------------------------------------------------------------------
 export async function completeMission(userId: string, missionKey: string): Promise<{ awarded: boolean; points: number }> {
-    const { data: mission } = await supabaseAdmin
-        .from('beta_missions')
-        .select('id, points, active')
-        .eq('key', missionKey)
-        .maybeSingle();
-    if (!mission || !mission.active) return { awarded: false, points: 0 };
-
-    const { error: insErr } = await supabaseAdmin
-        .from('beta_mission_completions')
-        .insert({ beta_user_id: userId, mission_id: mission.id });
-
-    // Violación de UNIQUE => ya completada
-    if (insErr) {
-        if (insErr.code === '23505') return { awarded: false, points: 0 };
-        throw insErr;
+    const { data, error } = await supabaseAdmin.rpc('beta_complete_mission', {
+        p_user_id: userId,
+        p_mission_key: missionKey,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { awarded: false, points: 0 };
+    const result = { awarded: row.awarded as boolean, points: row.points_earned as number };
+    if (result.awarded) {
+        emitEvent('MISSION_COMPLETED', userId, { missionKey, points: result.points });
     }
-
-    if (mission.points > 0) {
-        await awardPoints(userId, mission.points, `mission:${missionKey}`, { mission: missionKey });
-    }
-    return { awarded: true, points: mission.points };
+    return result;
 }
 
 // ---------------------------------------------------------------------------

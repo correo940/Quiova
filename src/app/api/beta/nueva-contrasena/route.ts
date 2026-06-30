@@ -29,19 +29,47 @@ export async function POST(req: NextRequest) {
     // Obtener datos del usuario beta
     const { data: betaUser } = await supabaseAdmin
         .from('beta_users')
-        .select('access_token, auth_user_id')
+        .select('access_token, auth_user_id, email')
         .eq('id', rec.beta_user_id)
         .maybeSingle();
 
     if (!betaUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 
-    // Actualizar contraseña en Supabase Auth (si tiene cuenta)
     if (betaUser.auth_user_id) {
+        // Actualizar contraseña en cuenta existente
         const { error } = await supabaseAdmin.auth.admin.updateUserById(
             betaUser.auth_user_id,
             { password, email_confirm: true }
         );
         if (error) return NextResponse.json({ error: 'No se pudo actualizar la contraseña' }, { status: 500 });
+    } else {
+        // Buscar si ya existe cuenta Auth con ese email
+        const { data: existingList } = await supabaseAdmin.auth.admin.listUsers();
+        const existing = existingList?.users?.find(u => u.email === betaUser.email);
+
+        let authUserId: string;
+        if (existing) {
+            // Actualizar contraseña de la cuenta existente
+            const { error } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+                password, email_confirm: true,
+            });
+            if (error) return NextResponse.json({ error: 'No se pudo actualizar la contraseña' }, { status: 500 });
+            authUserId = existing.id;
+        } else {
+            // Crear cuenta Auth nueva
+            const { data: newAuth, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                email: betaUser.email, password, email_confirm: true,
+            });
+            if (createError || !newAuth.user) {
+                return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 });
+            }
+            authUserId = newAuth.user.id;
+        }
+        // Vincular auth_user_id en beta_users
+        await supabaseAdmin
+            .from('beta_users')
+            .update({ auth_user_id: authUserId })
+            .eq('id', rec.beta_user_id);
     }
 
     // Marcar token como usado

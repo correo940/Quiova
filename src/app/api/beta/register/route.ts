@@ -5,6 +5,7 @@ import { BETA_COOKIE, siteUrl } from '@/lib/beta/constants';
 import {
     rateLimit, clientIp, uniqueRefCode, completeMission, awardPoints, unlockAchievementByKey,
 } from '@/lib/beta/server';
+import { emitEvent } from '@/lib/beta/events';
 import { emailWelcome, emailNewReferral } from '@/lib/beta/emails';
 import { notifyReferral } from '@/lib/beta/notifications';
 
@@ -84,10 +85,11 @@ export async function POST(req: NextRequest) {
         .single();
 
     if (insErr || !user) {
-        // colisión por carrera en índices únicos
         if (insErr?.code === '23505') return NextResponse.json({ error: 'Email o nickname ya registrado' }, { status: 409 });
         return NextResponse.json({ error: 'No se pudo completar el registro' }, { status: 500 });
     }
+
+    emitEvent('USER_REGISTERED', user.id, { nickname, ref: referrerId ? ref : null, via: authUserId ? 'auth' : 'legacy' });
 
     if (authUserId) {
         // ---- Nuevo flujo (con auth): puntos diferidos hasta verificación de email ----
@@ -98,21 +100,16 @@ export async function POST(req: NextRequest) {
             });
         }
     } else {
-        // ---- Flujo antiguo: puntos inmediatos (compatibilidad) ----
+        // ---- Flujo antiguo: solo misión de registro (misiones sociales requieren declaración) ----
         await completeMission(user.id, 'register');
         await unlockAchievementByKey(user.id, 'first_signup');
-        if (followsSocials) {
-            if (tiktok)    await completeMission(user.id, 'follow_tiktok');
-            if (instagram) await completeMission(user.id, 'follow_instagram');
-            if (youtube)   await completeMission(user.id, 'follow_youtube');
-        }
         if (referrerId) {
             const { error: refErr } = await supabaseAdmin
                 .from('beta_referrals')
                 .insert({ referrer_id: referrerId, referred_id: user.id, status: 'validated' });
             if (!refErr) {
-                const { data: setting } = await supabaseAdmin.from('beta_settings').select('value').eq('key', 'referral').maybeSingle();
-                const pts = setting?.value ?? 10;
+                const { data: setting } = await supabaseAdmin.from('beta_config').select('value').eq('key', 'points_referral').maybeSingle();
+                const pts = Number(setting?.value ?? 10);
                 await awardPoints(referrerId, pts, 'referral', { referred: user.id });
                 await completeMission(referrerId, 'invite_friend');
                 const { data: referrer } = await supabaseAdmin.from('beta_users').select('email, nickname, access_token').eq('id', referrerId).maybeSingle();

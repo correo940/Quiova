@@ -5,6 +5,7 @@ import { BETA_COOKIE, siteUrl } from '@/lib/beta/constants';
 import {
     getBetaUserByToken, awardPoints, completeMission, unlockAchievementByKey, rateLimit, clientIp, isVerified,
 } from '@/lib/beta/server';
+import { emitEvent } from '@/lib/beta/events';
 import { emailCodeValid } from '@/lib/beta/emails';
 import { notifyCodeClaimed } from '@/lib/beta/notifications';
 
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     await completeMission(user.id, 'secret_code');
     await unlockAchievementByKey(user.id, 'bug_hunter'); // no-op si no aplica
 
+    emitEvent('SECRET_CODE_REDEEMED', user.id, { code, points });
     notifyCodeClaimed(user.id, points, code).catch(() => {});
     emailCodeValid(
         user.email, user.nickname, points,

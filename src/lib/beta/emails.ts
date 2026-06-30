@@ -3,16 +3,12 @@ import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { siteUrl } from './constants';
 
-const GMAIL_USER = process.env.GMAIL_USER || 'quioba.web@gmail.com';
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-
-// Crea el transporter solo si hay credenciales configuradas
-const transporter = GMAIL_APP_PASSWORD
-    ? nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-    })
-    : null;
+function getTransporter() {
+    const user = process.env.GMAIL_USER || 'quioba.web@gmail.com';
+    const pass = process.env.GMAIL_APP_PASSWORD;
+    if (!pass) return null;
+    return nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+}
 
 type EmailType =
     | 'welcome'
@@ -48,11 +44,13 @@ export async function sendBetaEmail({ type, to, subject, html, betaUserId, paylo
 
     const eventId = evt?.id;
 
+    const transporter = getTransporter();
     if (!transporter) return; // sin credenciales: queda registrado como queued
 
+    const gmailUser = process.env.GMAIL_USER || 'quioba.web@gmail.com';
     try {
         await transporter.sendMail({
-            from: `Quioba Beta <${GMAIL_USER}>`,
+            from: `Quioba Beta <${gmailUser}>`,
             to,
             subject,
             html,
