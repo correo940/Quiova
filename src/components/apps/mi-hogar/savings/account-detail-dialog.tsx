@@ -404,7 +404,7 @@ export default function AccountDetailDialog({
                                             <Button size="sm" variant="ghost" className="h-7 px-2 text-white/60 hover:text-white" onClick={() => setIsEditingBalance(false)}><X className="w-3 h-3" /></Button>
                                         </div>
                                     ) : (
-                                        <p className="text-2xl font-black text-white tracking-tight sm:text-3xl">{currencyFormatter.format(account.current_balance)}</p>
+                                        <p className="text-2xl font-black text-white tracking-tight sm:text-3xl">{currencyFormatter.format(parentAccount ? totalIncome : account.current_balance)}</p>
                                     )}
                                 </div>
 
