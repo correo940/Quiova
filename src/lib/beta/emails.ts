@@ -97,7 +97,7 @@ function shell(title: string, body: string, cta?: { label: string; url: string }
 // ---------------------------------------------------------------------------
 // Disparadores concretos
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line no-unused-vars
 function _welcomeTemplateLegacy(nickname: string, refLink: string, dashUrl: string): string {
     return `<!DOCTYPE html>
 <html lang="es">
