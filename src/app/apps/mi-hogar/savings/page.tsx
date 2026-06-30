@@ -333,6 +333,7 @@ export default function SavingsV2Preview() {
             let mIncome = 0;
             let mExpense = 0;
             const mAccountStats: Record<string, { income: number, expense: number }> = {};
+            const childAccountIds = new Set(accountsList.filter(a => a.parent_account_id).map(a => a.id));
 
             (txsForMonth || []).forEach(tx => {
                 if (tx.date) {
@@ -341,7 +342,8 @@ export default function SavingsV2Preview() {
                         const txYear = parseInt(dateParts[0], 10);
                         const txMonth = parseInt(dateParts[1], 10) - 1;
                         if (txMonth === currentMonth && txYear === currentYear) {
-                            if (tx.amount > 0) mIncome += tx.amount;
+                            // Entradas en cuentas hijo son transferencias internas desde NOMINAS, no ingresos reales
+                            if (tx.amount > 0) { if (!childAccountIds.has(tx.account_id)) mIncome += tx.amount; }
                             else mExpense += Math.abs(tx.amount);
                             
                             if (!mAccountStats[tx.account_id]) mAccountStats[tx.account_id] = { income: 0, expense: 0 };
@@ -2080,12 +2082,13 @@ export default function SavingsV2Preview() {
                                 <tbody>
                                     {accounts.map(acc => {
                                         const stats = accountStats[acc.id] || { income: 0, expense: 0 };
-                                        const net = stats.income - stats.expense;
+                                        const isChild = !!acc.parent_account_id;
+                                        const net = isChild ? -stats.expense : stats.income - stats.expense;
                                         return (
                                             <tr key={acc.id}>
                                                 <td style={{ fontWeight: '500' }}>{acc.name}</td>
                                                 <td>{acc.bank_name}</td>
-                                                <td className="amount-pos">{stats.income > 0 ? `+${stats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}</td>
+                                                <td className="amount-pos">{!isChild && stats.income > 0 ? `+${stats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}</td>
                                                 <td className="amount-neg">{stats.expense > 0 ? `-${stats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}</td>
                                                 <td className={net >= 0 ? 'amount-pos' : 'amount-neg'}>
                                                     {net !== 0 ? `${net > 0 ? '+' : ''}${net.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}
