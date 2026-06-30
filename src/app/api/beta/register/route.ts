@@ -91,16 +91,19 @@ export async function POST(req: NextRequest) {
 
     emitEvent('USER_REGISTERED', user.id, { nickname, ref: referrerId ? ref : null, via: authUserId ? 'auth' : 'legacy' });
 
+    const refLink = `${siteUrl()}/beta?ref=${referralCode}`;
+
     if (authUserId) {
-        // ---- Nuevo flujo (con auth): puntos diferidos hasta verificación de email ----
-        // El referido queda 'pending' hasta que el usuario verifique su email.
+        // Flujo nuevo (con auth): referido pendiente hasta verificación de email.
         if (referrerId) {
             await supabaseAdmin.from('beta_referrals').insert({
                 referrer_id: referrerId, referred_id: user.id, status: 'pending',
             });
         }
+        // El email de bienvenida se envía igualmente
+        emailWelcome(email, nickname, refLink, user.id).catch(() => {});
     } else {
-        // ---- Flujo antiguo: solo misión de registro (misiones sociales requieren declaración) ----
+        // Flujo antiguo: misión de registro inmediata, referido validado al instante.
         await completeMission(user.id, 'register');
         await unlockAchievementByKey(user.id, 'first_signup');
         if (referrerId) {
@@ -119,7 +122,6 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
-        const refLink = `${siteUrl()}/beta?ref=${referralCode}`;
         emailWelcome(email, nickname, refLink, user.id).catch(() => {});
     }
 
