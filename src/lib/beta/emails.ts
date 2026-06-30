@@ -2,7 +2,7 @@ import 'server-only';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { siteUrl, BETA_SELECTION_END } from './constants';
-import { buildWelcomeEmail } from './email-templates';
+import { buildWelcomeEmail } from '@/lib/email';
 
 function getTransporter() {
     const user = process.env.GMAIL_USER || 'quioba.web@gmail.com';
@@ -220,9 +220,12 @@ export async function emailWelcome(to: string, nickname: string, refLink: string
     const dashUrl = `${siteUrl()}/beta/dashboard`;
 
     // Fetch dynamic data in parallel
-    const [userRes, configRes] = await Promise.all([
+    const [userRes, configRes, completedRes, missionsRes] = await Promise.all([
         supabaseAdmin.from('beta_users').select('points, email_verified_at').eq('id', betaUserId).maybeSingle(),
         supabaseAdmin.from('beta_config').select('key, value').in('key', ['selection_end_date', 'capacity']),
+        supabaseAdmin.from('beta_mission_completions').select('mission_key').eq('beta_user_id', betaUserId),
+        supabaseAdmin.from('beta_missions').select('key, title, points, icon').eq('visible', true)
+            .order('featured', { ascending: false }).order('points', { ascending: false }),
     ]);
 
     const points = (userRes.data?.points as number) ?? 0;
@@ -244,12 +247,19 @@ export async function emailWelcome(to: string, nickname: string, refLink: string
     const rank = (rankRes.count ?? 0) + 1;
     const totalParticipants = totalRes.count ?? 0;
 
+    // Next recommended mission (first uncompleted)
+    const completedKeys = new Set((completedRes.data ?? []).map((m: any) => m.mission_key));
+    const nextMissionRow = (missionsRes.data ?? []).find((m: any) => !completedKeys.has(m.key));
+    const nextMission = nextMissionRow
+        ? { title: nextMissionRow.title, points: nextMissionRow.points, url: dashUrl, icon: nextMissionRow.icon ?? '🎯' }
+        : null;
+
     return sendBetaEmail({
         type: 'welcome',
         to,
         betaUserId,
         subject: `🎉 ¡Bienvenido a la Beta Privada de QUIOBA, ${nickname}!`,
-        html: buildWelcomeEmail({ nickname, points, rank, totalParticipants, emailVerified, refLink, dashUrl, selectionEndDate, capacity }),
+        html: buildWelcomeEmail({ nickname, points, rank, totalParticipants, emailVerified, refLink, dashUrl, selectionEndDate, capacity, nextMission }),
     });
 }
 
