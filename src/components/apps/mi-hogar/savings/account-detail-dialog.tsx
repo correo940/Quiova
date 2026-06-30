@@ -226,7 +226,7 @@ export default function AccountDetailDialog({
     const parentAccount = account.parent_account_id ? accounts.find(a => a.id === account.parent_account_id) : null;
     const totalIncome = transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0);
     const totalExpense = transactions.filter(tx => tx.amount < 0).reduce((s, tx) => s + Math.abs(tx.amount), 0);
-    const availableToSpend = totalIncome - totalExpense;
+    const availableToSpend = account.current_balance - totalExpense;
 
     const chartData = enrichedAsc.length > 0
         ? [{ label: 'Inicio', balance: startingBalance, fullDate: account.id }, ...enrichedAsc.map(tx => ({ label: format(parseISO(tx.date), 'd MMM', { locale: es }), balance: tx.runningBalance, fullDate: tx.date }))]
