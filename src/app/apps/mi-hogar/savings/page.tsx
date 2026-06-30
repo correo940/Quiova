@@ -273,8 +273,12 @@ export default function SavingsV2Preview() {
                     if (tx.amount >= 0) bucket.available += tx.amount;
                     else bucket.toParent += Math.abs(tx.amount);
                 });
-                // Disponible para gastar = ingresos − gastos (lo que queda para las próximas vacaciones)
-                Object.values(sums).forEach(s => { s.available = s.available - s.toParent; });
+                // available = neto de transacciones; toParent = lo que resta hasta el saldo real
+                Object.entries(sums).forEach(([id, s]) => {
+                    const acc = accountsList.find(a => a.id === id);
+                    s.available = s.available - s.toParent;
+                    s.toParent = (acc?.current_balance ?? 0) - s.available;
+                });
                 setLinkedSums(sums);
             } else {
                 setLinkedSums({});
