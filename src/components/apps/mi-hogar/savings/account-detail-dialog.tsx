@@ -198,7 +198,8 @@ export default function AccountDetailDialog({
     const startingBalance = account.current_balance - transactions.reduce((s, tx) => s + tx.amount, 0);
 
     let running = startingBalance;
-    const enrichedAsc = sortedAsc.map(tx => { running += tx.amount; return { ...tx, runningBalance: running }; });
+    let displayRunning = 0;
+    const enrichedAsc = sortedAsc.map(tx => { running += tx.amount; displayRunning += tx.amount; return { ...tx, runningBalance: running, displayRunningBalance: displayRunning }; });
     const enrichedDesc = [...enrichedAsc].sort((a, b) => {
         const d = new Date(b.date).getTime() - new Date(a.date).getTime();
         return d !== 0 ? d : b.id.localeCompare(a.id);
@@ -617,7 +618,7 @@ export default function AccountDetailDialog({
                                                         <p className={cn("text-sm font-bold leading-none", tx.amount >= 0 ? "text-green-800" : "text-slate-900")}>
                                                             {tx.amount >= 0 ? '+' : '-'}{currencyFormatter.format(Math.abs(tx.amount))}
                                                         </p>
-                                                        <p className="text-[9px] text-slate-400 mt-0.5">{currencyFormatter.format(tx.runningBalance)}</p>
+                                                        <p className="text-[9px] text-slate-400 mt-0.5">{currencyFormatter.format(tx.displayRunningBalance)}</p>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
                                                         <button onClick={() => handleEditTransaction(tx)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-700 hover:bg-slate-100 transition-colors">
