@@ -1,7 +1,8 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { siteUrl } from './constants';
+import { siteUrl, BETA_SELECTION_END } from './constants';
+import { buildWelcomeEmail } from './email-templates';
 
 function getTransporter() {
     const user = process.env.GMAIL_USER || 'quioba.web@gmail.com';
@@ -96,7 +97,8 @@ function shell(title: string, body: string, cta?: { label: string; url: string }
 // ---------------------------------------------------------------------------
 // Disparadores concretos
 // ---------------------------------------------------------------------------
-function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _welcomeTemplateLegacy(nickname: string, refLink: string, dashUrl: string): string {
     return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -214,14 +216,40 @@ function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): st
 </html>`;
 }
 
-export function emailWelcome(to: string, nickname: string, refLink: string, betaUserId: string) {
+export async function emailWelcome(to: string, nickname: string, refLink: string, betaUserId: string) {
     const dashUrl = `${siteUrl()}/beta/dashboard`;
+
+    // Fetch dynamic data in parallel
+    const [userRes, configRes] = await Promise.all([
+        supabaseAdmin.from('beta_users').select('points, email_verified_at').eq('id', betaUserId).maybeSingle(),
+        supabaseAdmin.from('beta_config').select('key, value').in('key', ['selection_end_date', 'capacity']),
+    ]);
+
+    const points = (userRes.data?.points as number) ?? 0;
+    const emailVerified = !!(userRes.data?.email_verified_at);
+
+    const cfgMap: Record<string, string> = {};
+    for (const row of (configRes.data ?? [])) cfgMap[row.key] = String(row.value);
+    const selectionEndDate = cfgMap['selection_end_date'] || BETA_SELECTION_END;
+    const capacity = Number(cfgMap['capacity'] ?? 50);
+
+    // Rank: users with more points than this user
+    const [rankRes, totalRes] = await Promise.all([
+        supabaseAdmin.from('beta_users').select('id', { count: 'exact', head: true })
+            .gt('points', points)
+            .not('status', 'in', '("rechazado","suspendido")'),
+        supabaseAdmin.from('beta_users').select('id', { count: 'exact', head: true })
+            .not('status', 'in', '("rechazado","suspendido")'),
+    ]);
+    const rank = (rankRes.count ?? 0) + 1;
+    const totalParticipants = totalRes.count ?? 0;
+
     return sendBetaEmail({
         type: 'welcome',
         to,
         betaUserId,
-        subject: `¡Bienvenido a la Beta de Quioba, ${nickname}!`,
-        html: welcomeTemplate(nickname, refLink, dashUrl),
+        subject: `🎉 ¡Bienvenido a la Beta Privada de QUIOBA, ${nickname}!`,
+        html: buildWelcomeEmail({ nickname, points, rank, totalParticipants, emailVerified, refLink, dashUrl, selectionEndDate, capacity }),
     });
 }
 
