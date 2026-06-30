@@ -193,10 +193,10 @@ function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): st
             <a href="https://www.tiktok.com/@quioba" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">TikTok</a>
           </td>
           <td style="padding:0 5px">
-            <a href="https://www.instagram.com/quioba" style="display:inline-block;background:#c13584;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">Instagram</a>
+            <a href="https://www.instagram.com/quioba.web/" style="display:inline-block;background:#c13584;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">Instagram</a>
           </td>
           <td style="padding:0 5px">
-            <a href="https://www.youtube.com/@quioba" style="display:inline-block;background:#ff0000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">YouTube</a>
+            <a href="https://www.youtube.com/@Quioba" style="display:inline-block;background:#ff0000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px">YouTube</a>
           </td>
         </tr>
       </table>
