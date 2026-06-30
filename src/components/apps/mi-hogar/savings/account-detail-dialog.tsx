@@ -448,7 +448,7 @@ export default function AccountDetailDialog({
                                     </div>
                                     <div className="flex-1 rounded-xl bg-amber-500/15 border border-amber-400/20 px-3 py-2">
                                         <p className="text-[9px] uppercase tracking-wider text-amber-200/70">Pertenece a {parentAccount.name}</p>
-                                        <p className="text-base font-black text-amber-300">{currencyFormatter.format(totalExpense)}</p>
+                                        <p className="text-base font-black text-amber-300">{currencyFormatter.format(account.current_balance - availableToSpend)}</p>
                                     </div>
                                 </div>
                             )}
