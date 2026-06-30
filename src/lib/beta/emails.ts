@@ -90,17 +90,118 @@ function shell(title: string, body: string, cta?: { label: string; url: string }
 // ---------------------------------------------------------------------------
 // Disparadores concretos
 // ---------------------------------------------------------------------------
+function welcomeTemplate(nickname: string, refLink: string, dashUrl: string): string {
+    return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f4f0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f0;padding:32px 16px">
+<tr><td align="center">
+<table width="100%" style="max-width:520px;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+  <!-- HEADER -->
+  <tr>
+    <td style="background:#1a5c2e;padding:32px 32px 24px;text-align:center">
+      <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px">QUIOBA</div>
+      <div style="font-size:11px;font-weight:700;color:#86efac;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Programa Beta</div>
+    </td>
+  </tr>
+
+  <!-- BODY -->
+  <tr>
+    <td style="background:#ffffff;padding:32px">
+
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#0f172a">¡Hola, ${nickname}! 👋</h1>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#475569">
+        Ya eres parte del programa Beta privado de Quioba. Eres de los primeros en probar la app — tu opinión y participación dan forma a lo que construimos.
+      </p>
+
+      <!-- STEPS -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+        <tr>
+          <td style="background:#f0fdf4;border-radius:12px;padding:16px 18px;border-left:4px solid #1a5c2e">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:22px;width:36px;vertical-align:top">🎯</td>
+                <td style="padding-left:10px">
+                  <div style="font-weight:700;color:#0f172a;font-size:14px">Completa misiones</div>
+                  <div style="color:#64748b;font-size:13px;margin-top:2px">Gana puntos y sube en el ranking de Beta Testers.</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td style="height:10px"></td></tr>
+        <tr>
+          <td style="background:#f0fdf4;border-radius:12px;padding:16px 18px;border-left:4px solid #1a5c2e">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:22px;width:36px;vertical-align:top">🏆</td>
+                <td style="padding-left:10px">
+                  <div style="font-weight:700;color:#0f172a;font-size:14px">Escala el ranking</div>
+                  <div style="color:#64748b;font-size:13px;margin-top:2px">Los mejores Beta Testers tendrán ventajas en el lanzamiento.</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td style="height:10px"></td></tr>
+        <tr>
+          <td style="background:#f0fdf4;border-radius:12px;padding:16px 18px;border-left:4px solid #1a5c2e">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="font-size:22px;width:36px;vertical-align:top">👥</td>
+                <td style="padding-left:10px">
+                  <div style="font-weight:700;color:#0f172a;font-size:14px">Invita amigos</div>
+                  <div style="color:#64748b;font-size:13px;margin-top:2px">Cada amigo que se una con tu enlace te da puntos extra.</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <!-- REFERRAL LINK -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Tu enlace de invitación</div>
+        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;color:#1a5c2e;word-break:break-all">${refLink}</div>
+      </div>
+
+      <!-- CTA -->
+      <div style="text-align:center">
+        <a href="${dashUrl}" style="display:inline-block;background:#1a5c2e;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:9999px;font-weight:800;font-size:15px;letter-spacing:0.2px">
+          Ir a mi panel →
+        </a>
+      </div>
+
+    </td>
+  </tr>
+
+  <!-- FOOTER -->
+  <tr>
+    <td style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0">
+      <p style="margin:0;font-size:12px;color:#94a3b8">
+        Quioba · Programa Beta privado.<br>
+        Si no te registraste, ignora este correo.
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export function emailWelcome(to: string, nickname: string, refLink: string, betaUserId: string) {
+    const dashUrl = `${siteUrl()}/beta/dashboard`;
     return sendBetaEmail({
         type: 'welcome',
         to,
         betaUserId,
-        subject: '¡Bienvenido a la Beta de Quioba! 🚀',
-        html: shell(
-            `¡Hola ${nickname}! 🎉`,
-            `Ya formas parte del programa Beta de Quioba. Gana puntos completando misiones, sube en el ranking e invita amigos con tu enlace:<br><br><code style="background:#f1f5f9;padding:6px 10px;border-radius:8px;display:inline-block">${refLink}</code>`,
-            { label: 'Ir a mi panel', url: refLink.replace('/beta?ref=', '/beta/dashboard?ref=') }
-        ),
+        subject: `¡Bienvenido a la Beta de Quioba, ${nickname}!`,
+        html: welcomeTemplate(nickname, refLink, dashUrl),
     });
 }
 

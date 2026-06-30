@@ -125,8 +125,6 @@ export async function POST(req: NextRequest) {
         emailWelcome(email, nickname, refLink, user.id).catch(() => {});
     }
 
-    const refLink = `${siteUrl()}/beta?ref=${referralCode}`;
-
     const res = NextResponse.json({
         ok: true,
         token: user.access_token,
