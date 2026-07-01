@@ -79,7 +79,7 @@ export default function OficinaPage() {
         <div style={{ fontFamily: 'system-ui, sans-serif', color: MARINO }} className="min-h-screen bg-[#f5f9fc]">
             <style>{`@keyframes latido{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}}`}</style>
 
-            <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 space-y-6">
+            <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24 space-y-6">
                 {/* ── Cabecera ── */}
                 <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                     <div>

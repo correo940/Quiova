@@ -23,10 +23,10 @@ const CAMISA: Record<TipoAgente, string> = {
 interface Layout { gx: number; gy: number; w: number; h: number }
 const LAYOUT: Record<string, Layout> = {
     desarrollo: { gx: 0, gy: 0, w: 6, h: 5 },
-    contenido: { gx: 7, gy: 0, w: 5, h: 5 },
-    datos: { gx: 0, gy: 6, w: 6, h: 5 },
-    automatizacion: { gx: 7, gy: 6, w: 5, h: 5 },
-    recepcion: { gx: 3, gy: 12, w: 6, h: 4 },
+    contenido: { gx: 8, gy: 0, w: 6, h: 5 },
+    datos: { gx: 0, gy: 7, w: 6, h: 5 },
+    automatizacion: { gx: 8, gy: 7, w: 6, h: 5 },
+    recepcion: { gx: 4, gy: 14, w: 6, h: 4 },
 };
 const ALTO_MURO = 26;
 
@@ -67,9 +67,9 @@ export default function EscenaIsometrica({ estados, seleccion, onSeleccionar }: 
 
     return (
         <svg
-            viewBox="-620 -110 1120 700"
+            viewBox="-680 -120 1280 780"
             className="w-full h-auto select-none"
-            style={{ maxHeight: '78vh' }}
+            style={{ maxHeight: '84vh' }}
         >
             <defs>
                 <filter id="sombraSuave" x="-20%" y="-20%" width="140%" height="140%">
@@ -78,7 +78,7 @@ export default function EscenaIsometrica({ estados, seleccion, onSeleccionar }: 
             </defs>
 
             {/* Suelo del edificio (pasillos entre salas) */}
-            <polygon points={suelo(-1, -1, 14, 18)} fill="#eef3f7" stroke={`${MARINO}18`} strokeWidth={1} />
+            <polygon points={suelo(-1, -1, 16, 20)} fill="#eef3f7" stroke={`${MARINO}18`} strokeWidth={1} />
 
             {salasOrdenadas.map(sala => (
                 <SalaIso
