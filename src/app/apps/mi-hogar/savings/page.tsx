@@ -137,10 +137,31 @@ const classifyExpense = (description: string): string => {
     return 'Otros';
 };
 
+const MONEY_MASK = '••••••';
+
 export default function SavingsV2Preview() {
     const [activeTab, setActiveTab] = useState('overview');
     const [activeTimeframe, setActiveTimeframe] = useState('1M');
     const chartsRef = useRef<Record<string, any>>({});
+    const [showAmounts, setShowAmounts] = useState(true);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('quioba_show_amounts');
+        if (stored !== null) setShowAmounts(stored === 'true');
+    }, []);
+
+    const toggleShowAmounts = () => {
+        setShowAmounts(prev => {
+            const next = !prev;
+            localStorage.setItem('quioba_show_amounts', String(next));
+            return next;
+        });
+    };
+
+    const money = (value: number, opts?: Intl.NumberFormatOptions) => {
+        if (!showAmounts) return MONEY_MASK;
+        return value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', ...opts });
+    };
 
     const { user, loading: authLoading } = useAuth();
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
@@ -1489,6 +1510,15 @@ export default function SavingsV2Preview() {
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                                onClick={toggleShowAmounts}
+                                title={showAmounts ? 'Ocultar cifras' : 'Mostrar cifras'}
+                                aria-label={showAmounts ? 'Ocultar cifras de dinero' : 'Mostrar cifras de dinero'}
+                                className="qf-btn"
+                                style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <i className={showAmounts ? 'ti ti-eye' : 'ti ti-eye-off'} style={{ fontSize: '16px' }} aria-hidden="true"></i>
+                            </button>
                             <div className="qf-ai-badge">
                                 <i className="ti ti-sparkles" aria-hidden="true"></i> IA activa
                             </div>
@@ -1523,15 +1553,15 @@ export default function SavingsV2Preview() {
                     <div className="qf-balance-block">
                         <div className="qf-balance-label">Saldo total estimado</div>
                         <div className="qf-balance-amount" style={{ color: selectedMonthBalance < 0 ? '#dc2626' : '#16a34a' }}>
-                            {selectedMonthBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                            {money(selectedMonthBalance)}
                         </div>
                         <div className="qf-balance-sub">
                             <i className="ti ti-calendar" aria-hidden="true"></i>
                             Proyectado a fin de mes
                             {(monthlyStats.income - monthlyStats.expense) >= 0 ? (
-                                <span className="qf-balance-change up">↑ +{(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                <span className="qf-balance-change up">↑ +{money(monthlyStats.income - monthlyStats.expense, { maximumFractionDigits: 0 })}</span>
                             ) : (
-                                <span className="qf-balance-change down">↓ {(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                <span className="qf-balance-change down">↓ {money(monthlyStats.income - monthlyStats.expense, { maximumFractionDigits: 0 })}</span>
                             )}
                         </div>
                     </div>
@@ -1542,14 +1572,14 @@ export default function SavingsV2Preview() {
                             <div className="qf-stat-icon">📈</div>
                             <div className="qf-stat-label">Ingresos del mes</div>
                             <div className="qf-stat-val green">
-                                +{monthlyStats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                                +{money(monthlyStats.income, { maximumFractionDigits: 0 })}
                             </div>
                         </div>
                         <div className="qf-stat">
                             <div className="qf-stat-icon">📉</div>
                             <div className="qf-stat-label">Gastos del mes</div>
                             <div className="qf-stat-val red">
-                                -{monthlyStats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                                -{money(monthlyStats.expense, { maximumFractionDigits: 0 })}
                             </div>
                         </div>
                         <div className="qf-stat">
@@ -1598,7 +1628,7 @@ export default function SavingsV2Preview() {
                                                     {acc.name}
                                                 </div>
                                                 <div style={{ fontSize: '11px', fontWeight: '600', color: isNeg ? '#dc2626' : '#16a34a', lineHeight: 1.2 }}>
-                                                    {bal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                                                    {money(bal, { maximumFractionDigits: 0 })}
                                                 </div>
                                             </div>
                                         </button>
@@ -1655,7 +1685,7 @@ export default function SavingsV2Preview() {
                                 ) : aiInsight?.insight ? (
                                     aiInsight.insight
                                 ) : (
-                                    `Tu tasa de ahorro de este mes es del ${monthlyStats.savingsRate.toFixed(1)}%. Tienes un balance de ingresos de ${monthlyStats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} frente a unos gastos de ${monthlyStats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}.`
+                                    `Tu tasa de ahorro de este mes es del ${monthlyStats.savingsRate.toFixed(1)}%. Tienes un balance de ingresos de ${money(monthlyStats.income)} frente a unos gastos de ${money(monthlyStats.expense)}.`
                                 )}
                             </div>
                         </div>
@@ -1717,7 +1747,7 @@ export default function SavingsV2Preview() {
                                                 <td>{format(new Date(tx.date), 'dd MMM', { locale: es })}</td>
                                                 <td className={tx.amount >= 0 ? 'amount-pos' : 'amount-neg'} style={{ textAlign: 'right' }}>
                                                     {tx.amount > 0 ? '+' : ''}
-                                                    {tx.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                    {money(tx.amount)}
                                                 </td>
                                             </tr>
                                         );
@@ -1741,7 +1771,7 @@ export default function SavingsV2Preview() {
                         <div className="qf-card qf-highlight" style={{ display: 'flex', flexDirection: 'column' }}>
                             <div className="qf-card-title"><i className="ti ti-wallet" aria-hidden="true"></i> Saldo total real</div>
                             <div style={{ fontSize: '28px', fontWeight: 500, color: accounts.reduce((s, a) => s + (a.include_in_total !== false ? a.current_balance : 0), 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                {accounts.reduce((s, a) => s + (a.include_in_total !== false ? a.current_balance : 0), 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                {money(accounts.reduce((s, a) => s + (a.include_in_total !== false ? a.current_balance : 0), 0))}
                             </div>
                             <div style={{ fontSize: '12px', color: '#B8940A', marginTop: '4px', marginBottom: '16px' }}>{accounts.length} cuentas y tarjetas registradas</div>
                             
@@ -1758,13 +1788,13 @@ export default function SavingsV2Preview() {
                                                     {acc.name}
                                                 </div>
                                                 <div style={{ fontWeight: '600', color: (acc.current_balance || 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                                    {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                    {money(acc.current_balance || 0)}
                                                 </div>
                                             </div>
                                             {parent && sums && (
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingLeft: '16px' }}>
-                                                    <span style={{ color: '#16a34a' }}>Disponible para gastar: {sums.available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                                    <span style={{ color: '#b45309' }}>Pertenece a {parent.name}: {sums.toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                                    <span style={{ color: '#16a34a' }}>Disponible para gastar: {money(sums.available, { maximumFractionDigits: 0 })}</span>
+                                                    <span style={{ color: '#b45309' }}>Pertenece a {parent.name}: {money(sums.toParent, { maximumFractionDigits: 0 })}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -1786,7 +1816,7 @@ export default function SavingsV2Preview() {
                                                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100px' }}>{acc.name}</span>
                                             </div>
                                             <div style={{ fontWeight: '600', color: (acc.current_balance || 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                                {acc.current_balance?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                                                {money(acc.current_balance || 0, { maximumFractionDigits: 0 })}
                                             </div>
                                         </div>
                                     ))}
@@ -1871,7 +1901,9 @@ export default function SavingsV2Preview() {
                                                 <div style={{ textAlign: 'right' }}>
                                                     <div className="qf-bank-card-balance-label">{acc.parent_account_id ? 'Total' : 'Saldo disponible'}</div>
                                                     <div className="qf-bank-card-balance-value">
-                                                        {acc.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                        {acc.parent_account_id && linkedSums[acc.id]
+                                                            ? money(linkedSums[acc.id].available + linkedSums[acc.id].toParent)
+                                                            : money(acc.current_balance)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1880,11 +1912,11 @@ export default function SavingsV2Preview() {
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '8px', padding: '6px 10px', borderRadius: '8px', background: 'rgba(0,0,0,0.18)', fontSize: '10px', color: '#ffffff' }}>
                                                     <div>
                                                         <div style={{ opacity: 0.7, fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Para gastar</div>
-                                                        <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                        <div style={{ fontWeight: '700' }}>{money(linkedSums[acc.id].available, { maximumFractionDigits: 0 })}</div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
                                                         <div style={{ opacity: 0.7, fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>De {accounts.find(a => a.id === acc.parent_account_id)?.name || 'principal'}</div>
-                                                        <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                        <div style={{ fontWeight: '700' }}>{money(linkedSums[acc.id].toParent, { maximumFractionDigits: 0 })}</div>
                                                     </div>
                                                 </div>
                                             )}
@@ -1954,7 +1986,7 @@ export default function SavingsV2Preview() {
                                                     <div style={{ textAlign: 'right' }}>
                                                         <div className="qf-bank-card-balance-label">Saldo combinado</div>
                                                         <div className="qf-bank-card-balance-value">
-                                                            {aggregatedBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                            {money(aggregatedBalance)}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2041,7 +2073,7 @@ export default function SavingsV2Preview() {
                                                                     <div style={{ textAlign: 'right' }}>
                                                                         <div className="qf-bank-card-balance-label" style={{ fontSize: '9px' }}>{acc.parent_account_id ? 'Total' : 'Saldo disponible'}</div>
                                                                         <div className="qf-bank-card-balance-value" style={{ fontSize: '13px' }}>
-                                                                            {acc.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                                            {money(acc.current_balance)}
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -2050,11 +2082,11 @@ export default function SavingsV2Preview() {
                                                                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', marginTop: '6px', padding: '5px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.18)', fontSize: '9px', color: '#ffffff' }}>
                                                                         <div>
                                                                             <div style={{ opacity: 0.7, fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Para gastar</div>
-                                                                            <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].available.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                                            <div style={{ fontWeight: '700' }}>{money(linkedSums[acc.id].available, { maximumFractionDigits: 0 })}</div>
                                                                         </div>
                                                                         <div style={{ textAlign: 'right' }}>
                                                                             <div style={{ opacity: 0.7, fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>De {accounts.find(a => a.id === acc.parent_account_id)?.name || 'principal'}</div>
-                                                                            <div style={{ fontWeight: '700' }}>{linkedSums[acc.id].toParent.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                                                                            <div style={{ fontWeight: '700' }}>{money(linkedSums[acc.id].toParent, { maximumFractionDigits: 0 })}</div>
                                                                         </div>
                                                                     </div>
                                                                 )}
@@ -2088,25 +2120,25 @@ export default function SavingsV2Preview() {
                                             <tr key={acc.id}>
                                                 <td style={{ fontWeight: '500' }}>{acc.name}</td>
                                                 <td>{acc.bank_name}</td>
-                                                <td className="amount-pos">{!isChild && stats.income > 0 ? `+${stats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}</td>
-                                                <td className="amount-neg">{stats.expense > 0 ? `-${stats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}</td>
+                                                <td className="amount-pos">{!isChild && stats.income > 0 ? `+${money(stats.income)}` : '—'}</td>
+                                                <td className="amount-neg">{stats.expense > 0 ? `-${money(stats.expense)}` : '—'}</td>
                                                 <td className={net >= 0 ? 'amount-pos' : 'amount-neg'}>
-                                                    {net !== 0 ? `${net > 0 ? '+' : ''}${net.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}` : '—'}
+                                                    {net !== 0 ? `${net > 0 ? '+' : ''}${money(net)}` : '—'}
                                                 </td>
-                                                <td style={{ fontWeight: '500', color: acc.current_balance < 0 ? '#dc2626' : '#16a34a' }}>{acc.current_balance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                                                <td style={{ fontWeight: '500', color: acc.current_balance < 0 ? '#dc2626' : '#16a34a' }}>{money(acc.current_balance)}</td>
                                             </tr>
                                         );
                                     })}
                                     <tr style={{ fontWeight: '700', borderTop: '2px solid var(--color-border-secondary)' }}>
                                         <td>Total</td>
                                         <td>—</td>
-                                        <td className="amount-pos">+{monthlyStats.income.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                                        <td className="amount-neg">-{monthlyStats.expense.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                                        <td className="amount-pos">+{money(monthlyStats.income)}</td>
+                                        <td className="amount-neg">-{money(monthlyStats.expense)}</td>
                                         <td className={(monthlyStats.income - monthlyStats.expense) >= 0 ? 'amount-pos' : 'amount-neg'}>
                                             {((monthlyStats.income - monthlyStats.expense) > 0 ? '+' : '')}
-                                            {(monthlyStats.income - monthlyStats.expense).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                            {money(monthlyStats.income - monthlyStats.expense)}
                                         </td>
-                                        <td style={{ fontWeight: '500', color: selectedMonthBalance < 0 ? '#dc2626' : '#16a34a' }}>{selectedMonthBalance.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                                        <td style={{ fontWeight: '500', color: selectedMonthBalance < 0 ? '#dc2626' : '#16a34a' }}>{money(selectedMonthBalance)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2120,7 +2152,7 @@ export default function SavingsV2Preview() {
                         <div>
                             <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Total en metas</div>
                             <div style={{ fontSize: '24px', fontWeight: 500, color: goals.reduce((s, g) => s + (g.current_amount || 0), 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                {goals.reduce((s, g) => s + (g.current_amount || 0), 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                {money(goals.reduce((s, g) => s + (g.current_amount || 0), 0))}
                             </div>
                         </div>
                         <button className="qf-btn primary" onClick={() => toast.info('Nueva meta en desarrollo')}>
@@ -2149,8 +2181,8 @@ export default function SavingsV2Preview() {
                                             <div className="qf-progress-fill" style={{ width: `${Math.min(100, pct)}%`, background: g.color || '#F5C400' }}></div>
                                         </div>
                                         <div className="qf-goal-amounts">
-                                            <span style={{ color: g.current_amount < 0 ? '#dc2626' : '#16a34a' }}>{g.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
-                                            <span>{g.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+                                            <span style={{ color: g.current_amount < 0 ? '#dc2626' : '#16a34a' }}>{money(g.current_amount, { maximumFractionDigits: 0 })}</span>
+                                            <span>{money(g.target_amount, { maximumFractionDigits: 0 })}</span>
                                         </div>
                                     </div>
                                 );
@@ -2176,8 +2208,8 @@ export default function SavingsV2Preview() {
                                         return (
                                             <tr key={g.id}>
                                                 <td style={{ fontWeight: '500' }}>{g.name}</td>
-                                                <td>{g.current_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                                                <td>{g.target_amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                                                <td>{money(g.current_amount)}</td>
+                                                <td>{money(g.target_amount)}</td>
                                                 <td>{pct}%</td>
                                                 <td>{g.deadline ? format(new Date(g.deadline), 'MMM yyyy', { locale: es }) : '—'}</td>
                                                 <td>
@@ -2215,7 +2247,7 @@ export default function SavingsV2Preview() {
                                     const inc = recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
                                     const exp = recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
                                     const flow = inc - exp;
-                                    return <span style={{ color: flow < 0 ? '#dc2626' : '#16a34a' }}>{`${flow >= 0 ? '+' : ''}${flow.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}`}</span>;
+                                    return <span style={{ color: flow < 0 ? '#dc2626' : '#16a34a' }}>{`${flow >= 0 ? '+' : ''}${money(flow)}`}</span>;
                                 })()}
                             </div>
                             <div style={{ fontSize: '12px', color: '#B8940A', marginTop: '4px' }}>Lo que te queda tras gastos fijos programados</div>
@@ -2240,7 +2272,7 @@ export default function SavingsV2Preview() {
                                             <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Día {item.day_of_month || 1} · mensual</div>
                                         </div>
                                     </div>
-                                    <div className="amount-pos">+{item.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
+                                    <div className="amount-pos">+{money(item.amount)}</div>
                                 </div>
                             ))}
                             {recurringItems.filter(i => i.type === 'income').length === 0 && (
@@ -2251,7 +2283,7 @@ export default function SavingsV2Preview() {
                             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '0.5px solid var(--color-border-tertiary)', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                                 <span style={{ color: 'var(--color-text-secondary)' }}>Total ingresos fijos</span>
                                 <span className="amount-pos" style={{ fontSize: '15px' }}>
-                                    +{recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                    +{money(recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0))}
                                 </span>
                             </div>
                         </div>
@@ -2266,7 +2298,7 @@ export default function SavingsV2Preview() {
                                             <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Día {item.day_of_month || 1} · mensual</div>
                                         </div>
                                     </div>
-                                    <div className="amount-neg">-{item.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
+                                    <div className="amount-neg">-{money(item.amount)}</div>
                                 </div>
                             ))}
                             {recurringItems.filter(i => i.type === 'expense').length === 0 && (
@@ -2277,7 +2309,7 @@ export default function SavingsV2Preview() {
                             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '0.5px solid var(--color-border-tertiary)', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                                 <span style={{ color: 'var(--color-text-secondary)' }}>Total gastos fijos</span>
                                 <span className="amount-neg" style={{ fontSize: '15px' }}>
-                                    -{recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                    -{money(recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0))}
                                 </span>
                             </div>
                         </div>
