@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { SALAS, type EstadoAgente } from './vista/salas-data';
 import EscenaIsometrica from './vista/escena-isometrica';
+import { fetchHistorial, tiempoRelativo, type RegistroEncargo } from './vista/historial';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
@@ -33,10 +34,15 @@ export default function OficinaPage() {
     const [encargo, setEncargo] = useState('');
     const [enviando, setEnviando] = useState(false);
     const [resultado, setResultado] = useState<Resultado>(null);
+    const [historial, setHistorial] = useState<RegistroEncargo[]>([]);
 
     useEffect(() => {
         if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.replace('/');
     }, [user, loading, router]);
+
+    useEffect(() => {
+        fetchHistorial().then(setHistorial);
+    }, []);
 
     const agenteSel = useMemo(() => {
         if (!seleccion) return null;
@@ -72,6 +78,7 @@ export default function OficinaPage() {
         } finally {
             setEstados(prev => ({ ...prev, [k]: 'libre' }));
             setEnviando(false);
+            fetchHistorial().then(setHistorial);
         }
     }
 
@@ -189,7 +196,78 @@ export default function OficinaPage() {
                         )}
                     </aside>
                 </div>
+
+                {/* ── Muro de actividad ── */}
+                <section className="rounded-3xl bg-white shadow-sm p-4 md:p-5" style={{ border: `2px solid ${MARINO}22` }}>
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-black uppercase tracking-widest" style={{ color: MARINO }}>
+                            Actividad reciente
+                        </h2>
+                        <span className="text-xs font-semibold" style={{ color: `${MARINO}77` }}>
+                            {historial.length} {historial.length === 1 ? 'encargo' : 'encargos'}
+                        </span>
+                    </div>
+                    {historial.length === 0 ? (
+                        <p className="text-sm text-center py-6" style={{ color: `${MARINO}77` }}>
+                            Aún no hay encargos. Asigna uno a un agente y aparecerá aquí.
+                        </p>
+                    ) : (
+                        <ul className="space-y-2.5">
+                            {historial.map(r => <EntradaActividad key={r.id} r={r} />)}
+                        </ul>
+                    )}
+                </section>
             </div>
         </div>
+    );
+}
+
+// ── Entrada del muro de actividad ─────────────────────────────────────────────
+function EntradaActividad({ r }: { r: RegistroEncargo }) {
+    const [abierto, setAbierto] = useState(false);
+    const sala = SALAS.find(s => s.id === r.salaId);
+    return (
+        <li className="rounded-xl overflow-hidden" style={{ border: `1px solid ${MARINO}1a` }}>
+            <button
+                onClick={() => setAbierto(o => !o)}
+                className="w-full flex items-start gap-3 p-3 text-left hover:bg-[#f5f9fc] transition-colors"
+            >
+                <span className="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: r.ok ? '#16a34a' : '#dc2626' }} />
+                <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold" style={{ color: MARINO }}>{r.agente}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded"
+                            style={{ background: sala?.color ?? '#eee', color: `${MARINO}cc` }}>
+                            {sala?.nombre ?? r.salaId}
+                        </span>
+                        <span className="text-xs" style={{ color: `${MARINO}77` }}>{tiempoRelativo(r.ts)}</span>
+                    </span>
+                    <span className="block text-sm mt-1 truncate" style={{ color: `${MARINO}cc` }}>{r.encargo}</span>
+                </span>
+                {r.archivos && r.archivos.length > 0 && (
+                    <span className="text-xs font-semibold shrink-0" style={{ color: CIAN }}>
+                        📄 {r.archivos.length}
+                    </span>
+                )}
+            </button>
+            {abierto && (
+                <div className="px-3 pb-3 text-sm whitespace-pre-wrap break-words"
+                    style={{ borderTop: `1px solid ${MARINO}14`, color: MARINO }}>
+                    <div className="pt-3 max-h-72 overflow-auto">
+                        {r.ok ? (r.resultado || '(sin texto)') : (
+                            <span style={{ color: '#b91c1c' }}>⚠ {r.error}</span>
+                        )}
+                    </div>
+                    {r.archivos && r.archivos.length > 0 && (
+                        <ul className="mt-2 pt-2 text-xs" style={{ borderTop: `1px solid ${MARINO}14` }}>
+                            {r.archivos.map(f => (
+                                <li key={f}>📄 oficina-output/{r.salaId}/{f}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
+        </li>
     );
 }

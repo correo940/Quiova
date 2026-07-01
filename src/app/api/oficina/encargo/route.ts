@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getSala, agenteEnSala, construirPrompt } from '@/app/apps/oficina/vista/salas-data';
+import { registrarEncargo } from '@/app/apps/oficina/vista/historial-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,13 +63,17 @@ export async function POST(req: Request) {
     try {
         const { resultado, error } = await ejecutarClaude(prompt, dir);
         if (error) {
+            await registrarEncargo({ salaId, agente: nombreAgente, encargo, ok: false, error });
             return NextResponse.json({ ok: false, error });
         }
         const despues = await listarArchivos(dir);
         const archivos = [...despues].filter(f => !antes.has(f));
+        await registrarEncargo({ salaId, agente: nombreAgente, encargo, ok: true, resultado, archivos });
         return NextResponse.json({ ok: true, resultado, archivos });
     } catch (e) {
-        return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        await registrarEncargo({ salaId, agente: nombreAgente, encargo, ok: false, error: msg });
+        return NextResponse.json({ ok: false, error: msg });
     }
 }
 
