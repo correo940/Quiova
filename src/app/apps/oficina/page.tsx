@@ -4,6 +4,7 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { SALAS, type EstadoAgente } from './vista/salas-data';
+import EscenaIsometrica from './vista/escena-isometrica';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
@@ -87,68 +88,36 @@ export default function OficinaPage() {
                             Tu equipo de agentes. Elige uno y dale un encargo.
                         </p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs font-semibold">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold">
                         <span className="inline-flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-[#16a34a]" /> Trabajando
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-[#9ca3af]" /> Libre
                         </span>
+                        <span className="inline-flex items-center gap-1.5" style={{ color: `${MARINO}99` }}>
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: CIAN }} /> Coordinación
+                        </span>
+                        <span className="inline-flex items-center gap-1.5" style={{ color: `${MARINO}99` }}>
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: MARINO }} /> Manager
+                        </span>
+                        <span className="inline-flex items-center gap-1.5" style={{ color: `${MARINO}99` }}>
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#2f8f9d' }} /> Especialista
+                        </span>
                     </div>
                 </header>
 
                 <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
-                    {/* ── Plano ── */}
+                    {/* ── Plano isométrico ── */}
                     <div
-                        className="rounded-3xl p-3 md:p-4 bg-white shadow-sm"
+                        className="rounded-3xl p-3 md:p-4 bg-white shadow-sm overflow-hidden"
                         style={{ border: `2px solid ${MARINO}22` }}
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {SALAS.map(sala => (
-                                <section
-                                    key={sala.id}
-                                    className="rounded-2xl p-3 flex flex-col gap-3"
-                                    style={{ background: sala.color, border: `1px solid ${MARINO}14` }}
-                                >
-                                    <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: `${MARINO}cc` }}>
-                                        {sala.nombre}
-                                    </p>
-                                    <div className="flex flex-wrap gap-4">
-                                        {sala.agentes.map(a => {
-                                            const est = estados[clave(sala.id, a.nombre)];
-                                            const activo = seleccion?.salaId === sala.id && seleccion?.agente === a.nombre;
-                                            return (
-                                                <button
-                                                    key={a.nombre}
-                                                    onClick={() => seleccionar(sala.id, a.nombre)}
-                                                    className="flex flex-col items-center gap-1.5 group"
-                                                    title={a.rol}
-                                                >
-                                                    <span className="relative">
-                                                        <span
-                                                            className="block w-12 h-12 rounded-full transition-transform group-hover:scale-105"
-                                                            style={{
-                                                                background: 'white',
-                                                                border: `2.5px solid ${activo ? CIAN : `${MARINO}55`}`,
-                                                                boxShadow: activo ? `0 0 0 3px ${CIAN}33` : '0 1px 2px rgba(0,0,0,.06)',
-                                                            }}
-                                                        />
-                                                        <span
-                                                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
-                                                            style={{
-                                                                background: est === 'trabajando' ? '#16a34a' : '#9ca3af',
-                                                                animation: est === 'trabajando' ? 'latido 1.6s ease-in-out infinite' : undefined,
-                                                            }}
-                                                        />
-                                                    </span>
-                                                    <span className="text-xs font-semibold" style={{ color: MARINO }}>{a.nombre}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </section>
-                            ))}
-                        </div>
+                        <EscenaIsometrica
+                            estados={estados}
+                            seleccion={seleccion}
+                            onSeleccionar={seleccionar}
+                        />
                     </div>
 
                     {/* ── Panel de encargo ── */}
