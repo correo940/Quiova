@@ -64,3 +64,6 @@ build_*.log
 tsc_output.txt
 results.json
 available_groq_models.txt
+
+# Entregables generados por La Oficina
+oficina-output/
