@@ -28,18 +28,12 @@ import { translateAuthError } from '@/lib/utils';
 import { useAi } from '@/context/AiContext';
 import { useJournal } from '@/context/JournalContext';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
-import { Mic, MicOff, Plus, CheckSquare, ShoppingCart, Wallet, Camera, Book, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Plus, Book, Sparkles, Shield } from 'lucide-react';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWorkSession } from '@/context/work-session-context';
 import { getBetaAvatar } from '@/lib/beta/avatars';
 
-const QUICK_ACTIONS = [
-    { label: 'Nueva tarea', icon: CheckSquare, href: '/apps/mi-hogar/tasks?action=new', color: 'bg-blue-600' },
-    { label: 'Lista compra', icon: ShoppingCart, href: '/apps/mi-hogar/shopping?action=new', color: 'bg-green-800' },
-    { label: 'Nuevo gasto', icon: Wallet, href: '/apps/mi-hogar/expenses?action=new', color: 'bg-amber-600' },
-    { label: 'Escanear', icon: Camera, href: '/apps/mi-hogar/shopping?action=scan', color: 'bg-slate-700' },
-];
 
 export default function HeaderAuth() {
     const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
@@ -78,6 +72,12 @@ export default function HeaderAuth() {
     const [showPassword, setShowPassword] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
+
+    const isOwner = user?.email === 'todojuntomirar@gmail.com';
+    const ownerActions = [
+        { label: 'Panel Beta', icon: Shield, href: '/beta/admin', color: 'bg-[#1a5c2e]' },
+        { label: 'Oficina', icon: LayoutDashboard, href: '/apps/oficina', color: 'bg-slate-800' },
+    ];
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -135,7 +135,8 @@ export default function HeaderAuth() {
                         <span className="text-xs font-bold">Trabajar</span>
                     )}
                 </Button>
-                {/* Global Quick Action Button (+) */}
+                {/* Global Quick Action Button (+) — solo para el owner */}
+                {isOwner && (
                 <div className="relative">
                     <button
                         onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
@@ -157,7 +158,7 @@ export default function HeaderAuth() {
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     className="absolute top-10 right-0 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-2 z-50"
                                 >
-                                    {QUICK_ACTIONS.map((action) => (
+                                    {ownerActions.map((action) => (
                                         <Link
                                             key={action.label}
                                             href={action.href}
@@ -175,6 +176,7 @@ export default function HeaderAuth() {
                         )}
                     </AnimatePresence>
                 </div>
+                )}
 
                 {/* Journal / Notes Button */}
                 <button
