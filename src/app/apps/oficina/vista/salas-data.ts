@@ -67,11 +67,12 @@ export function agenteEnSala(salaId: string, nombreAgente: string): Agente | und
 }
 
 /** Prompt de rol puro (sin efectos) — reutilizado por la API y testeable. */
-export function construirPrompt(sala: Sala, agente: Agente, encargo: string): string {
+export function construirPrompt(sala: Sala, agente: Agente, encargo: string, directrices?: string): string {
     return [
         `Eres ${agente.nombre}, ${agente.rol} en el departamento de ${sala.nombre}.`,
         `Trabajas para Quioba. Produce el entregable pedido, no una conversación.`,
         `Si generas archivos, créalos en el directorio actual.`,
+        ...(directrices ? ['', `Directrices fijas que debes seguir siempre:`, directrices] : []),
         ``,
         `Encargo: ${encargo}`,
     ].join('\n');

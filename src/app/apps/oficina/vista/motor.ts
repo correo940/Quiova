@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getSala, agenteEnSala, construirPrompt } from './salas-data';
 import { registrarEncargo } from './historial-store';
+import { leerDirectrices } from './directrices-store';
 
 const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos por encargo
 
@@ -113,7 +114,8 @@ export async function ejecutarEncargo(
     await fs.mkdir(dir, { recursive: true });
     const antes = await listarArchivos(dir);
 
-    const prompt = construirPrompt(sala, agente, encargo);
+    const directrices = await leerDirectrices(salaId, nombreAgente);
+    const prompt = construirPrompt(sala, agente, encargo, directrices);
     const { resultado, error } = await ejecutarClaude(prompt, dir);
 
     if (error) {
