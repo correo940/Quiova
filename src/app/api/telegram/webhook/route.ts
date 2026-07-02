@@ -7,7 +7,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
-const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // ── Helpers Telegram ─────────────────────────────────────────────────────────
@@ -144,12 +143,6 @@ async function responderAgente(chatId: string, texto: string, salaId: string, ag
 // ── Webhook ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-    // Verificar secreto
-    const secret = req.headers.get('x-telegram-bot-api-secret-token');
-    if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
-        return NextResponse.json({ ok: false }, { status: 403 });
-    }
-
     const update = await req.json().catch(() => null);
     if (!update) return NextResponse.json({ ok: true });
 
