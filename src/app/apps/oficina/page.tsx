@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SALAS, type EstadoAgente } from './vista/salas-data';
 import { fetchHistorial, tiempoRelativo, type RegistroEncargo } from './vista/historial';
-import { ArrowLeft, Settings2, Send, ChevronDown, ChevronUp, Zap, Pin, Check } from 'lucide-react';
+import { ArrowLeft, Settings2, Send, ChevronDown, ChevronUp, Zap, Pin, Check, Mic } from 'lucide-react';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
@@ -81,8 +81,35 @@ export default function OficinaPage() {
     const [deptoTablon, setDeptoTablon] = useState('general');
     const [guardandoTablon, setGuardandoTablon] = useState(false);
     const [fijados, setFijados] = useState<Set<number>>(new Set());
+    const [escuchando, setEscuchando] = useState(false);
+    const [dictadoSoportado, setDictadoSoportado] = useState(false);
 
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const reconocimientoRef = useRef<any>(null);
+
+    useEffect(() => {
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SR) return;
+        setDictadoSoportado(true);
+        const rec = new SR();
+        rec.lang = 'es-ES';
+        rec.continuous = false;
+        rec.interimResults = false;
+        rec.onresult = (e: any) => {
+            const texto = e.results[0][0].transcript;
+            setInputChat(prev => (prev ? prev + ' ' : '') + texto);
+        };
+        rec.onend = () => setEscuchando(false);
+        rec.onerror = () => setEscuchando(false);
+        reconocimientoRef.current = rec;
+    }, []);
+
+    function toggleDictado() {
+        const rec = reconocimientoRef.current;
+        if (!rec) return;
+        if (escuchando) { rec.stop(); setEscuchando(false); }
+        else { rec.start(); setEscuchando(true); }
+    }
 
     useEffect(() => {
         if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.replace('/');
@@ -593,6 +620,17 @@ export default function OficinaPage() {
                                 className="flex-1 rounded-2xl px-4 py-2.5 text-sm border border-slate-200 outline-none resize-none focus:border-slate-300 text-[#10233f] disabled:opacity-60"
                                 style={{ minHeight: 42, maxHeight: 120 }}
                             />
+                            {dictadoSoportado && (
+                                <button
+                                    onClick={toggleDictado}
+                                    disabled={enviandoChat}
+                                    title={escuchando ? 'Detener dictado' : 'Hablar'}
+                                    className="w-10 h-10 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 transition-colors shrink-0"
+                                    style={{ background: escuchando ? '#dc2626' : `${aCfg.accent}bb` }}
+                                >
+                                    <Mic className={`w-4 h-4 ${escuchando ? 'animate-pulse' : ''}`} />
+                                </button>
+                            )}
                             <button
                                 onClick={enviarChat}
                                 disabled={enviandoChat || !inputChat.trim()}
