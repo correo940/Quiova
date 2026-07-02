@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { SALAS } from '@/app/apps/oficina/vista/salas-data';
+import { leerTablonPendiente } from '@/app/apps/oficina/vista/tablon-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -89,16 +90,20 @@ async function buildSystemPrompt(salaId: string, agente: string, salaNombre: str
         .eq('agente', agente)
         .maybeSingle();
     const directrices = data?.texto ?? '';
+    const pendientes = await leerTablonPendiente(salaId);
+    const tablon = pendientes.map(p => `- ${p.texto}`).join('\n');
 
     return [
         `Eres ${agente}, ${rol} en el departamento de ${salaNombre} de Quioba.`,
         `Estás hablando directamente con don Juan por Telegram. Él es el fundador y Director General.`,
         `Dirígete a él siempre como "don Juan". Eres proactivo, natural y directo.`,
         `Puedes sugerir cosas de tu área aunque don Juan no las pida.`,
+        `REGLA ABSOLUTA: nunca inventes reuniones, tareas, plazos, decisiones ni datos que don Juan no te haya dicho en esta conversación o que no consten en tus directrices. No tienes acceso a su agenda. Si no lo sabes, dilo.`,
         `Cuando acordéis algo concreto, indícalo con "✅ Acordado:" seguido del entregable.`,
         `Responde en español de España. Sin expresiones latinoamericanas.`,
         `Respuestas cortas y directas — estamos en Telegram, no en un documento.`,
         ...(directrices ? [`\nTu forma de trabajar:\n${directrices}`] : []),
+        ...(tablon ? [`\nTablón — lo único pendiente que sabes, registrado por don Juan:\n${tablon}`] : []),
     ].join('\n');
 }
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SALAS, type EstadoAgente } from './vista/salas-data';
 import { fetchHistorial, tiempoRelativo, type RegistroEncargo } from './vista/historial';
-import { ArrowLeft, Settings2, Send, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { ArrowLeft, Settings2, Send, ChevronDown, ChevronUp, Zap, Pin, Check } from 'lucide-react';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
@@ -31,6 +31,7 @@ const D_CFG: Record<string, { emoji: string; accent: string }> = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type MensajeChat = { role: 'user' | 'assistant'; content: string; ts: number };
+type ItemTablon = { id: string; texto: string; departamento: string; estado: 'pendiente' | 'hecho'; created_at: string };
 type Resultado = {
     ok: boolean; resultado?: string; archivos?: string[]; error?: string;
     asignadoA?: { salaId: string; agente: string; motivo: string };
@@ -75,6 +76,11 @@ export default function OficinaPage() {
     const [historial, setHistorial] = useState<RegistroEncargo[]>([]);
     const [mostrarActividad, setMostrarActividad] = useState(false);
     const [selectorDesarrollo, setSelectorDesarrollo] = useState(false);
+    const [tablon, setTablon] = useState<ItemTablon[]>([]);
+    const [nuevoTablon, setNuevoTablon] = useState('');
+    const [deptoTablon, setDeptoTablon] = useState('general');
+    const [guardandoTablon, setGuardandoTablon] = useState(false);
+    const [fijados, setFijados] = useState<Set<number>>(new Set());
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +89,13 @@ export default function OficinaPage() {
     }, [user, loading, router]);
 
     useEffect(() => { fetchHistorial().then(setHistorial); }, []);
+    useEffect(() => { cargarTablon(); }, []);
+
+    async function cargarTablon() {
+        const r = await fetch('/api/oficina/tablon');
+        const d = await r.json();
+        setTablon(d.items ?? []);
+    }
 
     const agenteSel = useMemo(() => {
         if (!seleccion) return null;
@@ -93,7 +106,7 @@ export default function OficinaPage() {
 
     useEffect(() => {
         if (!seleccion) return;
-        setMensajes([]); setInputChat(''); setMostrarDirectrices(false); setPestana('chat');
+        setMensajes([]); setInputChat(''); setMostrarDirectrices(false); setPestana('chat'); setFijados(new Set());
         fetch(`/api/oficina/chat-agente?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`)
             .then(r => r.json()).then(d => setMensajes(d.historial ?? []));
         fetch(`/api/oficina/directrices?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`)
@@ -114,6 +127,29 @@ export default function OficinaPage() {
         setResultado(null);
         setMostrarDirectrices(false);
         setSelectorDesarrollo(false);
+    }
+
+    async function crearTablon(texto: string, departamento: string) {
+        if (!texto.trim() || guardandoTablon) return;
+        setGuardandoTablon(true);
+        try {
+            await fetch('/api/oficina/tablon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto: texto.trim(), departamento }),
+            });
+            await cargarTablon();
+            setNuevoTablon('');
+        } finally { setGuardandoTablon(false); }
+    }
+
+    async function marcarTablon(id: string, estado: 'pendiente' | 'hecho') {
+        setTablon(prev => prev.map(i => i.id === id ? { ...i, estado } : i));
+        await fetch('/api/oficina/tablon', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, estado }),
+        });
     }
 
     async function enviarChat() {
@@ -214,6 +250,66 @@ export default function OficinaPage() {
                             <div className="h-full w-2/3 bg-white/20 rounded-full" />
                         </div>
                     </button>
+
+                    {/* Tablón de hoy */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+                        <p className="text-xs font-black text-[#10233f] uppercase tracking-wide flex items-center gap-1.5">
+                            <Pin className="w-3.5 h-3.5" /> Tablón de hoy
+                        </p>
+
+                        {tablon.filter(i => i.estado === 'pendiente').length === 0 ? (
+                            <p className="text-xs text-[#10233f55] py-1">Nada pendiente. Apunta algo abajo.</p>
+                        ) : (
+                            <ul className="space-y-1.5">
+                                {tablon.filter(i => i.estado === 'pendiente').map(item => {
+                                    const dCfgItem = D_CFG[item.departamento];
+                                    return (
+                                        <li key={item.id} className="flex items-start gap-2 bg-[#f4f6f4] rounded-xl px-3 py-2">
+                                            <button
+                                                onClick={() => marcarTablon(item.id, 'hecho')}
+                                                className="w-4 h-4 rounded-full border-2 border-[#10233f33] shrink-0 mt-0.5 active:border-green-500 active:bg-green-50 transition-colors flex items-center justify-center"
+                                                title="Marcar como hecho"
+                                            >
+                                                <Check className="w-2.5 h-2.5 text-[#10233f00]" />
+                                            </button>
+                                            <span className="flex-1 text-xs text-[#10233f] leading-snug">{item.texto}</span>
+                                            {dCfgItem && (
+                                                <span className="text-[9px] font-black uppercase tracking-wide shrink-0 mt-0.5" style={{ color: dCfgItem.accent }}>
+                                                    {dCfgItem.emoji}
+                                                </span>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+
+                        <div className="flex gap-1.5 pt-1">
+                            <select
+                                value={deptoTablon}
+                                onChange={e => setDeptoTablon(e.target.value)}
+                                className="text-[11px] font-bold rounded-lg border border-slate-200 px-1.5 outline-none text-[#10233f] shrink-0"
+                            >
+                                <option value="general">General</option>
+                                {salasDepto.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                            </select>
+                            <input
+                                value={nuevoTablon}
+                                onChange={e => setNuevoTablon(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') crearTablon(nuevoTablon, deptoTablon); }}
+                                placeholder="Añadir al tablón…"
+                                className="flex-1 min-w-0 text-xs rounded-lg border border-slate-200 px-2.5 py-1.5 outline-none text-[#10233f]"
+                            />
+                            <button
+                                onClick={() => crearTablon(nuevoTablon, deptoTablon)}
+                                disabled={!nuevoTablon.trim() || guardandoTablon}
+                                className="text-xs font-bold px-3 rounded-lg text-white disabled:opacity-40 shrink-0"
+                                style={{ background: '#1a5c2e' }}
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Grid de departamentos */}
                     <div className="grid grid-cols-2 gap-3">
@@ -456,6 +552,15 @@ export default function OficinaPage() {
                                             style={{ background: `${aCfg.accent}18`, color: aCfg.accent }}
                                         >
                                             <Zap className="w-3 h-3" /> Convertir en encargo
+                                        </button>
+                                    )}
+                                    {m.role === 'user' && (
+                                        <button
+                                            onClick={() => { crearTablon(m.content, sala.id); setFijados(prev => new Set(prev).add(i)); }}
+                                            disabled={fijados.has(i)}
+                                            className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-white/50 hover:text-white/90 transition-colors disabled:hover:text-white/50"
+                                        >
+                                            {fijados.has(i) ? <><Check className="w-2.5 h-2.5" /> Fijado</> : <><Pin className="w-2.5 h-2.5" /> Fijar al tablón</>}
                                         </button>
                                     )}
                                 </div>

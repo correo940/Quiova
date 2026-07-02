@@ -3,11 +3,12 @@ import Groq from 'groq-sdk';
 import { getSala, agenteEnSala } from '@/app/apps/oficina/vista/salas-data';
 import { leerDirectrices } from '@/app/apps/oficina/vista/directrices-store';
 import { leerChat, guardarMensaje, limpiarChat } from '@/app/apps/oficina/vista/chat-store';
+import { leerTablonPendiente } from '@/app/apps/oficina/vista/tablon-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function buildSystemPrompt(nombre: string, rol: string, sala: string, directrices: string): string {
+function buildSystemPrompt(nombre: string, rol: string, sala: string, directrices: string, tablon: string): string {
     return [
         `Eres ${nombre}, ${rol} en el departamento de ${sala} de Quioba.`,
         `Estás hablando directamente con don Juan, el fundador y Director General de Quioba. Él es quien te escribe ahora mismo.`,
@@ -15,12 +16,18 @@ function buildSystemPrompt(nombre: string, rol: string, sala: string, directrice
         `Tienes personalidad propia: eres proactivo, propones ideas, haces preguntas cuando necesitas claridad.`,
         `Puedes sugerir cosas de tu área aunque don Juan no las pida. Si ves una oportunidad, la mencionas.`,
         `Eres conversacional y natural — no eres un asistente genérico, eres ${nombre} de Quioba.`,
+        `REGLA ABSOLUTA: nunca inventes reuniones, tareas, plazos, decisiones ni datos que don Juan no te haya dicho en esta conversación o que no consten en tus directrices. No tienes acceso a su agenda ni a información fuera de este chat. Si no lo sabes, dilo — no lo rellenes con algo plausible.`,
         `Cuando acordéis algo concreto, indícalo con "✅ Acordado:" seguido del entregable.`,
         `IMPORTANTE: Habla siempre en español de España. Nada de expresiones latinoamericanas ("qué onda", "órale", "ahorita", "chévere", etc.). Usa vocabulario y expresiones del español peninsular.`,
         ...(directrices ? [
             ``,
             `Tu forma de trabajar:`,
             directrices,
+        ] : []),
+        ...(tablon ? [
+            ``,
+            `Tablón — esto es lo único que sabes que hay pendiente, registrado por don Juan (si preguntan por tareas o reuniones, cíñete a esto):`,
+            tablon,
         ] : []),
     ].join('\n');
 }
@@ -65,6 +72,8 @@ export async function POST(req: Request) {
 
     const directrices = await leerDirectrices(salaId, nombreAgente);
     const historialPrevio = await leerChat(salaId, nombreAgente);
+    const pendientes = await leerTablonPendiente(salaId);
+    const tablonTexto = pendientes.map(p => `- ${p.texto}`).join('\n');
 
     const groq = new Groq({ apiKey });
     const completion = await groq.chat.completions.create({
@@ -72,7 +81,7 @@ export async function POST(req: Request) {
         temperature: 0.55,
         max_tokens: 500,
         messages: [
-            { role: 'system', content: buildSystemPrompt(nombreAgente, agente.rol, sala.nombre, directrices) },
+            { role: 'system', content: buildSystemPrompt(nombreAgente, agente.rol, sala.nombre, directrices, tablonTexto) },
             ...historialPrevio.slice(-16).map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: mensaje },
         ],
