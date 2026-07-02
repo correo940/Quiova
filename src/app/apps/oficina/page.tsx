@@ -14,7 +14,13 @@ const MARINO = '#10233f';
 const CIAN = '#22a7c4';
 
 type Seleccion = { salaId: string; agente: string } | null;
-type Resultado = { ok: boolean; resultado?: string; archivos?: string[]; error?: string } | null;
+type Resultado = {
+    ok: boolean;
+    resultado?: string;
+    archivos?: string[];
+    error?: string;
+    asignadoA?: { salaId: string; agente: string; motivo: string };
+} | null;
 
 function clave(salaId: string, agente: string) {
     return `${salaId}:${agente}`;
@@ -82,6 +88,30 @@ export default function OficinaPage() {
         }
     }
 
+    // Encargo sin destinatario: Hermes (Coordinación) decide quién lo hace.
+    async function enviarHermes() {
+        if (!encargo.trim() || enviando) return;
+        const k = clave('recepcion', 'Coordinación');
+        setEnviando(true);
+        setResultado(null);
+        setEstados(prev => ({ ...prev, [k]: 'trabajando' }));
+        try {
+            const res = await fetch('/api/oficina/coordinar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ encargo }),
+            });
+            const data: Resultado = await res.json();
+            setResultado(data);
+        } catch (e) {
+            setResultado({ ok: false, error: e instanceof Error ? e.message : 'Error de red' });
+        } finally {
+            setEstados(prev => ({ ...prev, [k]: 'libre' }));
+            setEnviando(false);
+            fetchHistorial().then(setHistorial);
+        }
+    }
+
     return (
         <div style={{ fontFamily: 'system-ui, sans-serif', color: MARINO }} className="min-h-screen bg-[#f5f9fc]">
             <style>{`@keyframes latido{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.65}}`}</style>
@@ -130,9 +160,39 @@ export default function OficinaPage() {
                     {/* ── Panel de encargo ── */}
                     <aside className="rounded-3xl bg-white shadow-sm p-4 lg:sticky lg:top-4" style={{ border: `2px solid ${MARINO}22` }}>
                         {!agenteSel ? (
-                            <p className="text-sm text-center py-8" style={{ color: `${MARINO}88` }}>
-                                Selecciona un agente para asignarle un encargo.
-                            </p>
+                            /* Recepción: Hermes reparte el encargo */
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: CIAN }}>
+                                        Recepción
+                                    </p>
+                                    <p className="text-lg font-black leading-tight">Deja tu encargo</p>
+                                    <p className="text-xs mt-0.5" style={{ color: `${MARINO}99` }}>
+                                        Hermes lo repartirá al agente adecuado. O clica un agente del plano para asignarlo tú.
+                                    </p>
+                                </div>
+
+                                <textarea
+                                    value={encargo}
+                                    onChange={e => setEncargo(e.target.value)}
+                                    disabled={enviando}
+                                    rows={4}
+                                    placeholder="Escribe el encargo en lenguaje natural…"
+                                    className="w-full rounded-xl p-3 text-sm outline-none resize-y disabled:opacity-60"
+                                    style={{ border: `1.5px solid ${MARINO}33`, color: MARINO }}
+                                />
+
+                                <button
+                                    onClick={enviarHermes}
+                                    disabled={enviando || !encargo.trim()}
+                                    className="w-full rounded-xl py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-50"
+                                    style={{ background: MARINO }}
+                                >
+                                    {enviando ? 'Repartiendo y trabajando…' : 'Dejar en recepción'}
+                                </button>
+
+                                <CajaResultado resultado={resultado} salaId={resultado?.asignadoA?.salaId} />
+                            </div>
                         ) : (
                             <div className="space-y-3">
                                 <div>
@@ -162,36 +222,7 @@ export default function OficinaPage() {
                                     {enviando ? 'Trabajando…' : 'Enviar encargo'}
                                 </button>
 
-                                {resultado && (
-                                    <div
-                                        className="rounded-xl p-3 text-sm whitespace-pre-wrap break-words max-h-80 overflow-auto"
-                                        style={{
-                                            background: resultado.ok ? `${CIAN}0f` : '#fee',
-                                            border: `1px solid ${resultado.ok ? `${CIAN}55` : '#f3b0b0'}`,
-                                            color: MARINO,
-                                        }}
-                                    >
-                                        {resultado.ok ? (
-                                            <>
-                                                {resultado.resultado || '(sin texto)'}
-                                                {resultado.archivos && resultado.archivos.length > 0 && (
-                                                    <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${MARINO}22` }}>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: CIAN }}>
-                                                            Archivos generados
-                                                        </p>
-                                                        <ul className="mt-1 text-xs">
-                                                            {resultado.archivos.map(f => (
-                                                                <li key={f}>📄 oficina-output/{seleccion?.salaId}/{f}</li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span style={{ color: '#b91c1c' }}>⚠ {resultado.error}</span>
-                                        )}
-                                    </div>
-                                )}
+                                <CajaResultado resultado={resultado} salaId={seleccion?.salaId} />
                             </div>
                         )}
                     </aside>
@@ -218,6 +249,47 @@ export default function OficinaPage() {
                     )}
                 </section>
             </div>
+        </div>
+    );
+}
+
+// ── Caja de resultado (compartida por encargo directo y recepción) ───────────
+function CajaResultado({ resultado, salaId }: { resultado: Resultado; salaId?: string }) {
+    if (!resultado) return null;
+    return (
+        <div
+            className="rounded-xl p-3 text-sm whitespace-pre-wrap break-words max-h-80 overflow-auto"
+            style={{
+                background: resultado.ok ? `${CIAN}0f` : '#fee',
+                border: `1px solid ${resultado.ok ? `${CIAN}55` : '#f3b0b0'}`,
+                color: MARINO,
+            }}
+        >
+            {resultado.asignadoA && (
+                <p className="text-xs font-bold mb-2 pb-2" style={{ borderBottom: `1px solid ${MARINO}22`, color: CIAN }}>
+                    Hermes lo asignó a {resultado.asignadoA.agente}
+                    {resultado.asignadoA.motivo ? ` — ${resultado.asignadoA.motivo}` : ''}
+                </p>
+            )}
+            {resultado.ok ? (
+                <>
+                    {resultado.resultado || '(sin texto)'}
+                    {resultado.archivos && resultado.archivos.length > 0 && (
+                        <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${MARINO}22` }}>
+                            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: CIAN }}>
+                                Archivos generados
+                            </p>
+                            <ul className="mt-1 text-xs">
+                                {resultado.archivos.map(f => (
+                                    <li key={f}>📄 oficina-output/{salaId}/{f}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </>
+            ) : (
+                <span style={{ color: '#b91c1c' }}>⚠ {resultado.error}</span>
+            )}
         </div>
     );
 }
