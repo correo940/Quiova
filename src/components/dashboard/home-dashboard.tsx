@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import CalendarWidget from './widgets/calendar-widget';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
 import QuickActionFab from './quick-action-fab';
+import MobileDashboard from './mobile-dashboard';
 import { usePlatform } from '@/hooks/use-platform';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
@@ -14,7 +14,6 @@ export default function HomeDashboard() {
     const [isCalendarMinimized, setIsCalendarMinimized] = useState(false);
     const { isMobile } = usePlatform();
     const { user } = useAuth();
-    const router = useRouter();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -23,19 +22,13 @@ export default function HomeDashboard() {
         }
     }, []);
 
-    useEffect(() => {
-        if (isMobile) {
-            router.replace('/');
-        }
-    }, [isMobile, router]);
-
     const handleToggleCalendar = () => {
         const newVal = !isCalendarMinimized;
         setIsCalendarMinimized(newVal);
         localStorage.setItem('quioba_calendar_minimized', String(newVal));
     };
 
-    if (isMobile) return null;
+    if (isMobile) return <MobileDashboard />;
 
     return (
         <div className="flex flex-col overflow-hidden h-[calc(100dvh-64px)]">
