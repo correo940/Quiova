@@ -422,7 +422,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                             {isAppsMinimized ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                         </button>
                         <span className="w-px h-3 bg-border" />
-                        <div className="hidden sm:flex flex-col items-center gap-1">
+                        <div className="flex flex-col items-center gap-1">
                             <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-700/50 leading-none text-center w-full">Dashboard</span>
                             <div className="relative flex items-center bg-amber-50 border border-amber-200/60 rounded-full p-0.5 gap-0">
                                 <div className={`absolute top-0.5 h-[22px] w-[52px] rounded-full bg-amber-200 shadow-sm transition-all duration-200 ease-out ${pathname === '/apps/resumen-diario' ? 'left-[54px]' : 'left-0.5'}`} />
