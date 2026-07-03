@@ -224,8 +224,16 @@ export default function DashboardNext() {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarView, setCalendarView] = useState<'day' | 'week' | 'month'>('week');
+  const [isMobile, setIsMobile] = useState(false);
 
   const MONTH_BUDGET = 2000;
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const loadRangeData = async (start: Date, end: Date) => {
     const { data: { user: u } } = await supabase.auth.getUser();
@@ -581,17 +589,17 @@ export default function DashboardNext() {
 
       <div style={{
         position: 'relative', zIndex: 2, minHeight: '100vh',
-        padding: '20px 24px 60px',
+        padding: isMobile ? '14px 12px 100px' : '20px 24px 60px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif',
       }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 14 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 14 }}>
 
         {/* ── LEFT ──────────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* GREETING + CALENDAR */}
-          <div style={{ ...glass, padding: '22px 26px', display: 'flex', gap: 24, alignItems: 'stretch' }}>
-            <div style={{ flex: '0 0 42%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ ...glass, padding: isMobile ? '18px 16px' : '22px 26px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 16 : 24, alignItems: isMobile ? 'stretch' : 'stretch' }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 42%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <h1 style={{ fontSize: 22, fontWeight: 600, color: '#111827', letterSpacing: '-0.5px', margin: 0 }}>
                 {greeting}, {displayName} 👋
               </h1>
@@ -619,7 +627,7 @@ export default function DashboardNext() {
               </p>
             </div>
 
-            <div style={{ width: 1, background: 'rgba(0,0,0,0.07)', alignSelf: 'stretch', borderRadius: 1 }} />
+            {!isMobile && <div style={{ width: 1, background: 'rgba(0,0,0,0.07)', alignSelf: 'stretch', borderRadius: 1 }} />}
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -743,7 +751,7 @@ export default function DashboardNext() {
               <h3 style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>Estado actual</h3>
               <span style={{ fontSize: 9, color: '#d1d5db', fontWeight: 400 }}>Refleja el estado en tiempo real</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
 
               {/* 1. COMPRA */}
               <RichWidget
