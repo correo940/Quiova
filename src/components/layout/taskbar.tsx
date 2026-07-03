@@ -146,7 +146,7 @@ export default function Taskbar() {
                     </div>
                 );
             },
-            href: '/desktop',
+            href: '/home-v1',
         },
         {
             id: 'articles',
