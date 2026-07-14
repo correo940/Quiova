@@ -1,0 +1,60 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build-apk:
+    name: Build Capacitor Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK platform and build-tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # La app carga https://www.quioba.com en vivo dentro del WebView (ver capacitor.config.json),
+      # así que el contenido de out/ nunca se muestra: solo hace falta un webDir válido para `cap sync`.
+      - name: Prepare placeholder webDir for Capacitor
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html><head><meta charset="utf-8"><title>Quioba</title></head><body>Loading Quioba...</body></html>
+          HTML
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quioba-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
