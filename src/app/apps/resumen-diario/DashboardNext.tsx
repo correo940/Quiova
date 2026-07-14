@@ -176,9 +176,10 @@ function IB({ name, bg, color, size = 32, iconSize = 15 }: { name: string; bg: s
 }
 
 // ── InsightRow ────────────────────────────────────────────────────────────────
-function InsightRow({ icon, iconBg, bg, border, textColor, text, trailing, onClick }: {
+function InsightRow({ icon, iconBg, bg, border, textColor, text, trailing, onClick, isMobile }: {
   icon: React.ReactNode; iconBg: string; bg: string; border?: string;
   textColor: string; text: string; trailing: React.ReactNode; onClick?: () => void;
+  isMobile?: boolean;
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -187,16 +188,16 @@ function InsightRow({ icon, iconBg, bg, border, textColor, text, trailing, onCli
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 10px',
+        display: 'flex', alignItems: 'flex-start', gap: 9, padding: isMobile ? '11px 12px' : '9px 10px',
         background: bg, borderRadius: 11, border, cursor: 'pointer',
         transform: hov ? 'translateX(3px)' : 'none',
         boxShadow: hov ? '0 2px 10px rgba(0,0,0,0.07)' : 'none',
         transition: 'all 0.18s ease',
       }}>
-      <div style={{ width: 24, height: 24, background: iconBg, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ width: isMobile ? 28 : 24, height: isMobile ? 28 : 24, background: iconBg, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {icon}
       </div>
-      <p style={{ fontSize: 11, color: textColor, fontWeight: 500, flex: 1, lineHeight: 1.45, margin: 0 }}>{text}</p>
+      <p style={{ fontSize: isMobile ? 13 : 11, color: textColor, fontWeight: 500, flex: 1, lineHeight: 1.45, margin: 0 }}>{text}</p>
       <div style={{ flexShrink: 0, marginTop: 2 }}>{trailing}</div>
     </div>
   );
@@ -224,8 +225,18 @@ export default function DashboardNext() {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarView, setCalendarView] = useState<'day' | 'week' | 'month'>('week');
+  const [isMobile, setIsMobile] = useState(false);
+  const [accountsExpanded, setAccountsExpanded] = useState(false);
+  const [analysisExpanded, setAnalysisExpanded] = useState(false);
 
   const MONTH_BUDGET = 2000;
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const loadRangeData = async (start: Date, end: Date) => {
     const { data: { user: u } } = await supabase.auth.getUser();
@@ -581,52 +592,54 @@ export default function DashboardNext() {
 
       <div style={{
         position: 'relative', zIndex: 2, minHeight: '100vh',
-        padding: '20px 24px 60px',
+        padding: isMobile ? '14px 12px 100px' : '20px 24px 60px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif',
       }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 14 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: isMobile ? 12 : 14 }}>
 
         {/* ── LEFT ──────────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 14 }}>
 
           {/* GREETING + CALENDAR */}
-          <div style={{ ...glass, padding: '22px 26px', display: 'flex', gap: 24, alignItems: 'stretch' }}>
-            <div style={{ flex: '0 0 42%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <h1 style={{ fontSize: 22, fontWeight: 600, color: '#111827', letterSpacing: '-0.5px', margin: 0 }}>
+          <div style={{ ...glass, padding: isMobile ? '18px 16px' : '22px 26px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 16 : 24, alignItems: 'stretch' }}>
+            <div style={{ flex: isMobile ? 'none' : '0 0 42%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <h1 style={{ fontSize: isMobile ? 20 : 22, fontWeight: 600, color: '#111827', letterSpacing: '-0.5px', margin: 0 }}>
                 {greeting}, {displayName} 👋
               </h1>
-              <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 14px', fontWeight: 400, textTransform: 'capitalize' }}>
+              <p style={{ fontSize: isMobile ? 13 : 12, color: '#9ca3af', margin: '4px 0 14px', fontWeight: 400, textTransform: 'capitalize' }}>
                 {format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
               </p>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 background: hasUrgentItems ? '#fff7ed' : '#f0fdf4',
                 border: `0.5px solid ${hasUrgentItems ? '#fed7aa' : '#bbf7d0'}`,
-                borderRadius: 10, padding: '7px 12px',
+                borderRadius: 10, padding: isMobile ? '9px 12px' : '7px 12px',
               }}>
                 {hasUrgentItems
                   ? <AlertTriangle size={13} color="#ea580c" />
                   : <CheckCircle2 size={13} color="#16a34a" />}
-                <span style={{ fontSize: 11, fontWeight: 500, color: hasUrgentItems ? '#9a3412' : '#166534' }}>
+                <span style={{ fontSize: isMobile ? 13 : 11, fontWeight: 500, color: hasUrgentItems ? '#9a3412' : '#166534' }}>
                   {hasUrgentItems
                     ? `${displayTasks.length + vehicleAlerts.length + expiringMeds.length} elemento${(displayTasks.length + vehicleAlerts.length + expiringMeds.length) !== 1 ? 's' : ''} requiere${(displayTasks.length + vehicleAlerts.length + expiringMeds.length) === 1 ? '' : 'n'} atención`
                     : 'Todo está bajo control'
                   }
                 </span>
               </div>
-              <p style={{ fontSize: 11, color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.5 }}>
-                {hasUrgentItems ? 'Revisa los avisos en el panel derecho.' : 'No tienes tareas urgentes ni vencimientos.'}
-              </p>
+              {!isMobile && (
+                <p style={{ fontSize: 11, color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  {hasUrgentItems ? 'Revisa los avisos en el panel derecho.' : 'No tienes tareas urgentes ni vencimientos.'}
+                </p>
+              )}
             </div>
 
-            <div style={{ width: 1, background: 'rgba(0,0,0,0.07)', alignSelf: 'stretch', borderRadius: 1 }} />
+            {!isMobile && <div style={{ width: 1, background: 'rgba(0,0,0,0.07)', alignSelf: 'stretch', borderRadius: 1 }} />}
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 9, padding: 3, gap: 1 }}>
                   {(['day', 'week', 'month'] as const).map(v => (
                     <button key={v} onClick={() => setCalendarView(v)} style={{
-                      padding: '4px 10px', borderRadius: 7, border: 'none', fontSize: 11,
+                      padding: isMobile ? '7px 12px' : '4px 10px', borderRadius: 7, border: 'none', fontSize: isMobile ? 12 : 11,
                       background: calendarView === v ? 'white' : 'transparent',
                       color: calendarView === v ? '#111827' : '#9ca3af',
                       fontWeight: calendarView === v ? 600 : 400,
@@ -638,18 +651,18 @@ export default function DashboardNext() {
                   ))}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <button onClick={() => navigate(-1)} style={{ width: 26, height: 26, borderRadius: 7, background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <button onClick={() => navigate(-1)} style={{ width: isMobile ? 32 : 26, height: isMobile ? 32 : 26, borderRadius: 8, background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#e5e7eb'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f3f4f6'; }}>
-                    <ChevronLeft size={13} color="#374151" />
+                    <ChevronLeft size={isMobile ? 15 : 13} color="#374151" />
                   </button>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#374151', minWidth: 120, textAlign: 'center', textTransform: 'capitalize', letterSpacing: '-0.2px' }}>
+                  <span style={{ fontSize: isMobile ? 12 : 11, fontWeight: 600, color: '#374151', minWidth: isMobile ? 96 : 120, textAlign: 'center', textTransform: 'capitalize', letterSpacing: '-0.2px' }}>
                     {getCalendarLabel()}
                   </span>
-                  <button onClick={() => navigate(1)} style={{ width: 26, height: 26, borderRadius: 7, background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <button onClick={() => navigate(1)} style={{ width: isMobile ? 32 : 26, height: isMobile ? 32 : 26, borderRadius: 8, background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#e5e7eb'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f3f4f6'; }}>
-                    <ChevronRight size={13} color="#374151" />
+                    <ChevronRight size={isMobile ? 15 : 13} color="#374151" />
                   </button>
                 </div>
               </div>
@@ -682,10 +695,10 @@ export default function DashboardNext() {
                         onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '#f3f4f6'; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}>
                         <span style={{
-                          width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: isMobile ? 36 : 30, height: isMobile ? 36 : 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: isSelected ? '#166534' : isToday ? 'rgba(22,101,52,0.12)' : 'transparent',
                           color: isSelected ? 'white' : isToday ? '#166534' : '#374151',
-                          fontSize: 12, fontWeight: isSelected || isToday ? 700 : 400,
+                          fontSize: isMobile ? 13 : 12, fontWeight: isSelected || isToday ? 700 : 400,
                           transition: 'all 0.15s ease',
                         }}>
                           {format(d, 'd')}
@@ -738,15 +751,16 @@ export default function DashboardNext() {
           </div>
 
           {/* HOY EN QUIOBA — rich widgets */}
-          <div style={{ ...glass, padding: '18px 22px' }}>
+          <div style={{ ...glass, padding: isMobile ? '16px 14px' : '18px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 13 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>Estado actual</h3>
-              <span style={{ fontSize: 9, color: '#d1d5db', fontWeight: 400 }}>Refleja el estado en tiempo real</span>
+              <h3 style={{ fontSize: isMobile ? 14 : 13, fontWeight: 600, color: '#374151', margin: 0 }}>Estado actual</h3>
+              {!isMobile && <span style={{ fontSize: 9, color: '#d1d5db', fontWeight: 400 }}>Refleja el estado en tiempo real</span>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 10 : 8 }}>
 
               {/* 1. COMPRA */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="shopping" iconBg="#dcfce7" iconColor="#16a34a"
                 status={shoppingList.length === 0 ? 'ok' : 'warn'}
                 title="Lista de compra"
@@ -771,6 +785,7 @@ export default function DashboardNext() {
 
               {/* 2. GASTOS */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="wallet" iconBg="#fef3c7" iconColor="#d97706"
                 status={expPct >= 90 ? 'alert' : expPct >= 70 ? 'warn' : 'ok'}
                 title="Gastos del mes"
@@ -795,6 +810,7 @@ export default function DashboardNext() {
 
               {/* 3. VEHÍCULOS */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="car" iconBg="#ede9fe" iconColor="#7c3aed"
                 status={vehicleAlerts.length > 0 ? 'alert' : 'ok'}
                 title="Vehículos"
@@ -825,6 +841,7 @@ export default function DashboardNext() {
 
               {/* 4. GARANTÍAS */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="document" iconBg="#e0f2fe" iconColor="#0284c7"
                 status={expiringWarranties.length > 0 ? 'warn' : 'ok'}
                 title="Garantías"
@@ -846,6 +863,7 @@ export default function DashboardNext() {
 
               {/* 5. BOTIQUÍN */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="health" iconBg="#fce7f3" iconColor="#db2777"
                 status={expiringMeds.length > 0 ? 'alert' : 'ok'}
                 title="Botiquín"
@@ -867,6 +885,7 @@ export default function DashboardNext() {
 
               {/* 6. SEGUROS */}
               <RichWidget
+                isMobile={isMobile}
                 iconName="shield" iconBg="#fff7ed" iconColor="#ea580c"
                 status={expiringInsurances.length > 0 ? 'alert' : 'ok'}
                 title="Seguros"
@@ -899,8 +918,8 @@ export default function DashboardNext() {
           </div>
 
           {/* AGENDA */}
-          <div style={{ ...glass, padding: '18px 22px' }}>
-            <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 10, padding: 3, marginBottom: 16 }}>
+          <div style={{ ...glass, padding: isMobile ? '16px 14px' : '18px 22px' }}>
+            <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 10, padding: 3, marginBottom: 16, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 3 : 0 }}>
               {[
                 { label: 'Agenda', count: displayShifts.length + displayTasks.length },
                 { label: 'Medicación', count: dailyMedicines.length },
@@ -908,8 +927,8 @@ export default function DashboardNext() {
                 { label: 'Finanzas', count: debts.length },
               ].map((tab, i) => (
                 <button key={tab.label} onClick={() => setActiveTab(i)} style={{
-                  flex: 1, background: activeTab === i ? 'white' : 'none', border: 'none',
-                  borderRadius: 8, padding: '6px 0', fontSize: 11,
+                  flex: isMobile ? '1 0 45%' : 1, background: activeTab === i ? 'white' : 'none', border: 'none',
+                  borderRadius: 8, padding: isMobile ? '9px 0' : '6px 0', fontSize: isMobile ? 12 : 11,
                   fontWeight: activeTab === i ? 500 : 400, color: activeTab === i ? '#374151' : '#9ca3af', cursor: 'pointer',
                   boxShadow: activeTab === i ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   transition: 'all 0.15s',
@@ -1082,55 +1101,55 @@ export default function DashboardNext() {
 
 
           {/* SMART INSIGHTS */}
-          <div style={{ ...glass, padding: 18 }}>
+          <div style={{ ...glass, padding: isMobile ? '16px 14px' : 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <IB name="sparkle" bg="#dcfce7" color="#16a34a" size={30} iconSize={14} />
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>Resumen de hoy</h3>
+              <IB name="sparkle" bg="#dcfce7" color="#16a34a" size={isMobile ? 34 : 30} iconSize={isMobile ? 16 : 14} />
+              <h3 style={{ fontSize: isMobile ? 15 : 13, fontWeight: 600, color: '#374151', margin: 0 }}>Resumen de hoy</h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 7 }}>
               {expiringInsurances.length === 0 && (
-                <InsightRow icon={QI.shield('#16a34a', 12)} iconBg="#dcfce7" bg="#f0fdf4"
+                <InsightRow isMobile={isMobile} icon={QI.shield('#16a34a', 12)} iconBg="#dcfce7" bg="#f0fdf4"
                   textColor="#166534" text="No tienes seguros que renovar"
                   trailing={<CheckCircle2 size={14} color="#16a34a" />}
                   onClick={() => router.push('/apps/mi-hogar/insurance')} />
               )}
               {itvVehicle && itvDays !== null && (
-                <InsightRow icon={QI.car('#d97706', 12)} iconBg="#fef3c7" bg="#fffbeb"
+                <InsightRow isMobile={isMobile} icon={QI.car('#d97706', 12)} iconBg="#fef3c7" bg="#fffbeb"
                   border="0.5px solid rgba(251,191,36,0.25)" textColor="#92400e"
                   text={`Tu coche (${itvVehicle.brand}) necesita pasar la ITV en ${itvDays} días`}
                   trailing={<ChevronRight size={12} color="#d97706" />}
                   onClick={() => router.push('/apps/mi-hogar/garage')} />
               )}
               {displayTasks.length > 0 && (
-                <InsightRow icon={QI.task('#0284c7', 12)} iconBg="#e0f2fe" bg="#f0f9ff"
+                <InsightRow isMobile={isMobile} icon={QI.task('#0284c7', 12)} iconBg="#e0f2fe" bg="#f0f9ff"
                   textColor="#075985"
                   text={`Tienes ${displayTasks.length} tarea${displayTasks.length > 1 ? 's' : ''} pendiente${displayTasks.length > 1 ? 's' : ''} hoy`}
                   trailing={<ChevronRight size={12} color="#0284c7" />}
                   onClick={() => router.push('/apps/mi-hogar/tasks')} />
               )}
               {shoppingList.length > 0 && (
-                <InsightRow icon={QI.bag('#374151', 12)} iconBg="#f3f4f6" bg="#f8f9fb"
+                <InsightRow isMobile={isMobile} icon={QI.bag('#374151', 12)} iconBg="#f3f4f6" bg="#f8f9fb"
                   textColor="#374151"
                   text={`${shoppingList.length} productos en la lista de la compra`}
                   trailing={<ChevronRight size={12} color="#9ca3af" />}
                   onClick={() => router.push('/apps/mi-hogar/shopping')} />
               )}
               {expiringMeds.length > 0 && (
-                <InsightRow icon={QI.health('#db2777', 12)} iconBg="#fce7f3" bg="#fdf2f8"
+                <InsightRow isMobile={isMobile} icon={QI.health('#db2777', 12)} iconBg="#fce7f3" bg="#fdf2f8"
                   border="0.5px solid rgba(219,39,119,0.15)" textColor="#9d174d"
                   text={`${expiringMeds.length} medicamento${expiringMeds.length > 1 ? 's caducan' : ' caduca'} pronto`}
                   trailing={<ChevronRight size={12} color="#db2777" />}
                   onClick={() => router.push('/apps/mi-hogar/pharmacy')} />
               )}
               {expiringWarranties.length > 0 && (
-                <InsightRow icon={QI.receipt('#7c3aed', 12)} iconBg="#ede9fe" bg="#f5f3ff"
+                <InsightRow isMobile={isMobile} icon={QI.receipt('#7c3aed', 12)} iconBg="#ede9fe" bg="#f5f3ff"
                   border="0.5px solid rgba(124,58,237,0.15)" textColor="#5b21b6"
                   text={`${expiringWarranties.length} garantía${expiringWarranties.length > 1 ? 's vencen' : ' vence'} en 30 días`}
                   trailing={<ChevronRight size={12} color="#7c3aed" />}
                   onClick={() => router.push('/apps/mi-hogar/warranties')} />
               )}
               {!hasUrgentItems && shoppingList.length === 0 && (
-                <InsightRow icon={QI.check('#16a34a', 12)} iconBg="#dcfce7" bg="#f0fdf4"
+                <InsightRow isMobile={isMobile} icon={QI.check('#16a34a', 12)} iconBg="#dcfce7" bg="#f0fdf4"
                   textColor="#166534" text="Todo en orden. Buen día por delante."
                   trailing={<CheckCircle2 size={14} color="#16a34a" />} />
               )}
@@ -1138,21 +1157,21 @@ export default function DashboardNext() {
           </div>
 
           {/* CUENTAS — premium banking widget */}
-          <div style={{ ...glass, padding: '18px 16px' }}>
+          <div style={{ ...glass, padding: isMobile ? '16px 14px' : '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <IB name="creditcard" bg="#dcfce7" color="#16a34a" size={28} iconSize={13} />
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.2px' }}>Mis cuentas</h3>
-                <span style={{ fontSize: 9, color: '#9ca3af', background: '#f3f4f6', borderRadius: 6, padding: '2px 6px', fontWeight: 500 }}>Saldo actual</span>
+                <IB name="creditcard" bg="#dcfce7" color="#16a34a" size={isMobile ? 32 : 28} iconSize={isMobile ? 15 : 13} />
+                <h3 style={{ fontSize: isMobile ? 15 : 13, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.2px' }}>Mis cuentas</h3>
+                {!isMobile && <span style={{ fontSize: 9, color: '#9ca3af', background: '#f3f4f6', borderRadius: 6, padding: '2px 6px', fontWeight: 500 }}>Saldo actual</span>}
               </div>
-              <button onClick={() => router.push('/apps/mi-hogar/savings')} style={{ fontSize: 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 2 }}>
-                Ver todo <ChevronRight size={10} color="#9ca3af" />
+              <button onClick={() => router.push('/apps/mi-hogar/savings')} style={{ fontSize: isMobile ? 12 : 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 2 }}>
+                Ver todo <ChevronRight size={isMobile ? 12 : 10} color="#9ca3af" />
               </button>
             </div>
 
             {accounts.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {accounts.slice(0, 5).map((acc: any) => {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 6 }}>
+                {accounts.slice(0, isMobile && !accountsExpanded ? 3 : 5).map((acc: any) => {
                   const detectionSrc = acc.bank_name || acc.institution_name || acc.name || '';
                   const bank = getBankStyle(detectionSrc);
                   const label = getAccountLabel(acc.name || '');
@@ -1160,7 +1179,7 @@ export default function DashboardNext() {
                   return (
                     <div key={acc.id} onClick={() => router.push('/apps/mi-hogar/savings')}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
+                        display: 'flex', alignItems: 'center', gap: 11, padding: isMobile ? '12px 12px' : '10px 12px',
                         background: 'white',
                         border: '0.5px solid rgba(0,0,0,0.06)',
                         borderRadius: 14, cursor: 'pointer',
@@ -1178,14 +1197,14 @@ export default function DashboardNext() {
                         (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(0,0,0,0.06)';
                       }}>
                       {/* Bank logo — real via Clearbit, fallback abbr */}
-                      <BankLogo bank={bank} size={42} />
+                      <BankLogo bank={bank} size={isMobile ? 44 : 42} />
 
                       {/* Bank name + account label */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.2px' }}>
+                        <p style={{ fontSize: isMobile ? 14 : 12, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.2px' }}>
                           {bank.bankName}
                         </p>
-                        <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
+                        <p style={{ fontSize: isMobile ? 12 : 10, color: '#9ca3af', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
                           {label !== bank.bankName ? label : (acc.account_type || 'Cuenta')}
                         </p>
                       </div>
@@ -1193,7 +1212,7 @@ export default function DashboardNext() {
                       {/* Balance */}
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <p style={{
-                          fontSize: 14, fontWeight: 700,
+                          fontSize: isMobile ? 16 : 14, fontWeight: 700,
                           color: bal >= 0 ? '#111827' : '#ef4444',
                           margin: 0, letterSpacing: '-0.5px',
                         }}>
@@ -1204,15 +1223,24 @@ export default function DashboardNext() {
                   );
                 })}
 
+                {isMobile && accounts.length > 3 && (
+                  <button onClick={() => setAccountsExpanded(v => !v)} style={{
+                    fontSize: 12, color: '#16a34a', background: '#f0fdf4', border: '0.5px solid #bbf7d0',
+                    borderRadius: 10, padding: '8px 0', fontWeight: 600, cursor: 'pointer',
+                  }}>
+                    {accountsExpanded ? 'Ver menos' : `Ver ${Math.min(2, accounts.length - 3)} más`}
+                  </button>
+                )}
+
                 {/* Total balance row */}
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 12px', marginTop: 2,
+                  padding: isMobile ? '12px 12px' : '10px 12px', marginTop: 2,
                   background: '#f8f9fb', borderRadius: 12,
                   border: '0.5px solid rgba(0,0,0,0.05)',
                 }}>
-                  <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Patrimonio total</span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: '#111827', letterSpacing: '-0.6px' }}>
+                  <span style={{ fontSize: isMobile ? 13 : 11, color: '#9ca3af', fontWeight: 500 }}>Patrimonio total</span>
+                  <span style={{ fontSize: isMobile ? 20 : 18, fontWeight: 800, color: '#111827', letterSpacing: '-0.6px' }}>
                     {totalBalance.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
                   </span>
                 </div>
@@ -1226,64 +1254,73 @@ export default function DashboardNext() {
               marginTop: 12,
               background: '#f8f9fb',
               borderRadius: 14,
-              padding: '14px 14px 12px',
+              padding: isMobile ? '12px 14px' : '14px 14px 12px',
               border: '0.5px solid rgba(0,0,0,0.05)',
             }}>
               {/* Header */}
-              <p style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                {format(selectedDate, 'MMMM yyyy', { locale: es })}
-              </p>
-
-              {/* Ingresos / Gastos */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-                <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '8px 10px' }}>
-                  <p style={{ fontSize: 9, color: '#16a34a', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Ingresos</p>
-                  <p style={{ fontSize: 17, fontWeight: 800, color: monthIncome === 0 ? '#d1d5db' : '#16a34a', margin: 0, letterSpacing: '-0.5px', lineHeight: 1 }}>
-                    +{Math.round(monthIncome).toLocaleString('es-ES')} €
-                  </p>
-                </div>
-                <div style={{ background: '#fef2f2', borderRadius: 10, padding: '8px 10px' }}>
-                  <p style={{ fontSize: 9, color: '#dc2626', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Gastos</p>
-                  <p style={{ fontSize: 17, fontWeight: 800, color: monthSpend === 0 ? '#d1d5db' : '#dc2626', margin: 0, letterSpacing: '-0.5px', lineHeight: 1 }}>
-                    -{Math.round(monthSpend).toLocaleString('es-ES')} €
-                  </p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 8 : 10 }}>
+                <p style={{ fontSize: isMobile ? 11 : 10, fontWeight: 600, color: '#9ca3af', margin: 0, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  {format(selectedDate, 'MMMM yyyy', { locale: es })}
+                </p>
+                {isMobile && (
+                  <button onClick={() => setAnalysisExpanded(v => !v)} style={{ fontSize: 12, color: '#16a34a', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                    {analysisExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                  </button>
+                )}
               </div>
 
-              {/* Neto */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '6px 10px', background: 'white', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.05)' }}>
-                <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 500 }}>Balance neto del mes</span>
-                <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.4px', color: monthNet >= 0 ? '#16a34a' : '#dc2626' }}>
+              {/* Neto — siempre visible */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: (!isMobile || analysisExpanded) ? 10 : 0, padding: isMobile ? '10px 12px' : '6px 10px', background: 'white', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.05)' }}>
+                <span style={{ fontSize: isMobile ? 12 : 10, color: '#9ca3af', fontWeight: 500 }}>Balance neto del mes</span>
+                <span style={{ fontSize: isMobile ? 16 : 14, fontWeight: 800, letterSpacing: '-0.4px', color: monthNet >= 0 ? '#16a34a' : '#dc2626' }}>
                   {monthNet >= 0 ? '+' : ''}{Math.round(monthNet).toLocaleString('es-ES')} €
                 </span>
               </div>
 
-              {/* Gráfico 7 días — barras verdes/rojas según flujo neto */}
-              <div>
-                <p style={{ fontSize: 8, color: '#d1d5db', margin: '0 0 4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Flujo últimos 7 días</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 36 }}>
-                  {weeklyFlow.map((v, i) => {
-                    const maxAbs = Math.max(...weeklyFlow.map(Math.abs), 1);
-                    const pct = Math.abs(v) / maxAbs;
-                    const h = Math.max(3, Math.round(pct * 32));
-                    const isLast = i === weeklyFlow.length - 1;
-                    const color = v >= 0 ? '#22c55e' : '#ef4444';
-                    return (
-                      <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                        <div style={{
-                          width: '100%', height: h, borderRadius: 3,
-                          background: isLast ? color : color + '55',
-                          transition: 'height 0.5s ease',
-                        }} />
-                      </div>
-                    );
-                  })}
+              {(!isMobile || analysisExpanded) && (<>
+                {/* Ingresos / Gastos */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <div style={{ background: '#f0fdf4', borderRadius: 10, padding: isMobile ? '10px 12px' : '8px 10px' }}>
+                    <p style={{ fontSize: isMobile ? 10 : 9, color: '#16a34a', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Ingresos</p>
+                    <p style={{ fontSize: isMobile ? 18 : 17, fontWeight: 800, color: monthIncome === 0 ? '#d1d5db' : '#16a34a', margin: 0, letterSpacing: '-0.5px', lineHeight: 1 }}>
+                      +{Math.round(monthIncome).toLocaleString('es-ES')} €
+                    </p>
+                  </div>
+                  <div style={{ background: '#fef2f2', borderRadius: 10, padding: isMobile ? '10px 12px' : '8px 10px' }}>
+                    <p style={{ fontSize: isMobile ? 10 : 9, color: '#dc2626', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Gastos</p>
+                    <p style={{ fontSize: isMobile ? 18 : 17, fontWeight: 800, color: monthSpend === 0 ? '#d1d5db' : '#dc2626', margin: 0, letterSpacing: '-0.5px', lineHeight: 1 }}>
+                      -{Math.round(monthSpend).toLocaleString('es-ES')} €
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {monthIncome === 0 && monthSpend === 0 && (
-                <p style={{ fontSize: 10, color: '#9ca3af', margin: '8px 0 0', textAlign: 'center' }}>Sin movimientos registrados este mes</p>
-              )}
+                {/* Gráfico 7 días — barras verdes/rojas según flujo neto */}
+                <div>
+                  <p style={{ fontSize: 8, color: '#d1d5db', margin: '0 0 4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Flujo últimos 7 días</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 36 }}>
+                    {weeklyFlow.map((v, i) => {
+                      const maxAbs = Math.max(...weeklyFlow.map(Math.abs), 1);
+                      const pct = Math.abs(v) / maxAbs;
+                      const h = Math.max(3, Math.round(pct * 32));
+                      const isLast = i === weeklyFlow.length - 1;
+                      const color = v >= 0 ? '#22c55e' : '#ef4444';
+                      return (
+                        <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                          <div style={{
+                            width: '100%', height: h, borderRadius: 3,
+                            background: isLast ? color : color + '55',
+                            transition: 'height 0.5s ease',
+                          }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {monthIncome === 0 && monthSpend === 0 && (
+                  <p style={{ fontSize: 10, color: '#9ca3af', margin: '8px 0 0', textAlign: 'center' }}>Sin movimientos registrados este mes</p>
+                )}
+              </>)}
             </div>
 
             {/* Deudas compartidas */}
@@ -1315,23 +1352,23 @@ export default function DashboardNext() {
 
           {/* MEDICACIÓN HOY */}
           {dailyMedicines.length > 0 && (
-            <div style={{ ...glass, padding: 18 }}>
+            <div style={{ ...glass, padding: isMobile ? '16px 14px' : 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <h3 style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>Medicación hoy</h3>
-                <button onClick={() => router.push('/apps/mi-hogar/pharmacy')} style={{ fontSize: 10, color: '#db2777', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Ver todo →</button>
+                <h3 style={{ fontSize: isMobile ? 15 : 13, fontWeight: 600, color: '#374151', margin: 0 }}>Medicación hoy</h3>
+                <button onClick={() => router.push('/apps/mi-hogar/pharmacy')} style={{ fontSize: isMobile ? 12 : 10, color: '#db2777', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Ver todo →</button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 9 : 7 }}>
                 {dailyMedicines.slice(0, 4).map((med: any) => (
                   <div key={med.id} onClick={() => router.push('/apps/mi-hogar/pharmacy')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', background: '#fdf2f8', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: isMobile ? '11px 12px' : '8px 10px', background: '#fdf2f8', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateX(2px)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}>
-                    <IB name="health" bg="#fce7f3" color="#db2777" size={28} iconSize={13} />
+                    <IB name="health" bg="#fce7f3" color="#db2777" size={isMobile ? 32 : 28} iconSize={isMobile ? 15 : 13} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 11, fontWeight: 500, color: '#9d174d', margin: 0 }}>{med.name}</p>
-                      <p style={{ fontSize: 9, color: '#f9a8d4', margin: '1px 0 0' }}>{med.alarm_times?.join(' · ')}</p>
+                      <p style={{ fontSize: isMobile ? 13 : 11, fontWeight: 500, color: '#9d174d', margin: 0 }}>{med.name}</p>
+                      <p style={{ fontSize: isMobile ? 11 : 9, color: '#f9a8d4', margin: '1px 0 0' }}>{med.alarm_times?.join(' · ')}</p>
                     </div>
-                    <ChevronRight size={11} color="#f9a8d4" />
+                    <ChevronRight size={isMobile ? 13 : 11} color="#f9a8d4" />
                   </div>
                 ))}
               </div>
@@ -1347,13 +1384,14 @@ export default function DashboardNext() {
 
 // ── RichWidget — mini-panel para "Hoy en QUIOBA" ──────────────────────────────
 function RichWidget({
-  iconName, iconBg, iconColor, status, title, value, onClick, children,
+  iconName, iconBg, iconColor, status, title, value, onClick, children, isMobile,
 }: {
   iconName: string; iconBg: string; iconColor: string;
   status: 'ok' | 'warn' | 'alert';
   title: string; value: string;
   onClick?: () => void;
   children?: React.ReactNode;
+  isMobile?: boolean;
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1364,7 +1402,7 @@ function RichWidget({
       style={{
         background: hov ? '#f0f9ff' : '#f8f9fb',
         border: `0.5px solid ${hov ? 'rgba(2,132,199,0.15)' : 'rgba(0,0,0,0.06)'}`,
-        borderRadius: 16, padding: '13px 12px 11px', cursor: 'pointer',
+        borderRadius: 16, padding: isMobile ? '14px 13px 12px' : '13px 12px 11px', cursor: 'pointer',
         display: 'flex', flexDirection: 'column',
         transform: hov ? 'translateY(-2px)' : 'none',
         boxShadow: hov ? '0 6px 20px rgba(0,0,0,0.08)' : 'none',
@@ -1373,19 +1411,19 @@ function RichWidget({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: '50%', background: iconBg,
+          width: isMobile ? 40 : 36, height: isMobile ? 40 : 36, borderRadius: '50%', background: iconBg,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transform: hov ? 'scale(1.08)' : 'scale(1)',
           boxShadow: hov ? `0 3px 10px ${iconBg}` : '0 1px 3px rgba(0,0,0,0.04)',
           transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}>
-          {QI[iconName]?.(iconColor, 16)}
+          {QI[iconName]?.(iconColor, isMobile ? 18 : 16)}
         </div>
         <StatusDot status={status} />
       </div>
       {/* Value */}
-      <p style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: '0 0 1px', letterSpacing: '-0.4px', lineHeight: 1 }}>{value}</p>
-      <p style={{ fontSize: 10, fontWeight: 500, color: '#6b7280', margin: '0 0 2px' }}>{title}</p>
+      <p style={{ fontSize: isMobile ? 18 : 16, fontWeight: 700, color: '#111827', margin: '0 0 1px', letterSpacing: '-0.4px', lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: isMobile ? 11 : 10, fontWeight: 500, color: '#6b7280', margin: '0 0 2px' }}>{title}</p>
       {/* Slot */}
       {children}
     </div>
