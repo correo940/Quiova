@@ -7,6 +7,15 @@ import { PERSONALITY_TEXTS } from './secretary-settings';
 let permissionPromise: Promise<boolean> | null = null;
 let isPermissionGranted: boolean | null = null;
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+}
+
 export const NotificationManager = {
     async requestPermissions() {
         if (isPermissionGranted !== null) return isPermissionGranted;
@@ -108,6 +117,45 @@ export const NotificationManager = {
         if (Notification.permission === 'denied') return false;
         const result = await Notification.requestPermission();
         return result === 'granted';
+    },
+
+    // Suscribe este navegador/PWA a Web Push (funciona en iPhone si está
+    // añadida a pantalla de inicio) y guarda la suscripción en Supabase.
+    async subscribeWebPush(accessToken: string): Promise<boolean> {
+        if (typeof window === 'undefined') return false;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) {
+            console.error('[push] Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY');
+            return false;
+        }
+
+        const granted = await this.requestWebPermission();
+        if (!granted) return false;
+
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.ready;
+
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidKey),
+                });
+            }
+
+            const res = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({ subscription: subscription.toJSON() }),
+            });
+            return res.ok;
+        } catch (e) {
+            console.error('[push] Error subscribing to web push:', e);
+            return false;
+        }
     },
 
     // Show a web notification (PWA) with optional link deeplink

@@ -44,10 +44,17 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/images/logo.png', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     shortcut: '/favicon.ico',
-    apple: '/images/logo.png',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Quioba',
   },
 };
 
@@ -55,6 +62,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   // maximumScale y userScalable eliminados: violaban WCAG 2.1 (criterio 1.4.4)
+  themeColor: '#F8FAFC',
 };
 
 export default function RootLayout({
