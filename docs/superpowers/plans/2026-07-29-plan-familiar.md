@@ -10,7 +10,8 @@
 
 ## Global Constraints
 
-- Este proyecto tiene datos reales de usuarios en producción (8 `profiles`, 55 `tasks`, 62 `work_shifts`, 60 `shopping_items`, etc.). **Todas las migraciones de este plan se desarrollan y verifican primero en un branch de Supabase** (`mcp: create_branch` sobre el proyecto `bszdqnocnyhezgqehawh`) y solo se aplican a producción (`merge_branch`) tras verificar cada tarea. No usar `apply_migration` directo contra producción salvo que el usuario confirme explícitamente saltarse el branch.
+- Este proyecto tiene datos reales de usuarios en producción (8 `profiles`, 55 `tasks`, 62 `work_shifts`, 60 `shopping_items`, etc.). El plan Supabase de este proyecto **no soporta branching** (`create_branch` falla con `PaymentRequiredException`, requiere plan Pro), así que **todas las migraciones de este plan se aplican directamente al proyecto de producción `bszdqnocnyhezgqehawh`** vía `mcp: apply_migration`, con cuidado: cada migración se revisa antes de aplicarse y se verifica inmediatamente después con las consultas de comprobación de cada tarea.
+- **Verificación con usuarios de prueba dedicados, no cuentas reales.** El "patrón de dos usuarios" de cada tarea de Phase 1 usa dos cuentas de prueba creadas específicamente para esto (ver Task 2, Step 3), nunca IDs de `profiles` reales — evita mezclar datos de prueba con cuentas de usuarios reales en producción. Cada tarea limpia (`DELETE`) las filas de prueba que creó en la tabla que acaba de migrar, al final de su propia verificación.
 - `profiles.subscription_tier` ya admite `'free' | 'premium' | 'family'` (migración `20260123_profile_enhancements.sql`) — no se toca ese CHECK.
 - Toda tabla nueva lleva RLS activado desde su creación (`ENABLE ROW LEVEL SECURITY`).
 - Convención de nombres de migración: `supabase/migrations/20260729_<NN>_<descripcion>.sql`, numeradas en el orden de las tareas de este plan.
@@ -30,9 +31,9 @@
 **Interfaces:**
 - Produces: tablas `families(id, owner_id, created_at)`, `family_members(id, family_id, user_id, invited_email, invite_code, status, nickname, created_at)`, `family_app_permissions(id, family_id, member_id, app_slug, level, updated_at)`, `plan_prices(tier, price_cents, currency, active_from)`. Todo `profiles.id` existente tiene exactamente una fila en `families` con `owner_id = profiles.id`.
 
-- [ ] **Step 1: Crear branch de desarrollo en Supabase**
+- [ ] **Step 1: Confirmar project_id de producción**
 
-Usar `mcp: create_branch` sobre el proyecto `bszdqnocnyhezgqehawh` (nombre sugerido: `plan-familiar`). Todas las tareas siguientes de este plan aplican sus migraciones contra este branch hasta la tarea final de merge.
+Este proyecto Supabase no soporta branching (plan actual no es Pro). Todas las migraciones de este plan se aplican directamente al proyecto de producción, `project_id = bszdqnocnyhezgqehawh`. Usar `mcp: list_projects` para confirmar que este es el único proyecto y que sigue activo antes de aplicar nada.
 
 - [ ] **Step 2: Escribir la migración del esquema**
 
@@ -111,23 +112,36 @@ AFTER INSERT ON profiles
 FOR EACH ROW EXECUTE FUNCTION create_family_for_new_profile();
 ```
 
-- [ ] **Step 3: Aplicar la migración en el branch**
+- [ ] **Step 3: Aplicar la migración en producción**
 
-Usar `mcp: apply_migration` con el project_id del branch (no el de producción) y el SQL de arriba.
+Usar `mcp: apply_migration` con `project_id = bszdqnocnyhezgqehawh` y el SQL de arriba. Esta migración solo crea tablas nuevas y un trigger sobre `INSERT` en `profiles` — no modifica ninguna tabla ni fila existente aparte del backfill de `families`, así que es de bajo riesgo para los datos actuales.
 
-- [ ] **Step 4: Verificar con SQL**
+- [ ] **Step 4: Verificar con SQL, y crear los dos usuarios de prueba dedicados**
 
 ```sql
 -- cada profile tiene exactamente 1 family
 SELECT count(*) FROM profiles p WHERE NOT EXISTS (SELECT 1 FROM families f WHERE f.owner_id = p.id);
 -- Esperado: 0
 
--- crear un profile de prueba y comprobar que dispara el trigger
-INSERT INTO auth.users (id, email) VALUES (gen_random_uuid(), 'test-familia@example.com') RETURNING id;
+-- crear un profile de prueba y comprobar que dispara el trigger (se limpia al final de este step)
+INSERT INTO auth.users (id, email) VALUES (gen_random_uuid(), 'qa-family-trigger-test@quioba.internal') RETURNING id;
 -- (usar el id devuelto) INSERT INTO profiles (id) VALUES ('<id>');
 SELECT * FROM families WHERE owner_id = '<id>';
 -- Esperado: 1 fila
+
+-- limpiar el profile de prueba del trigger
+DELETE FROM auth.users WHERE email = 'qa-family-trigger-test@quioba.internal'; -- el ON DELETE CASCADE limpia families/profiles
+
+-- Crear los DOS usuarios de prueba dedicados que usarán todas las tareas de Phase 1
+-- (no se borran aquí: se reutilizan en cada tarea posterior y se eliminan en Task 24)
+INSERT INTO auth.users (id, email) VALUES (gen_random_uuid(), 'qa-family-owner@quioba.internal') RETURNING id; -- guardar como <QA_OWNER_ID>
+INSERT INTO auth.users (id, email) VALUES (gen_random_uuid(), 'qa-family-member@quioba.internal') RETURNING id; -- guardar como <QA_MEMBER_ID>
+INSERT INTO profiles (id) VALUES ('<QA_OWNER_ID>'), ('<QA_MEMBER_ID>');
+-- El trigger crea automáticamente una `families` row para cada uno; anotar el id de la familia de <QA_OWNER_ID>
+SELECT id AS qa_family_id FROM families WHERE owner_id = '<QA_OWNER_ID>';
 ```
+
+Anotar `<QA_OWNER_ID>`, `<QA_MEMBER_ID>` y `qa_family_id` en el reporte de esta tarea — todas las tareas de Phase 1 (6 a 23) los reutilizan como "los dos usuarios de prueba".
 
 - [ ] **Step 5: Commit**
 
@@ -145,7 +159,7 @@ git commit -m "feat(db): esquema central de familias y permisos por app"
 
 **Interfaces:**
 - Consumes: `families`, `family_members`, `family_app_permissions` de Task 1.
-- Produces: `has_family_access(p_family_id UUID, p_app_slug TEXT, p_min_level TEXT) RETURNS BOOLEAN` — usada por todas las políticas RLS de Phase 1. `p_min_level` acepta `'view'` o `'full'`.
+- Produces: `has_family_access(p_family_id UUID, p_app_slug TEXT, p_min_level TEXT) RETURNS BOOLEAN` — usada por todas las políticas RLS de Phase 1. `p_min_level` acepta `'view'` o `'full'`. También produce `drop_all_policies(p_table TEXT) RETURNS VOID` — helper usado por las 19 migraciones de Phase 1 para eliminar las políticas RLS previas de una tabla sin conocer sus nombres de antemano.
 
 - [ ] **Step 1: Escribir la función**
 
@@ -169,31 +183,57 @@ LANGUAGE sql SECURITY DEFINER STABLE AS $$
         )
     );
 $$;
+
+CREATE OR REPLACE FUNCTION drop_all_policies(p_table TEXT)
+RETURNS VOID
+LANGUAGE plpgsql AS $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = p_table LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, p_table);
+  END LOOP;
+END;
+$$;
 ```
 
-- [ ] **Step 2: Aplicar en el branch**
+- [ ] **Step 2: Aplicar en producción**
 
-`mcp: apply_migration` con el SQL de arriba.
+`mcp: apply_migration` con `project_id = bszdqnocnyhezgqehawh` y el SQL de arriba.
 
-- [ ] **Step 3: Verificar con SQL simulando dos usuarios**
+- [ ] **Step 3: Verificar con SQL usando los dos usuarios de prueba de Task 1**
+
+Este es el "patrón de dos usuarios" al que se refieren todas las tareas de Phase 1: usa siempre `<QA_OWNER_ID>` y `<QA_MEMBER_ID>` (creados en Task 1, Step 4) y `qa_family_id` — nunca IDs de usuarios reales.
 
 ```sql
--- Preparar: familia de A, con B como miembro 'view' en 'mi-hogar.pharmacy'
--- (usar dos ids de profiles.id reales del branch, p.ej. los dos primeros de `SELECT id FROM profiles LIMIT 2`)
-SELECT set_config('request.jwt.claims', json_build_object('sub', '<A>')::text, true);
+-- Dar a QA_MEMBER_ID nivel 'view' en 'mi-hogar.pharmacy' dentro de la familia de QA_OWNER_ID
+INSERT INTO family_members (family_id, user_id, invited_email, invite_code, status)
+VALUES ('<qa_family_id>', '<QA_MEMBER_ID>', 'qa-family-member@quioba.internal', 'QATEST01', 'active')
+RETURNING id; -- guardar como <qa_member_row_id>
+
+INSERT INTO family_app_permissions (family_id, member_id, app_slug, level)
+VALUES ('<qa_family_id>', '<qa_member_row_id>', 'mi-hogar.pharmacy', 'view');
+
+SELECT set_config('request.jwt.claims', json_build_object('sub', '<QA_OWNER_ID>')::text, true);
 SET LOCAL ROLE authenticated;
-SELECT has_family_access((SELECT id FROM families WHERE owner_id = '<A>'), 'mi-hogar.pharmacy', 'full');
--- Esperado: true (A es dueño)
+SELECT has_family_access('<qa_family_id>', 'mi-hogar.pharmacy', 'full');
+-- Esperado: true (QA_OWNER_ID es dueño)
 RESET ROLE;
 
-SELECT set_config('request.jwt.claims', json_build_object('sub', '<B>')::text, true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', '<QA_MEMBER_ID>')::text, true);
 SET LOCAL ROLE authenticated;
-SELECT has_family_access((SELECT id FROM families WHERE owner_id = '<A>'), 'mi-hogar.pharmacy', 'view');
--- Esperado: true si B tiene level >= 'view' en family_app_permissions, si no false
-SELECT has_family_access((SELECT id FROM families WHERE owner_id = '<A>'), 'mi-hogar.pharmacy', 'full');
--- Esperado: false si B solo tiene 'view'
+SELECT has_family_access('<qa_family_id>', 'mi-hogar.pharmacy', 'view');
+-- Esperado: true (QA_MEMBER_ID tiene 'view')
+SELECT has_family_access('<qa_family_id>', 'mi-hogar.pharmacy', 'full');
+-- Esperado: false (QA_MEMBER_ID no tiene 'full')
 RESET ROLE;
+
+-- Dejar la membresía de prueba en 'none' para no interferir con las tareas siguientes,
+-- que ajustan el nivel de 'mi-hogar.pharmacy' a lo que cada una necesite verificar.
+UPDATE family_app_permissions SET level = 'none' WHERE member_id = '<qa_member_row_id>' AND app_slug = 'mi-hogar.pharmacy';
 ```
+
+Anotar `<qa_member_row_id>` en el reporte de esta tarea — las tareas de Phase 1 lo reutilizan para dar/quitar permiso por `app_slug` sin volver a crear la fila de `family_members`.
 
 - [ ] **Step 4: Commit**
 
@@ -326,7 +366,7 @@ END;
 $$;
 ```
 
-Aplicar con `mcp: apply_migration` en el branch.
+Aplicar con `mcp: apply_migration` en producción (`project_id = bszdqnocnyhezgqehawh`).
 
 - [ ] **Step 5: Escribir `GET/DELETE /api/family/members`**
 
@@ -373,7 +413,7 @@ export async function DELETE(req: NextRequest) {
 
 - [ ] **Step 6: Verificar manualmente**
 
-Con dos sesiones de Supabase Auth reales en el branch (o `curl` con dos tokens distintos):
+Con los dos usuarios de prueba de Task 1 (`qa-family-owner@quioba.internal` / `qa-family-member@quioba.internal`, usando `supabase.auth.admin.generateLink` o el flujo normal de login para obtener sus tokens), o con `curl` y dos tokens de sesión distintos:
 
 ```bash
 curl -X POST http://localhost:3000/api/family/invite -H "Authorization: Bearer $TOKEN_A" -H "Content-Type: application/json" -d '{"email":"b@example.com"}'
@@ -683,17 +723,7 @@ git commit -m "feat(family): hook useAppPermission para gating de UI por app"
 
 Patrón repetido en cada tarea: (1) migración SQL que añade `family_id`, backfillea desde `families` vía el dueño actual, y sustituye las políticas RLS por `has_family_access()`; (2) verificación SQL con dos usuarios simulados; (3) integrar `useAppPermission` en la página para bloquear edición cuando el nivel es `'view'` y ocultar la app cuando es `'none'`; (4) commit.
 
-Para eliminar políticas existentes sin conocer sus nombres de antemano, cada migración usa:
-
-```sql
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='<TABLA>' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON <TABLA>', pol.policyname);
-  END LOOP;
-END $$;
-```
+Para eliminar políticas existentes sin conocer sus nombres de antemano, cada migración llama a la función `drop_all_policies(text)` creada en Task 2 (ver Interfaces de Task 2): `SELECT drop_all_policies('<tabla>');` para una tabla, o `SELECT drop_all_policies(unnest(ARRAY['<t1>','<t2>']));` para varias.
 
 ### Task 6: Botiquín (`medicines`)
 
@@ -715,7 +745,13 @@ FROM families f WHERE f.owner_id = m.user_id;
 
 ALTER TABLE medicines ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('medicines');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='medicines' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON medicines', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY medicines_select ON medicines FOR SELECT
   USING (has_family_access(family_id, 'mi-hogar.pharmacy', 'view'));
@@ -726,7 +762,7 @@ CREATE POLICY medicines_write ON medicines FOR ALL
 
 - [ ] **Step 2: Aplicar y verificar**
 
-Aplicar con `mcp: apply_migration` en el branch. Verificar con el patrón de dos usuarios de Task 2 Step 3, sustituyendo `has_family_access(...)` por consultas reales: `SELECT * FROM medicines;` como B con `level='view'` debe listar filas de la familia de A pero un `INSERT INTO medicines (...) VALUES (...)` debe fallar con error de política; con `level='full'` el `INSERT` debe funcionar.
+Aplicar con `mcp: apply_migration` en producción (`project_id = bszdqnocnyhezgqehawh`). Verificar con el patrón de dos usuarios de Task 2 Step 3 (usando `<qa_member_row_id>` y ajustando su nivel en `mi-hogar.pharmacy` en vez de crear una fila nueva), sustituyendo `has_family_access(...)` por consultas reales: `SELECT * FROM medicines;` como QA_MEMBER_ID con `level='view'` debe listar filas de la familia de QA_OWNER_ID pero un `INSERT INTO medicines (...) VALUES (...)` debe fallar con error de política; con `level='full'` el `INSERT` debe funcionar. Al terminar, `DELETE FROM medicines WHERE family_id = '<qa_family_id>'` para limpiar cualquier fila de prueba insertada, y dejar `family_app_permissions` de `mi-hogar.pharmacy` en `'none'`.
 
 - [ ] **Step 3: Wiring en frontend**
 
@@ -771,7 +807,15 @@ FOR EACH ROW EXECUTE FUNCTION sync_family_id_vehicle_events();
 UPDATE vehicle_events ve SET family_id = v.family_id FROM vehicles v WHERE v.id = ve.vehicle_id;
 ALTER TABLE vehicle_events ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies(unnest(ARRAY['vehicles', 'vehicle_events']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['vehicles', 'vehicle_events'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY vehicles_select ON vehicles FOR SELECT USING (has_family_access(family_id, 'mi-hogar.garage', 'view'));
 CREATE POLICY vehicles_write ON vehicles FOR ALL
@@ -820,7 +864,15 @@ ALTER TABLE tasks ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE tasks t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE tasks ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies(unnest(ARRAY['tasks', 'task_lists']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['tasks', 'task_lists'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY tasks_select ON tasks FOR SELECT USING (has_family_access(family_id, 'mi-hogar.tasks', 'view'));
 CREATE POLICY tasks_write ON tasks FOR ALL
@@ -864,7 +916,15 @@ ALTER TABLE shift_types ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE shift_types s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shift_types ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies(unnest(ARRAY['work_shifts', 'shift_types']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['work_shifts', 'shift_types'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY work_shifts_select ON work_shifts FOR SELECT USING (has_family_access(family_id, 'mi-hogar.roster', 'view'));
 CREATE POLICY work_shifts_write ON work_shifts FOR ALL
@@ -904,7 +964,13 @@ ALTER TABLE shopping_items ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE shopping_items s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shopping_items ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('shopping_items');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='shopping_items' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON shopping_items', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY shopping_items_select ON shopping_items FOR SELECT USING (has_family_access(family_id, 'mi-hogar.shopping', 'view'));
 CREATE POLICY shopping_items_write ON shopping_items FOR ALL
@@ -987,7 +1053,15 @@ BEFORE INSERT OR UPDATE OF goal_id ON savings_goal_transactions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_savings_goal_tx();
 UPDATE savings_goal_transactions t SET family_id = g.family_id FROM savings_goals g WHERE g.id = t.goal_id;
 
-SELECT drop_all_policies(unnest(ARRAY['savings_accounts','savings_goals','savings_recurring_transactions','savings_recurring_items','savings_records','savings_account_transactions','savings_goal_transactions']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['savings_accounts','savings_goals','savings_recurring_transactions','savings_recurring_items','savings_records','savings_account_transactions','savings_goal_transactions'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY savings_accounts_select ON savings_accounts FOR SELECT USING (has_family_access(family_id, 'mi-hogar.savings', 'view'));
 CREATE POLICY savings_accounts_write ON savings_accounts FOR ALL
@@ -1045,7 +1119,13 @@ ALTER TABLE insurances ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE insurances i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE insurances ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('insurances');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='insurances' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON insurances', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY insurances_select ON insurances FOR SELECT USING (has_family_access(family_id, 'mi-hogar.insurance', 'view'));
 CREATE POLICY insurances_write ON insurances FOR ALL
@@ -1080,7 +1160,13 @@ ALTER TABLE warranties ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE warranties w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE warranties ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('warranties');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='warranties' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON warranties', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY warranties_select ON warranties FOR SELECT USING (has_family_access(family_id, 'mi-hogar.warranties', 'view'));
 CREATE POLICY warranties_write ON warranties FOR ALL
@@ -1139,7 +1225,15 @@ BEFORE INSERT OR UPDATE OF document_id ON document_versions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_document_versions();
 UPDATE document_versions v SET family_id = d.family_id FROM documents d WHERE d.id = v.document_id;
 
-SELECT drop_all_policies(unnest(ARRAY['documents','document_reminders','document_versions']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['documents','document_reminders','document_versions'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY documents_select ON documents FOR SELECT USING (has_family_access(family_id, 'mi-hogar.documents', 'view'));
 CREATE POLICY documents_write ON documents FOR ALL
@@ -1181,7 +1275,13 @@ ALTER TABLE passwords ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE passwords p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE passwords ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('passwords');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='passwords' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON passwords', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY passwords_select ON passwords FOR SELECT USING (has_family_access(family_id, 'mi-hogar.passwords', 'view'));
 CREATE POLICY passwords_write ON passwords FOR ALL
@@ -1243,7 +1343,15 @@ BEFORE INSERT OR UPDATE OF manual_id ON manual_versions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_manual_versions();
 UPDATE manual_versions v SET family_id = m.family_id FROM manuals m WHERE m.id = v.manual_id;
 
-SELECT drop_all_policies(unnest(ARRAY['manuals','manual_tags','manual_reminders','manual_versions']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['manuals','manual_tags','manual_reminders','manual_versions'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY manuals_select ON manuals FOR SELECT USING (has_family_access(family_id, 'mi-hogar.manuals', 'view'));
 CREATE POLICY manuals_write ON manuals FOR ALL
@@ -1290,7 +1398,13 @@ git commit -m "feat(family): familiarizar Manuales (4 tablas)"
 ALTER TABLE recipes ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE recipes r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id AND r.user_id IS NOT NULL;
 
-SELECT drop_all_policies('recipes');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='recipes' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON recipes', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY recipes_public_select ON recipes FOR SELECT
   USING (user_id IS NULL OR has_family_access(family_id, 'mi-hogar.recipes', 'view'));
@@ -1328,7 +1442,13 @@ ALTER TABLE assistant_conversations ADD COLUMN family_id UUID REFERENCES familie
 UPDATE assistant_conversations c SET family_id = f.id FROM families f WHERE f.owner_id = c.user_id;
 ALTER TABLE assistant_conversations ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies('assistant_conversations');
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='assistant_conversations' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON assistant_conversations', pol.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY assistant_conversations_select ON assistant_conversations FOR SELECT USING (has_family_access(family_id, 'mi-hogar.asistente', 'view'));
 CREATE POLICY assistant_conversations_write ON assistant_conversations FOR ALL
@@ -1423,7 +1543,15 @@ JOIN families f ON f.id = fm.family_id AND f.owner_id = ef.created_by
 WHERE fm_old.user_id != ef.created_by
 ON CONFLICT (member_id, app_slug) DO UPDATE SET level = 'full';
 
-SELECT drop_all_policies(unnest(ARRAY['expenses','expense_categories']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['expenses','expense_categories'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY expenses_select ON expenses FOR SELECT USING (has_family_access(family_id, 'mi-hogar.expenses', 'view'));
 CREATE POLICY expenses_write ON expenses FOR ALL
@@ -1490,7 +1618,15 @@ BEFORE INSERT OR UPDATE OF trip_id ON trip_assets
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_trip_assets();
 UPDATE trip_assets a SET family_id = t.family_id FROM trips t WHERE t.id = a.trip_id;
 
-SELECT drop_all_policies(unnest(ARRAY['trips','trip_events','trip_checklist_items','trip_assets']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['trips','trip_events','trip_checklist_items','trip_assets'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY trips_select ON trips FOR SELECT USING (has_family_access(family_id, 'mi-viaje', 'view'));
 CREATE POLICY trips_write ON trips FOR ALL
@@ -1540,7 +1676,15 @@ ALTER TABLE huerto_plant_history ADD COLUMN family_id UUID REFERENCES families(i
 UPDATE huerto_plant_history h SET family_id = f.id FROM families f WHERE f.owner_id = h.user_id;
 ALTER TABLE huerto_plant_history ALTER COLUMN family_id SET NOT NULL;
 
-SELECT drop_all_policies(unnest(ARRAY['huerto_plants','huerto_plant_history']));
+DO $$
+DECLARE pol RECORD; t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['huerto_plants','huerto_plant_history'] LOOP
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
+    END LOOP;
+  END LOOP;
+END $$;
 
 CREATE POLICY huerto_plants_select ON huerto_plants FOR SELECT USING (has_family_access(family_id, 'huerto', 'view'));
 CREATE POLICY huerto_plants_write ON huerto_plants FOR ALL
@@ -1604,26 +1748,32 @@ git commit -m "feat(family): gating de UI para Workspace, Meditacion y Tiempo (s
 
 ---
 
-### Task 24: Merge del branch a producción
+### Task 24: Auditoría final y limpieza de datos de prueba
 
-**Files:** (ninguno — operación de infraestructura)
+**Files:** (ninguno — verificación e infraestructura, todo ya está en producción porque este plan aplicó cada migración directamente ahí)
 
-- [ ] **Step 1: Revisión final**
+**Interfaces:**
+- Consumes: `<QA_OWNER_ID>`, `<QA_MEMBER_ID>`, `qa_family_id`, `<qa_member_row_id>` de Task 1/2.
 
-Repasar en el branch: `mcp: list_tables` (verbose) y confirmar que las ~48 tablas listadas en este plan tienen columna `family_id NOT NULL` (salvo `recipes`, que la deja nullable a propósito) y que `SELECT policyname, tablename FROM pg_policies WHERE tablename = ANY(ARRAY[...])` muestra las nuevas políticas `has_family_access` en todas.
+- [ ] **Step 1: Revisión final del esquema**
 
-- [ ] **Step 2: Confirmar con el usuario antes de mergear**
+Con `project_id = bszdqnocnyhezgqehawh`: `mcp: list_tables` (verbose) y confirmar que las ~48 tablas listadas en este plan tienen columna `family_id NOT NULL` (salvo `recipes`, que la deja nullable a propósito) y que `SELECT policyname, tablename FROM pg_policies WHERE tablename = ANY(ARRAY[...])` (con la lista completa de tablas migradas) muestra las nuevas políticas basadas en `has_family_access` en todas.
 
-El merge de un branch de Supabase aplica todos los cambios a la base de datos de producción con datos reales de usuarios — pedir confirmación explícita antes de ejecutar `mcp: merge_branch`.
+- [ ] **Step 2: Confirmar con el usuario que no queden restos de prueba**
 
-- [ ] **Step 3: Merge**
+Verificar con `SELECT * FROM family_members WHERE user_id = '<QA_MEMBER_ID>'` y un repaso rápido de las tablas migradas por `family_id = '<qa_family_id>'` que no quedan filas de prueba sin limpiar de tareas anteriores (cada tarea de Phase 1 ya debía limpiar las suyas, esto es una verificación de cierre).
 
-`mcp: merge_branch` del branch `plan-familiar` a producción, una vez confirmado.
+- [ ] **Step 3: Eliminar los usuarios de prueba**
 
-- [ ] **Step 4: Commit final**
+```sql
+DELETE FROM auth.users WHERE email IN ('qa-family-owner@quioba.internal', 'qa-family-member@quioba.internal');
+-- ON DELETE CASCADE limpia profiles, families, family_members y family_app_permissions asociados.
+```
+
+- [ ] **Step 4: Verificación de cierre**
 
 ```bash
 git log --oneline -25
 ```
 
-(Solo verificación — no hay archivos nuevos que commitear en este paso.)
+(Solo verificación — no hay archivos nuevos que commitear en este paso; todas las migraciones de este plan ya se aplicaron directamente a producción tarea por tarea, no hay un merge pendiente.)
