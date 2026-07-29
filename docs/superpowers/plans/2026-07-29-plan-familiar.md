@@ -715,13 +715,7 @@ FROM families f WHERE f.owner_id = m.user_id;
 
 ALTER TABLE medicines ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='medicines' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON medicines', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('medicines');
 
 CREATE POLICY medicines_select ON medicines FOR SELECT
   USING (has_family_access(family_id, 'mi-hogar.pharmacy', 'view'));
@@ -777,15 +771,7 @@ FOR EACH ROW EXECUTE FUNCTION sync_family_id_vehicle_events();
 UPDATE vehicle_events ve SET family_id = v.family_id FROM vehicles v WHERE v.id = ve.vehicle_id;
 ALTER TABLE vehicle_events ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['vehicles', 'vehicle_events'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['vehicles', 'vehicle_events']));
 
 CREATE POLICY vehicles_select ON vehicles FOR SELECT USING (has_family_access(family_id, 'mi-hogar.garage', 'view'));
 CREATE POLICY vehicles_write ON vehicles FOR ALL
@@ -834,15 +820,7 @@ ALTER TABLE tasks ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE tasks t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE tasks ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['tasks', 'task_lists'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['tasks', 'task_lists']));
 
 CREATE POLICY tasks_select ON tasks FOR SELECT USING (has_family_access(family_id, 'mi-hogar.tasks', 'view'));
 CREATE POLICY tasks_write ON tasks FOR ALL
@@ -886,15 +864,7 @@ ALTER TABLE shift_types ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE shift_types s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shift_types ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['work_shifts', 'shift_types'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['work_shifts', 'shift_types']));
 
 CREATE POLICY work_shifts_select ON work_shifts FOR SELECT USING (has_family_access(family_id, 'mi-hogar.roster', 'view'));
 CREATE POLICY work_shifts_write ON work_shifts FOR ALL
@@ -934,13 +904,7 @@ ALTER TABLE shopping_items ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE shopping_items s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shopping_items ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='shopping_items' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON shopping_items', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('shopping_items');
 
 CREATE POLICY shopping_items_select ON shopping_items FOR SELECT USING (has_family_access(family_id, 'mi-hogar.shopping', 'view'));
 CREATE POLICY shopping_items_write ON shopping_items FOR ALL
@@ -1023,15 +987,7 @@ BEFORE INSERT OR UPDATE OF goal_id ON savings_goal_transactions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_savings_goal_tx();
 UPDATE savings_goal_transactions t SET family_id = g.family_id FROM savings_goals g WHERE g.id = t.goal_id;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['savings_accounts','savings_goals','savings_recurring_transactions','savings_recurring_items','savings_records','savings_account_transactions','savings_goal_transactions'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['savings_accounts','savings_goals','savings_recurring_transactions','savings_recurring_items','savings_records','savings_account_transactions','savings_goal_transactions']));
 
 CREATE POLICY savings_accounts_select ON savings_accounts FOR SELECT USING (has_family_access(family_id, 'mi-hogar.savings', 'view'));
 CREATE POLICY savings_accounts_write ON savings_accounts FOR ALL
@@ -1089,13 +1045,7 @@ ALTER TABLE insurances ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE insurances i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE insurances ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='insurances' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON insurances', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('insurances');
 
 CREATE POLICY insurances_select ON insurances FOR SELECT USING (has_family_access(family_id, 'mi-hogar.insurance', 'view'));
 CREATE POLICY insurances_write ON insurances FOR ALL
@@ -1130,13 +1080,7 @@ ALTER TABLE warranties ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE warranties w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE warranties ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='warranties' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON warranties', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('warranties');
 
 CREATE POLICY warranties_select ON warranties FOR SELECT USING (has_family_access(family_id, 'mi-hogar.warranties', 'view'));
 CREATE POLICY warranties_write ON warranties FOR ALL
@@ -1195,15 +1139,7 @@ BEFORE INSERT OR UPDATE OF document_id ON document_versions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_document_versions();
 UPDATE document_versions v SET family_id = d.family_id FROM documents d WHERE d.id = v.document_id;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['documents','document_reminders','document_versions'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['documents','document_reminders','document_versions']));
 
 CREATE POLICY documents_select ON documents FOR SELECT USING (has_family_access(family_id, 'mi-hogar.documents', 'view'));
 CREATE POLICY documents_write ON documents FOR ALL
@@ -1245,13 +1181,7 @@ ALTER TABLE passwords ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE passwords p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE passwords ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='passwords' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON passwords', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('passwords');
 
 CREATE POLICY passwords_select ON passwords FOR SELECT USING (has_family_access(family_id, 'mi-hogar.passwords', 'view'));
 CREATE POLICY passwords_write ON passwords FOR ALL
@@ -1313,15 +1243,7 @@ BEFORE INSERT OR UPDATE OF manual_id ON manual_versions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_manual_versions();
 UPDATE manual_versions v SET family_id = m.family_id FROM manuals m WHERE m.id = v.manual_id;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['manuals','manual_tags','manual_reminders','manual_versions'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['manuals','manual_tags','manual_reminders','manual_versions']));
 
 CREATE POLICY manuals_select ON manuals FOR SELECT USING (has_family_access(family_id, 'mi-hogar.manuals', 'view'));
 CREATE POLICY manuals_write ON manuals FOR ALL
@@ -1368,13 +1290,7 @@ git commit -m "feat(family): familiarizar Manuales (4 tablas)"
 ALTER TABLE recipes ADD COLUMN family_id UUID REFERENCES families(id);
 UPDATE recipes r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id AND r.user_id IS NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='recipes' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON recipes', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('recipes');
 
 CREATE POLICY recipes_public_select ON recipes FOR SELECT
   USING (user_id IS NULL OR has_family_access(family_id, 'mi-hogar.recipes', 'view'));
@@ -1412,13 +1328,7 @@ ALTER TABLE assistant_conversations ADD COLUMN family_id UUID REFERENCES familie
 UPDATE assistant_conversations c SET family_id = f.id FROM families f WHERE f.owner_id = c.user_id;
 ALTER TABLE assistant_conversations ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD;
-BEGIN
-  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='assistant_conversations' LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON assistant_conversations', pol.policyname);
-  END LOOP;
-END $$;
+SELECT drop_all_policies('assistant_conversations');
 
 CREATE POLICY assistant_conversations_select ON assistant_conversations FOR SELECT USING (has_family_access(family_id, 'mi-hogar.asistente', 'view'));
 CREATE POLICY assistant_conversations_write ON assistant_conversations FOR ALL
@@ -1513,15 +1423,7 @@ JOIN families f ON f.id = fm.family_id AND f.owner_id = ef.created_by
 WHERE fm_old.user_id != ef.created_by
 ON CONFLICT (member_id, app_slug) DO UPDATE SET level = 'full';
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['expenses','expense_categories'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['expenses','expense_categories']));
 
 CREATE POLICY expenses_select ON expenses FOR SELECT USING (has_family_access(family_id, 'mi-hogar.expenses', 'view'));
 CREATE POLICY expenses_write ON expenses FOR ALL
@@ -1588,15 +1490,7 @@ BEFORE INSERT OR UPDATE OF trip_id ON trip_assets
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_trip_assets();
 UPDATE trip_assets a SET family_id = t.family_id FROM trips t WHERE t.id = a.trip_id;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['trips','trip_events','trip_checklist_items','trip_assets'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['trips','trip_events','trip_checklist_items','trip_assets']));
 
 CREATE POLICY trips_select ON trips FOR SELECT USING (has_family_access(family_id, 'mi-viaje', 'view'));
 CREATE POLICY trips_write ON trips FOR ALL
@@ -1646,15 +1540,7 @@ ALTER TABLE huerto_plant_history ADD COLUMN family_id UUID REFERENCES families(i
 UPDATE huerto_plant_history h SET family_id = f.id FROM families f WHERE f.owner_id = h.user_id;
 ALTER TABLE huerto_plant_history ALTER COLUMN family_id SET NOT NULL;
 
-DO $$
-DECLARE pol RECORD; t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['huerto_plants','huerto_plant_history'] LOOP
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
-      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, t);
-    END LOOP;
-  END LOOP;
-END $$;
+SELECT drop_all_policies(unnest(ARRAY['huerto_plants','huerto_plant_history']));
 
 CREATE POLICY huerto_plants_select ON huerto_plants FOR SELECT USING (has_family_access(family_id, 'huerto', 'view'));
 CREATE POLICY huerto_plants_write ON huerto_plants FOR ALL
