@@ -150,7 +150,13 @@ manejan datos privados de un hogar/persona:
 **Mi Hogar**: pharmacy (botiquín), expenses (sustituye a `expense_partners`
 por el modelo genérico), garage, tasks, roster, shopping, savings,
 insurance, warranties, documents, passwords, manuals, recipes, meditation,
-confessions, tiempo, asistente, workspace.
+tiempo, asistente, workspace.
+
+**Confesiones queda excluida** (corrección tras inspeccionar el esquema real
+durante la fase de plan): `shared_thoughts` es un mecanismo de mensaje
+anónimo 1:1 vía enlace/token entre cualquier par de personas
+(`share_token`, `is_anonymous`, `creator_name`), no un espacio de datos del
+hogar — no hay una "confesión de la familia" que compartir por diseño.
 
 **Otras**: mi-viaje, huerto.
 
