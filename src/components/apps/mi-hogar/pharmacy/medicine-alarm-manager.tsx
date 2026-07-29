@@ -86,7 +86,13 @@ export default function MedicineAlarmManager() {
             id: notifId,
             title: '💊 Hora de tu medicación',
             body: `${med.name}${med.dosage ? ` — ${med.dosage}` : ''}`,
-            schedule: { on: { hour: hours, minute: minutes }, allowWhileIdle: true } as any,
+            // "at" + repeats/every:'day' en vez de "on: {hour, minute}" — el
+            // trigger de calendario "on" de @capacitor/local-notifications en
+            // Android calculaba mal la próxima ocurrencia y la alarma sonaba
+            // a una hora distinta de la configurada. "at" + repeats es el
+            // patrón que ya usan de forma fiable useDailyNotifications y
+            // scheduleSecretary en este mismo proyecto.
+            schedule: { at: nextOccurrence(hours, minutes), repeats: true, every: 'day', allowWhileIdle: true } as any,
             extra: { type: 'medicine', route: '/apps/mi-hogar/pharmacy' },
           });
         });
@@ -159,4 +165,11 @@ export default function MedicineAlarmManager() {
   }
 
   return null;
+}
+
+function nextOccurrence(hours: number, minutes: number): Date {
+  const target = new Date();
+  target.setHours(hours, minutes, 0, 0);
+  if (target <= new Date()) target.setDate(target.getDate() + 1);
+  return target;
 }
