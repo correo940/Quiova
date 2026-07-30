@@ -4,7 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 import { generateInviteCode } from '@/lib/family/invite-code';
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  let email: unknown;
+  try {
+    ({ email } = await req.json());
+  } catch {
+    return NextResponse.json({ error: 'JSON invalido' }, { status: 400 });
+  }
   if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'email requerido' }, { status: 400 });
   }

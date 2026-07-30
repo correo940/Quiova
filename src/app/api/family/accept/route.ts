@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
-  const { code } = await req.json();
+  let code: unknown;
+  try {
+    ({ code } = await req.json());
+  } catch {
+    return NextResponse.json({ error: 'JSON invalido' }, { status: 400 });
+  }
   if (!code) return NextResponse.json({ error: 'code requerido' }, { status: 400 });
 
   const authHeader = req.headers.get('authorization');

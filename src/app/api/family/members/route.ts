@@ -32,7 +32,22 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
 
   const supabase = client(req);
-  const { error } = await supabase.from('family_members').update({ status: 'removed' }).eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'no autenticado' }, { status: 401 });
+
+  const { data: family } = await supabase.from('families').select('id').eq('owner_id', user.id).single();
+  if (!family) return NextResponse.json({ error: 'familia no encontrada' }, { status: 404 });
+
+  const { data: rows, error } = await supabase
+    .from('family_members')
+    .update({ status: 'removed' })
+    .eq('id', id)
+    .eq('family_id', family.id)
+    .select('id');
+
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!rows || rows.length === 0) {
+    return NextResponse.json({ error: 'miembro no encontrado' }, { status: 404 });
+  }
   return NextResponse.json({ ok: true });
 }
