@@ -16,6 +16,7 @@
 - Toda tabla nueva lleva RLS activado desde su creación (`ENABLE ROW LEVEL SECURITY`).
 - Convención de nombres de migración: `supabase/migrations/20260729_<NN>_<descripcion>.sql`, numeradas en el orden de las tareas de este plan.
 - `app_slug` usa el formato `<seccion>.<app>` para apps dentro de Mi Hogar (ej. `mi-hogar.pharmacy`) y `<app>` a secas para apps de nivel superior (`mi-viaje`, `huerto`).
+- **`resolve_current_family_id()`** (creada en Task 7, `supabase/migrations/20260729_05_family_garage.sql`, `SECURITY DEFINER SET search_path = public`) resuelve la familia "activa" del usuario actual: primero su membresía activa en `family_members` (para que las contribuciones de un familiar invitado caigan en la familia compartida, no en la suya propia), y solo si no tiene ninguna, su propia familia como dueño. Todo `family_id` de tabla raíz (una tabla cuyo `family_id` se backfillea desde su propio `user_id`/`owner_id`, no desde una tabla padre vía trigger) debe llevar `ALTER TABLE <tabla> ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();` — sin esto, cualquier INSERT del frontend actual (que no envía `family_id` explícitamente) falla o cae en la familia equivocada. Las tablas hijas (que reciben `family_id` vía trigger desde su tabla padre) no necesitan este DEFAULT porque el trigger lo sobrescribe antes del INSERT.
 - Fuera de alcance de este plan (ya documentado en el spec): cifras de precio reales, cobro con Stripe, límite de miembros, auditoría de quién hizo qué.
 - **Nota de seguridad no relacionada, detectada al inspeccionar el esquema:** `public.beta_mission_reviews` y `public.oficina_tablon` tienen RLS desactivado en producción. No se corrige en este plan (fuera de alcance) — está reportado aparte al usuario.
 
@@ -806,6 +807,7 @@ FOR EACH ROW EXECUTE FUNCTION sync_family_id_vehicle_events();
 
 UPDATE vehicle_events ve SET family_id = v.family_id FROM vehicles v WHERE v.id = ve.vehicle_id;
 ALTER TABLE vehicle_events ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE vehicle_events ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD; t TEXT;
@@ -859,10 +861,12 @@ git commit -m "feat(family): familiarizar Garaje (vehicles, vehicle_events)"
 ALTER TABLE task_lists ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE task_lists tl SET family_id = f.id FROM families f WHERE f.owner_id = tl.owner_id;
 ALTER TABLE task_lists ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE task_lists ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE tasks t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE tasks ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE tasks ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD; t TEXT;
@@ -911,10 +915,12 @@ git commit -m "feat(family): familiarizar Tareas y deprecar sharing ad-hoc de li
 ALTER TABLE work_shifts ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE work_shifts w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE work_shifts ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE work_shifts ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE shift_types ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE shift_types s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shift_types ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE shift_types ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD; t TEXT;
@@ -963,6 +969,7 @@ git commit -m "feat(family): familiarizar Turnos (work_shifts, shift_types)"
 ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE shopping_items s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shopping_items ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE shopping_items ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD;
@@ -1005,17 +1012,22 @@ git commit -m "feat(family): familiarizar Lista de la compra (shopping_items)"
 -- 20260729_09_family_savings.sql
 ALTER TABLE savings_accounts ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_accounts a SET family_id = f.id FROM families f WHERE f.owner_id = a.user_id;
+ALTER TABLE savings_accounts ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 -- filas con user_id NULL (si las hubiera) quedan sin family_id: no se exponen por RLS familiar.
+-- El DEFAULT solo aplica a inserts nuevos (que omiten family_id, como hace hoy el frontend); no fuerza NOT NULL.
 
 ALTER TABLE savings_goals ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_goals g SET family_id = f.id FROM families f WHERE f.owner_id = g.user_id;
+ALTER TABLE savings_goals ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE savings_recurring_transactions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_recurring_transactions r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id;
+ALTER TABLE savings_recurring_transactions ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE savings_recurring_items ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_recurring_items i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE savings_recurring_items ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE savings_recurring_items ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE savings_records ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_savings_records()
@@ -1118,6 +1130,7 @@ git commit -m "feat(family): familiarizar Ahorros (7 tablas)"
 ALTER TABLE insurances ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE insurances i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE insurances ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE insurances ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD;
@@ -1159,6 +1172,7 @@ git commit -m "feat(family): familiarizar Seguros (insurances)"
 ALTER TABLE warranties ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE warranties w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE warranties ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE warranties ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD;
@@ -1200,6 +1214,7 @@ git commit -m "feat(family): familiarizar Garantias (warranties)"
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE documents d SET family_id = f.id FROM families f WHERE f.owner_id = d.user_id;
 ALTER TABLE documents ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE documents ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE document_reminders ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_document_reminders()
@@ -1274,6 +1289,7 @@ git commit -m "feat(family): familiarizar Documentos (documents, reminders, vers
 ALTER TABLE passwords ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE passwords p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE passwords ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE passwords ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD;
@@ -1315,6 +1331,7 @@ git commit -m "feat(family): familiarizar Contrasenas (passwords), con aviso de 
 ALTER TABLE manuals ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE manuals m SET family_id = f.id FROM families f WHERE f.owner_id = m.user_id;
 ALTER TABLE manuals ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE manuals ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE manual_tags ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_manual_tags()
@@ -1397,6 +1414,9 @@ git commit -m "feat(family): familiarizar Manuales (4 tablas)"
 -- 20260729_15_family_recipes.sql
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE recipes r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id AND r.user_id IS NOT NULL;
+ALTER TABLE recipes ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
+-- El DEFAULT solo resuelve para inserts de usuario (que hoy tampoco envían family_id);
+-- no afecta a filas globales con user_id IS NULL insertadas por procesos internos.
 
 DO $$
 DECLARE pol RECORD;
@@ -1441,6 +1461,7 @@ git commit -m "feat(family): familiarizar Recetas propias (recipes), preservando
 ALTER TABLE assistant_conversations ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE assistant_conversations c SET family_id = f.id FROM families f WHERE f.owner_id = c.user_id;
 ALTER TABLE assistant_conversations ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE assistant_conversations ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD;
@@ -1504,6 +1525,7 @@ git commit -m "chore(family): excluir Confesiones del modelo de permisos familia
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE expenses e SET family_id = f.id FROM families f WHERE f.owner_id = e.user_id;
 ALTER TABLE expenses ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE expenses ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE expense_categories c SET family_id = f.id FROM families f WHERE f.owner_id = c.created_by;
@@ -1590,6 +1612,7 @@ git commit -m "feat(family): familiarizar Gastos y migrar expense_partners/folde
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE trips t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE trips ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE trips ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE trip_events ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_trip_events()
@@ -1671,10 +1694,12 @@ git commit -m "feat(family): familiarizar Mi Viaje (trips y 3 tablas hijas)"
 ALTER TABLE huerto_plants ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE huerto_plants p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE huerto_plants ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE huerto_plants ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 ALTER TABLE huerto_plant_history ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE huerto_plant_history h SET family_id = f.id FROM families f WHERE f.owner_id = h.user_id;
 ALTER TABLE huerto_plant_history ALTER COLUMN family_id SET NOT NULL;
+ALTER TABLE huerto_plant_history ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
 
 DO $$
 DECLARE pol RECORD; t TEXT;
