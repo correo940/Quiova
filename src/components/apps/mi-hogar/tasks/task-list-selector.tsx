@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Users, Loader2 } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -13,7 +14,6 @@ export type TaskList = {
     id: string;
     name: string;
     owner_id: string;
-    role?: 'owner' | 'editor' | 'viewer';
 };
 
 interface TaskListSelectorProps {
@@ -25,9 +25,7 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
     const [lists, setLists] = useState<TaskList[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [showJoinDialog, setShowJoinDialog] = useState(false);
     const [newListName, setNewListName] = useState('');
-    const [joinCode, setJoinCode] = useState('');
     const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -46,15 +44,12 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
         try {
             setLoading(true);
 
-            // Fetch lists I am a member of
+            // Fetch lists visible to me: RLS (has_family_access on family_id) is what
+            // gates visibility now, not a per-list task_list_members row — every list
+            // in my family is visible to any member with 'view'+ access.
             const { data, error } = await supabase
                 .from('task_lists')
-                .select(`
-                    id,
-                    name,
-                    owner_id,
-                    task_list_members!inner(role)
-                `);
+                .select('id, name, owner_id');
 
             if (error) throw error;
 
@@ -62,7 +57,6 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
                 id: l.id,
                 name: l.name,
                 owner_id: l.owner_id,
-                role: l.task_list_members[0]?.role
             }));
 
             // If no lists, try to create default or find legacy
@@ -124,26 +118,6 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
         }
     };
 
-    const handleJoinList = async () => {
-        if (joinCode.length < 6) return;
-        setLoading(true);
-        try {
-            const { data: listId, error } = await supabase.rpc('redeem_task_list_invitation', { p_code: joinCode });
-
-            if (error) throw error;
-            if (!listId) throw new Error('Código inválido');
-
-            toast.success('¡Te has unido a la lista!');
-            setJoinCode('');
-            setShowJoinDialog(false);
-            fetchLists();
-        } catch (error: any) {
-            toast.error(error.message || 'Error al unirse');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const currentList = lists.find(l => l.id === currentListId);
 
     return (
@@ -179,9 +153,11 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
                     <Plus className="w-4 h-4" />
                 </Button>
 
-                <Button variant="outline" size="icon" onClick={() => setShowJoinDialog(true)} title="Unirse a Lista">
-                    <Users className="w-4 h-4" />
-                </Button>
+                <Link href="/apps/mi-hogar/familia">
+                    <Button variant="outline" size="icon" title="Compartir listas por familia">
+                        <Users className="w-4 h-4" />
+                    </Button>
+                </Link>
             </div>
 
             {/* Create Dialog */}
@@ -204,32 +180,6 @@ export function TaskListSelector({ currentListId, onListChange }: TaskListSelect
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancelar</Button>
                         <Button onClick={handleCreateList} disabled={!newListName.trim() || loading}>Crear</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Join Dialog */}
-            <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Unirse a una Lista</DialogTitle>
-                        <DialogDescription>Introduce el código de invitación que te han enviado.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Código de Invitación (6 dígitos)</Label>
-                            <Input
-                                placeholder="000000"
-                                className="text-center text-lg tracking-widest font-mono"
-                                maxLength={6}
-                                value={joinCode}
-                                onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowJoinDialog(false)}>Cancelar</Button>
-                        <Button onClick={handleJoinList} disabled={joinCode.length < 6 || loading}>Unirse</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
