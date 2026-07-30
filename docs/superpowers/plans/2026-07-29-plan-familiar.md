@@ -738,7 +738,7 @@ Para eliminar políticas existentes sin conocer sus nombres de antemano, cada mi
 
 ```sql
 -- 20260729_04_family_pharmacy.sql
-ALTER TABLE medicines ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE medicines ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 
 UPDATE medicines m SET family_id = f.id
 FROM families f WHERE f.owner_id = m.user_id;
@@ -787,11 +787,11 @@ git commit -m "feat(family): familiarizar Botiquin (medicines)"
 
 ```sql
 -- 20260729_05_family_garage.sql
-ALTER TABLE vehicles ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE vehicles v SET family_id = f.id FROM families f WHERE f.owner_id = v.user_id;
 ALTER TABLE vehicles ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE vehicle_events ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE vehicle_events ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 
 CREATE OR REPLACE FUNCTION sync_family_id_vehicle_events()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -856,11 +856,11 @@ git commit -m "feat(family): familiarizar Garaje (vehicles, vehicle_events)"
 
 ```sql
 -- 20260729_06_family_tasks.sql
-ALTER TABLE task_lists ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE task_lists ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE task_lists tl SET family_id = f.id FROM families f WHERE f.owner_id = tl.owner_id;
 ALTER TABLE task_lists ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE tasks ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE tasks t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE tasks ALTER COLUMN family_id SET NOT NULL;
 
@@ -908,11 +908,11 @@ git commit -m "feat(family): familiarizar Tareas y deprecar sharing ad-hoc de li
 
 ```sql
 -- 20260729_07_family_roster.sql
-ALTER TABLE work_shifts ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE work_shifts ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE work_shifts w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE work_shifts ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE shift_types ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE shift_types ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE shift_types s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shift_types ALTER COLUMN family_id SET NOT NULL;
 
@@ -960,7 +960,7 @@ git commit -m "feat(family): familiarizar Turnos (work_shifts, shift_types)"
 
 ```sql
 -- 20260729_08_family_shopping.sql
-ALTER TABLE shopping_items ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE shopping_items s SET family_id = f.id FROM families f WHERE f.owner_id = s.user_id;
 ALTER TABLE shopping_items ALTER COLUMN family_id SET NOT NULL;
 
@@ -1003,21 +1003,21 @@ git commit -m "feat(family): familiarizar Lista de la compra (shopping_items)"
 
 ```sql
 -- 20260729_09_family_savings.sql
-ALTER TABLE savings_accounts ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_accounts ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_accounts a SET family_id = f.id FROM families f WHERE f.owner_id = a.user_id;
 -- filas con user_id NULL (si las hubiera) quedan sin family_id: no se exponen por RLS familiar.
 
-ALTER TABLE savings_goals ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_goals ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_goals g SET family_id = f.id FROM families f WHERE f.owner_id = g.user_id;
 
-ALTER TABLE savings_recurring_transactions ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_recurring_transactions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_recurring_transactions r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id;
 
-ALTER TABLE savings_recurring_items ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_recurring_items ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE savings_recurring_items i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE savings_recurring_items ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE savings_records ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_records ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_savings_records()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -1029,7 +1029,7 @@ BEFORE INSERT OR UPDATE OF account_id ON savings_records
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_savings_records();
 UPDATE savings_records r SET family_id = a.family_id FROM savings_accounts a WHERE a.id = r.account_id;
 
-ALTER TABLE savings_account_transactions ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_account_transactions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_savings_account_tx()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -1041,7 +1041,7 @@ BEFORE INSERT OR UPDATE OF account_id ON savings_account_transactions
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_savings_account_tx();
 UPDATE savings_account_transactions t SET family_id = a.family_id FROM savings_accounts a WHERE a.id = t.account_id;
 
-ALTER TABLE savings_goal_transactions ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE savings_goal_transactions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_savings_goal_tx()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -1115,7 +1115,7 @@ git commit -m "feat(family): familiarizar Ahorros (7 tablas)"
 
 ```sql
 -- 20260729_10_family_insurance.sql
-ALTER TABLE insurances ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE insurances ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE insurances i SET family_id = f.id FROM families f WHERE f.owner_id = i.user_id;
 ALTER TABLE insurances ALTER COLUMN family_id SET NOT NULL;
 
@@ -1156,7 +1156,7 @@ git commit -m "feat(family): familiarizar Seguros (insurances)"
 
 ```sql
 -- 20260729_11_family_warranties.sql
-ALTER TABLE warranties ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE warranties ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE warranties w SET family_id = f.id FROM families f WHERE f.owner_id = w.user_id;
 ALTER TABLE warranties ALTER COLUMN family_id SET NOT NULL;
 
@@ -1197,11 +1197,11 @@ git commit -m "feat(family): familiarizar Garantias (warranties)"
 
 ```sql
 -- 20260729_12_family_documents.sql
-ALTER TABLE documents ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE documents d SET family_id = f.id FROM families f WHERE f.owner_id = d.user_id;
 ALTER TABLE documents ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE document_reminders ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE document_reminders ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_document_reminders()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -1213,7 +1213,7 @@ BEFORE INSERT OR UPDATE OF document_id ON document_reminders
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_document_reminders();
 UPDATE document_reminders r SET family_id = d.family_id FROM documents d WHERE d.id = r.document_id;
 
-ALTER TABLE document_versions ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_document_versions()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -1271,7 +1271,7 @@ git commit -m "feat(family): familiarizar Documentos (documents, reminders, vers
 
 ```sql
 -- 20260729_13_family_passwords.sql
-ALTER TABLE passwords ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE passwords ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE passwords p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE passwords ALTER COLUMN family_id SET NOT NULL;
 
@@ -1312,11 +1312,11 @@ git commit -m "feat(family): familiarizar Contrasenas (passwords), con aviso de 
 
 ```sql
 -- 20260729_14_family_manuals.sql
-ALTER TABLE manuals ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE manuals ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE manuals m SET family_id = f.id FROM families f WHERE f.owner_id = m.user_id;
 ALTER TABLE manuals ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE manual_tags ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE manual_tags ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_manual_tags()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM manuals WHERE id = NEW.manual_id; RETURN NEW; END; $$;
@@ -1325,7 +1325,7 @@ BEFORE INSERT OR UPDATE OF manual_id ON manual_tags
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_manual_tags();
 UPDATE manual_tags t SET family_id = m.family_id FROM manuals m WHERE m.id = t.manual_id;
 
-ALTER TABLE manual_reminders ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE manual_reminders ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_manual_reminders()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM manuals WHERE id = NEW.manual_id; RETURN NEW; END; $$;
@@ -1334,7 +1334,7 @@ BEFORE INSERT OR UPDATE OF manual_id ON manual_reminders
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_manual_reminders();
 UPDATE manual_reminders r SET family_id = m.family_id FROM manuals m WHERE m.id = r.manual_id;
 
-ALTER TABLE manual_versions ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE manual_versions ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_manual_versions()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM manuals WHERE id = NEW.manual_id; RETURN NEW; END; $$;
@@ -1395,7 +1395,7 @@ git commit -m "feat(family): familiarizar Manuales (4 tablas)"
 
 ```sql
 -- 20260729_15_family_recipes.sql
-ALTER TABLE recipes ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE recipes r SET family_id = f.id FROM families f WHERE f.owner_id = r.user_id AND r.user_id IS NOT NULL;
 
 DO $$
@@ -1438,7 +1438,7 @@ git commit -m "feat(family): familiarizar Recetas propias (recipes), preservando
 
 ```sql
 -- 20260729_16_family_asistente.sql
-ALTER TABLE assistant_conversations ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE assistant_conversations ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE assistant_conversations c SET family_id = f.id FROM families f WHERE f.owner_id = c.user_id;
 ALTER TABLE assistant_conversations ALTER COLUMN family_id SET NOT NULL;
 
@@ -1501,11 +1501,11 @@ git commit -m "chore(family): excluir Confesiones del modelo de permisos familia
 
 ```sql
 -- 20260729_18_family_expenses.sql
-ALTER TABLE expenses ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE expenses e SET family_id = f.id FROM families f WHERE f.owner_id = e.user_id;
 ALTER TABLE expenses ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE expense_categories ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE expense_categories c SET family_id = f.id FROM families f WHERE f.owner_id = c.created_by;
 
 -- Migrar pares de expense_partners: cada par (A, B) se convierte en B miembro activo
@@ -1587,11 +1587,11 @@ git commit -m "feat(family): familiarizar Gastos y migrar expense_partners/folde
 
 ```sql
 -- 20260729_19_family_mi_viaje.sql
-ALTER TABLE trips ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE trips t SET family_id = f.id FROM families f WHERE f.owner_id = t.user_id;
 ALTER TABLE trips ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE trip_events ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE trip_events ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_trip_events()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM trips WHERE id = NEW.trip_id; RETURN NEW; END; $$;
@@ -1600,7 +1600,7 @@ BEFORE INSERT OR UPDATE OF trip_id ON trip_events
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_trip_events();
 UPDATE trip_events e SET family_id = t.family_id FROM trips t WHERE t.id = e.trip_id;
 
-ALTER TABLE trip_checklist_items ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE trip_checklist_items ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_trip_checklist_items()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM trips WHERE id = NEW.trip_id; RETURN NEW; END; $$;
@@ -1609,7 +1609,7 @@ BEFORE INSERT OR UPDATE OF trip_id ON trip_checklist_items
 FOR EACH ROW EXECUTE FUNCTION sync_family_id_trip_checklist_items();
 UPDATE trip_checklist_items c SET family_id = t.family_id FROM trips t WHERE t.id = c.trip_id;
 
-ALTER TABLE trip_assets ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE trip_assets ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 CREATE OR REPLACE FUNCTION sync_family_id_trip_assets()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN SELECT family_id INTO NEW.family_id FROM trips WHERE id = NEW.trip_id; RETURN NEW; END; $$;
@@ -1668,11 +1668,11 @@ git commit -m "feat(family): familiarizar Mi Viaje (trips y 3 tablas hijas)"
 
 ```sql
 -- 20260729_20_family_huerto.sql
-ALTER TABLE huerto_plants ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE huerto_plants ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE huerto_plants p SET family_id = f.id FROM families f WHERE f.owner_id = p.user_id;
 ALTER TABLE huerto_plants ALTER COLUMN family_id SET NOT NULL;
 
-ALTER TABLE huerto_plant_history ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE huerto_plant_history ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 UPDATE huerto_plant_history h SET family_id = f.id FROM families f WHERE f.owner_id = h.user_id;
 ALTER TABLE huerto_plant_history ALTER COLUMN family_id SET NOT NULL;
 
