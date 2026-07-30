@@ -15,8 +15,8 @@ ALTER TABLE vehicles ALTER COLUMN family_id SET NOT NULL;
 CREATE OR REPLACE FUNCTION resolve_current_family_id()
 RETURNS UUID LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT COALESCE(
-    (SELECT id FROM families WHERE owner_id = auth.uid()),
-    (SELECT family_id FROM family_members WHERE user_id = auth.uid() AND status = 'active' LIMIT 1)
+    (SELECT family_id FROM family_members WHERE user_id = auth.uid() AND status = 'active' LIMIT 1),
+    (SELECT id FROM families WHERE owner_id = auth.uid())
   );
 $$;
 ALTER TABLE vehicles ALTER COLUMN family_id SET DEFAULT resolve_current_family_id();
