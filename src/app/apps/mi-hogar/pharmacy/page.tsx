@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +45,8 @@ type ViewTab = 'today' | 'all' | 'history';
 
 export default function PharmacyPage() {
     const { user, loading: authLoading } = useAuth();
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.pharmacy');
+    const readOnly = permLevel === 'view';
     const [medicines, setMedicines] = useState<Medicine[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -368,6 +371,18 @@ export default function PharmacyPage() {
 
     const totalAlerts = alerts.expired.length + alerts.critical.length + alerts.lowStock.length;
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Botiquín.</p>
+                </Card>
+            </div>
+        );
+    }
+
     // ============ RENDER ============
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-rose-50/20 to-amber-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 p-4 md:p-6 pb-nav print:bg-white print:p-0">
@@ -396,9 +411,11 @@ export default function PharmacyPage() {
                         <Button variant="outline" size="sm" onClick={handlePrint} className="h-9">
                             <Printer className="mr-1.5 h-3.5 w-3.5" /> Imprimir
                         </Button>
-                        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="sm" className="h-9 bg-rose-600 hover:bg-rose-700">
-                            <Plus className="mr-1.5 h-3.5 w-3.5" /> Añadir
-                        </Button>
+                        {!readOnly && (
+                            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="sm" className="h-9 bg-rose-600 hover:bg-rose-700">
+                                <Plus className="mr-1.5 h-3.5 w-3.5" /> Añadir
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -516,13 +533,14 @@ export default function PharmacyPage() {
                                 medicines={medicines}
                                 onTake={handleTakeNow}
                                 onAdd={() => { resetForm(); setIsDialogOpen(true); }}
+                                readOnly={readOnly}
                             />
                         )}
 
                         {activeTab === 'all' && (
                             <>
                                 {filteredMedicines.length === 0 ? (
-                                    <EmptyState onAdd={() => { resetForm(); setIsDialogOpen(true); }} hasFilters={!!searchTerm || filterCategory !== 'all' || filterPerson !== 'all'} />
+                                    <EmptyState onAdd={() => { resetForm(); setIsDialogOpen(true); }} hasFilters={!!searchTerm || filterCategory !== 'all' || filterPerson !== 'all'} readOnly={readOnly} />
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {filteredMedicines.map(m => (
@@ -533,6 +551,7 @@ export default function PharmacyPage() {
                                                 onDelete={() => setConfirmDelete({ id: m.id, name: m.name })}
                                                 onTake={() => handleTakeNow(m)}
                                                 onCreateTask={() => handleCreateTask(m)}
+                                                readOnly={readOnly}
                                             />
                                         ))}
                                     </div>
@@ -848,8 +867,8 @@ function AlertCard({ icon: Icon, count, label, description, color, items, onItem
     );
 }
 
-function MedicineCard({ medicine: m, onEdit, onDelete, onTake, onCreateTask }: {
-    medicine: Medicine; onEdit: () => void; onDelete: () => void; onTake: () => void; onCreateTask: () => void;
+function MedicineCard({ medicine: m, onEdit, onDelete, onTake, onCreateTask, readOnly }: {
+    medicine: Medicine; onEdit: () => void; onDelete: () => void; onTake: () => void; onCreateTask: () => void; readOnly?: boolean;
 }) {
     const { meta } = parseMeta(m.description);
     const status = getExpiryStatus(m.expiration_date);
@@ -888,15 +907,19 @@ function MedicineCard({ medicine: m, onEdit, onDelete, onTake, onCreateTask }: {
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-40 p-1" align="end">
-                            <button onClick={onEdit} className="w-full text-left px-2 py-1.5 hover:bg-accent rounded-md text-xs flex items-center gap-2">
-                                <Pencil className="h-3 w-3" /> Editar
-                            </button>
+                            {!readOnly && (
+                                <button onClick={onEdit} className="w-full text-left px-2 py-1.5 hover:bg-accent rounded-md text-xs flex items-center gap-2">
+                                    <Pencil className="h-3 w-3" /> Editar
+                                </button>
+                            )}
                             <button onClick={onCreateTask} className="w-full text-left px-2 py-1.5 hover:bg-accent rounded-md text-xs flex items-center gap-2">
                                 <ListChecks className="h-3 w-3" /> Crear tarea de compra
                             </button>
-                            <button onClick={onDelete} className="w-full text-left px-2 py-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md text-xs flex items-center gap-2">
-                                <Trash2 className="h-3 w-3" /> Eliminar
-                            </button>
+                            {!readOnly && (
+                                <button onClick={onDelete} className="w-full text-left px-2 py-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md text-xs flex items-center gap-2">
+                                    <Trash2 className="h-3 w-3" /> Eliminar
+                                </button>
+                            )}
                         </PopoverContent>
                     </Popover>
                 </div>
@@ -978,9 +1001,9 @@ function MedicineCard({ medicine: m, onEdit, onDelete, onTake, onCreateTask }: {
     );
 }
 
-function TodayView({ slots, medicines, onTake, onAdd }: {
+function TodayView({ slots, medicines, onTake, onAdd, readOnly }: {
     slots: IntakeSlot[]; medicines: Medicine[];
-    onTake: (m: Medicine, time?: string) => void; onAdd: () => void;
+    onTake: (m: Medicine, time?: string) => void; onAdd: () => void; readOnly?: boolean;
 }) {
     if (slots.length === 0) {
         return (
@@ -990,7 +1013,9 @@ function TodayView({ slots, medicines, onTake, onAdd }: {
                 </div>
                 <h3 className="text-lg font-bold mb-1">Sin tomas para hoy</h3>
                 <p className="text-sm text-muted-foreground mb-4">No tienes recordatorios programados.</p>
-                <Button size="sm" onClick={onAdd}><Plus className="w-3.5 h-3.5 mr-1.5" /> Añadir medicamento</Button>
+                {!readOnly && (
+                    <Button size="sm" onClick={onAdd}><Plus className="w-3.5 h-3.5 mr-1.5" /> Añadir medicamento</Button>
+                )}
             </Card>
         );
     }
@@ -1168,7 +1193,7 @@ function HistoryView({ intakes, medicines }: { intakes: Array<{ medicineId: stri
     );
 }
 
-function EmptyState({ onAdd, hasFilters }: { onAdd: () => void; hasFilters: boolean }) {
+function EmptyState({ onAdd, hasFilters, readOnly }: { onAdd: () => void; hasFilters: boolean; readOnly?: boolean }) {
     return (
         <Card className="p-12 text-center">
             <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-rose-100 to-rose-200 dark:from-rose-900/40 dark:to-rose-800/40 flex items-center justify-center mb-4 shadow-inner">
@@ -1180,7 +1205,7 @@ function EmptyState({ onAdd, hasFilters }: { onAdd: () => void; hasFilters: bool
             <p className="text-sm text-muted-foreground mb-4">
                 {hasFilters ? 'Prueba con otros filtros.' : 'Empieza añadiendo los medicamentos de casa.'}
             </p>
-            {!hasFilters && (
+            {!hasFilters && !readOnly && (
                 <Button onClick={onAdd} className="bg-rose-600 hover:bg-rose-700">
                     <Plus className="w-3.5 h-3.5 mr-1.5" /> Añadir medicamento
                 </Button>
