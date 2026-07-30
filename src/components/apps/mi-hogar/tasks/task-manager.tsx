@@ -46,7 +46,9 @@ import {
     X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,7 +64,6 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import ScreenshotToTaskDialog from './screenshot-to-task-dialog';
-import { ShareTasksDialog } from './share-tasks-dialog';
 import { TaskList, TaskListSelector } from './task-list-selector';
 import { CategoryManager, useCategories } from './category-manager';
 import { CategoryDef, findCategory } from '@/lib/categories';
@@ -307,7 +308,6 @@ export default function TaskManager() {
     const [loading, setLoading] = useState(true);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [currentList, setCurrentList] = useState<TaskList | null>(null);
-    const [showShareDialog, setShowShareDialog] = useState(false);
     const [showScanDialog, setShowScanDialog] = useState(false);
     const [members, setMembers] = useState<ListMember[]>([]);
     const [filterByMe, setFilterByMe] = useState(false);
@@ -340,6 +340,8 @@ export default function TaskManager() {
     const [medicines, setMedicines] = useState<any[]>([]);
 
     const { user, isPremium } = useAuth();
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.tasks');
+    const readOnly = permLevel === 'view';
     const searchRef = useRef<HTMLInputElement>(null);
     const categories = useCategories();
 
@@ -431,9 +433,7 @@ export default function TaskManager() {
         return () => window.removeEventListener('keydown', onKey);
     }, [formOpen, expandedTaskId]);
 
-    const canEditCurrentList = isPremium && !!currentList && currentList.role !== 'viewer';
-    const currentUserMember = members.find((m) => m.user_id === user?.id);
-    const canShareCurrentList = !!currentList && (currentList.owner_id === user?.id || currentUserMember?.role === 'editor');
+    const canEditCurrentList = isPremium && !!currentList && !readOnly;
 
     const fetchMembers = async () => {
         if (!currentList) return;
@@ -763,6 +763,15 @@ export default function TaskManager() {
         return { sections, counts };
     }, [tasks, visibleTasks, showCompletedSection, taskFilter]);
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <Card className="p-8 max-w-sm mx-auto text-center">
+                <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Tareas.</p>
+            </Card>
+        );
+    }
+
     if (loading) {
         return (
             <div className="space-y-3">
@@ -786,9 +795,11 @@ export default function TaskManager() {
                     <Button size="sm" variant="outline" onClick={() => setShowScanDialog(true)} disabled={!currentList}>
                         <Camera className="mr-1.5 h-3.5 w-3.5" /> Escanear
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowShareDialog(true)} disabled={!currentList || !canShareCurrentList}>
-                        <Users className="mr-1.5 h-3.5 w-3.5" /> Compartir
-                    </Button>
+                    <Link href="/apps/mi-hogar/familia">
+                        <Button size="sm" variant="outline">
+                            <Users className="mr-1.5 h-3.5 w-3.5" /> Familia
+                        </Button>
+                    </Link>
                     <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'} onClick={() => setViewMode('list')}>
                         <LayoutList className="h-3.5 w-3.5" />
                     </Button>
@@ -1201,16 +1212,6 @@ export default function TaskManager() {
                 </SheetContent>
             </Sheet>
 
-            {currentList && (
-                <ShareTasksDialog
-                    open={showShareDialog}
-                    onOpenChange={setShowShareDialog}
-                    listId={currentList.id}
-                    listName={currentList.name}
-                    isOwner={currentList.owner_id === user?.id}
-                    onListUpdated={() => { void fetchMembers(); void fetchTasks(); }}
-                />
-            )}
             <ScreenshotToTaskDialog
                 open={showScanDialog}
                 onOpenChange={setShowScanDialog}
