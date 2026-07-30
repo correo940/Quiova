@@ -1,5 +1,5 @@
 -- 20260729_04_family_pharmacy.sql
-ALTER TABLE medicines ADD COLUMN family_id UUID REFERENCES families(id);
+ALTER TABLE medicines ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id);
 
 UPDATE medicines m SET family_id = f.id
 FROM families f WHERE f.owner_id = m.user_id;
