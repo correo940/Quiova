@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -70,6 +71,8 @@ const MAINTENANCE_ITEMS = [
 
 export default function GaragePage() {
     const { user, loading: authLoading } = useAuth();
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.garage');
+    const readOnly = permLevel === 'view';
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
     const [events, setEvents] = useState<VehicleEvent[]>([]);
@@ -269,6 +272,18 @@ export default function GaragePage() {
         return format(parseISO(dateStr), 'dd MMM yyyy', { locale: es });
     };
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Garaje.</p>
+                </Card>
+            </div>
+        );
+    }
+
     if (selectedVehicle) {
         // DETAIL VIEW
         return (
@@ -291,19 +306,21 @@ export default function GaragePage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                                console.log('DEBUG: Edit button clicked');
-                                toast.info('Abriendo editor...');
-                                setVehicleForm(selectedVehicle);
-                                setIsVehicleDialogOpen(true);
-                            }}>
-                                <Settings className="w-4 h-4 mr-2" /> Editar
-                            </Button>
-                            <Button variant="destructive" size="sm" onClick={() => deleteVehicle(selectedVehicle.id)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Eliminar Vehículo
-                            </Button>
-                        </div>
+                        {!readOnly && (
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    console.log('DEBUG: Edit button clicked');
+                                    toast.info('Abriendo editor...');
+                                    setVehicleForm(selectedVehicle);
+                                    setIsVehicleDialogOpen(true);
+                                }}>
+                                    <Settings className="w-4 h-4 mr-2" /> Editar
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => deleteVehicle(selectedVehicle.id)}>
+                                    <Trash2 className="w-4 h-4 mr-2" /> Eliminar Vehículo
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tech Specs Grid */}
@@ -421,9 +438,11 @@ export default function GaragePage() {
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-semibold">Historial de Mantenimiento</h2>
-                            <Button onClick={() => setIsEventDialogOpen(true)}>
-                                <Plus className="w-4 h-4 mr-2" /> Añadir Registro
-                            </Button>
+                            {!readOnly && (
+                                <Button onClick={() => setIsEventDialogOpen(true)}>
+                                    <Plus className="w-4 h-4 mr-2" /> Añadir Registro
+                                </Button>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -579,15 +598,17 @@ export default function GaragePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Add Card */}
-                    <button
-                        onClick={() => setIsVehicleDialogOpen(true)}
-                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group h-[200px]"
-                    >
-                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                            <Plus className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <span className="font-medium text-slate-600 dark:text-slate-400">Añadir Vehículo</span>
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={() => setIsVehicleDialogOpen(true)}
+                            className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group h-[200px]"
+                        >
+                            <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                                <Plus className="w-8 h-8 text-slate-400" />
+                            </div>
+                            <span className="font-medium text-slate-600 dark:text-slate-400">Añadir Vehículo</span>
+                        </button>
+                    )}
 
                     {vehicles.map(vehicle => (
                         <Card
