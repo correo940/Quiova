@@ -2,6 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 import { FAMILY_APP_REGISTRY, PermissionLevel } from '@/lib/family/app-registry';
 
 type Props = {
@@ -25,6 +26,7 @@ export function PermissionMatrix({ memberId, familyId, initialLevels }: Props) {
     if (error) {
       // Revertir en UI si el guardado falló
       setLevels((prev) => ({ ...prev, [appSlug]: previous ?? 'none' }));
+      toast.error(error.message ?? 'No se pudo guardar el permiso');
     }
     setSaving(null);
   };

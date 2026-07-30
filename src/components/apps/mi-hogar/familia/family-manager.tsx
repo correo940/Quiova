@@ -23,6 +23,10 @@ export function FamilyManager() {
       headers: { Authorization: `Bearer ${session?.access_token}` },
     });
     const json = await res.json();
+    if (!res.ok) {
+      toast.error(json?.error ?? 'No se pudo cargar la familia');
+      return;
+    }
     setMembers(json.members ?? []);
   };
 
@@ -58,13 +62,26 @@ export function FamilyManager() {
   };
 
   const selectMember = async (memberId: string) => {
-    setSelected(memberId);
-    const { data } = await supabase
+    // Nota: `setSelected` y `setLevels` se disparan juntos, DESPUES del fetch
+    // (no antes), para que ambos lleguen en el mismo render. Si `setSelected`
+    // se llamara antes del `await`, `PermissionMatrix` remontaria (por el
+    // `key={selected}`) con los `levels` todavia viejos (los del miembro
+    // anterior), y como el remontaje solo ocurre una vez por `key`, se
+    // quedaria mostrando esos datos viejos para siempre aunque el fetch
+    // completara despues con los datos correctos.
+    const { data, error } = await supabase
       .from('family_app_permissions')
       .select('app_slug, level')
       .eq('member_id', memberId);
+    if (error) {
+      toast.error(error.message ?? 'No se pudieron cargar los permisos');
+      setSelected(memberId);
+      setLevels({});
+      return;
+    }
     const map: Record<string, PermissionLevel> = {};
     (data ?? []).forEach((row) => { map[row.app_slug] = row.level as PermissionLevel; });
+    setSelected(memberId);
     setLevels(map);
   };
 
@@ -96,7 +113,7 @@ export function FamilyManager() {
         ))}
       </ul>
       {selected && familyId && (
-        <PermissionMatrix memberId={selected} familyId={familyId} initialLevels={levels} />
+        <PermissionMatrix key={selected} memberId={selected} familyId={familyId} initialLevels={levels} />
       )}
     </div>
   );
