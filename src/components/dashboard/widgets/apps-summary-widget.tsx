@@ -69,9 +69,20 @@ function saveOrder(userId: string, keys: string[]) {
     } catch { }
 }
 
+const DASHBOARD_KEY_TO_SLUG: Record<string, string> = {
+    shopping: 'mi-hogar.shopping', tasks: 'mi-hogar.tasks', savings: 'mi-hogar.savings',
+    vehicles: 'mi-hogar.garage', pharmacy: 'mi-hogar.pharmacy', documents: 'mi-hogar.documents',
+    expenses: 'mi-hogar.expenses', warranties: 'mi-hogar.warranties', recipes: 'mi-hogar.recipes',
+    manuals: 'mi-hogar.manuals', passwords: 'mi-hogar.passwords', insurance: 'mi-hogar.insurance',
+    roster: 'mi-hogar.roster', meditation: 'mi-hogar.meditation', workspace: 'mi-hogar.workspace',
+    'mi-viaje': 'mi-viaje',
+};
+
 export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: { selectedDate?: Date; onDateSelect?: (date: Date | undefined) => void; user: User | null }) {
     const { setIsOpen: setAiPanelOpen, isWakeWordEnabled, setIsWakeWordEnabled } = useAi();
     const pathname = usePathname();
+    const [familyPerms, setFamilyPerms] = useState<Set<string>>(new Set());
+    const [isFamilyMember, setIsFamilyMember] = useState(false);
     const [stats, setStats] = useState({
         shoppingCount: 0,
         taskCount: 0,
@@ -137,18 +148,33 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 const { data: profile } = await supabase.from('profiles').select('custom_avatar_url, nickname').eq('id', user.id).single();
                 setUserProfile({ ...user, profile });
 
+                // Check family membership
+                const { data: membership } = await supabase
+                    .from('family_members')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('status', 'active')
+                    .maybeSingle();
+                if (membership) {
+                    setIsFamilyMember(true);
+                    const { data: perms } = await supabase
+                        .from('family_app_permissions')
+                        .select('app_slug')
+                        .eq('member_id', membership.id)
+                        .in('level', ['view', 'full']);
+                    setFamilyPerms(new Set((perms ?? []).map(p => p.app_slug)));
+                }
+
                 // 1. Shopping (Global)
                 const { count: sCount } = await supabase
                     .from('shopping_items')
                     .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
                     .eq('is_checked', false);
 
                 // 2. Tasks (Filtered by Date if provided, else pending)
                 let taskQuery = supabase
                     .from('tasks')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
+                    .select('*', { count: 'exact', head: true });
 
                 if (selectedDate) {
                     const startOfDay = new Date(selectedDate);
@@ -164,8 +190,8 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 const { count: tCount } = await taskQuery;
 
                 // 3. Savings
-                const { data: accounts } = await supabase.from('savings_accounts').select('current_balance').eq('user_id', user.id);
-                const { data: goals } = await supabase.from('savings_goals').select('current_amount, linked_account_id').eq('user_id', user.id);
+                const { data: accounts } = await supabase.from('savings_accounts').select('current_balance');
+                const { data: goals } = await supabase.from('savings_goals').select('current_amount, linked_account_id');
                 const accountsTotal = accounts?.reduce((acc, curr) => acc + (curr.current_balance || 0), 0) || 0;
                 const unlinkedGoalsTotal = goals?.filter(g => !g.linked_account_id).reduce((acc, curr) => acc + (curr.current_amount || 0), 0) || 0;
                 const totalSavings = accountsTotal + unlinkedGoalsTotal;
@@ -176,9 +202,9 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 // 5. New Apps Counts (Try/Catch for safety individually)
                 let vCount = 0, mCount = 0, docCount = 0, expCount = 0, wCount = 0, rCount = 0, manCount = 0, passCount = 0, iCount = 0;
 
-                try { const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('user_id', user.id); vCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('medicines').select('*', { count: 'exact', head: true }).eq('user_id', user.id); mCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('documents').select('*', { count: 'exact', head: true }).eq('user_id', user.id); docCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true }); vCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('medicines').select('*', { count: 'exact', head: true }); mCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('documents').select('*', { count: 'exact', head: true }); docCount = count || 0; } catch (e) { }
                 try {
                     const { data: grupos } = await supabase.from('splitsmart_grupos').select('id');
                     if (grupos && grupos.length > 0) {
@@ -188,11 +214,11 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                     }
                 } catch (e) { }
 
-                try { const { count } = await supabase.from('warranties').select('*', { count: 'exact', head: true }).eq('user_id', user.id); wCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('user_id', user.id); rCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('manuals').select('*', { count: 'exact', head: true }).eq('user_id', user.id); manCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }).eq('user_id', user.id); passCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('knowledge_entities').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('entity_type', 'insurance_policy').eq('status', 'active'); iCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('warranties').select('*', { count: 'exact', head: true }); wCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }); rCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('manuals').select('*', { count: 'exact', head: true }); manCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }); passCount = count || 0; } catch (e) { }
+                try { const { count } = await supabase.from('knowledge_entities').select('*', { count: 'exact', head: true }).eq('entity_type', 'insurance_policy').eq('status', 'active'); iCount = count || 0; } catch (e) { }
                 setStats({
                     shoppingCount: sCount || 0,
                     taskCount: tCount || 0,
@@ -272,13 +298,18 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
         }
         const config = DEFAULT_ITEMS_CONFIG.find(c => c.key === key);
         if (!config) return null;
+        const slug = DASHBOARD_KEY_TO_SLUG[key];
+        const hasFamily = isFamilyMember && slug ? familyPerms.has(slug) : false;
+        const lockedForFamily = isFamilyMember && slug ? !familyPerms.has(slug) : false;
         return {
             ...config,
             value: getItemValue(key),
             count: getItemCount(key),
             icon: ICON_MAP[config.iconKey],
+            hasFamily,
+            lockedForFamily,
         };
-    }).filter(Boolean) as (typeof DEFAULT_ITEMS_CONFIG[0] & { value: string; count: number; icon: any })[];
+    }).filter(Boolean) as (typeof DEFAULT_ITEMS_CONFIG[0] & { value: string; count: number; icon: any; hasFamily: boolean; lockedForFamily: boolean })[];
 
     // Sort: active items first (same logic as before), but respect user drag order
     const sortedItems = [...orderedItems].sort((a, b) => {
@@ -497,10 +528,15 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                 <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[60px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
                                                     ? 'border-primary/70 shadow-sm shadow-primary/10'
                                                     : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
-                                                    } ${item.count === 0 ? 'opacity-50' : ''}`}>
+                                                    } ${item.lockedForFamily ? 'opacity-25 pointer-events-none' : item.count === 0 ? 'opacity-50' : ''}`}>
                                                     <div className="flex justify-between items-start mb-0.5">
-                                                        <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200`}>
+                                                        <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200 relative`}>
                                                             <item.icon className="w-3 h-3" />
+                                                            {item.hasFamily && (
+                                                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#1a5c2e] flex items-center justify-center">
+                                                                    <Users className="w-2 h-2 text-white" />
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
                                                     </div>
