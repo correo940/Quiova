@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, ArrowLeft, ShieldAlert, Sparkles } from 'lucide-react';
+import { Lock, ArrowLeft, ShieldAlert, Sparkles, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import WorkspaceManager from '@/components/apps/mi-hogar/workspace/workspace-manager';
 
 export default function WorkspacePage() {
+  const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.workspace');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -88,6 +91,18 @@ export default function WorkspacePage() {
       setPinError(false);
     }
   };
+
+  if (!permLoading && permLevel === 'none') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <Card className="p-8 max-w-sm">
+          <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+          <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+          <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Workspace.</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (isAdmin === null) {
     // Pantalla de carga estética
