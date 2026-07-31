@@ -1,14 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import RosterCalendar from '@/components/apps/mi-hogar/roster/roster-calendar';
 import AddShiftDialog from '@/components/apps/mi-hogar/roster/add-shift-dialog';
 import ScanRosterDialog from '@/components/apps/mi-hogar/roster/scan-roster-dialog';
 
 export default function RosterPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.roster');
+    const readOnly = permLevel === 'view';
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isScanOpen, setIsScanOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -18,6 +22,18 @@ export default function RosterPage() {
         setIsAddOpen(false);
         setIsScanOpen(false);
     };
+
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Cuadrante.</p>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 pb-nav">
@@ -38,19 +54,24 @@ export default function RosterPage() {
                     onAddClick={() => setIsAddOpen(true)}
                     onScanClick={() => setIsScanOpen(true)}
                     refreshTrigger={refreshKey}
+                    readOnly={readOnly}
                 />
 
-                <AddShiftDialog
-                    open={isAddOpen}
-                    onOpenChange={setIsAddOpen}
-                    onSuccess={handleShiftAdded}
-                />
+                {!readOnly && (
+                    <AddShiftDialog
+                        open={isAddOpen}
+                        onOpenChange={setIsAddOpen}
+                        onSuccess={handleShiftAdded}
+                    />
+                )}
 
-                <ScanRosterDialog
-                    open={isScanOpen}
-                    onOpenChange={setIsScanOpen}
-                    onSuccess={handleShiftAdded}
-                />
+                {!readOnly && (
+                    <ScanRosterDialog
+                        open={isScanOpen}
+                        onOpenChange={setIsScanOpen}
+                        onSuccess={handleShiftAdded}
+                    />
+                )}
             </div>
         </div>
     );

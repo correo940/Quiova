@@ -65,9 +65,10 @@ interface RosterCalendarProps {
     onAddClick: () => void;
     onScanClick: () => void;
     refreshTrigger: number;
+    readOnly?: boolean;
 }
 
-export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger }: RosterCalendarProps) {
+export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger, readOnly }: RosterCalendarProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [shifts, setShifts] = useState<WorkShift[]>([]);
     const [selectedDayShifts, setSelectedDayShifts] = useState<WorkShift[] | null>(null);
@@ -364,21 +365,25 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
 
 
 
-                <div className="h-6 w-px bg-border hidden md:block mx-1" />
+                {!readOnly && (
+                    <>
+                        <div className="h-6 w-px bg-border hidden md:block mx-1" />
 
-                <Button variant="outline" size="sm" onClick={() => setIsBulkImportOpen(true)} className="flex-1 md:flex-none text-xs">
-                    <ClipboardList className="mr-2 h-3.5 w-3.5" />
-                    Insertar Cuadrante
-                </Button>
+                        <Button variant="outline" size="sm" onClick={() => setIsBulkImportOpen(true)} className="flex-1 md:flex-none text-xs">
+                            <ClipboardList className="mr-2 h-3.5 w-3.5" />
+                            Insertar Cuadrante
+                        </Button>
 
-                <Button variant="outline" size="sm" className="flex-1 md:flex-none text-xs" onClick={onScanClick}>
-                    <ScanLine className="mr-2 h-3.5 w-3.5" />
-                    Escanea tu turno
-                </Button>
-                <Button size="sm" className="flex-1 md:flex-none text-xs" onClick={onAddClick}>
-                    <Plus className="mr-2 h-3.5 w-3.5" />
-                    Añadir turno
-                </Button>
+                        <Button variant="outline" size="sm" className="flex-1 md:flex-none text-xs" onClick={onScanClick}>
+                            <ScanLine className="mr-2 h-3.5 w-3.5" />
+                            Escanea tu turno
+                        </Button>
+                        <Button size="sm" className="flex-1 md:flex-none text-xs" onClick={onAddClick}>
+                            <Plus className="mr-2 h-3.5 w-3.5" />
+                            Añadir turno
+                        </Button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -411,16 +416,18 @@ export default function RosterCalendar({ onAddClick, onScanClick, refreshTrigger
                                     </div>
                                 )}
 
-                                <div className="flex justify-end pt-2 border-t">
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleDelete(shift.id)}
-                                        className="h-8"
-                                    >
-                                        Eliminar Turno
-                                    </Button>
-                                </div>
+                                {!readOnly && (
+                                    <div className="flex justify-end pt-2 border-t">
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => handleDelete(shift.id)}
+                                            className="h-8"
+                                        >
+                                            Eliminar Turno
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
