@@ -16,6 +16,7 @@ import VehicleNotificationManager from '@/components/apps/mi-hogar/garage/vehicl
 import PlantNotificationManager from '@/components/apps/huerto/plant-notification-manager';
 import SavingsNotificationManager from '@/components/apps/mi-hogar/savings/savings-notification-manager';
 import PushSubscriptionPrompt from '@/components/notifications/push-subscription-prompt';
+import TripNotificationManager from '@/components/apps/mi-viaje/trip-notification-manager';
 import TextSelectionToolbar from '@/components/journal/text-selection-toolbar';
 import LayoutResizer from './LayoutResizer';
 import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
@@ -44,6 +45,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
                 <PlantNotificationManager />
                 <SavingsNotificationManager />
                 <PushSubscriptionPrompt />
+                <TripNotificationManager />
                 <LayoutResizer>
                   {children}
                 </LayoutResizer>

@@ -2,5 +2,11 @@
     "buildCommand": "next build",
     "framework": "nextjs",
     "installCommand": "npm install",
-    "outputDirectory": ".next"
+    "outputDirectory": ".next",
+    "crons": [
+        {
+            "path": "/api/mi-viaje/cleanup-expired",
+            "schedule": "0 4 * * *"
+        }
+    ]
 }

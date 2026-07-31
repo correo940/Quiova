@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import CalendarWidget from './widgets/calendar-widget';
+import { useRouter } from 'next/navigation';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
-import QuickActionFab from './quick-action-fab';
+import { usePlatform } from '@/hooks/use-platform';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 export default function HomeDashboard() {

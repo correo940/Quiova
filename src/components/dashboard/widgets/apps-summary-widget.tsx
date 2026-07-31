@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff,
-    ChevronUp, ChevronDown, GraduationCap, Sparkles, Users
+    ChevronUp, ChevronDown, GraduationCap, Sparkles, Users, Plane
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ import TopbarCalendar from './topbar-calendar';
 const ICON_MAP: Record<string, any> = {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
-    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot, GraduationCap, Sparkles, Users
+    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot, GraduationCap, Sparkles, Users, Plane
 };
 
 // Default item order (keys used for persistence)
@@ -48,6 +48,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'el-campus', label: 'Campus', iconKey: 'GraduationCap', color: 'bg-blue-600', href: '/apps/el-campus' },
     { key: 'familia', label: 'Familia', iconKey: 'Users', color: 'bg-blue-600', href: '/apps/mi-hogar/familia' },
     { key: 'workspace', label: 'Quioba Studios', iconKey: 'Sparkles', color: 'bg-emerald-600', href: '/apps/mi-hogar/workspace' },
+    { key: 'mi-viaje', label: 'Mi Viaje', iconKey: 'Plane', color: 'bg-blue-600', href: '/apps/mi-viaje' },
 ];
 
 function getStorageKey(userId: string) {
