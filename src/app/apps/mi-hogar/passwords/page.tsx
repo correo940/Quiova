@@ -2,12 +2,29 @@
 
 import PasswordsClient from '@/components/apps/passwords/passwords-client';
 import { PasswordsProvider } from '@/context/PasswordsContext';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Home, ShieldCheck } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, Home, ShieldCheck, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 export default function MiHogarPasswordsPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.passwords');
+    const readOnly = permLevel === 'view';
+
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Contraseñas.</p>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <PasswordsProvider>
             <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden">
@@ -64,7 +81,7 @@ export default function MiHogarPasswordsPage() {
                         </motion.div>
                     </div>
                 </div>
-                <PasswordsClient />
+                <PasswordsClient readOnly={readOnly} />
             </div>
         </PasswordsProvider>
     );

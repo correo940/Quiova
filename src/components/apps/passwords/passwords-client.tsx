@@ -39,7 +39,7 @@ const CATEGORY_CONFIG: Record<string, { icon: React.ElementType, color: string, 
   'Tecnología': { icon: Smartphone, color: 'text-zinc-500', gradient: 'from-zinc-500/20 to-neutral-500/20' },
 };
 
-export default function PasswordsClient() {
+export default function PasswordsClient({ readOnly }: { readOnly?: boolean }) {
   const {
     passwords, loading, isLocked, unlock, lock,
     addPassword, updatePassword, deletePassword,
@@ -608,6 +608,7 @@ export default function PasswordsClient() {
             <span>Escanear QR</span>
           </Button>
 
+          {!readOnly && (
           <Button
             onClick={handleImportClick}
             variant="outline"
@@ -617,6 +618,7 @@ export default function PasswordsClient() {
           >
             <Upload className="h-4 w-4" />
           </Button>
+          )}
 
           <Button
             onClick={handleExportPasswords}
@@ -628,12 +630,14 @@ export default function PasswordsClient() {
             <Download className="h-4 w-4" />
           </Button>
 
+          {!readOnly && (
           <Button
             onClick={handleAddNewClick}
             className="rounded-xl bg-green-800 hover:bg-green-900 text-white shadow-green-800/20 shadow-lg px-5 whitespace-nowrap"
           >
             <Plus className="mr-2 h-5 w-5" /> Nueva Clave
           </Button>
+          )}
         </div>
       </div>
 
@@ -704,8 +708,8 @@ export default function PasswordsClient() {
                     </div>
                     <div className="flex items-center gap-1.5 self-end sm:self-center ml-auto sm:ml-0 bg-slate-100/50 dark:bg-black/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-zinc-800 hover:text-green-800 hover:shadow-sm" onClick={() => handleCopyPassword(p.passwordHash)} title="Copiar contraseña"><Copy className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 hover:shadow-sm" onClick={() => handleEditClick(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 hover:shadow-sm" onClick={() => handleDeleteClick(p.id)} title="Eliminar"><Trash2 className="h-4 w-4" /></Button>
+                      {!readOnly && <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 hover:shadow-sm" onClick={() => handleEditClick(p)} title="Editar"><Edit className="h-4 w-4" /></Button>}
+                      {!readOnly && <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 hover:shadow-sm" onClick={() => handleDeleteClick(p.id)} title="Eliminar"><Trash2 className="h-4 w-4" /></Button>}
                     </div>
                   </li>
                 ))}
