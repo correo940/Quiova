@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -423,6 +424,8 @@ function DocumentAlertSettingsDialog({ open, onOpenChange, settings, onChange }:
 }
 
 export default function DocumentsPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.documents');
+    const readOnly = permLevel === 'view';
     const [documents, setDocuments] = useState<SecureDocument[]>([]);
     const [reminders, setReminders] = useState<DocumentReminder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1094,6 +1097,18 @@ export default function DocumentsPage() {
 
     const selectedMetadataEntries = useMemo(() => Object.entries(selectedDocument?.metadata || {}).filter(([, value]) => value !== null && value !== ''), [selectedDocument]);
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Documentos.</p>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden font-sans">
             {/* Premium Background Decor */}
@@ -1240,6 +1255,7 @@ export default function DocumentsPage() {
 
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
                     <div className="relative flex-1 w-full lg:max-w-md"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar por titulo, categoria, tipo, emisor, etiqueta, nota o metadato..." className="pl-9" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
+                    {!readOnly && (
                     <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                         <Button
                             onClick={() => setIsMobileScanDialogOpen(true)}
@@ -1255,6 +1271,7 @@ export default function DocumentsPage() {
                             <Plus className="w-4 h-4 mr-2" /> NUEVO DOCUMENTO
                         </Button>
                     </div>
+                    )}
                 </div>
 
                 <Card className="p-3 sm:p-5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border-white/40 dark:border-slate-800/60 shadow-xl rounded-[2rem] w-full flex flex-col gap-4">
@@ -1433,9 +1450,11 @@ export default function DocumentsPage() {
                                                     <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} className="h-10 w-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
                                                         <Download className="w-4 h-4" />
                                                     </Button>
+                                                    {!readOnly && (
                                                     <Button variant="ghost" size="icon" onClick={() => { setFormData(createFormFromDocument(doc)); setIsDialogOpen(true); }} className="h-10 w-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
                                                         <ExternalLink className="w-4 h-4" />
                                                     </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -1446,7 +1465,7 @@ export default function DocumentsPage() {
                     </AnimatePresence>
                 </div>
 
-                {filteredDocs.length === 0 && !loading ? <div className="text-center py-16 border-2 border-dashed border-amber-200 dark:border-amber-900 rounded-xl bg-amber-50/50 dark:bg-amber-900/10"><Shield className="w-16 h-16 mx-auto text-amber-300 dark:text-amber-800 mb-4" /><h3 className="text-xl font-medium text-slate-800 dark:text-slate-200">No hay documentos para esta vista</h3><p className="text-muted-foreground mb-6 max-w-sm mx-auto">Prueba otra categoria, ajusta la busqueda o guarda tu primer documento importante.</p><Button onClick={() => { setFormData(DEFAULT_FORM); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700"><Lock className="w-4 h-4 mr-2" /> Guardar Documento</Button></div> : null}
+                {filteredDocs.length === 0 && !loading ? <div className="text-center py-16 border-2 border-dashed border-amber-200 dark:border-amber-900 rounded-xl bg-amber-50/50 dark:bg-amber-900/10"><Shield className="w-16 h-16 mx-auto text-amber-300 dark:text-amber-800 mb-4" /><h3 className="text-xl font-medium text-slate-800 dark:text-slate-200">No hay documentos para esta vista</h3><p className="text-muted-foreground mb-6 max-w-sm mx-auto">Prueba otra categoria, ajusta la busqueda o guarda tu primer documento importante.</p>{!readOnly && <Button onClick={() => { setFormData(DEFAULT_FORM); setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700"><Lock className="w-4 h-4 mr-2" /> Guardar Documento</Button>}</div> : null}
 
                 <DocumentDialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setSelectedUploadFile(null); setAnalysisPreview(null); setAnalysisError(null); setFormData(DEFAULT_FORM); } }} form={formData} setForm={setFormData} onSave={handleSave} onAnalyze={async (file) => { setSelectedUploadFile(file); return handleAnalyzeDocument(file); }} selectedFile={selectedUploadFile} setSelectedFile={setSelectedUploadFile} analysis={analysisPreview} analysisError={analysisError} analyzing={analyzingDocument} uploading={uploading} />
                 <DocumentAlertSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} settings={alertSettings} onChange={(settings) => { setAlertSettings(settings); }} />
@@ -1699,6 +1718,7 @@ export default function DocumentsPage() {
                                 >
                                     <Eye className="w-4 h-4 mr-2" /> ABRIR
                                 </Button>
+                                {!readOnly && (
                                 <Button
                                     className="flex-1 rounded-xl h-11 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-500/20"
                                     onClick={() => {
@@ -1712,6 +1732,8 @@ export default function DocumentsPage() {
                                 >
                                     <ExternalLink className="w-4 h-4 mr-2" /> EDITAR
                                 </Button>
+                                )}
+                                {!readOnly && (
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -1720,6 +1742,7 @@ export default function DocumentsPage() {
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
+                                )}
                             </SheetFooter>
                         </>
                     ) : null}
