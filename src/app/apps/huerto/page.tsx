@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -60,6 +61,8 @@ type PlantHistoryEntry = {
 };
 
 export default function HuertoPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('huerto');
+    const readOnly = permLevel === 'view';
     const { user } = useAuth();
     const [plants, setPlants] = useState<Plant[]>([]);
     const [loading, setLoading] = useState(true);
@@ -497,6 +500,18 @@ export default function HuertoPage() {
         return da - db;
     }).slice(0, 4);
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertCircle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Huerto.</p>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-green-50/30 dark:bg-[#0B120F] pb-24 text-slate-900 dark:text-slate-100 font-sans">
             <div className="container mx-auto p-4 max-w-6xl space-y-6">
@@ -539,8 +554,9 @@ export default function HuertoPage() {
                                 ref={fileInputRef}
                                 onChange={handleFileUpload} 
                             />
-                            <Button 
-                                size="lg" 
+                            {!readOnly && (
+                            <Button
+                                size="lg"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={analyzing}
                                 className="w-full md:w-auto h-16 rounded-2xl bg-white text-green-950 hover:bg-green-50 hover:scale-105 active:scale-95 transition-all text-lg font-bold shadow-xl flex gap-3"
@@ -551,6 +567,7 @@ export default function HuertoPage() {
                                   <><Camera className="w-6 h-6" /> Escanear Planta</>
                                 )}
                             </Button>
+                            )}
                         </div>
                     </div>
                 </motion.div>
@@ -658,12 +675,14 @@ export default function HuertoPage() {
                                                                         <Droplets className="w-3.5 h-3.5" /> {status.text}
                                                                     </div>
                                                                 </div>
+                                                                {!readOnly && (
                                                                 <button
                                                                     onClick={() => handleDeletePlant(plant.id)}
                                                                     className="p-2 bg-black/30 hover:bg-red-500/80 text-white rounded-full backdrop-blur-md transition-colors"
                                                                 >
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </button>
+                                                                )}
                                                             </div>
                                                         </div>
 
