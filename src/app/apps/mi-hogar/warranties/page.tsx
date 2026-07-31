@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Plus, ArrowLeft, Receipt, Calendar, AlertTriangle, CheckCircle, Trash2, Search, ExternalLink } from 'lucide-react';
@@ -32,6 +33,8 @@ const DEFAULT_FORM: WarrantyForm = {
 };
 
 export default function WarrantyPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.warranties');
+    const readOnly = permLevel === 'view';
     const [warranties, setWarranties] = useState<Warranty[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -198,6 +201,18 @@ export default function WarrantyPage() {
         w.store_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Garantías.</p>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 pb-nav">
             <div className="max-w-5xl mx-auto space-y-6">
@@ -228,21 +243,25 @@ export default function WarrantyPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}>
-                        <Plus className="w-4 h-4 mr-2" /> Añadir
-                    </Button>
+                    {!readOnly && (
+                        <Button onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}>
+                            <Plus className="w-4 h-4 mr-2" /> Añadir
+                        </Button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Add Card (Mobile friendly shortcut) */}
-                    <button
-                        onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}
-                        className="md:hidden flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors h-[120px]"
-                    >
-                        <div className="flex items-center gap-2 text-slate-500 font-medium">
-                            <Plus className="w-5 h-5" /> Escanear Nuevo Ticket
-                        </div>
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}
+                            className="md:hidden flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors h-[120px]"
+                        >
+                            <div className="flex items-center gap-2 text-slate-500 font-medium">
+                                <Plus className="w-5 h-5" /> Escanear Nuevo Ticket
+                            </div>
+                        </button>
+                    )}
 
                     {filteredWarranties.map(warranty => {
                         const status = getStatus(warranty.purchase_date, warranty.warranty_months);
@@ -291,28 +310,32 @@ export default function WarrantyPage() {
                                     </div>
 
                                     <div className="flex gap-2 mt-4 pt-4 border-t">
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => {
-                                            setFormData({
-                                                id: warranty.id,
-                                                product_name: warranty.product_name,
-                                                store_name: warranty.store_name,
-                                                purchase_date: warranty.purchase_date,
-                                                warranty_months: warranty.warranty_months,
-                                                price: warranty.price,
-                                                image_url: warranty.image_url
-                                            });
-                                            setIsDialogOpen(true);
-                                        }}>
-                                            Editar
-                                        </Button>
+                                        {!readOnly && (
+                                            <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+                                                setFormData({
+                                                    id: warranty.id,
+                                                    product_name: warranty.product_name,
+                                                    store_name: warranty.store_name,
+                                                    purchase_date: warranty.purchase_date,
+                                                    warranty_months: warranty.warranty_months,
+                                                    price: warranty.price,
+                                                    image_url: warranty.image_url
+                                                });
+                                                setIsDialogOpen(true);
+                                            }}>
+                                                Editar
+                                            </Button>
+                                        )}
                                         {warranty.image_url && (
                                             <Button variant="ghost" size="icon" onClick={() => window.open(warranty.image_url, '_blank')}>
                                                 <ExternalLink className="w-4 h-4" />
                                             </Button>
                                         )}
-                                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(warranty.id)}>
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                        {!readOnly && (
+                                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(warranty.id)}>
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -325,9 +348,11 @@ export default function WarrantyPage() {
                         <Receipt className="w-12 h-12 mx-auto text-slate-300 mb-4" />
                         <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Sin garantías guardadas</h3>
                         <p className="text-muted-foreground mb-4">Escanea tu primer ticket para empezar a proteger tus compras.</p>
-                        <Button onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}>
-                            <Plus className="w-4 h-4 mr-2" /> Escanear Ticket
-                        </Button>
+                        {!readOnly && (
+                            <Button onClick={() => { setFormData(DEFAULT_FORM); setIsDialogOpen(true); }}>
+                                <Plus className="w-4 h-4 mr-2" /> Escanear Ticket
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
