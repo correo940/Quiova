@@ -23,7 +23,7 @@ type Insurance = {
     notes: string;
 };
 
-export default function InsuranceManager() {
+export default function InsuranceManager({ readOnly }: { readOnly?: boolean }) {
     const [policies, setPolicies] = useState<Insurance[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -176,11 +176,13 @@ export default function InsuranceManager() {
                     <h2 className="text-xl font-semibold">Mis Pólizas</h2>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    {!readOnly && (
                     <DialogTrigger asChild>
                         <Button onClick={resetForm}>
                             <Plus className="mr-2 h-4 w-4" /> Añadir Seguro
                         </Button>
                     </DialogTrigger>
+                    )}
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Nuevo Seguro</DialogTitle>
@@ -275,9 +277,11 @@ export default function InsuranceManager() {
                                             </span>
                                         )}
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deletePolicy(policy.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    {!readOnly && (
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deletePolicy(policy.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </CardFooter>
                             </Card>
                         );
