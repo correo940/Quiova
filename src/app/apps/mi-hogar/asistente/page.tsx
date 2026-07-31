@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bot, ArrowLeft } from 'lucide-react';
+import { Bot, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import ChatInterface from '@/components/apps/asistente/chat-interface';
 
 export default function AsistentePage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.asistente');
+    const readOnly = permLevel === 'view';
     const [userId, setUserId] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | undefined>();
     const [loading, setLoading] = useState(true);
@@ -56,6 +60,18 @@ export default function AsistentePage() {
         );
     }
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Asistente.</p>
+                </Card>
+            </div>
+        );
+    }
+
     if (!userId) {
         return (
             <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
@@ -84,7 +100,7 @@ export default function AsistentePage() {
             </div>
 
             <div className="flex-1 overflow-hidden">
-                <ChatInterface userId={userId} userName={userName} />
+                <ChatInterface userId={userId} userName={userName} readOnly={readOnly} />
             </div>
         </div>
     );

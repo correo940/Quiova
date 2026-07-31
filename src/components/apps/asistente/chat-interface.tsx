@@ -33,9 +33,10 @@ interface ChatInterfaceProps {
     userName?: string;
     compact?: boolean;
     initialMessage?: string;
+    readOnly?: boolean;
 }
 
-export default function ChatInterface({ userId, userName, compact = false, initialMessage = '' }: ChatInterfaceProps) {
+export default function ChatInterface({ userId, userName, compact = false, initialMessage = '', readOnly }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState(initialMessage);
     const [isLoading, setIsLoading] = useState(false);
@@ -337,6 +338,10 @@ export default function ChatInterface({ userId, userName, compact = false, initi
             {/* Input */}
             <div className={`border-t bg-card ${compact ? 'p-2' : 'p-4'}`}>
                 <div className="max-w-3xl mx-auto flex gap-2">
+                    {readOnly ? (
+                        <p className="text-sm text-muted-foreground italic px-2">Solo lectura — no puedes enviar mensajes.</p>
+                    ) : (
+                    <>
                     <Input
                         ref={inputRef}
                         value={input}
@@ -357,6 +362,8 @@ export default function ChatInterface({ userId, userName, compact = false, initi
                             <Send className="w-4 h-4" />
                         )}
                     </Button>
+                    </>
+                    )}
                 </div>
             </div>
         </div>
