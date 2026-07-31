@@ -87,6 +87,15 @@ export function FamilyManager() {
     }
   };
 
+  const removeMember = async (memberId: string, memberEmail: string) => {
+    if (!confirm(`¿Eliminar a ${memberEmail} de la familia?`)) return;
+    const { error } = await supabase.from('family_members').delete().eq('id', memberId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${memberEmail} eliminado`);
+    if (selected === memberId) { setSelected(null); setLevels({}); }
+    await loadMembers();
+  };
+
   const selectMember = async (memberId: string) => {
     // Nota: `setSelected` y `setLevels` se disparan juntos, DESPUES del fetch
     // (no antes), para que ambos lleguen en el mismo render. Si `setSelected`
@@ -131,9 +140,15 @@ export function FamilyManager() {
       </div>
       <ul className="space-y-1">
         {members.map((m) => (
-          <li key={m.id}>
+          <li key={m.id} className="flex items-center gap-2">
             <button onClick={() => selectMember(m.id)} className="underline">
               {m.nickname ?? m.invited_email} ({m.status})
+            </button>
+            <button
+              onClick={() => removeMember(m.id, m.nickname ?? m.invited_email)}
+              className="text-xs text-red-500 hover:text-red-700"
+            >
+              Eliminar
             </button>
           </li>
         ))}
