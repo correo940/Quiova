@@ -54,8 +54,11 @@ export function FamilyManager() {
         toast.error(json?.error ?? 'No se pudo enviar la invitación');
         return;
       }
+      toast.success(`Invitación enviada a ${email.trim()}`);
       setEmail('');
       await loadMembers();
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Error de red al invitar');
     } finally {
       setInviting(false);
     }
