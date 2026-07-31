@@ -1,6 +1,7 @@
 // src/components/apps/mi-hogar/familia/family-manager.tsx
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PermissionMatrix } from './permission-matrix';
 import { Input } from '@/components/ui/input';
@@ -10,12 +11,14 @@ import type { PermissionLevel } from '@/lib/family/app-registry';
 type Member = { id: string; invited_email: string; nickname: string | null; status: string };
 
 export function FamilyManager() {
+  const searchParams = useSearchParams();
   const [members, setMembers] = useState<Member[]>([]);
   const [email, setEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [levels, setLevels] = useState<Record<string, PermissionLevel>>({});
+  const [acceptedCode, setAcceptedCode] = useState(false);
 
   const loadMembers = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,6 +41,26 @@ export function FamilyManager() {
       setFamilyId(data?.id ?? null);
     });
   }, []);
+
+  // Aceptar invitación automáticamente si viene ?code= en la URL
+  useEffect(() => {
+    const code = searchParams?.get('code');
+    if (!code || acceptedCode) return;
+    setAcceptedCode(true);
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Inicia sesión para aceptar la invitación'); return; }
+      const res = await fetch('/api/family/accept', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json?.error ?? 'No se pudo aceptar la invitación'); return; }
+      toast.success('¡Te has unido a la familia!');
+      window.history.replaceState({}, '', '/apps/mi-hogar/familia');
+    })();
+  }, [searchParams, acceptedCode]);
 
   const invite = async () => {
     if (!email.trim()) return;
