@@ -98,7 +98,6 @@ export default function PharmacyPage() {
             const { data, error } = await supabase
                 .from('medicines')
                 .select('*')
-                .eq('user_id', user.id)
                 .order('expiration_date', { ascending: true });
             if (error) throw error;
             setMedicines(data || []);
