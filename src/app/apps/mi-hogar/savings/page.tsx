@@ -13,6 +13,7 @@ import SavingsNotificationSettings from '@/components/apps/mi-hogar/savings/savi
 import type { ResetOptions } from '@/components/apps/mi-hogar/savings/reset-data-dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -140,6 +141,8 @@ const classifyExpense = (description: string): string => {
 const MONEY_MASK = '••••••';
 
 export default function SavingsV2Preview() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.savings');
+    const readOnly = permLevel === 'view';
     const [activeTab, setActiveTab] = useState('overview');
     const [activeTimeframe, setActiveTimeframe] = useState('1M');
     const chartsRef = useRef<Record<string, any>>({});
@@ -1067,6 +1070,18 @@ export default function SavingsV2Preview() {
         setActiveTimeframe(tf);
     };
 
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '1.5rem', textAlign: 'center' }}>
+                <div style={{ background: '#fff', border: '1.5px solid rgba(245,196,0,0.3)', borderRadius: '20px', padding: '2rem', maxWidth: '22rem' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', opacity: 0.5 }}>⚠️</div>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.25rem' }}>No tienes acceso a esta app</h2>
+                    <p style={{ fontSize: '0.875rem', color: '#7A6200' }}>Pide al propietario de la familia que te conceda acceso a Ahorros.</p>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', gap: '1rem', fontFamily: 'system-ui, sans-serif' }}>
@@ -1640,6 +1655,7 @@ export default function SavingsV2Preview() {
                 </div>
 
                 {/* QUICK ACTIONS */}
+                {!readOnly && (
                 <div className="qf-actions">
                     <button className="qf-btn primary" onClick={() => toast.info('Añadir movimiento en desarrollo')}>
                         <i className="ti ti-plus" aria-hidden="true"></i> Nuevo Movimiento
@@ -1661,6 +1677,7 @@ export default function SavingsV2Preview() {
                         <i className="ti ti-trash" aria-hidden="true"></i> Resetear
                     </button>
                 </div>
+                )}
 
                 {/* TABS */}
                 <div className="qf-tabs">
