@@ -203,7 +203,7 @@ function SupermarketBadge({ supermarket, subtle = false }: { supermarket?: strin
     );
 }
 
-export default function ShoppingList() {
+export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
     const [items, setItems] = useState<ShoppingItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -742,7 +742,7 @@ export default function ShoppingList() {
     return (
         <div className="max-w-3xl mx-auto space-y-8 pb-10">
             {/* ── SECCIÓN CENTRAL DE COMANDOS FLORANTE ── */}
-            <div className="sticky top-4 z-40">
+            {!readOnly && <div className="sticky top-4 z-40">
                 <div className="relative group">
                     {/* Efecto resplandor */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-green-800 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
@@ -856,7 +856,7 @@ export default function ShoppingList() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>}
 
             {/* ── CABECERA Y BÚSQUEDA ── */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5">
@@ -1315,7 +1315,7 @@ export default function ShoppingList() {
                                                         </div>
                                                     </div>
 
-                                                    {isShopMode ? (
+                                                    {!readOnly && (isShopMode ? (
                                                         <button
                                                             onClick={() => toggleStatus(item.id)}
                                                             className="flex-shrink-0 h-10 px-4 rounded-full bg-green-700 hover:bg-green-800 text-white text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -1330,16 +1330,18 @@ export default function ShoppingList() {
                                                         >
                                                             <div className="w-full h-full rounded-full transition-transform scale-0 group-hover:scale-[0.5] bg-green-800 shadow-[0_0_12px_rgba(22,101,52,0.5)]" />
                                                         </button>
-                                                    )}
+                                                    ))}
 
-                                                    <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
-                                                        <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title="Editar">
-                                                            <Pencil className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button onClick={() => deleteItem(item.id)} className="p-1.5 bg-rose-50/80 dark:bg-rose-950/20 text-rose-400 hover:text-rose-600 rounded-lg transition-colors border border-rose-100/50 dark:border-rose-900/30 shadow-sm" title="Eliminar definitivamente">
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
+                                                    {!readOnly && (
+                                                        <div className="absolute top-3 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                                                            <button onClick={() => openEditDialog(item)} className="p-1.5 bg-slate-50/80 dark:bg-slate-800/80 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-100 dark:border-slate-700 shadow-sm" title="Editar">
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button onClick={() => deleteItem(item.id)} className="p-1.5 bg-rose-50/80 dark:bg-rose-950/20 text-rose-400 hover:text-rose-600 rounded-lg transition-colors border border-rose-100/50 dark:border-rose-900/30 shadow-sm" title="Eliminar definitivamente">
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </motion.div>
                                             ))}
                                         </AnimatePresence>
@@ -1372,9 +1374,11 @@ export default function ShoppingList() {
                                                 {expiration?.status === 'warning' && <Timer className="w-3.5 h-3.5 text-yellow-500 shrink-0" />}
                                                 <span className="truncate">{aiData.emoji} {item.name}</span>
                                             </h4>
-                                            <button onClick={() => deleteItem(item.id)} className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all shrink-0">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
+                                            {!readOnly && (
+                                                <button onClick={() => deleteItem(item.id)} className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all shrink-0">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col gap-2 mt-auto pt-2 relative z-10">
@@ -1384,13 +1388,15 @@ export default function ShoppingList() {
                                                         <SupermarketBadge supermarket={item.supermarket} subtle />
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={() => toggleStatus(item.id)}
-                                                    className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-green-800 hover:border-green-800 transition-all hover:scale-110 active:scale-95"
-                                                    title="Reagregar a la lista"
-                                                >
-                                                    <RefreshCw className="w-4 h-4" />
-                                                </button>
+                                                {!readOnly && (
+                                                    <button
+                                                        onClick={() => toggleStatus(item.id)}
+                                                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-green-800 hover:border-green-800 transition-all hover:scale-110 active:scale-95"
+                                                        title="Reagregar a la lista"
+                                                    >
+                                                        <RefreshCw className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                             {/* Warning caducidad renderizado debajo con estilo */}
                                             {expiration && (

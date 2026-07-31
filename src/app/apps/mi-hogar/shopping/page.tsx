@@ -1,12 +1,29 @@
 'use client';
 
 import ShoppingList from '@/components/apps/mi-hogar/shopping/shopping-list';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Home, ShoppingBag } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, Home, ShoppingBag, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 export default function MiHogarShoppingPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.shopping');
+    const readOnly = permLevel === 'view';
+
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a la Lista de la Compra.</p>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden">
             {/* Background Decor */}
@@ -68,7 +85,7 @@ export default function MiHogarShoppingPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
             >
-                <ShoppingList />
+                <ShoppingList readOnly={readOnly} />
             </motion.div>
         </div>
     );
