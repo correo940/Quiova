@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ChefHat, Sparkles, Clock, BarChart, ShoppingCart, ArrowLeft, RefreshCw, Check } from 'lucide-react';
+import { Loader2, ChefHat, Sparkles, Clock, BarChart, ShoppingCart, ArrowLeft, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import Link from 'next/link';
 import { getApiUrl } from '@/lib/api-utils';
 // import { generateRecipeAction, RecipeData } from '@/app/actions/generate-recipe';
@@ -22,6 +23,8 @@ export interface RecipeData {
 }
 
 export default function RecipesPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.recipes');
+    const readOnly = permLevel === 'view';
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [pantryItems, setPantryItems] = useState<string[]>([]);
@@ -114,6 +117,18 @@ export default function RecipesPage() {
             setAddingToCart(false);
         }
     };
+
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Recetas.</p>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20 p-4">
@@ -209,7 +224,7 @@ export default function RecipesPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                {recipe.ingredients.some(i => !i.has_it) && (
+                                {!readOnly && recipe.ingredients.some(i => !i.has_it) && (
                                     <Button
                                         size="sm"
                                         className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white"
