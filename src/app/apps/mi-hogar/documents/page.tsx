@@ -718,7 +718,6 @@ export default function DocumentsPage() {
         const { data: existingTasks, error: fetchError } = await supabase
             .from('tasks')
             .select('id, title, description, due_date, is_completed, list_id')
-            .eq('user_id', user.id)
             .ilike('description', `${taskMarkerPrefix}%`);
         if (fetchError) {
             console.error('Error fetching document tasks:', fetchError);

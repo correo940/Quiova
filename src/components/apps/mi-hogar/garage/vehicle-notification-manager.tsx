@@ -31,8 +31,7 @@ export default function VehicleNotificationManager() {
 
             const { data: vehicles } = await supabase
                 .from('vehicles')
-                .select('*')
-                .eq('user_id', user.id);
+                .select('*');
 
             if (!vehicles) return;
 

@@ -124,8 +124,7 @@ export default function SavingsNotificationManager() {
         try {
             const { data: accounts } = await supabase
                 .from('savings_accounts')
-                .select('current_balance')
-                .eq('user_id', user?.id);
+                .select('current_balance');
 
             if (accounts) {
                 const totalBalance = accounts.reduce((sum, acc) => sum + (acc.current_balance || 0), 0);

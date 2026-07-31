@@ -41,7 +41,6 @@ export default function RecipesPage() {
         const { data } = await supabase
             .from('shopping_items')
             .select('name')
-            .eq('user_id', user?.id)
             .eq('is_checked', true); // Items in 'Despensa' (in_stock)
 
         if (data) {

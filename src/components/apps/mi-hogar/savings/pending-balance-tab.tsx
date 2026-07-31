@@ -131,8 +131,8 @@ export default function PendingBalanceTab({ userId, accounts, onBalanceChange }:
         setLoading(true);
         try {
             const [{ data: projs }, { data: exps }] = await Promise.all([
-                supabase.from('pending_balance_projects').select('*').eq('user_id', userId).order('created_at'),
-                supabase.from('pending_balance_expenses').select('*').eq('user_id', userId).order('date', { ascending: false })
+                supabase.from('pending_balance_projects').select('*').order('created_at'),
+                supabase.from('pending_balance_expenses').select('*').order('date', { ascending: false })
             ]);
             setProjects(projs || []);
             setExpenses(exps || []);

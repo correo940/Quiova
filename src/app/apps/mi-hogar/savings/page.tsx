@@ -217,7 +217,6 @@ export default function SavingsV2Preview() {
                 supabase
                     .from('savings_recurring_items')
                     .select('*')
-                    .eq('user_id', userId)
                     .eq('type', 'income')
                     .not('target_account_id', 'is', null),
                 QUERY_TIMEOUT_MS,
@@ -277,7 +276,6 @@ export default function SavingsV2Preview() {
             const { data: accs } = await supabase
                 .from('savings_accounts')
                 .select('*')
-                .eq('user_id', userId)
                 .order('name');
             const accountsList = accs || [];
             setAccounts(accountsList);
@@ -307,7 +305,6 @@ export default function SavingsV2Preview() {
             const { data: gls } = await supabase
                 .from('savings_goals')
                 .select('*')
-                .eq('user_id', userId)
                 .order('deadline', { ascending: true });
             setGoals(gls || []);
 
@@ -343,7 +340,6 @@ export default function SavingsV2Preview() {
             const { data: recs } = await supabase
                 .from('savings_recurring_items')
                 .select('*')
-                .eq('user_id', userId)
                 .order('day_of_month', { ascending: true });
             setRecurringItems((recs as RecurringItem[]) || []);
 
@@ -407,7 +403,6 @@ export default function SavingsV2Preview() {
             const { data: pendingExps } = await supabase
                 .from('pending_balance_expenses')
                 .select('*')
-                .eq('user_id', userId)
                 .eq('status', 'pending');
             setPendingExpenses(pendingExps || []);
             const pTotal = (pendingExps || []).reduce((s: number, e: any) => s + (e.amount || 0), 0);

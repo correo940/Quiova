@@ -86,7 +86,6 @@ export default function SplitSmartExpensesPage() {
         const { data: shifts } = await supabase
           .from('work_shifts')
           .select('title, start_time')
-          .eq('user_id', userId)
           .gte('start_time', startOfDay.toISOString())
           .lte('start_time', endOfDay.toISOString());
         shifts?.forEach(s => dailyEvents.push({
@@ -99,8 +98,7 @@ export default function SplitSmartExpensesPage() {
         // 2. Vehicles (ITV, Seguro)
         const { data: vehicles } = await supabase
           .from('vehicles')
-          .select('name, brand, next_itv_date, insurance_expiry_date')
-          .eq('user_id', userId);
+          .select('name, brand, next_itv_date, insurance_expiry_date');
         vehicles?.forEach(v => {
           if (v.next_itv_date?.startsWith(dateStr)) dailyEvents.push({
             label: `ITV: ${v.brand || v.name}`,
@@ -120,7 +118,6 @@ export default function SplitSmartExpensesPage() {
         const { data: insurances } = await supabase
           .from('insurances')
           .select('name, expiration_date')
-          .eq('user_id', userId)
           .eq('expiration_date', dateStr);
         insurances?.forEach(i => dailyEvents.push({
           label: `Vence: ${i.name}`,
@@ -133,7 +130,6 @@ export default function SplitSmartExpensesPage() {
         const { data: docs } = await supabase
           .from('documents')
           .select('name, expiration_date')
-          .eq('user_id', userId)
           .eq('expiration_date', dateStr);
         docs?.forEach(d => dailyEvents.push({
           label: `Caduca: ${d.name}`,
