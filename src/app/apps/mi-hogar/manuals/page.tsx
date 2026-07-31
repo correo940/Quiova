@@ -3,13 +3,29 @@
 import { useState } from 'react';
 import ManualsGallery from '@/components/apps/mi-hogar/manuals/manuals-gallery';
 import { MaintenanceAgendaPanel } from '@/components/apps/mi-hogar/manuals/maintenance-agenda';
+import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Home, BookOpen, CalendarCheck } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ArrowLeft, Home, BookOpen, CalendarCheck, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 export default function MiHogarManualsPage() {
+    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.manuals');
+    const readOnly = permLevel === 'view';
     const [tab, setTab] = useState<'guide' | 'agenda'>('guide');
+
+    if (!permLoading && permLevel === 'none') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 text-center">
+                <Card className="p-8 max-w-sm">
+                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
+                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso a Manuales.</p>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#fafafa] dark:bg-[#020617] p-4 md:p-8 pb-nav relative overflow-hidden">
@@ -103,7 +119,7 @@ export default function MiHogarManualsPage() {
                 transition={{ duration: 0.2 }}
                 className="max-w-6xl mx-auto"
             >
-                {tab === 'guide' ? <ManualsGallery /> : <MaintenanceAgendaPanel />}
+                {tab === 'guide' ? <ManualsGallery readOnly={readOnly} /> : <MaintenanceAgendaPanel readOnly={readOnly} />}
             </motion.div>
         </div>
     );

@@ -23,7 +23,7 @@ interface ReminderWithManual {
     manual_category: string;
 }
 
-export function MaintenanceAgendaPanel() {
+export function MaintenanceAgendaPanel({ readOnly }: { readOnly?: boolean }) {
     const { user } = useAuth();
     const [reminders, setReminders] = useState<ReminderWithManual[]>([]);
     const [loading, setLoading] = useState(true);
@@ -186,6 +186,7 @@ export function MaintenanceAgendaPanel() {
                                         <span className="text-[10px] text-slate-400">· Cada {reminder.interval_months} meses</span>
                                     </div>
                                 </div>
+                                {!readOnly && (
                                 <Button
                                     size="sm"
                                     className="shrink-0 h-8 px-3 bg-green-500 hover:bg-green-800 text-white rounded-xl text-xs font-bold shadow-sm"
@@ -195,6 +196,7 @@ export function MaintenanceAgendaPanel() {
                                     <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                     Hecho
                                 </Button>
+                                )}
                             </div>
                         );
                     })}

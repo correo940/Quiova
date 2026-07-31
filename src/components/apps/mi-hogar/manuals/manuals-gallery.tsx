@@ -75,7 +75,7 @@ const ROOM_ICONS: Record<string, any> = {
     'Home': Home,
 };
 
-export default function ManualsGallery() {
+export default function ManualsGallery({ readOnly }: { readOnly?: boolean }) {
     const [manuals, setManuals] = useState<Manual[]>([]);
     const [rooms, setRooms] = useState<Room[]>([]);
     const [search, setSearch] = useState('');
@@ -899,11 +899,13 @@ export default function ManualsGallery() {
 
                     {/* Add Asset Modal */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        {!readOnly && (
                         <DialogTrigger asChild>
                             <Button onClick={resetForm} className="bg-green-800 hover:bg-green-900 text-white shadow-lg shadow-green-200 hover:shadow-xl hover:shadow-green-300 transition-all">
                                 <Plus className="mr-2 h-4 w-4" /> Añadir a tu Guía
                             </Button>
                         </DialogTrigger>
+                        )}
                         <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 border-none shadow-2xl rounded-3xl">
                             <DialogHeader className="px-6 pt-6 pb-2">
                                 <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900 dark:text-white">
@@ -1201,7 +1203,7 @@ export default function ManualsGallery() {
                                 ? '¡No se encontraron manuales con estos filtros'
                                 : '¡Comienza añadiendo tu primer manual!'}
                         </p>
-                        {!search && !selectedRoom && selectedTypes.length === 0 && (
+                        {!readOnly && !search && !selectedRoom && selectedTypes.length === 0 && (
                             <Button
                                 onClick={() => setIsDialogOpen(true)}
                                 className="bg-gradient-to-r from-green-800 to-green-500 hover:from-green-900 hover:to-green-800 text-white shadow-lg shadow-green-200 hover:shadow-xl transition-all"
@@ -1260,6 +1262,7 @@ export default function ManualsGallery() {
                                                 >
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
+                                                {!readOnly && (
                                                 <Button
                                                     variant="secondary"
                                                     size="icon"
@@ -1268,6 +1271,7 @@ export default function ManualsGallery() {
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
+                                                )}
                                             </div>
 
                                             {/* Badges Overlay Top Left */}
@@ -1429,9 +1433,11 @@ export default function ManualsGallery() {
                                                 >
                                                     <Pencil className="h-4 w-4 text-blue-600" />
                                                 </Button>
+                                                {!readOnly && (
                                                 <Button variant="ghost" size="icon" className="h-4 w-4 text-red-600" onClick={(e) => deleteManual(manual.id, e)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
