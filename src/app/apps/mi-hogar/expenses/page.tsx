@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+import { useAppPermission } from '@/hooks/useAppPermission';
 
 const MapComponent = dynamic(() => import('./MapComponent'), { ssr: false, loading: () => <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '12px' }}>Cargando mapa...</div> });
 
@@ -34,6 +35,8 @@ const QUICK_REPLIES = ['👍 Ok, lo apunto!', '💸 Yo puedo pagar', '⏰ ¿Cuá
 const CAT_ICONS = { comida: '🍽', transporte: '🚕', alojamiento: '🏨', ocio: '🎉', otros: '📌' };
 
 export default function SplitSmartExpensesPage() {
+  const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.expenses');
+  const readOnly = permLevel === 'view';
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeGTab, setActiveGTab] = useState('gastos');
   const [activeRecTab, setActiveRecTab] = useState('lista');
@@ -1064,6 +1067,18 @@ export default function SplitSmartExpensesPage() {
   const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteUrl)}`;
 
   // Navigation Premium link (Return back to Mi Hogar)
+  if (!permLoading && permLevel === 'none') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ padding: '32px', maxWidth: '360px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#fff' }}>
+          <p style={{ fontSize: '40px', marginBottom: '12px' }}>⚠️</p>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>No tienes acceso a esta app</h2>
+          <p style={{ fontSize: '14px', color: '#64748b' }}>Pide al propietario de la familia que te conceda acceso a Gastos.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="splitsmart-wrapper">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
