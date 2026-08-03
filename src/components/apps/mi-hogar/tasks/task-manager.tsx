@@ -35,6 +35,7 @@ import {
     GripVertical,
     LayoutList,
     Lock,
+    LockKeyhole,
     Pencil,
     Plus,
     Repeat,
@@ -91,6 +92,7 @@ type Task = {
     priority: TaskPriority;
     meta: TaskMeta;
     assignee?: { full_name: string; avatar_url: string } | null;
+    isPersonal?: boolean;
 };
 
 type ListMember = {
@@ -322,6 +324,7 @@ export default function TaskManager() {
     const [time, setTime] = useState('');
     const [priority, setPriority] = useState<TaskPriority>(DEFAULT_PRIORITY);
     const [hasAlarm, setHasAlarm] = useState(true);
+    const [isPersonal, setIsPersonal] = useState(false);
     const [assignedTo, setAssignedTo] = useState<string>('unassigned');
     const [category, setCategory] = useState<Category>(null);
     const [recurrence, setRecurrence] = useState<Recurrence>('none');
@@ -464,6 +467,7 @@ export default function TaskManager() {
                 date: format(dueDate, 'yyyy-MM-dd'),
                 time: format(dueDate, 'HH:mm'),
                 hasAlarm: item.has_alarm,
+                isPersonal: item.is_personal,
                 completed: item.is_completed,
                 assignedTo: item.assigned_to,
                 priority: (item.priority as TaskPriority) || DEFAULT_PRIORITY,
@@ -477,7 +481,7 @@ export default function TaskManager() {
 
     const resetForm = () => {
         setEditingTask(null);
-        setTitle(''); setNotes(''); setSubtasks([]); setDate(''); setTime(''); setHasAlarm(true);
+        setTitle(''); setNotes(''); setSubtasks([]); setDate(''); setTime(''); setHasAlarm(true); setIsPersonal(false);
         setAssignedTo('unassigned'); setPriority(DEFAULT_PRIORITY); setCategory(null); setRecurrence('none');
         setFormTags([]); setTagInput('');
     };
@@ -513,6 +517,7 @@ export default function TaskManager() {
             description,
             due_date: dueDate.toISOString(),
             has_alarm: hasAlarm,
+            is_personal: isPersonal,
             assigned_to: assignedTo === 'unassigned' ? null : assignedTo,
             priority,
         };
@@ -545,6 +550,7 @@ export default function TaskManager() {
         setDate(task.date);
         setTime(task.time);
         setHasAlarm(task.hasAlarm);
+        setIsPersonal(task.isPersonal || false);
         setAssignedTo(task.assignedTo || 'unassigned');
         setPriority(task.priority || DEFAULT_PRIORITY);
         setCategory(parsed.meta.cat || null);
@@ -1201,6 +1207,17 @@ export default function TaskManager() {
                             </Button>
                         </div>
 
+                        <div className="flex items-center justify-between rounded-xl border p-2.5">
+                            <div>
+                                <p className="text-xs font-medium">Personal</p>
+                                <p className="text-[10px] text-muted-foreground">Solo visible para ti</p>
+                            </div>
+                            <Button type="button" size="sm" variant={isPersonal ? 'default' : 'outline'} onClick={() => setIsPersonal((c) => !c)}>
+                                {isPersonal ? <LockKeyhole className="mr-1.5 h-3 w-3" /> : <Users className="mr-1.5 h-3 w-3" />}
+                                {isPersonal ? 'Privada' : 'Compartida'}
+                            </Button>
+                        </div>
+
                         <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-2">
                             <Button onClick={() => void handleSaveTask()} disabled={!canEditCurrentList || !title || !date || !time} className="flex-1">
                                 <Lock className="mr-1.5 h-3.5 w-3.5" />
@@ -1336,6 +1353,7 @@ function TaskItem({
                             <Clock className="h-2.5 w-2.5" />
                             {rel.text}
                         </span>
+                        {task.isPersonal && <LockKeyhole className="h-2.5 w-2.5 text-violet-500" />}
                         {task.hasAlarm && <Bell className="h-2.5 w-2.5 text-amber-500" />}
                         {task.assignee && (
                             <span className="inline-flex items-center gap-1">
