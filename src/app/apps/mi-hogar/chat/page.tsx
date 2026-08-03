@@ -259,6 +259,7 @@ export default function FamilyChatPage() {
                     const profile = msg.profile || profiles[msg.user_id];
                     const showSeparator = shouldShowDateSeparator(msg.created_at, messages[i - 1]?.created_at);
                     const showAvatar = !isMine && (i === 0 || messages[i - 1]?.user_id !== msg.user_id || showSeparator);
+                    const showMyName = isMine && (i === 0 || messages[i - 1]?.user_id !== msg.user_id || showSeparator);
 
                     return (
                         <React.Fragment key={msg.id}>
@@ -283,6 +284,9 @@ export default function FamilyChatPage() {
                                     </div>
                                 )}
                                 <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
+                                    {showMyName && (
+                                        <p className="text-[10px] text-muted-foreground mr-1 mb-0.5 text-right">Yo</p>
+                                    )}
                                     {showAvatar && !isMine && profile && (
                                         <p className="text-[10px] text-muted-foreground ml-1 mb-0.5">{profile.full_name}</p>
                                     )}
