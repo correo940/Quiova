@@ -440,11 +440,27 @@ export default function TaskManager() {
 
     const fetchMembers = async () => {
         if (!currentList) return;
-        const { data, error } = await supabase
+        const { data: listData } = await supabase
             .from('task_list_members')
             .select(`user_id, role, profile:profiles!user_id(full_name, avatar_url)`)
             .eq('list_id', currentList.id);
-        if (!error) setMembers((data as any) || []);
+        const listMembers: ListMember[] = (listData as any) || [];
+        const seenIds = new Set(listMembers.map(m => m.user_id));
+
+        const { data: famData } = await supabase
+            .from('family_members')
+            .select(`user_id, profile:profiles!user_id(full_name, avatar_url)`)
+            .eq('status', 'active')
+            .not('user_id', 'is', null);
+        if (famData) {
+            for (const fm of famData as any[]) {
+                if (fm.user_id && !seenIds.has(fm.user_id)) {
+                    listMembers.push({ user_id: fm.user_id, role: 'family', profile: fm.profile });
+                    seenIds.add(fm.user_id);
+                }
+            }
+        }
+        setMembers(listMembers);
     };
 
     const fetchTasks = async () => {
