@@ -6,7 +6,8 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Pencil, Send, X, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -46,6 +47,9 @@ export default function FamilyChatPage() {
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [familyId, setFamilyId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
+    const [myName, setMyName] = useState('');
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -97,6 +101,22 @@ export default function FamilyChatPage() {
             setFamilyId(data);
             fetchProfiles(data);
         }
+        if (user) {
+            const { data: p } = await supabase.from('profiles').select('full_name, email').eq('id', user.id).single();
+            if (p) setMyName(p.full_name || p.email?.split('@')[0] || '');
+        }
+    };
+
+    const saveName = async () => {
+        const name = nameInput.trim();
+        if (!name || !user) return;
+        const { error } = await supabase.from('profiles').update({ full_name: name }).eq('id', user.id);
+        if (error) { toast.error('Error al guardar nombre'); return; }
+        setMyName(name);
+        setProfiles(prev => ({ ...prev, [user.id]: { ...prev[user.id], full_name: name } }));
+        setMessages(prev => prev.map(m => m.user_id === user.id ? { ...m, profile: { ...m.profile, full_name: name, avatar_url: m.profile?.avatar_url || '' } } : m));
+        setEditingName(false);
+        toast.success('Nombre actualizado');
     };
 
     const fetchProfiles = async (fId: string) => {
@@ -202,15 +222,27 @@ export default function FamilyChatPage() {
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                 </Link>
-                <div className="flex items-center gap-2">
-                    <div className="h-9 w-9 rounded-full bg-[#1a5c2e] flex items-center justify-center">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="h-9 w-9 rounded-full bg-[#1a5c2e] flex items-center justify-center flex-shrink-0">
                         <MessageCircle className="h-4 w-4 text-white" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-sm font-semibold leading-tight">Chat familiar</p>
                         <p className="text-[10px] text-muted-foreground">{Object.keys(profiles).length} miembros</p>
                     </div>
                 </div>
+                {!editingName ? (
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-muted-foreground" onClick={() => { setNameInput(myName); setEditingName(true); }}>
+                        <Pencil className="h-3 w-3" />
+                        {myName || 'Tu nombre'}
+                    </Button>
+                ) : (
+                    <div className="flex items-center gap-1">
+                        <Input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveName()} className="h-7 text-xs w-28" placeholder="Tu nombre" autoFocus />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveName}><Check className="h-3 w-3" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingName(false)}><X className="h-3 w-3" /></Button>
+                    </div>
+                )}
             </div>
 
             {/* Messages */}
