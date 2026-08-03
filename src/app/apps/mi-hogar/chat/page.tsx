@@ -72,10 +72,10 @@ export default function FamilyChatPage() {
                 if (!profile) {
                     const { data: p } = await supabase
                         .from('profiles')
-                        .select('full_name, avatar_url')
+                        .select('full_name, avatar_url, email')
                         .eq('id', msg.user_id)
                         .single();
-                    if (p) profile = p;
+                    if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
                 }
                 setMessages(prev => {
                     if (prev.some(m => m.id === msg.id)) return prev;
@@ -145,11 +145,14 @@ export default function FamilyChatPage() {
         const userIds = [...new Set(data.map((m: any) => m.user_id))];
         const { data: profs } = await supabase
             .from('profiles')
-            .select('id, full_name, avatar_url')
+            .select('id, full_name, avatar_url, email')
             .in('id', userIds);
 
         const profMap: Record<string, Profile> = {};
-        if (profs) profs.forEach((p: any) => { profMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url }; });
+        if (profs) profs.forEach((p: any) => {
+            const name = p.full_name || p.email?.split('@')[0] || 'Usuario';
+            profMap[p.id] = { full_name: name, avatar_url: p.avatar_url };
+        });
 
         setMessages(data.map((m: any) => ({ ...m, profile: profMap[m.user_id] || null })));
     };
