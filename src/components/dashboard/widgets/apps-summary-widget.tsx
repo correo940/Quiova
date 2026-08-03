@@ -46,6 +46,7 @@ const DEFAULT_ITEMS_CONFIG = [
     { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-blue-600', href: '/apps/mi-hogar/roster' },
     { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-blue-600', href: '/apps/resumen-diario' },
     { key: 'el-campus', label: 'Campus', iconKey: 'GraduationCap', color: 'bg-blue-600', href: '/apps/el-campus' },
+    { key: 'chat', label: 'Chat familiar', iconKey: 'MessageCircle', color: 'bg-green-800', href: '/apps/mi-hogar/chat' },
     { key: 'familia', label: 'Familia', iconKey: 'Users', color: 'bg-blue-600', href: '/apps/mi-hogar/familia' },
     { key: 'workspace', label: 'Quioba Studios', iconKey: 'Sparkles', color: 'bg-emerald-600', href: '/apps/mi-hogar/workspace' },
     { key: 'mi-viaje', label: 'Mi Viaje', iconKey: 'Plane', color: 'bg-blue-600', href: '/apps/mi-viaje' },
@@ -74,7 +75,7 @@ const DASHBOARD_KEY_TO_SLUG: Record<string, string> = {
     vehicles: 'mi-hogar.garage', pharmacy: 'mi-hogar.pharmacy', documents: 'mi-hogar.documents',
     expenses: 'mi-hogar.expenses', warranties: 'mi-hogar.warranties', recipes: 'mi-hogar.recipes',
     manuals: 'mi-hogar.manuals', passwords: 'mi-hogar.passwords', insurance: 'mi-hogar.insurance',
-    roster: 'mi-hogar.roster', meditation: 'mi-hogar.meditation', workspace: 'mi-hogar.workspace',
+    roster: 'mi-hogar.roster', meditation: 'mi-hogar.meditation', workspace: 'mi-hogar.workspace', chat: 'mi-hogar.chat',
     'mi-viaje': 'mi-viaje',
 };
 

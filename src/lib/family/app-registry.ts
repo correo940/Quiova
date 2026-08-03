@@ -15,6 +15,7 @@ export const FAMILY_APP_REGISTRY = [
   { category: 'Mi Hogar', slug: 'mi-hogar.passwords', label: 'Contraseñas' },
   { category: 'Mi Hogar', slug: 'mi-hogar.manuals', label: 'Manuales' },
   { category: 'Mi Hogar', slug: 'mi-hogar.recipes', label: 'Recetas' },
+  { category: 'Mi Hogar', slug: 'mi-hogar.chat', label: 'Chat familiar' },
   { category: 'Mi Hogar', slug: 'mi-hogar.asistente', label: 'Asistente' },
   { category: 'Mi Hogar', slug: 'mi-hogar.expenses', label: 'Gastos' },
   { category: 'Mi Hogar', slug: 'mi-hogar.workspace', label: 'Workspace' },
