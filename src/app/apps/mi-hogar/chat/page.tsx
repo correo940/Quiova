@@ -135,14 +135,23 @@ export default function FamilyChatPage() {
         if (!familyId) return;
         const { data } = await supabase
             .from('family_messages')
-            .select('*, profile:profiles!user_id(full_name, avatar_url)')
+            .select('*')
             .eq('family_id', familyId)
             .order('created_at', { ascending: true })
             .limit(200);
 
-        if (data) {
-            setMessages(data as any);
-        }
+        if (!data || data.length === 0) { setMessages([]); return; }
+
+        const userIds = [...new Set(data.map((m: any) => m.user_id))];
+        const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', userIds);
+
+        const profMap: Record<string, Profile> = {};
+        if (profs) profs.forEach((p: any) => { profMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url }; });
+
+        setMessages(data.map((m: any) => ({ ...m, profile: profMap[m.user_id] || null })));
     };
 
     const handleSend = async () => {
