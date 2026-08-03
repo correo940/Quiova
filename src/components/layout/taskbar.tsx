@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Newspaper, LayoutGrid } from 'lucide-react';
+import { Home, User, Newspaper, LayoutGrid, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
+import { supabase } from '@/lib/supabase';
 
 export default function Taskbar() {
     const pathname = usePathname();
@@ -16,6 +17,9 @@ export default function Taskbar() {
     const [isMobile, setIsMobile] = useState(false);
     const { toggleStartMenu, isStartMenuOpen, isLauncherMode, setIsLauncherMode } = useGlobalMenu();
 
+    const [unreadChat, setUnreadChat] = useState(0);
+    const [userId, setUserId] = useState<string | null>(null);
+
     // Prevent hydration mismatch - only check window after mount
     useEffect(() => {
         setMounted(true);
@@ -23,8 +27,69 @@ export default function Taskbar() {
 
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
+
+        supabase.auth.getSession().then(({ data }) => {
+            if (data?.session?.user) setUserId(data.session.user.id);
+        });
+
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (!userId) return;
+
+        const fetchFamilyAndSubscribe = async () => {
+            const { data: famId } = await supabase.rpc('resolve_current_family_id');
+            if (!famId) return;
+
+            const lastSeenKey = `quioba_chat_last_seen_${userId}`;
+            const lastSeen = localStorage.getItem(lastSeenKey) || new Date(0).toISOString();
+
+            const { count } = await supabase
+                .from('family_messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('family_id', famId)
+                .neq('user_id', userId)
+                .gt('created_at', lastSeen);
+            if (count) setUnreadChat(count);
+
+            const channel = supabase
+                .channel('taskbar_chat_' + famId)
+                .on('postgres_changes', {
+                    event: 'INSERT', schema: 'public', table: 'family_messages',
+                    filter: `family_id=eq.${famId}`,
+                }, (payload) => {
+                    const msg = payload.new as any;
+                    if (msg.user_id === userId) return;
+                    if (pathname?.startsWith('/apps/mi-hogar/chat')) return;
+                    setUnreadChat(prev => prev + 1);
+                    try {
+                        const ctx = new AudioContext();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.setValueAtTime(880, ctx.currentTime);
+                        osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.08);
+                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                        osc.start(ctx.currentTime);
+                        osc.stop(ctx.currentTime + 0.25);
+                    } catch {}
+                })
+                .subscribe();
+
+            return () => { supabase.removeChannel(channel); };
+        };
+
+        fetchFamilyAndSubscribe();
+    }, [userId, pathname]);
+
+    useEffect(() => {
+        if (!userId || !pathname?.startsWith('/apps/mi-hogar/chat')) return;
+        setUnreadChat(0);
+        localStorage.setItem(`quioba_chat_last_seen_${userId}`, new Date().toISOString());
+    }, [pathname, userId]);
 
     // if (isLauncherMode) return null;
 
@@ -59,6 +124,13 @@ export default function Taskbar() {
                     icon: 'text-white drop-shadow-sm',
                     border: 'border-blue-300/50',
                     glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-blue-400/20 after:rounded-3xl after:blur-md after:-z-10'
+                };
+            case 'chat':
+                return {
+                    bg: 'bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] shadow-lg shadow-green-700/30',
+                    icon: 'text-white drop-shadow-sm',
+                    border: 'border-green-400/50',
+                    glow: 'after:content-[""] after:absolute after:-inset-1 after:bg-green-500/20 after:rounded-3xl after:blur-md after:-z-10'
                 };
             case 'profile':
                 return {
@@ -147,6 +219,27 @@ export default function Taskbar() {
                 );
             },
             href: '/home-v1',
+        },
+        {
+            id: 'chat',
+            label: 'Chat',
+            icon: (active: boolean) => {
+                const styles = getIconStyles('chat', active);
+                return (
+                    <div className={cn(
+                        "relative w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 border shadow-sm",
+                        styles.bg, styles.border, styles.glow
+                    )}>
+                        <MessageCircle className={cn("w-6 h-6", styles.icon)} strokeWidth={active ? 2.5 : 2} />
+                        {unreadChat > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-lg animate-bounce">
+                                {unreadChat > 99 ? '99+' : unreadChat}
+                            </span>
+                        )}
+                    </div>
+                );
+            },
+            href: '/apps/mi-hogar/chat',
         },
         {
             id: 'articles',
