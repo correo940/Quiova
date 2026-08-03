@@ -3,12 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
-import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { AlertTriangle, ArrowLeft, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Send } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -43,8 +41,6 @@ function dateSeparatorLabel(dateStr: string) {
 }
 
 export default function FamilyChatPage() {
-    const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.chat');
-    const readOnly = permLevel === 'view';
     const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -70,14 +66,20 @@ export default function FamilyChatPage() {
                 schema: 'public',
                 table: 'family_messages',
                 filter: `family_id=eq.${familyId}`,
-            }, (payload) => {
+            }, async (payload) => {
                 const msg = payload.new as any;
+                let profile = profiles[msg.user_id] || null;
+                if (!profile) {
+                    const { data: p } = await supabase
+                        .from('profiles')
+                        .select('full_name, avatar_url')
+                        .eq('id', msg.user_id)
+                        .single();
+                    if (p) profile = p;
+                }
                 setMessages(prev => {
                     if (prev.some(m => m.id === msg.id)) return prev;
-                    return [...prev, {
-                        ...msg,
-                        profile: profiles[msg.user_id] || null,
-                    }];
+                    return [...prev, { ...msg, profile }];
                 });
             })
             .subscribe();
@@ -133,16 +135,13 @@ export default function FamilyChatPage() {
         if (!familyId) return;
         const { data } = await supabase
             .from('family_messages')
-            .select('*')
+            .select('*, profile:profiles!user_id(full_name, avatar_url)')
             .eq('family_id', familyId)
             .order('created_at', { ascending: true })
             .limit(200);
 
         if (data) {
-            setMessages(data.map((m: any) => ({
-                ...m,
-                profile: profiles[m.user_id] || null,
-            })));
+            setMessages(data as any);
         }
     };
 
@@ -173,14 +172,11 @@ export default function FamilyChatPage() {
         inputRef.current?.focus();
     };
 
-    if (!permLoading && permLevel === 'none') {
+    if (!user || !familyId) {
+        if (!user) return null;
         return (
             <div className="min-h-screen flex items-center justify-center p-6 text-center">
-                <Card className="p-8 max-w-sm">
-                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-                    <h2 className="text-lg font-bold mb-1">No tienes acceso a esta app</h2>
-                    <p className="text-sm text-muted-foreground">Pide al propietario de la familia que te conceda acceso al Chat familiar.</p>
-                </Card>
+                <p className="text-sm text-muted-foreground">Cargando chat...</p>
             </div>
         );
     }
@@ -265,8 +261,7 @@ export default function FamilyChatPage() {
             </div>
 
             {/* Input */}
-            {!readOnly && (
-                <div className="border-t p-2 bg-background sticky bottom-0">
+            <div className="border-t p-2 bg-background sticky bottom-0">
                     <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
                         <Input
                             ref={inputRef}
@@ -286,7 +281,6 @@ export default function FamilyChatPage() {
                         </Button>
                     </form>
                 </div>
-            )}
         </div>
     );
 }
