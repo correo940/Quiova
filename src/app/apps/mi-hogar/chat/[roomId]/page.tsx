@@ -7,7 +7,7 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck, Reply, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck, Reply, X, Mic, Square, Play, Pause } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
     id: string; user_id: string; content: string; created_at: string;
-    reply_to?: string | null;
+    reply_to?: string | null; media_url?: string | null;
     reply_message?: { content: string; user_id: string; profile_name?: string } | null;
     profile?: { full_name: string; avatar_url: string } | null;
     reactions?: Reaction[];
@@ -25,6 +25,7 @@ type Profile = { full_name: string; avatar_url: string };
 type RoomInfo = { id: string; name: string; is_group: boolean; family_id: string };
 
 const QUICK_EMOJIS = ['❤️', '😂', '👍', '😮', '😢', '🙏'];
+const MAX_RECORD_SECONDS = 120;
 
 function formatMsgDate(dateStr: string) {
     const d = new Date(dateStr);
@@ -41,6 +42,11 @@ function dateSeparatorLabel(dateStr: string) {
     if (isToday(d)) return 'Hoy';
     if (isYesterday(d)) return 'Ayer';
     return format(d, "EEEE d 'de' MMMM", { locale: es });
+}
+function formatDuration(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
 function BubbleTail({ side }: { side: 'left' | 'right' }) {
@@ -91,6 +97,51 @@ function ReactionBar({ reactions, onReact, userId }: { reactions: Reaction[]; on
     );
 }
 
+function AudioPlayer({ url, isMine }: { url: string; isMine: boolean }) {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [playing, setPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const onLoaded = () => setDuration(audio.duration || 0);
+        const onTime = () => setCurrentTime(audio.currentTime);
+        const onEnded = () => { setPlaying(false); setCurrentTime(0); };
+        audio.addEventListener('loadedmetadata', onLoaded);
+        audio.addEventListener('timeupdate', onTime);
+        audio.addEventListener('ended', onEnded);
+        return () => { audio.removeEventListener('loadedmetadata', onLoaded); audio.removeEventListener('timeupdate', onTime); audio.removeEventListener('ended', onEnded); };
+    }, []);
+
+    const toggle = () => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (playing) { audio.pause(); } else { audio.play(); }
+        setPlaying(!playing);
+    };
+
+    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+    return (
+        <div className="flex items-center gap-2 min-w-[180px]">
+            <audio ref={audioRef} src={url} preload="metadata" />
+            <button onClick={toggle} className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${isMine ? 'bg-white/20 hover:bg-white/30' : 'bg-[#1a5c2e]/10 hover:bg-[#1a5c2e]/20'}`}>
+                {playing ? <Pause className={`h-3.5 w-3.5 ${isMine ? 'text-white' : 'text-[#1a5c2e]'}`} /> : <Play className={`h-3.5 w-3.5 ${isMine ? 'text-white' : 'text-[#1a5c2e]'}`} />}
+            </button>
+            <div className="flex-1 min-w-0">
+                <div className={`h-1 rounded-full overflow-hidden ${isMine ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-600'}`}>
+                    <div className={`h-full rounded-full transition-all duration-100 ${isMine ? 'bg-white/70' : 'bg-[#1a5c2e]'}`} style={{ width: `${progress}%` }} />
+                </div>
+                <p className={`text-[9px] mt-0.5 ${isMine ? 'text-white/50' : 'text-muted-foreground'}`}>
+                    {playing || currentTime > 0 ? formatDuration(currentTime) : (duration > 0 ? formatDuration(duration) : '0:00')}
+                </p>
+            </div>
+        </div>
+    );
+}
+
 const chatBgPattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a5c2e' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatRoomPage() {
@@ -109,6 +160,11 @@ export default function ChatRoomPage() {
     const [pickerMsgId, setPickerMsgId] = useState<string | null>(null);
     const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+    const [recording, setRecording] = useState(false);
+    const [recordTime, setRecordTime] = useState(0);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -273,6 +329,80 @@ export default function ChatRoomPage() {
         setSending(false); inputRef.current?.focus();
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+            audioChunksRef.current = [];
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+            mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
+            mediaRecorder.start();
+            mediaRecorderRef.current = mediaRecorder;
+            setRecording(true);
+            setRecordTime(0);
+            recordTimerRef.current = setInterval(() => {
+                setRecordTime(prev => {
+                    if (prev >= MAX_RECORD_SECONDS - 1) { stopAndSendRecording(); return prev; }
+                    return prev + 1;
+                });
+            }, 1000);
+        } catch {
+            // microphone not available
+        }
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.onstop = () => {
+                mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorderRef.current.stop();
+        }
+        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+        audioChunksRef.current = [];
+        setRecording(false);
+        setRecordTime(0);
+    };
+
+    const stopAndSendRecording = async () => {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+
+        const recorder = mediaRecorderRef.current;
+        const sendAudio = async () => {
+            const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            if (blob.size < 1000) { setRecording(false); setRecordTime(0); return; }
+            setRecording(false); setRecordTime(0);
+            await uploadAndSendAudio(blob);
+        };
+
+        recorder.onstop = () => {
+            recorder.stream?.getTracks().forEach(t => t.stop());
+            sendAudio();
+        };
+        recorder.stop();
+    };
+
+    const uploadAndSendAudio = async (blob: Blob) => {
+        if (!user || !room) return;
+        setSending(true);
+        const fileName = `${room.id}/${user.id}_${Date.now()}.webm`;
+        const { error: uploadError } = await supabase.storage.from('chat-audio').upload(fileName, blob, { contentType: 'audio/webm' });
+        if (uploadError) { setSending(false); return; }
+        const { data: urlData } = supabase.storage.from('chat-audio').getPublicUrl(fileName);
+        const publicUrl = urlData?.publicUrl;
+        if (!publicUrl) { setSending(false); return; }
+
+        const optimistic: Message = {
+            id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(),
+            media_url: publicUrl, profile: profiles[user.id] || null, reactions: [],
+        };
+        setMessages(prev => [...prev, optimistic]);
+        const { error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: publicUrl });
+        if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        setSending(false);
+    };
+
     const handleLongPressStart = (msgId: string) => { setLongPressTimer(setTimeout(() => setPickerMsgId(msgId), 400)); };
     const handleLongPressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
 
@@ -312,6 +442,7 @@ export default function ChatRoomPage() {
     }
 
     const otherAvatar = getRoomAvatar();
+    const isAudioMessage = (msg: Message) => !!msg.media_url;
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto relative" onClick={() => pickerMsgId && setPickerMsgId(null)}>
@@ -362,6 +493,7 @@ export default function ChatRoomPage() {
                     const showMyName = isMine && (i === 0 || messages[i - 1]?.user_id !== msg.user_id || showSep);
                     const showTail = showAvatar || showMyName;
                     const read = isMessageRead(msg);
+                    const hasAudio = isAudioMessage(msg);
                     return (
                         <React.Fragment key={msg.id}>
                             {showSep && <div className="flex justify-center my-4"><span className="text-[10px] bg-white dark:bg-slate-800 px-4 py-1 rounded-lg text-muted-foreground capitalize shadow-sm border">{dateSeparatorLabel(msg.created_at)}</span></div>}
@@ -376,11 +508,7 @@ export default function ChatRoomPage() {
                                             {showTail && <BubbleTail side={isMine ? 'right' : 'left'} />}
                                             {msg.reply_message && (
                                                 <div
-                                                    className={`mb-1.5 px-2.5 py-1.5 rounded-lg border-l-[3px] cursor-pointer ${
-                                                        isMine
-                                                            ? 'bg-white/10 border-l-white/50'
-                                                            : 'bg-slate-100 dark:bg-slate-700/50 border-l-[#1a5c2e]'
-                                                    }`}
+                                                    className={`mb-1.5 px-2.5 py-1.5 rounded-lg border-l-[3px] cursor-pointer ${isMine ? 'bg-white/10 border-l-white/50' : 'bg-slate-100 dark:bg-slate-700/50 border-l-[#1a5c2e]'}`}
                                                     onClick={(e) => {
                                                         e.preventDefault(); e.stopPropagation();
                                                         if (msg.reply_to) {
@@ -397,7 +525,11 @@ export default function ChatRoomPage() {
                                                     </p>
                                                 </div>
                                             )}
-                                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                            {hasAudio ? (
+                                                <AudioPlayer url={msg.media_url!} isMine={isMine} />
+                                            ) : (
+                                                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                            )}
                                             <p className={`text-[9px] mt-0.5 text-right flex items-center justify-end gap-0.5 ${isMine ? 'text-white/50' : 'text-muted-foreground'}`}>
                                                 {formatMsgDate(msg.created_at)}
                                                 {isMine && (read ? <CheckCheck className="h-3.5 w-3.5 text-blue-400 inline-block ml-1" /> : <CheckCheck className="h-3.5 w-3.5 text-white/40 inline-block ml-1" />)}
@@ -422,21 +554,17 @@ export default function ChatRoomPage() {
                 )}
             </AnimatePresence>
 
+            {/* Input area */}
             <div className="border-t bg-background/95 backdrop-blur sticky bottom-0">
                 <AnimatePresence>
                     {replyingTo && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                             <div className="flex items-center gap-2 px-3 pt-2 pb-1">
                                 <div className="flex-1 pl-3 border-l-[3px] border-l-[#1a5c2e] min-w-0">
                                     <p className="text-[11px] font-semibold text-[#1a5c2e]">
                                         {replyingTo.user_id === user?.id ? 'Yo' : (replyingTo.profile?.full_name || profiles[replyingTo.user_id]?.full_name || 'Usuario')}
                                     </p>
-                                    <p className="text-[12px] text-muted-foreground truncate">{replyingTo.content}</p>
+                                    <p className="text-[12px] text-muted-foreground truncate">{replyingTo.content || 'Nota de voz'}</p>
                                 </div>
                                 <button onClick={() => setReplyingTo(null)} className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0">
                                     <X className="h-3.5 w-3.5 text-muted-foreground" />
@@ -446,10 +574,73 @@ export default function ChatRoomPage() {
                     )}
                 </AnimatePresence>
                 <div className="p-2">
-                    <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2 items-end">
-                        <Input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} placeholder="Escribe un mensaje..." className="flex-1 rounded-full h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#1a5c2e]" autoComplete="off" />
-                        <Button type="submit" size="icon" disabled={!input.trim() || sending} className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90"><Send className="h-4 w-4" /></Button>
-                    </form>
+                    <AnimatePresence mode="wait">
+                        {recording ? (
+                            <motion.div
+                                key="recording"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="flex items-center gap-3 h-10"
+                            >
+                                <button
+                                    onClick={cancelRecording}
+                                    className="h-10 w-10 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 transition-colors flex-shrink-0"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                                <div className="flex-1 flex items-center gap-2">
+                                    <motion.div
+                                        animate={{ opacity: [1, 0.3, 1] }}
+                                        transition={{ duration: 1.5, repeat: Infinity }}
+                                        className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"
+                                    />
+                                    <span className="text-sm font-medium text-red-500 tabular-nums">{formatDuration(recordTime)}</span>
+                                    <div className="flex-1 flex items-center gap-0.5">
+                                        {Array.from({ length: 20 }).map((_, i) => (
+                                            <motion.div
+                                                key={i}
+                                                animate={{ height: [3, Math.random() * 16 + 4, 3] }}
+                                                transition={{ duration: 0.4 + Math.random() * 0.3, repeat: Infinity, delay: i * 0.05 }}
+                                                className="w-1 bg-red-400/60 rounded-full"
+                                                style={{ height: 3 }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">{formatDuration(MAX_RECORD_SECONDS - recordTime)}</span>
+                                </div>
+                                <button
+                                    onClick={stopAndSendRecording}
+                                    className="h-10 w-10 rounded-full flex items-center justify-center bg-[#1a5c2e] text-white shadow-md hover:bg-[#1e7a3a] transition-colors active:scale-90 flex-shrink-0"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </button>
+                            </motion.div>
+                        ) : (
+                            <motion.form
+                                key="input"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                                className="flex gap-2 items-end"
+                            >
+                                <Input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} placeholder="Escribe un mensaje..." className="flex-1 rounded-full h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#1a5c2e]" autoComplete="off" />
+                                {input.trim() ? (
+                                    <Button type="submit" size="icon" disabled={sending} className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90"><Send className="h-4 w-4" /></Button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={startRecording}
+                                        disabled={sending}
+                                        className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90 flex items-center justify-center text-white disabled:opacity-50"
+                                    >
+                                        <Mic className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </motion.form>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
         </div>
