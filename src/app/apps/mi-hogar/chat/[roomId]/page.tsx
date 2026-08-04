@@ -7,7 +7,7 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck } from 'lucide-react';
+import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck, Reply, X } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
     id: string; user_id: string; content: string; created_at: string;
+    reply_to?: string | null;
+    reply_message?: { content: string; user_id: string; profile_name?: string } | null;
     profile?: { full_name: string; avatar_url: string } | null;
     reactions?: Reaction[];
 };
@@ -63,9 +65,13 @@ function TypingIndicator({ name }: { name: string }) {
     );
 }
 
-function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onClose: () => void }) {
+function EmojiPicker({ onSelect, onClose, onReply }: { onSelect: (e: string) => void; onClose: () => void; onReply: () => void }) {
     return (
-        <motion.div initial={{ opacity: 0, scale: 0.8, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-full shadow-xl border px-2 py-1 flex gap-0.5 z-30">
+        <motion.div initial={{ opacity: 0, scale: 0.8, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-full shadow-xl border px-1.5 py-1 flex gap-0.5 items-center z-30">
+            <button onClick={() => { onReply(); onClose(); }} className="p-1 hover:bg-muted rounded-full transition-colors" title="Responder">
+                <Reply className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <div className="w-px h-5 bg-border mx-0.5" />
             {QUICK_EMOJIS.map(emoji => <button key={emoji} onClick={() => { onSelect(emoji); onClose(); }} className="text-lg hover:scale-125 transition-transform p-0.5 active:scale-90">{emoji}</button>)}
         </motion.div>
     );
@@ -102,6 +108,7 @@ export default function ChatRoomPage() {
     const [readTimes, setReadTimes] = useState<Record<string, string>>({});
     const [pickerMsgId, setPickerMsgId] = useState<string | null>(null);
     const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +130,12 @@ export default function ChatRoomPage() {
                     const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email').eq('id', msg.user_id).single();
                     if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
                 }
-                setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profile, reactions: [] }]);
+                let reply_message = null;
+                if (msg.reply_to) {
+                    const replied = messages.find(m => m.id === msg.reply_to);
+                    if (replied) reply_message = { content: replied.content, user_id: replied.user_id, profile_name: replied.profile?.full_name || profiles[replied.user_id]?.full_name };
+                }
+                setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profile, reactions: [], reply_message }]);
                 if (msg.user_id !== user.id) { setTypingUser(null); markAsRead(); }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => fetchReactions())
@@ -211,7 +223,18 @@ export default function ChatRoomPage() {
         const { data: reactionData } = await supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds);
         const reactionMap: Record<string, Reaction[]> = {};
         if (reactionData) reactionData.forEach((r: any) => { if (!reactionMap[r.message_id]) reactionMap[r.message_id] = []; reactionMap[r.message_id].push({ emoji: r.emoji, user_id: r.user_id, user_name: profMap[r.user_id]?.full_name }); });
-        setMessages(data.map((m: any) => ({ ...m, profile: profMap[m.user_id] || null, reactions: reactionMap[m.id] || [] })));
+
+        const msgMap: Record<string, any> = {};
+        data.forEach((m: any) => { msgMap[m.id] = m; });
+
+        setMessages(data.map((m: any) => {
+            let reply_message = null;
+            if (m.reply_to && msgMap[m.reply_to]) {
+                const replied = msgMap[m.reply_to];
+                reply_message = { content: replied.content, user_id: replied.user_id, profile_name: profMap[replied.user_id]?.full_name };
+            }
+            return { ...m, profile: profMap[m.user_id] || null, reactions: reactionMap[m.id] || [], reply_message };
+        }));
     };
 
     const fetchReactions = async () => {
@@ -235,9 +258,17 @@ export default function ChatRoomPage() {
         const text = input.trim();
         if (!text || !user || !room || sending) return;
         setSending(true); setInput('');
-        const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: text, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+        const replyId = replyingTo?.id?.startsWith('tmp_') ? null : replyingTo?.id || null;
+        const optimistic: Message = {
+            id: 'tmp_' + Date.now(), user_id: user.id, content: text, created_at: new Date().toISOString(),
+            profile: profiles[user.id] || null, reactions: [], reply_to: replyId,
+            reply_message: replyingTo ? { content: replyingTo.content, user_id: replyingTo.user_id, profile_name: replyingTo.profile?.full_name || profiles[replyingTo.user_id]?.full_name } : null,
+        };
         setMessages(prev => [...prev, optimistic]);
-        const { error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: text });
+        setReplyingTo(null);
+        const payload: any = { family_id: room.family_id, room_id: room.id, user_id: user.id, content: text };
+        if (replyId) payload.reply_to = replyId;
+        const { error } = await supabase.from('family_messages').insert(payload);
         if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
         setSending(false); inputRef.current?.focus();
     };
@@ -334,15 +365,38 @@ export default function ChatRoomPage() {
                     return (
                         <React.Fragment key={msg.id}>
                             {showSep && <div className="flex justify-center my-4"><span className="text-[10px] bg-white dark:bg-slate-800 px-4 py-1 rounded-lg text-muted-foreground capitalize shadow-sm border">{dateSeparatorLabel(msg.created_at)}</span></div>}
-                            <motion.div initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }} className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                            <motion.div id={'msg-' + msg.id} initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }} className={`flex gap-2 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'}`}>
                                 {!isMine && <div className="w-7 flex-shrink-0 self-end">{showAvatar && profile && <Avatar className="h-7 w-7 ring-2 ring-background"><AvatarImage src={profile.avatar_url} /><AvatarFallback className="text-[10px] bg-[#1a5c2e] text-white">{profile.full_name?.slice(0, 1)?.toUpperCase() || '?'}</AvatarFallback></Avatar>}</div>}
                                 <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
                                     {showMyName && <p className="text-[10px] font-medium text-[#1a5c2e] mr-2 mb-0.5 text-right">Yo</p>}
                                     {showAvatar && !isMine && profile && <p className="text-[10px] font-medium text-[#1a5c2e] ml-1 mb-0.5">{profile.full_name}</p>}
                                     <div className="relative" onTouchStart={() => handleLongPressStart(msg.id)} onTouchEnd={handleLongPressEnd} onMouseDown={() => handleLongPressStart(msg.id)} onMouseUp={handleLongPressEnd} onMouseLeave={handleLongPressEnd} onContextMenu={(e) => { e.preventDefault(); setPickerMsgId(msg.id); }}>
-                                        <AnimatePresence>{pickerMsgId === msg.id && <EmojiPicker onSelect={(emoji) => toggleReaction(msg.id, emoji)} onClose={() => setPickerMsgId(null)} />}</AnimatePresence>
+                                        <AnimatePresence>{pickerMsgId === msg.id && <EmojiPicker onSelect={(emoji) => toggleReaction(msg.id, emoji)} onClose={() => setPickerMsgId(null)} onReply={() => { setReplyingTo(msg); inputRef.current?.focus(); }} />}</AnimatePresence>
                                         <div className={`relative rounded-2xl px-3 py-1.5 text-sm break-words shadow-sm select-none ${isMine ? 'bg-[#1a5c2e] text-white rounded-tr-md' : 'bg-white dark:bg-slate-800 rounded-tl-md border border-border/50'}`}>
                                             {showTail && <BubbleTail side={isMine ? 'right' : 'left'} />}
+                                            {msg.reply_message && (
+                                                <div
+                                                    className={`mb-1.5 px-2.5 py-1.5 rounded-lg border-l-[3px] cursor-pointer ${
+                                                        isMine
+                                                            ? 'bg-white/10 border-l-white/50'
+                                                            : 'bg-slate-100 dark:bg-slate-700/50 border-l-[#1a5c2e]'
+                                                    }`}
+                                                    onClick={(e) => {
+                                                        e.preventDefault(); e.stopPropagation();
+                                                        if (msg.reply_to) {
+                                                            const el = document.getElementById('msg-' + msg.reply_to);
+                                                            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-2', 'ring-[#1a5c2e]/40', 'rounded-2xl'); setTimeout(() => el.classList.remove('ring-2', 'ring-[#1a5c2e]/40', 'rounded-2xl'), 2000); }
+                                                        }
+                                                    }}
+                                                >
+                                                    <p className={`text-[10px] font-semibold ${isMine ? 'text-white/80' : 'text-[#1a5c2e]'}`}>
+                                                        {msg.reply_message.user_id === user?.id ? 'Yo' : (msg.reply_message.profile_name || 'Usuario')}
+                                                    </p>
+                                                    <p className={`text-[11px] truncate ${isMine ? 'text-white/60' : 'text-muted-foreground'}`}>
+                                                        {msg.reply_message.content.length > 60 ? msg.reply_message.content.slice(0, 60) + '…' : msg.reply_message.content}
+                                                    </p>
+                                                </div>
+                                            )}
                                             <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                             <p className={`text-[9px] mt-0.5 text-right flex items-center justify-end gap-0.5 ${isMine ? 'text-white/50' : 'text-muted-foreground'}`}>
                                                 {formatMsgDate(msg.created_at)}
@@ -368,11 +422,35 @@ export default function ChatRoomPage() {
                 )}
             </AnimatePresence>
 
-            <div className="border-t p-2 bg-background/95 backdrop-blur sticky bottom-0">
-                <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2 items-end">
-                    <Input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} placeholder="Escribe un mensaje..." className="flex-1 rounded-full h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#1a5c2e]" autoComplete="off" />
-                    <Button type="submit" size="icon" disabled={!input.trim() || sending} className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90"><Send className="h-4 w-4" /></Button>
-                </form>
+            <div className="border-t bg-background/95 backdrop-blur sticky bottom-0">
+                <AnimatePresence>
+                    {replyingTo && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                                <div className="flex-1 pl-3 border-l-[3px] border-l-[#1a5c2e] min-w-0">
+                                    <p className="text-[11px] font-semibold text-[#1a5c2e]">
+                                        {replyingTo.user_id === user?.id ? 'Yo' : (replyingTo.profile?.full_name || profiles[replyingTo.user_id]?.full_name || 'Usuario')}
+                                    </p>
+                                    <p className="text-[12px] text-muted-foreground truncate">{replyingTo.content}</p>
+                                </div>
+                                <button onClick={() => setReplyingTo(null)} className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0">
+                                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                <div className="p-2">
+                    <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2 items-end">
+                        <Input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} placeholder="Escribe un mensaje..." className="flex-1 rounded-full h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#1a5c2e]" autoComplete="off" />
+                        <Button type="submit" size="icon" disabled={!input.trim() || sending} className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90"><Send className="h-4 w-4" /></Button>
+                    </form>
+                </div>
             </div>
         </div>
     );
