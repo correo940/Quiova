@@ -7,7 +7,7 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck, Reply, X, Mic, Square, Play, Pause } from 'lucide-react';
+import { ArrowLeft, ChevronDown, MessageCircle, Send, CheckCheck, Reply, X, Mic, Square, Play, Pause, ImageIcon, Camera } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -162,6 +162,9 @@ export default function ChatRoomPage() {
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [recording, setRecording] = useState(false);
     const [recordTime, setRecordTime] = useState(0);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -403,6 +406,33 @@ export default function ChatRoomPage() {
         setSending(false);
     };
 
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user || !room) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/')) return;
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) return;
+
+        setUploadingImage(true);
+        const ext = file.name.split('.').pop() || 'jpg';
+        const fileName = `${room.id}/${user.id}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('chat-images').upload(fileName, file, { contentType: file.type });
+        if (uploadError) { setUploadingImage(false); return; }
+        const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+        const publicUrl = urlData?.publicUrl;
+        if (!publicUrl) { setUploadingImage(false); return; }
+
+        const optimistic: Message = {
+            id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(),
+            media_url: publicUrl, profile: profiles[user.id] || null, reactions: [],
+        };
+        setMessages(prev => [...prev, optimistic]);
+        const { error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: publicUrl });
+        if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        setUploadingImage(false);
+    };
+
     const handleLongPressStart = (msgId: string) => { setLongPressTimer(setTimeout(() => setPickerMsgId(msgId), 400)); };
     const handleLongPressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
 
@@ -442,7 +472,8 @@ export default function ChatRoomPage() {
     }
 
     const otherAvatar = getRoomAvatar();
-    const isAudioMessage = (msg: Message) => !!msg.media_url;
+    const isAudioMessage = (msg: Message) => !!msg.media_url && msg.media_url.endsWith('.webm');
+    const isImageMessage = (msg: Message) => !!msg.media_url && !msg.media_url.endsWith('.webm');
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto relative" onClick={() => pickerMsgId && setPickerMsgId(null)}>
@@ -494,6 +525,7 @@ export default function ChatRoomPage() {
                     const showTail = showAvatar || showMyName;
                     const read = isMessageRead(msg);
                     const hasAudio = isAudioMessage(msg);
+                    const hasImage = isImageMessage(msg);
                     return (
                         <React.Fragment key={msg.id}>
                             {showSep && <div className="flex justify-center my-4"><span className="text-[10px] bg-white dark:bg-slate-800 px-4 py-1 rounded-lg text-muted-foreground capitalize shadow-sm border">{dateSeparatorLabel(msg.created_at)}</span></div>}
@@ -527,6 +559,11 @@ export default function ChatRoomPage() {
                                             )}
                                             {hasAudio ? (
                                                 <AudioPlayer url={msg.media_url!} isMine={isMine} />
+                                            ) : isImageMessage(msg) ? (
+                                                <div className="cursor-pointer -mx-1.5 -mt-0.5 mb-0.5" onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.media_url!); }}>
+                                                    <img src={msg.media_url!} alt="" className="rounded-lg max-w-[240px] max-h-[280px] object-cover" loading="lazy" />
+                                                    {msg.content && <p className="whitespace-pre-wrap leading-relaxed mt-1">{msg.content}</p>}
+                                                </div>
                                             ) : (
                                                 <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                             )}
@@ -625,6 +662,10 @@ export default function ChatRoomPage() {
                                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                 className="flex gap-2 items-end"
                             >
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending || uploadingImage} className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-50">
+                                    <ImageIcon className="h-5 w-5" />
+                                </button>
                                 <Input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} placeholder="Escribe un mensaje..." className="flex-1 rounded-full h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#1a5c2e]" autoComplete="off" />
                                 {input.trim() ? (
                                     <Button type="submit" size="icon" disabled={sending} className="rounded-full h-10 w-10 bg-[#1a5c2e] hover:bg-[#1e7a3a] shadow-md transition-transform active:scale-90"><Send className="h-4 w-4" /></Button>
@@ -643,6 +684,32 @@ export default function ChatRoomPage() {
                     </AnimatePresence>
                 </div>
             </div>
+
+            {/* Image preview modal */}
+            <AnimatePresence>
+                {previewImage && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                        onClick={() => setPreviewImage(null)}
+                    >
+                        <button className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10">
+                            <X className="h-5 w-5" />
+                        </button>
+                        <motion.img
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.8 }}
+                            src={previewImage}
+                            alt=""
+                            className="max-w-full max-h-full object-contain rounded-lg"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
