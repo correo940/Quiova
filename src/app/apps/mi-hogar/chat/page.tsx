@@ -6,8 +6,8 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, MessageCircle, Plus, Search, Users, X, Check } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, UserPlus, Hash } from 'lucide-react';
+import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,59 @@ type Room = {
     unread: number;
 };
 
+const MEMBER_COLORS = [
+    'bg-amber-600', 'bg-rose-600', 'bg-sky-600', 'bg-violet-600',
+    'bg-teal-600', 'bg-orange-600', 'bg-pink-600', 'bg-indigo-600',
+];
+
+function formatTime(dateStr: string) {
+    const d = new Date(dateStr);
+    if (isToday(d)) return format(d, 'HH:mm');
+    if (isYesterday(d)) return 'Ayer';
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+    if (diffDays < 7) return format(d, 'EEEE', { locale: es });
+    return format(d, 'dd/MM/yy');
+}
+
+function GroupAvatarStack({ members, userId }: { members: Profile[]; userId: string }) {
+    const others = members.filter(m => m.id !== userId).slice(0, 3);
+    if (others.length === 0) return (
+        <div className="h-[52px] w-[52px] rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center">
+            <Users className="h-5 w-5 text-white" />
+        </div>
+    );
+    if (others.length === 1) return (
+        <Avatar className="h-[52px] w-[52px] rounded-2xl">
+            <AvatarImage src={others[0].avatar_url} className="rounded-2xl" />
+            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-medium">
+                {others[0].full_name?.slice(0, 1)?.toUpperCase()}
+            </AvatarFallback>
+        </Avatar>
+    );
+    return (
+        <div className="relative h-[52px] w-[52px] flex-shrink-0">
+            <Avatar className="h-8 w-8 absolute top-0 left-0 ring-2 ring-background z-10">
+                <AvatarImage src={others[0]?.avatar_url} />
+                <AvatarFallback className={`${MEMBER_COLORS[0]} text-white text-[10px] font-bold`}>
+                    {others[0]?.full_name?.slice(0, 1)?.toUpperCase()}
+                </AvatarFallback>
+            </Avatar>
+            <Avatar className="h-8 w-8 absolute bottom-0 right-0 ring-2 ring-background">
+                <AvatarImage src={others[1]?.avatar_url} />
+                <AvatarFallback className={`${MEMBER_COLORS[1]} text-white text-[10px] font-bold`}>
+                    {others[1]?.full_name?.slice(0, 1)?.toUpperCase()}
+                </AvatarFallback>
+            </Avatar>
+            {others.length > 2 && (
+                <div className="absolute bottom-0 left-0 h-4 w-4 rounded-full bg-slate-500 text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-background z-20">
+                    +{members.length - 2}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ChatListPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -33,6 +86,7 @@ export default function ChatListPage() {
     const [groupName, setGroupName] = useState('');
     const [creating, setCreating] = useState(false);
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+    const [step, setStep] = useState<'members' | 'name'>('members');
 
     useEffect(() => { if (user) init(); }, [user]);
 
@@ -112,26 +166,39 @@ export default function ChatListPage() {
         return other?.full_name || room.name || 'Chat';
     };
 
-    const getRoomAvatar = (room: Room) => {
-        if (room.is_group) return null;
-        return room.members.find(m => m.id !== user?.id) || null;
+    const getMembersPreview = (room: Room) => {
+        if (!room.is_group) return '';
+        const names = room.members.filter(m => m.id !== user?.id).map(m => m.full_name?.split(' ')[0] || '?');
+        if (names.length === 0) return 'Tú';
+        return 'Tú, ' + names.join(', ');
     };
 
     const getLastMessagePreview = (room: Room) => {
-        if (!room.last_message) return 'Sin mensajes';
+        if (!room.last_message) return 'Aún sin mensajes';
         const isMine = room.last_message.user_id === user?.id;
-        const prefix = isMine ? 'Yo: ' : '';
+        const senderName = isMine ? '' : (profiles[room.last_message.user_id]?.full_name?.split(' ')[0] + ': ' || '');
         const text = room.last_message.content;
-        return prefix + (text.length > 40 ? text.slice(0, 40) + '...' : text);
-    };
-
-    const getTimeLabel = (room: Room) => {
-        if (!room.last_message) return '';
-        return formatDistanceToNow(new Date(room.last_message.created_at), { addSuffix: false, locale: es });
+        const truncated = text.length > 35 ? text.slice(0, 35) + '…' : text;
+        return { isMine, text: senderName + truncated };
     };
 
     const toggleMember = (id: string) => {
         setSelectedMembers(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+
+    const handleNext = () => {
+        if (selectedMembers.length > 1) {
+            setStep('name');
+        } else {
+            createRoom();
+        }
+    };
+
+    const resetModal = () => {
+        setShowCreate(false);
+        setSelectedMembers([]);
+        setGroupName('');
+        setStep('members');
     };
 
     const createRoom = async () => {
@@ -149,19 +216,19 @@ export default function ChatListPage() {
             });
             if (existingDM) {
                 router.push(`/apps/mi-hogar/chat/${existingDM.id}`);
-                setCreating(false); setShowCreate(false);
+                setCreating(false); resetModal();
                 return;
             }
         }
 
-        const name = isGroup ? (groupName.trim() || allMembers.map(id => profiles[id]?.full_name || 'Usuario').join(', ')) : '';
+        const name = isGroup ? (groupName.trim() || allMembers.map(id => profiles[id]?.full_name?.split(' ')[0] || 'Usuario').join(', ')) : '';
         const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ family_id: familyId, name, is_group: isGroup, created_by: user.id }).select('id').single();
         if (error || !newRoom) { setCreating(false); return; }
 
         const memberRows = allMembers.map(uid => ({ room_id: newRoom.id, user_id: uid }));
         await supabase.from('chat_room_members').insert(memberRows);
 
-        setCreating(false); setShowCreate(false); setSelectedMembers([]); setGroupName('');
+        setCreating(false); resetModal();
         router.push(`/apps/mi-hogar/chat/${newRoom.id}`);
     };
 
@@ -169,66 +236,118 @@ export default function ChatListPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-[#1a5c2e] border-t-transparent rounded-full" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center">
+                            <MessageCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                            className="absolute -inset-1.5 border-2 border-transparent border-t-[#1a5c2e] rounded-[18px]"
+                        />
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto">
+        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-background">
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-lg">
-                <Link href="/apps/mi-hogar">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/10"><ArrowLeft className="h-4 w-4" /></Button>
-                </Link>
-                <div className="flex-1">
-                    <h1 className="text-base font-bold">Chats</h1>
-                    <p className="text-[10px] text-white/70">{rooms.length} conversacion{rooms.length !== 1 ? 'es' : ''}</p>
+            <div className="px-4 pt-4 pb-3 bg-background sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                    <Link href="/apps/mi-hogar">
+                        <button className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        </button>
+                    </Link>
+                    <div className="flex-1">
+                        <h1 className="text-xl font-bold tracking-tight text-foreground">Mensajes</h1>
+                    </div>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="h-9 w-9 rounded-xl bg-[#1a5c2e] flex items-center justify-center hover:bg-[#1e7a3a] transition-colors active:scale-95 shadow-sm"
+                    >
+                        <Plus className="h-4 w-4 text-white" strokeWidth={2.5} />
+                    </button>
                 </div>
             </div>
 
             {/* Room List */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-2">
                 {rooms.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6">
-                        <div className="bg-muted/50 rounded-full p-6 mb-4"><MessageCircle className="h-14 w-14 opacity-30" /></div>
-                        <p className="text-sm font-medium">Sin chats aún</p>
-                        <p className="text-xs mt-1 text-center">Pulsa + para iniciar una conversación</p>
+                    <div className="flex flex-col items-center justify-center h-[60vh] text-center px-8">
+                        <div className="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-5">
+                            <MessageCircle className="h-9 w-9 text-slate-300 dark:text-slate-600" />
+                        </div>
+                        <p className="text-base font-semibold text-foreground mb-1">No hay conversaciones</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            Toca <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#1a5c2e] text-white text-[10px] align-middle mx-0.5"><Plus className="w-3 h-3" /></span> para empezar a chatear con tu familia
+                        </p>
                     </div>
                 )}
+
                 {rooms.map((room, i) => {
-                    const avatar = getRoomAvatar(room);
+                    const preview = getLastMessagePreview(room);
+                    const previewObj = typeof preview === 'string' ? { isMine: false, text: preview } : preview;
+                    const hasUnread = room.unread > 0;
+
                     return (
-                        <motion.div key={room.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                            <Link href={`/apps/mi-hogar/chat/${room.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 active:bg-muted border-b border-border/30 transition-colors">
-                                <div className="relative">
-                                    {avatar ? (
-                                        <Avatar className="h-12 w-12 ring-2 ring-border/30">
-                                            <AvatarImage src={avatar.avatar_url} />
-                                            <AvatarFallback className="bg-[#1a5c2e] text-white text-sm">{avatar.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                        <motion.div
+                            key={room.id}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04, duration: 0.25 }}
+                        >
+                            <Link
+                                href={`/apps/mi-hogar/chat/${room.id}`}
+                                className="flex items-center gap-3.5 px-3 py-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group"
+                            >
+                                {/* Avatar */}
+                                {room.is_group ? (
+                                    <GroupAvatarStack members={room.members} userId={user.id} />
+                                ) : (
+                                    <div className="relative flex-shrink-0">
+                                        <Avatar className="h-[52px] w-[52px] rounded-2xl">
+                                            <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} className="rounded-2xl" />
+                                            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-medium">
+                                                {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
+                                            </AvatarFallback>
                                         </Avatar>
-                                    ) : (
-                                        <div className="h-12 w-12 rounded-full bg-[#1a5c2e]/10 flex items-center justify-center ring-2 ring-border/30">
-                                            <Users className="h-5 w-5 text-[#1a5c2e]" />
-                                        </div>
-                                    )}
-                                    {room.unread > 0 && (
-                                        <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[10px] font-bold px-1 shadow-md">
-                                            {room.unread > 99 ? '99+' : room.unread}
-                                        </span>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+
+                                {/* Content */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-baseline justify-between">
-                                        <p className={`text-sm truncate ${room.unread > 0 ? 'font-bold' : 'font-medium'}`}>{getRoomDisplayName(room)}</p>
-                                        <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">{getTimeLabel(room)}</span>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <p className={`text-[15px] truncate ${hasUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground'}`}>
+                                            {getRoomDisplayName(room)}
+                                        </p>
+                                        <span className={`text-[11px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e] font-semibold' : 'text-muted-foreground'}`}>
+                                            {room.last_message ? formatTime(room.last_message.created_at) : ''}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <p className={`text-xs truncate ${room.unread > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{getLastMessagePreview(room)}</p>
+
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                                            {previewObj.isMine && (
+                                                <CheckCheck className="h-3.5 w-3.5 text-[#1a5c2e] flex-shrink-0" />
+                                            )}
+                                            <p className={`text-[13px] truncate ${hasUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                {previewObj.isMine ? room.last_message?.content?.slice(0, 35) + (room.last_message?.content && room.last_message.content.length > 35 ? '…' : '') : previewObj.text}
+                                            </p>
+                                        </div>
+                                        {hasUnread && (
+                                            <span className="min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
+                                                {room.unread > 99 ? '99+' : room.unread}
+                                            </span>
+                                        )}
                                     </div>
+
                                     {room.is_group && (
-                                        <p className="text-[10px] text-muted-foreground mt-0.5">{room.members.length} miembros</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{getMembersPreview(room)}</p>
                                     )}
                                 </div>
                             </Link>
@@ -237,56 +356,208 @@ export default function ChatListPage() {
                 })}
             </div>
 
-            {/* FAB New Chat */}
-            <motion.button
-                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                onClick={() => setShowCreate(true)}
-                className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-[#1a5c2e] text-white shadow-xl flex items-center justify-center z-20 hover:bg-[#1e7a3a] transition-colors"
-            >
-                <Plus className="h-6 w-6" />
-            </motion.button>
-
             {/* Create Chat Modal */}
             <AnimatePresence>
                 {showCreate && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={() => { setShowCreate(false); setSelectedMembers([]); setGroupName(''); }}>
-                        <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="bg-background w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between px-4 py-3 border-b bg-[#1a5c2e] text-white rounded-t-2xl">
-                                <h2 className="text-sm font-bold">Nuevo chat</h2>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => { setShowCreate(false); setSelectedMembers([]); setGroupName(''); }}><X className="h-4 w-4" /></Button>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
+                        onClick={resetModal}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-background w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Handle bar */}
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                             </div>
 
-                            <div className="p-4 space-y-3 overflow-y-auto max-h-[60vh]">
-                                <p className="text-xs text-muted-foreground font-medium">Selecciona participantes</p>
-                                {familyMembers.filter(m => m.id !== user?.id).map(member => (
-                                    <button key={member.id} onClick={() => toggleMember(member.id)} className={`flex items-center gap-3 w-full p-2.5 rounded-xl transition-colors ${selectedMembers.includes(member.id) ? 'bg-[#1a5c2e]/10 ring-1 ring-[#1a5c2e]/30' : 'hover:bg-muted'}`}>
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarImage src={member.avatar_url} />
-                                            <AvatarFallback className="bg-[#1a5c2e] text-white text-xs">{member.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 text-left">
-                                            <p className="text-sm font-medium">{member.full_name}</p>
-                                            {member.email && <p className="text-[10px] text-muted-foreground">{member.email}</p>}
-                                        </div>
-                                        {selectedMembers.includes(member.id) && (
-                                            <div className="w-6 h-6 rounded-full bg-[#1a5c2e] flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" /></div>
-                                        )}
-                                    </button>
-                                ))}
-
-                                {selectedMembers.length > 1 && (
-                                    <div className="pt-2">
-                                        <p className="text-xs text-muted-foreground font-medium mb-1">Nombre del grupo (opcional)</p>
-                                        <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Ej: Familia, Padres..." className="h-9 text-sm rounded-lg" />
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between px-5 py-3">
+                                <div className="flex items-center gap-2">
+                                    {step === 'name' && (
+                                        <button onClick={() => setStep('members')} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
+                                            <ArrowLeft className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    <div>
+                                        <h2 className="text-base font-bold">{step === 'members' ? 'Nueva conversación' : 'Nombre del grupo'}</h2>
+                                        {step === 'members' && <p className="text-[11px] text-muted-foreground">Selecciona quién participará</p>}
                                     </div>
-                                )}
+                                </div>
+                                <button onClick={resetModal} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
+                                    <X className="h-4 w-4" />
+                                </button>
                             </div>
 
-                            <div className="p-4 border-t">
-                                <Button onClick={createRoom} disabled={selectedMembers.length === 0 || creating} className="w-full bg-[#1a5c2e] hover:bg-[#1e7a3a] rounded-xl h-11">
-                                    {creating ? 'Creando...' : selectedMembers.length > 1 ? 'Crear grupo' : 'Iniciar chat'}
-                                </Button>
-                            </div>
+                            <AnimatePresence mode="wait">
+                                {step === 'members' ? (
+                                    <motion.div key="members" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                                        {/* Selected chips */}
+                                        {selectedMembers.length > 0 && (
+                                            <div className="px-5 pb-3">
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {selectedMembers.map(id => {
+                                                        const m = familyMembers.find(fm => fm.id === id);
+                                                        if (!m) return null;
+                                                        return (
+                                                            <motion.button
+                                                                key={id}
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                exit={{ scale: 0 }}
+                                                                onClick={() => toggleMember(id)}
+                                                                className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-[#1a5c2e]/10 border border-[#1a5c2e]/20 hover:bg-[#1a5c2e]/20 transition-colors"
+                                                            >
+                                                                <Avatar className="h-5 w-5">
+                                                                    <AvatarImage src={m.avatar_url} />
+                                                                    <AvatarFallback className="bg-[#1a5c2e] text-white text-[8px]">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span className="text-xs font-medium text-[#1a5c2e]">{m.full_name?.split(' ')[0]}</span>
+                                                                <X className="h-3 w-3 text-[#1a5c2e]/60" />
+                                                            </motion.button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Member list */}
+                                        <div className="px-3 pb-3 overflow-y-auto max-h-[50vh]">
+                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">Miembros de tu familia</p>
+                                            {familyMembers.filter(m => m.id !== user?.id).map(member => {
+                                                const selected = selectedMembers.includes(member.id);
+                                                return (
+                                                    <button
+                                                        key={member.id}
+                                                        onClick={() => toggleMember(member.id)}
+                                                        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all ${selected ? 'bg-[#1a5c2e]/5' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                                                    >
+                                                        <div className="relative">
+                                                            <Avatar className="h-11 w-11 rounded-xl">
+                                                                <AvatarImage src={member.avatar_url} className="rounded-xl" />
+                                                                <AvatarFallback className="rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-foreground text-sm font-bold">
+                                                                    {member.full_name?.slice(0, 1)?.toUpperCase()}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            {selected && (
+                                                                <motion.div
+                                                                    initial={{ scale: 0 }}
+                                                                    animate={{ scale: 1 }}
+                                                                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-md bg-[#1a5c2e] flex items-center justify-center ring-2 ring-background"
+                                                                >
+                                                                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                                                                </motion.div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-foreground">{member.full_name}</p>
+                                                            {member.email && <p className="text-[11px] text-muted-foreground">{member.email}</p>}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Action */}
+                                        <div className="p-4 pt-2 border-t border-border/50">
+                                            <button
+                                                onClick={handleNext}
+                                                disabled={selectedMembers.length === 0 || creating}
+                                                className="w-full h-12 rounded-2xl bg-[#1a5c2e] text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1e7a3a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                            >
+                                                {creating ? (
+                                                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                                ) : selectedMembers.length > 1 ? (
+                                                    <>
+                                                        <Users className="h-4 w-4" />
+                                                        Siguiente — Crear grupo
+                                                    </>
+                                                ) : selectedMembers.length === 1 ? (
+                                                    <>
+                                                        <MessageCircle className="h-4 w-4" />
+                                                        Iniciar conversación
+                                                    </>
+                                                ) : (
+                                                    'Selecciona al menos una persona'
+                                                )}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div key="name" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                        <div className="px-5 pb-4">
+                                            {/* Group icon + name */}
+                                            <div className="flex flex-col items-center py-6">
+                                                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center mb-4 shadow-lg shadow-[#1a5c2e]/20">
+                                                    <Users className="h-8 w-8 text-white" />
+                                                </div>
+                                                <Input
+                                                    value={groupName}
+                                                    onChange={e => setGroupName(e.target.value)}
+                                                    placeholder="Nombre del grupo"
+                                                    className="text-center text-lg font-semibold h-12 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#1a5c2e] bg-transparent placeholder:text-muted-foreground/50"
+                                                    autoFocus
+                                                />
+                                                <p className="text-[11px] text-muted-foreground mt-2">Puedes cambiarlo después</p>
+                                            </div>
+
+                                            {/* Participants preview */}
+                                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3">
+                                                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                                    {selectedMembers.length + 1} participantes
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background border border-border/50">
+                                                        <div className="w-5 h-5 rounded-md bg-[#1a5c2e] text-white text-[9px] font-bold flex items-center justify-center">
+                                                            {profiles[user.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}
+                                                        </div>
+                                                        <span className="text-xs font-medium">Tú</span>
+                                                    </div>
+                                                    {selectedMembers.map(id => {
+                                                        const m = familyMembers.find(fm => fm.id === id);
+                                                        if (!m) return null;
+                                                        return (
+                                                            <div key={id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background border border-border/50">
+                                                                <Avatar className="h-5 w-5 rounded-md">
+                                                                    <AvatarImage src={m.avatar_url} className="rounded-md" />
+                                                                    <AvatarFallback className="rounded-md bg-slate-200 dark:bg-slate-700 text-[9px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span className="text-xs font-medium">{m.full_name?.split(' ')[0]}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Create */}
+                                        <div className="p-4 pt-2 border-t border-border/50">
+                                            <button
+                                                onClick={createRoom}
+                                                disabled={creating}
+                                                className="w-full h-12 rounded-2xl bg-[#1a5c2e] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#1e7a3a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                            >
+                                                {creating ? (
+                                                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                                ) : (
+                                                    <>
+                                                        <Check className="h-4 w-4" strokeWidth={2.5} />
+                                                        Crear grupo
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     </motion.div>
                 )}
