@@ -256,35 +256,33 @@ export default function ChatListPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-background">
             {/* Header */}
-            <div className="px-4 pt-4 pb-3 bg-background sticky top-0 z-10">
-                <div className="flex items-center gap-3">
+            <div className="px-4 pt-5 pb-2 bg-background/80 backdrop-blur-xl sticky top-0 z-10 border-b border-border/30">
+                <div className="flex items-center justify-between mb-1">
                     <Link href="/apps/mi-hogar">
-                        <button className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
-                            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        <button className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 -ml-1">
+                            <ArrowLeft className="h-[18px] w-[18px] text-foreground" />
                         </button>
                     </Link>
-                    <div className="flex-1">
-                        <h1 className="text-xl font-bold tracking-tight text-foreground">Mensajes</h1>
-                    </div>
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="h-9 w-9 rounded-xl bg-[#1a5c2e] flex items-center justify-center hover:bg-[#1e7a3a] transition-colors active:scale-95 shadow-sm"
+                        className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95"
                     >
-                        <Plus className="h-4 w-4 text-white" strokeWidth={2.5} />
+                        <Plus className="h-5 w-5 text-[#1a5c2e]" strokeWidth={2} />
                     </button>
                 </div>
+                <h1 className="text-[26px] font-bold tracking-tight text-foreground px-0.5 pb-1">Chats</h1>
             </div>
 
             {/* Room List */}
-            <div className="flex-1 overflow-y-auto px-2">
+            <div className="flex-1 overflow-y-auto">
                 {rooms.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-[60vh] text-center px-8">
-                        <div className="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-5">
-                            <MessageCircle className="h-9 w-9 text-slate-300 dark:text-slate-600" />
+                    <div className="flex flex-col items-center justify-center h-[60vh] text-center px-10">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                            <MessageCircle className="h-7 w-7 text-slate-300 dark:text-slate-600" />
                         </div>
-                        <p className="text-base font-semibold text-foreground mb-1">No hay conversaciones</p>
+                        <p className="text-base font-semibold text-foreground mb-1">Sin conversaciones</p>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            Toca <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#1a5c2e] text-white text-[10px] align-middle mx-0.5"><Plus className="w-3 h-3" /></span> para empezar a chatear con tu familia
+                            Toca <Plus className="w-3.5 h-3.5 inline text-[#1a5c2e]" /> para chatear con tu familia
                         </p>
                     </div>
                 )}
@@ -297,57 +295,55 @@ export default function ChatListPage() {
                     return (
                         <motion.div
                             key={room.id}
-                            initial={{ opacity: 0, x: -12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.04, duration: 0.25 }}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.03, duration: 0.2 }}
                         >
                             <Link
                                 href={`/apps/mi-hogar/chat/${room.id}`}
-                                className="flex items-center gap-3.5 px-3 py-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors group"
+                                className="flex items-center gap-3.5 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors"
                             >
-                                {/* Avatar */}
                                 {room.is_group ? (
                                     <GroupAvatarStack members={room.members} userId={user.id} />
                                 ) : (
                                     <div className="relative flex-shrink-0">
-                                        <Avatar className="h-[52px] w-[52px] rounded-2xl">
-                                            <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} className="rounded-2xl" />
-                                            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-medium">
+                                        <Avatar className="h-[52px] w-[52px]">
+                                            <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} />
+                                            <AvatarFallback className="bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-semibold">
                                                 {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
                                             </AvatarFallback>
                                         </Avatar>
                                     </div>
                                 )}
 
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <p className={`text-[15px] truncate ${hasUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground'}`}>
+                                <div className="flex-1 min-w-0 border-b border-border/30 pb-3">
+                                    <div className="flex items-baseline justify-between">
+                                        <p className={`text-[15px] truncate ${hasUnread ? 'font-bold' : 'font-semibold'} text-foreground`}>
                                             {getRoomDisplayName(room)}
                                         </p>
-                                        <span className={`text-[11px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e] font-semibold' : 'text-muted-foreground'}`}>
+                                        <span className={`text-[11px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e] font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
                                             {room.last_message ? formatTime(room.last_message.created_at) : ''}
                                         </span>
                                     </div>
 
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2 mt-1">
+                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                             {previewObj.isMine && (
-                                                <CheckCheck className="h-3.5 w-3.5 text-[#1a5c2e] flex-shrink-0" />
+                                                <CheckCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
                                             )}
-                                            <p className={`text-[13px] truncate ${hasUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                                {previewObj.isMine ? room.last_message?.content?.slice(0, 35) + (room.last_message?.content && room.last_message.content.length > 35 ? '…' : '') : previewObj.text}
+                                            <p className={`text-[13.5px] truncate ${hasUnread ? 'text-foreground font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                {previewObj.isMine ? room.last_message?.content?.slice(0, 40) + (room.last_message?.content && room.last_message.content.length > 40 ? '...' : '') : previewObj.text}
                                             </p>
                                         </div>
                                         {hasUnread && (
-                                            <span className="min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
+                                            <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
                                                 {room.unread > 99 ? '99+' : room.unread}
                                             </span>
                                         )}
                                     </div>
 
                                     {room.is_group && (
-                                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{getMembersPreview(room)}</p>
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{getMembersPreview(room)}</p>
                                     )}
                                 </div>
                             </Link>
