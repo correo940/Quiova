@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Paperclip, MoreVertical, Phone } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Paperclip, MoreVertical, Phone, Camera, Pencil, Palette } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -20,11 +21,19 @@ type Message = {
     reactions?: Reaction[];
 };
 type Profile = { full_name: string; avatar_url: string };
-type RoomInfo = { id: string; name: string; is_group: boolean; family_id: string };
+type RoomInfo = { id: string; name: string; is_group: boolean; family_id: string; avatar_url?: string | null };
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const MAX_RECORD_SECONDS = 120;
 const CONTACT_COLORS = ['#2d7a4a', '#8b6914', '#a0522d', '#6b4c8a', '#2e7d8c', '#8c5e3c', '#5c7a3e', '#7a3e5c'];
+const BUBBLE_COLOR_OPTIONS = [
+    { id: 'green', label: 'Verde', mine: '#e4f0d8', mineDark: '#1a3322', border: '#1a5c2e' },
+    { id: 'blue', label: 'Azul', mine: '#d8e8f0', mineDark: '#1a2d3e', border: '#2e6b8c' },
+    { id: 'purple', label: 'Morado', mine: '#e8d8f0', mineDark: '#2a1a3e', border: '#6b4c8a' },
+    { id: 'orange', label: 'Naranja', mine: '#f0e4d0', mineDark: '#3e2a1a', border: '#b8762e' },
+    { id: 'pink', label: 'Rosa', mine: '#f0d8e4', mineDark: '#3e1a2a', border: '#8c4a6b' },
+    { id: 'gold', label: 'Dorado', mine: '#f0ead0', mineDark: '#3e3418', border: '#8b7a14' },
+];
 
 function formatMsgTime(dateStr: string) { return format(new Date(dateStr), 'HH:mm'); }
 function shouldShowDateSep(current: string, prev?: string) { if (!prev) return true; return new Date(current).toDateString() !== new Date(prev).toDateString(); }
@@ -89,7 +98,19 @@ export default function ChatRoomPage() {
     const [recordTime, setRecordTime] = useState(0);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [showGroupEdit, setShowGroupEdit] = useState(false);
+    const [editGroupName, setEditGroupName] = useState('');
+    const [editGroupAvatar, setEditGroupAvatar] = useState('');
+    const [savingGroup, setSavingGroup] = useState(false);
+    const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
+    const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+    const [showBubbleColorPicker, setShowBubbleColorPicker] = useState(false);
+    const [myBubbleColor, setMyBubbleColor] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
+        return 'green';
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -166,7 +187,7 @@ export default function ChatRoomPage() {
     const broadcastTyping = useCallback(() => { if (!roomId || !user) return; const myProf = profiles[user.id]; supabase.channel('typing_room_' + roomId).send({ type: 'broadcast', event: 'typing', payload: { user_id: user.id, name: myProf?.full_name || 'Alguien' } }); }, [roomId, user, profiles]);
     const markAsRead = useCallback(async () => { if (!room || !user) return; const now = new Date().toISOString(); await supabase.from('chat_read_status').upsert({ family_id: room.family_id, user_id: user.id, last_read_at: now }, { onConflict: 'family_id,user_id' }); supabase.channel('typing_room_' + roomId).send({ type: 'broadcast', event: 'read', payload: { user_id: user.id, read_at: now } }); }, [room, user, roomId]);
 
-    const fetchRoom = async () => { const { data } = await supabase.from('chat_rooms').select('id, name, is_group, family_id').eq('id', roomId).single(); if (data) { setRoom(data); fetchRoomProfiles(data.id); } };
+    const fetchRoom = async () => { const { data } = await supabase.from('chat_rooms').select('id, name, is_group, family_id, avatar_url').eq('id', roomId).single(); if (data) { setRoom(data); fetchRoomProfiles(data.id); } };
     const fetchRoomProfiles = async (rId: string) => { const { data: members } = await supabase.from('chat_room_members').select('user_id').eq('room_id', rId); if (!members || members.length === 0) return; const ids = members.map(m => m.user_id); const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', ids); if (profs) { const map: Record<string, Profile> = {}; profs.forEach((p: any) => { map[p.id] = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url }; }); setProfiles(map); } };
     const fetchReadStatus = async () => { if (!room) return; const { data } = await supabase.from('chat_read_status').select('user_id, last_read_at').eq('family_id', room.family_id); if (data) { const map: Record<string, string> = {}; data.forEach((r: any) => { map[r.user_id] = r.last_read_at; }); setReadTimes(map); } };
     const fetchMessages = async () => {
@@ -208,7 +229,54 @@ export default function ChatRoomPage() {
     const isMessageRead = (msg: Message) => { if (msg.user_id !== user?.id) return false; return Object.entries(readTimes).some(([uid, readAt]) => uid !== user?.id && new Date(readAt) >= new Date(msg.created_at)); };
     const getOnlineStatus = () => { const others = Object.keys(onlineUsers).filter(uid => uid !== user?.id); if (others.length === 0) return `${Object.keys(profiles).length} participantes`; if (!room?.is_group && others.length > 0) return 'en línea'; const names = others.map(uid => profiles[uid]?.full_name || 'Usuario').slice(0, 2); return names.join(', ') + ' en línea'; };
     const getRoomTitle = () => { if (room?.is_group) return room.name || 'Grupo'; const otherIds = Object.keys(profiles).filter(id => id !== user?.id); if (otherIds.length > 0) return profiles[otherIds[0]]?.full_name || 'Chat'; return room?.name || 'Chat'; };
-    const getRoomAvatar = () => { if (room?.is_group) return null; const otherIds = Object.keys(profiles).filter(id => id !== user?.id); return otherIds.length > 0 ? profiles[otherIds[0]] : null; };
+    const getRoomAvatar = () => {
+        if (room?.is_group) return room.avatar_url ? { full_name: room.name || 'Grupo', avatar_url: room.avatar_url } : null;
+        const otherIds = Object.keys(profiles).filter(id => id !== user?.id);
+        return otherIds.length > 0 ? profiles[otherIds[0]] : null;
+    };
+
+    const openGroupEdit = () => {
+        if (!room) return;
+        setEditGroupName(room.name || '');
+        setEditGroupAvatar(room.avatar_url || '');
+        setShowHeaderMenu(false);
+        setShowGroupEdit(true);
+    };
+
+    const handleGroupAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !room) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/') || file.size > 3 * 1024 * 1024) return;
+        setUploadingGroupAvatar(true);
+        const ext = file.name.split('.').pop() || 'jpg';
+        const fileName = `group_avatars/${room.id}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('chat-images').upload(fileName, file, { contentType: file.type });
+        if (uploadError) { setUploadingGroupAvatar(false); return; }
+        const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+        if (urlData?.publicUrl) setEditGroupAvatar(urlData.publicUrl);
+        setUploadingGroupAvatar(false);
+    };
+
+    const saveGroupSettings = async () => {
+        if (!room || !editGroupName.trim()) return;
+        setSavingGroup(true);
+        const updates: any = { name: editGroupName.trim() };
+        if (editGroupAvatar) updates.avatar_url = editGroupAvatar;
+        await supabase.from('chat_rooms').update(updates).eq('id', room.id);
+        setRoom({ ...room, name: editGroupName.trim(), avatar_url: editGroupAvatar || room.avatar_url });
+        setSavingGroup(false);
+        setShowGroupEdit(false);
+    };
+
+    const selectBubbleColor = (colorId: string) => {
+        setMyBubbleColor(colorId);
+        localStorage.setItem('quioba_bubble_color', colorId);
+        setShowBubbleColorPicker(false);
+        setShowHeaderMenu(false);
+    };
+
+    const bubbleColors = BUBBLE_COLOR_OPTIONS.find(c => c.id === myBubbleColor) || BUBBLE_COLOR_OPTIONS[0];
 
     if (!user || !room) {
         if (!user) return null;
@@ -251,7 +319,27 @@ export default function ChatRoomPage() {
                     </p>
                 </div>
                 <button className="p-2 rounded-full hover:bg-white/10"><Phone className="h-[18px] w-[18px]" /></button>
-                <button className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-[18px] w-[18px]" /></button>
+                <div className="relative">
+                    <button onClick={() => setShowHeaderMenu(!showHeaderMenu)} className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-[18px] w-[18px]" /></button>
+                    <AnimatePresence>
+                        {showHeaderMenu && (
+                            <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                                className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1e2a20] rounded-xl shadow-xl border border-[#e9ebe6] dark:border-[#2a4a34] overflow-hidden z-50"
+                            >
+                                {room?.is_group && (
+                                    <button onClick={openGroupEdit} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors border-b border-[#f0ede8] dark:border-[#1e3324]">
+                                        <Pencil className="h-4 w-4 text-[#1a5c2e]" />
+                                        Editar grupo
+                                    </button>
+                                )}
+                                <button onClick={() => { setShowBubbleColorPicker(true); setShowHeaderMenu(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors">
+                                    <Palette className="h-4 w-4 text-[#1a5c2e]" />
+                                    Color de burbuja
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* ===== CHAT AREA ===== */}
@@ -307,13 +395,16 @@ export default function ChatRoomPage() {
                                     </AnimatePresence>
 
                                     {/* Bubble */}
-                                    <div className={`relative text-[14.5px] leading-[20px] shadow-sm ${
-                                        hasImageMsg
-                                            ? isMine ? 'bg-[#e4f0d8] dark:bg-[#1a3322] rounded-2xl overflow-hidden' : 'bg-[#f7f4ef] dark:bg-[#1e2a20] rounded-2xl overflow-hidden'
-                                            : isMine
-                                                ? 'bg-[#e4f0d8] dark:bg-[#1a3322] rounded-2xl px-3 py-1.5'
-                                                : 'bg-[#f7f4ef] dark:bg-[#1e2a20] rounded-2xl px-3 py-1.5'
-                                    } ${isFirstInGroup && isMine ? 'rounded-tr-sm' : ''} ${isFirstInGroup && !isMine ? 'rounded-tl-sm' : ''}`}>
+                                    <div
+                                        className={`relative text-[14.5px] leading-[20px] shadow-sm rounded-2xl ${
+                                            hasImageMsg
+                                                ? isMine ? 'overflow-hidden' : 'bg-[#f7f4ef] dark:bg-[#1e2a20] overflow-hidden'
+                                                : isMine
+                                                    ? 'px-3 py-1.5'
+                                                    : 'bg-[#f7f4ef] dark:bg-[#1e2a20] px-3 py-1.5'
+                                        } ${isFirstInGroup && isMine ? 'rounded-tr-sm' : ''} ${isFirstInGroup && !isMine ? 'rounded-tl-sm' : ''}`}
+                                        style={isMine ? { backgroundColor: bubbleColors.mine, border: `2px solid ${bubbleColors.border}30` } : undefined}
+                                    >
 
                                         {/* Contact name (groups) */}
                                         {showName && profile && (
@@ -466,6 +557,114 @@ export default function ChatRoomPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ===== Group Edit Modal ===== */}
+            <AnimatePresence>
+                {showGroupEdit && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
+                        onClick={() => setShowGroupEdit(false)}
+                    >
+                        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
+                            </div>
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
+                                <h2 className="text-[17px] font-medium">Editar grupo</h2>
+                                <button onClick={() => setShowGroupEdit(false)} className="p-1.5 rounded-full hover:bg-white/10">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div className="px-5 py-6">
+                                <div className="flex flex-col items-center mb-6">
+                                    <input ref={groupAvatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleGroupAvatarUpload} />
+                                    <div className="relative">
+                                        {editGroupAvatar ? (
+                                            <div className="h-24 w-24 rounded-full overflow-hidden ring-4 ring-[#1a5c2e]/15">
+                                                <img src={editGroupAvatar} alt="" className="h-full w-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center ring-4 ring-[#1a5c2e]/15">
+                                                <span className="text-white text-3xl font-semibold">{editGroupName?.slice(0, 1)?.toUpperCase() || 'G'}</span>
+                                            </div>
+                                        )}
+                                        <button onClick={() => groupAvatarInputRef.current?.click()} disabled={uploadingGroupAvatar}
+                                            className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-[#1a5c2e] text-white flex items-center justify-center shadow-md hover:bg-[#1e7a3a] transition-colors disabled:opacity-50"
+                                        >
+                                            {uploadingGroupAvatar ? (
+                                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                                            ) : <Camera className="h-3.5 w-3.5" />}
+                                        </button>
+                                    </div>
+                                    <p className="text-[12px] text-[#8a9b8e] mt-2">Foto del grupo</p>
+                                </div>
+                                <div className="mb-6">
+                                    <label className="text-[12px] font-medium text-[#6b7b6e] uppercase tracking-wider mb-1.5 block">Nombre del grupo</label>
+                                    <Input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} placeholder="Nombre del grupo"
+                                        className="h-11 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#1a5c2e] bg-transparent text-[16px] text-[#1a2318] dark:text-[#e0e8e2] placeholder:text-[#8a9b8e]"
+                                        autoFocus
+                                    />
+                                </div>
+                                <button onClick={saveGroupSettings} disabled={savingGroup || !editGroupName.trim()}
+                                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white font-medium text-[15px] disabled:opacity-40 hover:from-[#1e7a3a] hover:to-[#22884a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    {savingGroup ? (
+                                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                    ) : (<><Check className="h-4 w-4" strokeWidth={2.5} /> Guardar</>)}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ===== Bubble Color Picker Modal ===== */}
+            <AnimatePresence>
+                {showBubbleColorPicker && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
+                        onClick={() => setShowBubbleColorPicker(false)}
+                    >
+                        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
+                            </div>
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
+                                <h2 className="text-[17px] font-medium">Color de tus burbujas</h2>
+                                <button onClick={() => setShowBubbleColorPicker(false)} className="p-1.5 rounded-full hover:bg-white/10">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div className="p-5 grid grid-cols-3 gap-3">
+                                {BUBBLE_COLOR_OPTIONS.map(color => (
+                                    <button key={color.id} onClick={() => selectBubbleColor(color.id)}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${myBubbleColor === color.id ? 'border-[#1a5c2e] shadow-md scale-105' : 'border-[#e9ebe6] dark:border-[#1e3324] hover:border-[#1a5c2e]/30'}`}
+                                    >
+                                        <div className="w-full h-10 rounded-xl" style={{ backgroundColor: color.mine, border: `2px solid ${color.border}40` }} />
+                                        <span className="text-[12px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">{color.label}</span>
+                                        {myBubbleColor === color.id && (
+                                            <div className="w-5 h-5 rounded-full bg-[#1a5c2e] flex items-center justify-center">
+                                                <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Backdrop for header menu */}
+            {showHeaderMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowHeaderMenu(false)} />}
         </div>
     );
 }
