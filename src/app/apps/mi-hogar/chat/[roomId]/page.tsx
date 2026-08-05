@@ -374,7 +374,7 @@ export default function ChatRoomPage() {
                             )}
                             <div
                                 id={'msg-' + msg.id}
-                                className={`flex transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
+                                className={`flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
                                 onTouchStart={() => handleLongPressStart(msg.id)}
                                 onTouchEnd={handleLongPressEnd}
                                 onMouseDown={() => handleLongPressStart(msg.id)}
@@ -382,7 +382,16 @@ export default function ChatRoomPage() {
                                 onMouseLeave={handleLongPressEnd}
                                 onContextMenu={(e) => { e.preventDefault(); setPickerMsgId(msg.id); }}
                             >
-                                <div className={`relative max-w-[80%] ${hasImageMsg ? 'max-w-[65%]' : ''}`}>
+                                {/* Avatar left for others */}
+                                {!isMine && (
+                                    isFirstInGroup ? (
+                                        <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
+                                            <AvatarImage src={profile?.avatar_url} />
+                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profile?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                    ) : <div className="w-7 flex-shrink-0" />
+                                )}
+                                <div className={`relative max-w-[75%] ${hasImageMsg ? 'max-w-[60%]' : ''}`}>
                                     {/* Emoji picker */}
                                     <AnimatePresence>
                                         {pickerMsgId === msg.id && (
@@ -435,7 +444,7 @@ export default function ChatRoomPage() {
                                                 <img src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy" />
                                                 <div className="flex items-center justify-end gap-1 px-3 py-1.5">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
+                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
                                             </div>
                                         ) : hasAudioMsg ? (
@@ -443,7 +452,7 @@ export default function ChatRoomPage() {
                                                 <AudioPlayer url={msg.media_url!} isMine={isMine} />
                                                 <div className="flex items-center justify-end gap-1 -mt-0.5">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
+                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
                                             </>
                                         ) : (
@@ -451,7 +460,7 @@ export default function ChatRoomPage() {
                                                 <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
+                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </span>
                                             </div>
                                         )}
@@ -468,6 +477,15 @@ export default function ChatRoomPage() {
                                         </div>
                                     )}
                                 </div>
+                                {/* Avatar right for mine */}
+                                {isMine && (
+                                    isFirstInGroup ? (
+                                        <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
+                                            <AvatarImage src={profiles[user!.id]?.avatar_url} />
+                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profiles[user!.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}</AvatarFallback>
+                                        </Avatar>
+                                    ) : <div className="w-7 flex-shrink-0" />
+                                )}
                             </div>
                         </React.Fragment>
                     );
