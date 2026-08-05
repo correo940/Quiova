@@ -33,28 +33,28 @@ function formatTime(dateStr: string) {
 function GroupAvatarStack({ members, userId }: { members: Profile[]; userId: string }) {
     const others = members.filter(m => m.id !== userId).slice(0, 3);
     if (others.length === 0) return (
-        <div className="h-[50px] w-[50px] rounded-full bg-[#00a884] flex items-center justify-center">
+        <div className="h-[50px] w-[50px] rounded-full bg-[#1a5c2e] flex items-center justify-center">
             <Users className="h-6 w-6 text-white" />
         </div>
     );
     if (others.length === 1) return (
         <Avatar className="h-[50px] w-[50px]">
             <AvatarImage src={others[0].avatar_url} />
-            <AvatarFallback className="bg-[#6b7b8d] text-white text-lg font-medium">{others[0].full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-[#2d5a3e] text-white text-lg font-medium">{others[0].full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
         </Avatar>
     );
     return (
         <div className="relative h-[50px] w-[50px] flex-shrink-0">
-            <Avatar className="h-[34px] w-[34px] absolute top-0 left-0 ring-2 ring-white dark:ring-[#111b21] z-10">
+            <Avatar className="h-[34px] w-[34px] absolute top-0 left-0 ring-2 ring-white dark:ring-[#0f1612] z-10">
                 <AvatarImage src={others[0]?.avatar_url} />
-                <AvatarFallback className="bg-[#6b7b8d] text-white text-[10px] font-bold">{others[0]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-[#2d5a3e] text-white text-[10px] font-bold">{others[0]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            <Avatar className="h-[34px] w-[34px] absolute bottom-0 right-0 ring-2 ring-white dark:ring-[#111b21]">
+            <Avatar className="h-[34px] w-[34px] absolute bottom-0 right-0 ring-2 ring-white dark:ring-[#0f1612]">
                 <AvatarImage src={others[1]?.avatar_url} />
-                <AvatarFallback className="bg-[#5b6e7f] text-white text-[10px] font-bold">{others[1]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-[#3a6b4a] text-white text-[10px] font-bold">{others[1]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
             </Avatar>
             {others.length > 2 && (
-                <div className="absolute bottom-0 left-0 h-[18px] w-[18px] rounded-full bg-[#54656f] text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#111b21] z-20">
+                <div className="absolute bottom-0 left-0 h-[18px] w-[18px] rounded-full bg-[#133f21] text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0f1612] z-20">
                     +{members.length - 2}
                 </div>
             )}
@@ -191,41 +191,40 @@ export default function ChatListPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#075e54]">
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-white border-t-transparent rounded-full" />
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a]">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-white/80 border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-white dark:bg-[#111b21]">
-            {/* ===== WHATSAPP HEADER ===== */}
-            <div className="bg-[#075e54] text-white sticky top-0 z-10">
+        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-white dark:bg-[#0f1612]">
+            {/* ===== QUIOBA HEADER ===== */}
+            <div className="bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
                 <div className="flex items-center justify-between px-4 py-2.5">
                     <div className="flex items-center gap-2">
                         <Link href="/apps/mi-hogar" className="p-1">
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <h1 className="text-[20px] font-bold tracking-tight">WhatsApp</h1>
+                        <h1 className="text-[20px] font-semibold tracking-tight">Chats</h1>
                     </div>
                     <div className="flex items-center gap-0.5">
-                        <button className="p-2 rounded-full hover:bg-white/10"><Camera className="h-5 w-5" /></button>
                         <button className="p-2 rounded-full hover:bg-white/10"><Search className="h-5 w-5" /></button>
                         <button className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-5 w-5" /></button>
                     </div>
                 </div>
-                {/* Tab bar (WhatsApp style) */}
+                {/* Tab bar */}
                 <div className="flex border-b border-white/10">
                     <div className="flex-1 py-2.5 text-center text-[13px] font-semibold text-white border-b-[3px] border-white">
-                        CHATS
+                        CONVERSACIONES
                     </div>
                 </div>
             </div>
 
-            {/* FAB button (WhatsApp green) */}
+            {/* FAB button (Quioba green) */}
             <button
                 onClick={() => setShowCreate(true)}
-                className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-[#00a884] text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform hover:bg-[#008f72]"
+                className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform hover:from-[#1e7a3a] hover:to-[#22884a]"
             >
                 <MessageCircle className="h-6 w-6" />
             </button>
@@ -234,10 +233,10 @@ export default function ChatListPage() {
             <div className="flex-1 overflow-y-auto">
                 {rooms.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-[60vh] text-center px-10">
-                        <div className="w-20 h-20 rounded-full bg-[#f0f2f5] dark:bg-[#202c33] flex items-center justify-center mb-4">
-                            <MessageCircle className="h-9 w-9 text-[#8696a0]" />
+                        <div className="w-20 h-20 rounded-full bg-[#1a5c2e]/5 dark:bg-[#1a5c2e]/10 flex items-center justify-center mb-4">
+                            <MessageCircle className="h-9 w-9 text-[#6b7b6e]" />
                         </div>
-                        <p className="text-[16px] font-normal text-[#667781] dark:text-[#8696a0]">
+                        <p className="text-[16px] font-normal text-[#6b7b6e] dark:text-[#8a9b8e]">
                             Toca el botón para iniciar un chat con tu familia
                         </p>
                     </div>
@@ -249,24 +248,24 @@ export default function ChatListPage() {
                     const hasUnread = room.unread > 0;
 
                     return (
-                        <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`} className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] active:bg-[#ebedf0] dark:active:bg-[#233138] transition-colors">
+                        <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`} className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[#f4f1ec] dark:hover:bg-[#1a2a1e] active:bg-[#eae6df] dark:active:bg-[#1e3324] transition-colors">
                             {room.is_group ? (
                                 <GroupAvatarStack members={room.members} userId={user.id} />
                             ) : (
                                 <Avatar className="h-[50px] w-[50px] flex-shrink-0">
                                     <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} />
-                                    <AvatarFallback className="bg-[#6b7b8d] text-white text-lg font-medium">
+                                    <AvatarFallback className="bg-[#2d5a3e] text-white text-lg font-medium">
                                         {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                             )}
 
-                            <div className="flex-1 min-w-0 py-1 border-b border-[#e9edef] dark:border-[#222d34]">
+                            <div className="flex-1 min-w-0 py-1 border-b border-[#e9ebe6] dark:border-[#1e2a20]">
                                 <div className="flex items-baseline justify-between">
-                                    <p className="text-[16.5px] truncate text-[#111b21] dark:text-[#e9edef]">
+                                    <p className="text-[16.5px] truncate text-[#1a2318] dark:text-[#e0e8e2]">
                                         {getRoomDisplayName(room)}
                                     </p>
-                                    <span className={`text-[12px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#00a884]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
+                                    <span className={`text-[12px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e]' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
                                         {room.last_message ? formatTime(room.last_message.created_at) : ''}
                                     </span>
                                 </div>
@@ -274,21 +273,21 @@ export default function ChatListPage() {
                                 <div className="flex items-center justify-between gap-2 mt-0.5">
                                     <div className="flex items-center gap-1 min-w-0 flex-1">
                                         {previewObj.isMine && (
-                                            <CheckCheck className="h-[18px] w-[18px] text-[#53bdeb] flex-shrink-0" />
+                                            <CheckCheck className="h-[18px] w-[18px] text-[#c8a23c] flex-shrink-0" />
                                         )}
-                                        <p className={`text-[14px] truncate ${hasUnread ? 'text-[#111b21] dark:text-[#e9edef]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
+                                        <p className={`text-[14px] truncate ${hasUnread ? 'text-[#1a2318] dark:text-[#e0e8e2]' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
                                             {previewObj.isMine ? room.last_message?.content?.slice(0, 40) + (room.last_message?.content && room.last_message.content.length > 40 ? '...' : '') : previewObj.text}
                                         </p>
                                     </div>
                                     {hasUnread && (
-                                        <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#00a884] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
+                                        <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
                                             {room.unread > 99 ? '99+' : room.unread}
                                         </span>
                                     )}
                                 </div>
 
                                 {room.is_group && (
-                                    <p className="text-[12px] text-[#667781] dark:text-[#8696a0] mt-0.5 truncate">{getMembersPreview(room)}</p>
+                                    <p className="text-[12px] text-[#6b7b6e] dark:text-[#8a9b8e] mt-0.5 truncate">{getMembersPreview(room)}</p>
                                 )}
                             </div>
                         </Link>
@@ -296,7 +295,7 @@ export default function ChatListPage() {
                 })}
             </div>
 
-            {/* ===== Create Chat Modal (Telegram-smooth style) ===== */}
+            {/* ===== Create Chat Modal ===== */}
             <AnimatePresence>
                 {showCreate && (
                     <motion.div
@@ -307,16 +306,16 @@ export default function ChatListPage() {
                         <motion.div
                             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                            className="bg-white dark:bg-[#1f2c34] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-hidden shadow-2xl"
+                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-hidden shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Handle bar */}
                             <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                                <div className="w-10 h-1 rounded-full bg-[#8696a0]/30" />
+                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
                             </div>
 
-                            {/* Modal Header — WhatsApp teal */}
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#075e54] text-white">
+                            {/* Modal Header — Quioba green */}
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
                                 <div className="flex items-center gap-3">
                                     {step === 'name' && (
                                         <button onClick={() => setStep('members')} className="p-1 rounded-full hover:bg-white/10">
@@ -338,21 +337,21 @@ export default function ChatListPage() {
                                     <motion.div key="members" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                                         {/* Selected chips */}
                                         {selectedMembers.length > 0 && (
-                                            <div className="px-4 pt-3 pb-2 border-b border-[#e9edef] dark:border-[#222d34]">
+                                            <div className="px-4 pt-3 pb-2 border-b border-[#e9ebe6] dark:border-[#1e2a20]">
                                                 <div className="flex gap-1.5 flex-wrap">
                                                     {selectedMembers.map(id => {
                                                         const m = familyMembers.find(fm => fm.id === id);
                                                         if (!m) return null;
                                                         return (
                                                             <motion.button key={id} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} onClick={() => toggleMember(id)}
-                                                                className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-[#e7f8f0] dark:bg-[#005c4b]/30 border border-[#00a884]/20"
+                                                                className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-[#e4f0d8] dark:bg-[#1a3322]/50 border border-[#1a5c2e]/20"
                                                             >
                                                                 <Avatar className="h-6 w-6">
                                                                     <AvatarImage src={m.avatar_url} />
-                                                                    <AvatarFallback className="bg-[#00a884] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                    <AvatarFallback className="bg-[#1a5c2e] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                                 </Avatar>
-                                                                <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">{m.full_name?.split(' ')[0]}</span>
-                                                                <X className="h-3 w-3 text-[#8696a0]" />
+                                                                <span className="text-[12px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">{m.full_name?.split(' ')[0]}</span>
+                                                                <X className="h-3 w-3 text-[#6b7b6e]" />
                                                             </motion.button>
                                                         );
                                                     })}
@@ -362,29 +361,29 @@ export default function ChatListPage() {
 
                                         {/* Member list */}
                                         <div className="overflow-y-auto max-h-[50vh]">
-                                            <p className="text-[12px] font-medium text-[#8696a0] uppercase tracking-wider px-4 pt-4 pb-2">Miembros de tu familia</p>
+                                            <p className="text-[12px] font-medium text-[#6b7b6e] uppercase tracking-wider px-4 pt-4 pb-2">Miembros de tu familia</p>
                                             {familyMembers.filter(m => m.id !== user?.id).map(member => {
                                                 const selected = selectedMembers.includes(member.id);
                                                 return (
                                                     <button key={member.id} onClick={() => toggleMember(member.id)}
-                                                        className="flex items-center gap-3.5 w-full px-4 py-2 hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors"
+                                                        className="flex items-center gap-3.5 w-full px-4 py-2 hover:bg-[#f4f1ec] dark:hover:bg-[#1a2a1e] transition-colors"
                                                     >
                                                         <div className="relative">
                                                             <Avatar className="h-[42px] w-[42px]">
                                                                 <AvatarImage src={member.avatar_url} />
-                                                                <AvatarFallback className="bg-[#6b7b8d] text-white text-sm font-medium">{member.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                <AvatarFallback className="bg-[#2d5a3e] text-white text-sm font-medium">{member.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                             </Avatar>
                                                             {selected && (
                                                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                                    className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#00a884] flex items-center justify-center ring-2 ring-white dark:ring-[#1f2c34]"
+                                                                    className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#1a5c2e] flex items-center justify-center ring-2 ring-white dark:ring-[#162018]"
                                                                 >
                                                                     <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                                                                 </motion.div>
                                                             )}
                                                         </div>
-                                                        <div className="flex-1 text-left border-b border-[#e9edef] dark:border-[#222d34] py-1.5">
-                                                            <p className="text-[15px] text-[#111b21] dark:text-[#e9edef]">{member.full_name}</p>
-                                                            {member.email && <p className="text-[12px] text-[#667781] dark:text-[#8696a0]">{member.email}</p>}
+                                                        <div className="flex-1 text-left border-b border-[#e9ebe6] dark:border-[#1e2a20] py-1.5">
+                                                            <p className="text-[15px] text-[#1a2318] dark:text-[#e0e8e2]">{member.full_name}</p>
+                                                            {member.email && <p className="text-[12px] text-[#6b7b6e] dark:text-[#8a9b8e]">{member.email}</p>}
                                                         </div>
                                                     </button>
                                                 );
@@ -392,9 +391,9 @@ export default function ChatListPage() {
                                         </div>
 
                                         {/* Action */}
-                                        <div className="p-4 pt-2 border-t border-[#e9edef] dark:border-[#222d34]">
+                                        <div className="p-4 pt-2 border-t border-[#e9ebe6] dark:border-[#1e2a20]">
                                             <button onClick={handleNext} disabled={selectedMembers.length === 0 || creating}
-                                                className="w-full h-12 rounded-full bg-[#00a884] text-white font-medium text-[15px] disabled:opacity-40 hover:bg-[#008f72] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white font-medium text-[15px] disabled:opacity-40 hover:from-[#1e7a3a] hover:to-[#22884a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
                                             >
                                                 {creating ? (
                                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
@@ -410,43 +409,43 @@ export default function ChatListPage() {
                                     <motion.div key="name" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                         <div className="px-5 pb-4">
                                             <div className="flex flex-col items-center py-8">
-                                                <div className="w-20 h-20 rounded-full bg-[#00a884] flex items-center justify-center mb-5">
+                                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center mb-5">
                                                     <Users className="h-9 w-9 text-white" />
                                                 </div>
                                                 <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nombre del grupo"
-                                                    className="text-center text-lg h-12 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#00a884] bg-transparent placeholder:text-[#8696a0] text-[#111b21] dark:text-[#e9edef]"
+                                                    className="text-center text-lg h-12 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#1a5c2e] bg-transparent placeholder:text-[#6b7b6e] text-[#1a2318] dark:text-[#e0e8e2]"
                                                     autoFocus
                                                 />
-                                                <p className="text-[12px] text-[#8696a0] mt-2">Puedes cambiarlo después</p>
+                                                <p className="text-[12px] text-[#6b7b6e] mt-2">Puedes cambiarlo después</p>
                                             </div>
-                                            <div className="bg-[#f0f2f5] dark:bg-[#202c33] rounded-xl p-3">
-                                                <p className="text-[11px] font-medium text-[#8696a0] uppercase tracking-wider mb-2">{selectedMembers.length + 1} participantes</p>
+                                            <div className="bg-[#f4f1ec] dark:bg-[#1a2a1e] rounded-xl p-3">
+                                                <p className="text-[11px] font-medium text-[#6b7b6e] uppercase tracking-wider mb-2">{selectedMembers.length + 1} participantes</p>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#2a3942] border border-[#e9edef] dark:border-[#3b4a54]">
-                                                        <div className="w-5 h-5 rounded-full bg-[#00a884] text-white text-[9px] font-bold flex items-center justify-center">
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#1e3324] border border-[#e9ebe6] dark:border-[#2a4a34]">
+                                                        <div className="w-5 h-5 rounded-full bg-[#1a5c2e] text-white text-[9px] font-bold flex items-center justify-center">
                                                             {profiles[user.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}
                                                         </div>
-                                                        <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">Tú</span>
+                                                        <span className="text-[12px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">Tú</span>
                                                     </div>
                                                     {selectedMembers.map(id => {
                                                         const m = familyMembers.find(fm => fm.id === id);
                                                         if (!m) return null;
                                                         return (
-                                                            <div key={id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#2a3942] border border-[#e9edef] dark:border-[#3b4a54]">
+                                                            <div key={id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#1e3324] border border-[#e9ebe6] dark:border-[#2a4a34]">
                                                                 <Avatar className="h-5 w-5">
                                                                     <AvatarImage src={m.avatar_url} />
-                                                                    <AvatarFallback className="bg-[#6b7b8d] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                    <AvatarFallback className="bg-[#2d5a3e] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                                 </Avatar>
-                                                                <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">{m.full_name?.split(' ')[0]}</span>
+                                                                <span className="text-[12px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">{m.full_name?.split(' ')[0]}</span>
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-4 pt-2 border-t border-[#e9edef] dark:border-[#222d34]">
+                                        <div className="p-4 pt-2 border-t border-[#e9ebe6] dark:border-[#1e2a20]">
                                             <button onClick={createRoom} disabled={creating}
-                                                className="w-full h-12 rounded-full bg-[#00a884] text-white font-medium text-[15px] disabled:opacity-40 hover:bg-[#008f72] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white font-medium text-[15px] disabled:opacity-40 hover:from-[#1e7a3a] hover:to-[#22884a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
                                             >
                                                 {creating ? (
                                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
