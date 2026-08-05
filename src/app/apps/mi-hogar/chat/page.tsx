@@ -3,10 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, UserPlus, Hash } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, Search, MoreVertical, Camera } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -21,11 +20,6 @@ type Room = {
     unread: number;
 };
 
-const MEMBER_COLORS = [
-    'bg-amber-600', 'bg-rose-600', 'bg-sky-600', 'bg-violet-600',
-    'bg-teal-600', 'bg-orange-600', 'bg-pink-600', 'bg-indigo-600',
-];
-
 function formatTime(dateStr: string) {
     const d = new Date(dateStr);
     if (isToday(d)) return format(d, 'HH:mm');
@@ -39,34 +33,28 @@ function formatTime(dateStr: string) {
 function GroupAvatarStack({ members, userId }: { members: Profile[]; userId: string }) {
     const others = members.filter(m => m.id !== userId).slice(0, 3);
     if (others.length === 0) return (
-        <div className="h-[52px] w-[52px] rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center">
-            <Users className="h-5 w-5 text-white" />
+        <div className="h-[50px] w-[50px] rounded-full bg-[#00a884] flex items-center justify-center">
+            <Users className="h-6 w-6 text-white" />
         </div>
     );
     if (others.length === 1) return (
-        <Avatar className="h-[52px] w-[52px] rounded-2xl">
-            <AvatarImage src={others[0].avatar_url} className="rounded-2xl" />
-            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-medium">
-                {others[0].full_name?.slice(0, 1)?.toUpperCase()}
-            </AvatarFallback>
+        <Avatar className="h-[50px] w-[50px]">
+            <AvatarImage src={others[0].avatar_url} />
+            <AvatarFallback className="bg-[#6b7b8d] text-white text-lg font-medium">{others[0].full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
         </Avatar>
     );
     return (
-        <div className="relative h-[52px] w-[52px] flex-shrink-0">
-            <Avatar className="h-8 w-8 absolute top-0 left-0 ring-2 ring-background z-10">
+        <div className="relative h-[50px] w-[50px] flex-shrink-0">
+            <Avatar className="h-[34px] w-[34px] absolute top-0 left-0 ring-2 ring-white dark:ring-[#111b21] z-10">
                 <AvatarImage src={others[0]?.avatar_url} />
-                <AvatarFallback className={`${MEMBER_COLORS[0]} text-white text-[10px] font-bold`}>
-                    {others[0]?.full_name?.slice(0, 1)?.toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback className="bg-[#6b7b8d] text-white text-[10px] font-bold">{others[0]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            <Avatar className="h-8 w-8 absolute bottom-0 right-0 ring-2 ring-background">
+            <Avatar className="h-[34px] w-[34px] absolute bottom-0 right-0 ring-2 ring-white dark:ring-[#111b21]">
                 <AvatarImage src={others[1]?.avatar_url} />
-                <AvatarFallback className={`${MEMBER_COLORS[1]} text-white text-[10px] font-bold`}>
-                    {others[1]?.full_name?.slice(0, 1)?.toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback className="bg-[#5b6e7f] text-white text-[10px] font-bold">{others[1]?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
             </Avatar>
             {others.length > 2 && (
-                <div className="absolute bottom-0 left-0 h-4 w-4 rounded-full bg-slate-500 text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-background z-20">
+                <div className="absolute bottom-0 left-0 h-[18px] w-[18px] rounded-full bg-[#54656f] text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#111b21] z-20">
                     +{members.length - 2}
                 </div>
             )}
@@ -123,40 +111,24 @@ export default function ChatListPage() {
         const { data: myRoomMemberships } = await supabase.from('chat_room_members').select('room_id').eq('user_id', user!.id);
         if (!myRoomMemberships || myRoomMemberships.length === 0) { setRooms([]); return; }
         const roomIds = myRoomMemberships.map(m => m.room_id);
-
         const { data: roomData } = await supabase.from('chat_rooms').select('id, name, is_group, family_id').in('id', roomIds);
         if (!roomData) { setRooms([]); return; }
-
         const { data: allMembers } = await supabase.from('chat_room_members').select('room_id, user_id').in('room_id', roomIds);
         const memberIds = new Set<string>();
         if (allMembers) allMembers.forEach(m => memberIds.add(m.user_id));
         const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', Array.from(memberIds));
         const profMap: Record<string, Profile> = {};
         if (profs) profs.forEach((p: any) => { profMap[p.id] = { id: p.id, full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url }; });
-
         const lastSeenKey = `quioba_chat_last_seen_${user!.id}`;
         const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(lastSeenKey) || new Date(0).toISOString() : new Date(0).toISOString();
-
         const roomList: Room[] = [];
         for (const r of roomData) {
             const { data: lastMsg } = await supabase.from('family_messages').select('content, created_at, user_id').eq('room_id', r.id).order('created_at', { ascending: false }).limit(1);
             const { count } = await supabase.from('family_messages').select('*', { count: 'exact', head: true }).eq('room_id', r.id).neq('user_id', user!.id).gt('created_at', lastSeen);
             const roomMembers = allMembers?.filter(m => m.room_id === r.id).map(m => profMap[m.user_id]).filter(Boolean) || [];
-
-            roomList.push({
-                id: r.id, name: r.name, is_group: r.is_group, family_id: r.family_id,
-                last_message: lastMsg?.[0] || undefined,
-                members: roomMembers,
-                unread: count || 0,
-            });
+            roomList.push({ id: r.id, name: r.name, is_group: r.is_group, family_id: r.family_id, last_message: lastMsg?.[0] || undefined, members: roomMembers, unread: count || 0 });
         }
-
-        roomList.sort((a, b) => {
-            const aTime = a.last_message?.created_at || '0';
-            const bTime = b.last_message?.created_at || '0';
-            return bTime.localeCompare(aTime);
-        });
-
+        roomList.sort((a, b) => { const aTime = a.last_message?.created_at || '0'; const bTime = b.last_message?.created_at || '0'; return bTime.localeCompare(aTime); });
         setRooms(roomList);
     };
 
@@ -187,47 +159,30 @@ export default function ChatListPage() {
     };
 
     const handleNext = () => {
-        if (selectedMembers.length > 1) {
-            setStep('name');
-        } else {
-            createRoom();
-        }
+        if (selectedMembers.length > 1) setStep('name');
+        else createRoom();
     };
 
-    const resetModal = () => {
-        setShowCreate(false);
-        setSelectedMembers([]);
-        setGroupName('');
-        setStep('members');
-    };
+    const resetModal = () => { setShowCreate(false); setSelectedMembers([]); setGroupName(''); setStep('members'); };
 
     const createRoom = async () => {
         if (!user || !familyId || selectedMembers.length === 0) return;
         setCreating(true);
-
         const allMembers = [user.id, ...selectedMembers];
         const isGroup = allMembers.length > 2;
-
         if (!isGroup) {
             const existingRooms = rooms.filter(r => !r.is_group);
             const existingDM = existingRooms.find(r => {
                 const memberIds = r.members.map(m => m.id);
                 return memberIds.includes(selectedMembers[0]) && memberIds.includes(user.id) && memberIds.length === 2;
             });
-            if (existingDM) {
-                router.push(`/apps/mi-hogar/chat/${existingDM.id}`);
-                setCreating(false); resetModal();
-                return;
-            }
+            if (existingDM) { router.push(`/apps/mi-hogar/chat/${existingDM.id}`); setCreating(false); resetModal(); return; }
         }
-
         const name = isGroup ? (groupName.trim() || allMembers.map(id => profiles[id]?.full_name?.split(' ')[0] || 'Usuario').join(', ')) : '';
         const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ family_id: familyId, name, is_group: isGroup, created_by: user.id }).select('id').single();
         if (error || !newRoom) { setCreating(false); return; }
-
         const memberRows = allMembers.map(uid => ({ room_id: newRoom.id, user_id: uid }));
         await supabase.from('chat_room_members').insert(memberRows);
-
         setCreating(false); resetModal();
         router.push(`/apps/mi-hogar/chat/${newRoom.id}`);
     };
@@ -236,160 +191,145 @@ export default function ChatListPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center">
-                            <MessageCircle className="h-5 w-5 text-white" />
-                        </div>
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                            className="absolute -inset-1.5 border-2 border-transparent border-t-[#1a5c2e] rounded-[18px]"
-                        />
-                    </div>
-                </div>
+            <div className="min-h-screen flex items-center justify-center bg-[#075e54]">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-white border-t-transparent rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-background">
-            {/* Header */}
-            <div className="px-4 pt-5 pb-2 bg-background/80 backdrop-blur-xl sticky top-0 z-10 border-b border-border/30">
-                <div className="flex items-center justify-between mb-1">
-                    <Link href="/apps/mi-hogar">
-                        <button className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 -ml-1">
-                            <ArrowLeft className="h-[18px] w-[18px] text-foreground" />
-                        </button>
-                    </Link>
-                    <button
-                        onClick={() => setShowCreate(true)}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95"
-                    >
-                        <Plus className="h-5 w-5 text-[#1a5c2e]" strokeWidth={2} />
-                    </button>
+        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-white dark:bg-[#111b21]">
+            {/* ===== WHATSAPP HEADER ===== */}
+            <div className="bg-[#075e54] text-white sticky top-0 z-10">
+                <div className="flex items-center justify-between px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                        <Link href="/apps/mi-hogar" className="p-1">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Link>
+                        <h1 className="text-[20px] font-bold tracking-tight">WhatsApp</h1>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                        <button className="p-2 rounded-full hover:bg-white/10"><Camera className="h-5 w-5" /></button>
+                        <button className="p-2 rounded-full hover:bg-white/10"><Search className="h-5 w-5" /></button>
+                        <button className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-5 w-5" /></button>
+                    </div>
                 </div>
-                <h1 className="text-[26px] font-bold tracking-tight text-foreground px-0.5 pb-1">Chats</h1>
+                {/* Tab bar (WhatsApp style) */}
+                <div className="flex border-b border-white/10">
+                    <div className="flex-1 py-2.5 text-center text-[13px] font-semibold text-white border-b-[3px] border-white">
+                        CHATS
+                    </div>
+                </div>
             </div>
+
+            {/* FAB button (WhatsApp green) */}
+            <button
+                onClick={() => setShowCreate(true)}
+                className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-[#00a884] text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform hover:bg-[#008f72]"
+            >
+                <MessageCircle className="h-6 w-6" />
+            </button>
 
             {/* Room List */}
             <div className="flex-1 overflow-y-auto">
                 {rooms.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-[60vh] text-center px-10">
-                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                            <MessageCircle className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+                        <div className="w-20 h-20 rounded-full bg-[#f0f2f5] dark:bg-[#202c33] flex items-center justify-center mb-4">
+                            <MessageCircle className="h-9 w-9 text-[#8696a0]" />
                         </div>
-                        <p className="text-base font-semibold text-foreground mb-1">Sin conversaciones</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Toca <Plus className="w-3.5 h-3.5 inline text-[#1a5c2e]" /> para chatear con tu familia
+                        <p className="text-[16px] font-normal text-[#667781] dark:text-[#8696a0]">
+                            Toca el botón para iniciar un chat con tu familia
                         </p>
                     </div>
                 )}
 
-                {rooms.map((room, i) => {
+                {rooms.map((room) => {
                     const preview = getLastMessagePreview(room);
                     const previewObj = typeof preview === 'string' ? { isMine: false, text: preview } : preview;
                     const hasUnread = room.unread > 0;
 
                     return (
-                        <motion.div
-                            key={room.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.03, duration: 0.2 }}
-                        >
-                            <Link
-                                href={`/apps/mi-hogar/chat/${room.id}`}
-                                className="flex items-center gap-3.5 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors"
-                            >
-                                {room.is_group ? (
-                                    <GroupAvatarStack members={room.members} userId={user.id} />
-                                ) : (
-                                    <div className="relative flex-shrink-0">
-                                        <Avatar className="h-[52px] w-[52px]">
-                                            <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} />
-                                            <AvatarFallback className="bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] text-white text-lg font-semibold">
-                                                {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    </div>
-                                )}
+                        <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`} className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] active:bg-[#ebedf0] dark:active:bg-[#233138] transition-colors">
+                            {room.is_group ? (
+                                <GroupAvatarStack members={room.members} userId={user.id} />
+                            ) : (
+                                <Avatar className="h-[50px] w-[50px] flex-shrink-0">
+                                    <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} />
+                                    <AvatarFallback className="bg-[#6b7b8d] text-white text-lg font-medium">
+                                        {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
+                            )}
 
-                                <div className="flex-1 min-w-0 border-b border-border/30 pb-3">
-                                    <div className="flex items-baseline justify-between">
-                                        <p className={`text-[15px] truncate ${hasUnread ? 'font-bold' : 'font-semibold'} text-foreground`}>
-                                            {getRoomDisplayName(room)}
-                                        </p>
-                                        <span className={`text-[11px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e] font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
-                                            {room.last_message ? formatTime(room.last_message.created_at) : ''}
-                                        </span>
-                                    </div>
+                            <div className="flex-1 min-w-0 py-1 border-b border-[#e9edef] dark:border-[#222d34]">
+                                <div className="flex items-baseline justify-between">
+                                    <p className="text-[16.5px] truncate text-[#111b21] dark:text-[#e9edef]">
+                                        {getRoomDisplayName(room)}
+                                    </p>
+                                    <span className={`text-[12px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#00a884]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
+                                        {room.last_message ? formatTime(room.last_message.created_at) : ''}
+                                    </span>
+                                </div>
 
-                                    <div className="flex items-center justify-between gap-2 mt-1">
-                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                            {previewObj.isMine && (
-                                                <CheckCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                            )}
-                                            <p className={`text-[13.5px] truncate ${hasUnread ? 'text-foreground font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
-                                                {previewObj.isMine ? room.last_message?.content?.slice(0, 40) + (room.last_message?.content && room.last_message.content.length > 40 ? '...' : '') : previewObj.text}
-                                            </p>
-                                        </div>
-                                        {hasUnread && (
-                                            <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
-                                                {room.unread > 99 ? '99+' : room.unread}
-                                            </span>
+                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                                        {previewObj.isMine && (
+                                            <CheckCheck className="h-[18px] w-[18px] text-[#53bdeb] flex-shrink-0" />
                                         )}
+                                        <p className={`text-[14px] truncate ${hasUnread ? 'text-[#111b21] dark:text-[#e9edef]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
+                                            {previewObj.isMine ? room.last_message?.content?.slice(0, 40) + (room.last_message?.content && room.last_message.content.length > 40 ? '...' : '') : previewObj.text}
+                                        </p>
                                     </div>
-
-                                    {room.is_group && (
-                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{getMembersPreview(room)}</p>
+                                    {hasUnread && (
+                                        <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#00a884] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
+                                            {room.unread > 99 ? '99+' : room.unread}
+                                        </span>
                                     )}
                                 </div>
-                            </Link>
-                        </motion.div>
+
+                                {room.is_group && (
+                                    <p className="text-[12px] text-[#667781] dark:text-[#8696a0] mt-0.5 truncate">{getMembersPreview(room)}</p>
+                                )}
+                            </div>
+                        </Link>
                     );
                 })}
             </div>
 
-            {/* Create Chat Modal */}
+            {/* ===== Create Chat Modal (Telegram-smooth style) ===== */}
             <AnimatePresence>
                 {showCreate && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
                         onClick={resetModal}
                     >
                         <motion.div
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                            className="bg-background w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] overflow-hidden shadow-2xl"
+                            className="bg-white dark:bg-[#1f2c34] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-hidden shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Handle bar */}
                             <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                <div className="w-10 h-1 rounded-full bg-[#8696a0]/30" />
                             </div>
 
-                            {/* Modal Header */}
-                            <div className="flex items-center justify-between px-5 py-3">
-                                <div className="flex items-center gap-2">
+                            {/* Modal Header — WhatsApp teal */}
+                            <div className="flex items-center justify-between px-4 py-3 bg-[#075e54] text-white">
+                                <div className="flex items-center gap-3">
                                     {step === 'name' && (
-                                        <button onClick={() => setStep('members')} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
-                                            <ArrowLeft className="h-4 w-4" />
+                                        <button onClick={() => setStep('members')} className="p-1 rounded-full hover:bg-white/10">
+                                            <ArrowLeft className="h-5 w-5" />
                                         </button>
                                     )}
                                     <div>
-                                        <h2 className="text-base font-bold">{step === 'members' ? 'Nueva conversación' : 'Nombre del grupo'}</h2>
-                                        {step === 'members' && <p className="text-[11px] text-muted-foreground">Selecciona quién participará</p>}
+                                        <h2 className="text-[17px] font-medium">{step === 'members' ? 'Nueva conversación' : 'Nombre del grupo'}</h2>
+                                        {step === 'members' && <p className="text-[12px] text-white/70">Selecciona participantes</p>}
                                     </div>
                                 </div>
-                                <button onClick={resetModal} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
-                                    <X className="h-4 w-4" />
+                                <button onClick={resetModal} className="p-1.5 rounded-full hover:bg-white/10">
+                                    <X className="h-5 w-5" />
                                 </button>
                             </div>
 
@@ -398,26 +338,21 @@ export default function ChatListPage() {
                                     <motion.div key="members" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                                         {/* Selected chips */}
                                         {selectedMembers.length > 0 && (
-                                            <div className="px-5 pb-3">
-                                                <div className="flex gap-2 flex-wrap">
+                                            <div className="px-4 pt-3 pb-2 border-b border-[#e9edef] dark:border-[#222d34]">
+                                                <div className="flex gap-1.5 flex-wrap">
                                                     {selectedMembers.map(id => {
                                                         const m = familyMembers.find(fm => fm.id === id);
                                                         if (!m) return null;
                                                         return (
-                                                            <motion.button
-                                                                key={id}
-                                                                initial={{ scale: 0 }}
-                                                                animate={{ scale: 1 }}
-                                                                exit={{ scale: 0 }}
-                                                                onClick={() => toggleMember(id)}
-                                                                className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-[#1a5c2e]/10 border border-[#1a5c2e]/20 hover:bg-[#1a5c2e]/20 transition-colors"
+                                                            <motion.button key={id} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} onClick={() => toggleMember(id)}
+                                                                className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-[#e7f8f0] dark:bg-[#005c4b]/30 border border-[#00a884]/20"
                                                             >
-                                                                <Avatar className="h-5 w-5">
+                                                                <Avatar className="h-6 w-6">
                                                                     <AvatarImage src={m.avatar_url} />
-                                                                    <AvatarFallback className="bg-[#1a5c2e] text-white text-[8px]">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                                    <AvatarFallback className="bg-[#00a884] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                                 </Avatar>
-                                                                <span className="text-xs font-medium text-[#1a5c2e]">{m.full_name?.split(' ')[0]}</span>
-                                                                <X className="h-3 w-3 text-[#1a5c2e]/60" />
+                                                                <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">{m.full_name?.split(' ')[0]}</span>
+                                                                <X className="h-3 w-3 text-[#8696a0]" />
                                                             </motion.button>
                                                         );
                                                     })}
@@ -426,36 +361,30 @@ export default function ChatListPage() {
                                         )}
 
                                         {/* Member list */}
-                                        <div className="px-3 pb-3 overflow-y-auto max-h-[50vh]">
-                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">Miembros de tu familia</p>
+                                        <div className="overflow-y-auto max-h-[50vh]">
+                                            <p className="text-[12px] font-medium text-[#8696a0] uppercase tracking-wider px-4 pt-4 pb-2">Miembros de tu familia</p>
                                             {familyMembers.filter(m => m.id !== user?.id).map(member => {
                                                 const selected = selectedMembers.includes(member.id);
                                                 return (
-                                                    <button
-                                                        key={member.id}
-                                                        onClick={() => toggleMember(member.id)}
-                                                        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all ${selected ? 'bg-[#1a5c2e]/5' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                                                    <button key={member.id} onClick={() => toggleMember(member.id)}
+                                                        className="flex items-center gap-3.5 w-full px-4 py-2 hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors"
                                                     >
                                                         <div className="relative">
-                                                            <Avatar className="h-11 w-11 rounded-xl">
-                                                                <AvatarImage src={member.avatar_url} className="rounded-xl" />
-                                                                <AvatarFallback className="rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 text-foreground text-sm font-bold">
-                                                                    {member.full_name?.slice(0, 1)?.toUpperCase()}
-                                                                </AvatarFallback>
+                                                            <Avatar className="h-[42px] w-[42px]">
+                                                                <AvatarImage src={member.avatar_url} />
+                                                                <AvatarFallback className="bg-[#6b7b8d] text-white text-sm font-medium">{member.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                             </Avatar>
                                                             {selected && (
-                                                                <motion.div
-                                                                    initial={{ scale: 0 }}
-                                                                    animate={{ scale: 1 }}
-                                                                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-md bg-[#1a5c2e] flex items-center justify-center ring-2 ring-background"
+                                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                                                    className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#00a884] flex items-center justify-center ring-2 ring-white dark:ring-[#1f2c34]"
                                                                 >
-                                                                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                                                                    <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                                                                 </motion.div>
                                                             )}
                                                         </div>
-                                                        <div className="flex-1 text-left">
-                                                            <p className="text-sm font-medium text-foreground">{member.full_name}</p>
-                                                            {member.email && <p className="text-[11px] text-muted-foreground">{member.email}</p>}
+                                                        <div className="flex-1 text-left border-b border-[#e9edef] dark:border-[#222d34] py-1.5">
+                                                            <p className="text-[15px] text-[#111b21] dark:text-[#e9edef]">{member.full_name}</p>
+                                                            {member.email && <p className="text-[12px] text-[#667781] dark:text-[#8696a0]">{member.email}</p>}
                                                         </div>
                                                     </button>
                                                 );
@@ -463,92 +392,65 @@ export default function ChatListPage() {
                                         </div>
 
                                         {/* Action */}
-                                        <div className="p-4 pt-2 border-t border-border/50">
-                                            <button
-                                                onClick={handleNext}
-                                                disabled={selectedMembers.length === 0 || creating}
-                                                className="w-full h-12 rounded-2xl bg-[#1a5c2e] text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1e7a3a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                        <div className="p-4 pt-2 border-t border-[#e9edef] dark:border-[#222d34]">
+                                            <button onClick={handleNext} disabled={selectedMembers.length === 0 || creating}
+                                                className="w-full h-12 rounded-full bg-[#00a884] text-white font-medium text-[15px] disabled:opacity-40 hover:bg-[#008f72] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                             >
                                                 {creating ? (
                                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                                                 ) : selectedMembers.length > 1 ? (
-                                                    <>
-                                                        <Users className="h-4 w-4" />
-                                                        Siguiente — Crear grupo
-                                                    </>
+                                                    <><Users className="h-4 w-4" /> Siguiente</>
                                                 ) : selectedMembers.length === 1 ? (
-                                                    <>
-                                                        <MessageCircle className="h-4 w-4" />
-                                                        Iniciar conversación
-                                                    </>
-                                                ) : (
-                                                    'Selecciona al menos una persona'
-                                                )}
+                                                    <><MessageCircle className="h-4 w-4" /> Iniciar chat</>
+                                                ) : 'Selecciona al menos una persona'}
                                             </button>
                                         </div>
                                     </motion.div>
                                 ) : (
                                     <motion.div key="name" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                         <div className="px-5 pb-4">
-                                            {/* Group icon + name */}
-                                            <div className="flex flex-col items-center py-6">
-                                                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#1a5c2e] to-[#2d8a4e] flex items-center justify-center mb-4 shadow-lg shadow-[#1a5c2e]/20">
-                                                    <Users className="h-8 w-8 text-white" />
+                                            <div className="flex flex-col items-center py-8">
+                                                <div className="w-20 h-20 rounded-full bg-[#00a884] flex items-center justify-center mb-5">
+                                                    <Users className="h-9 w-9 text-white" />
                                                 </div>
-                                                <Input
-                                                    value={groupName}
-                                                    onChange={e => setGroupName(e.target.value)}
-                                                    placeholder="Nombre del grupo"
-                                                    className="text-center text-lg font-semibold h-12 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#1a5c2e] bg-transparent placeholder:text-muted-foreground/50"
+                                                <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nombre del grupo"
+                                                    className="text-center text-lg h-12 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#00a884] bg-transparent placeholder:text-[#8696a0] text-[#111b21] dark:text-[#e9edef]"
                                                     autoFocus
                                                 />
-                                                <p className="text-[11px] text-muted-foreground mt-2">Puedes cambiarlo después</p>
+                                                <p className="text-[12px] text-[#8696a0] mt-2">Puedes cambiarlo después</p>
                                             </div>
-
-                                            {/* Participants preview */}
-                                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3">
-                                                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                                    {selectedMembers.length + 1} participantes
-                                                </p>
+                                            <div className="bg-[#f0f2f5] dark:bg-[#202c33] rounded-xl p-3">
+                                                <p className="text-[11px] font-medium text-[#8696a0] uppercase tracking-wider mb-2">{selectedMembers.length + 1} participantes</p>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background border border-border/50">
-                                                        <div className="w-5 h-5 rounded-md bg-[#1a5c2e] text-white text-[9px] font-bold flex items-center justify-center">
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#2a3942] border border-[#e9edef] dark:border-[#3b4a54]">
+                                                        <div className="w-5 h-5 rounded-full bg-[#00a884] text-white text-[9px] font-bold flex items-center justify-center">
                                                             {profiles[user.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}
                                                         </div>
-                                                        <span className="text-xs font-medium">Tú</span>
+                                                        <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">Tú</span>
                                                     </div>
                                                     {selectedMembers.map(id => {
                                                         const m = familyMembers.find(fm => fm.id === id);
                                                         if (!m) return null;
                                                         return (
-                                                            <div key={id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background border border-border/50">
-                                                                <Avatar className="h-5 w-5 rounded-md">
-                                                                    <AvatarImage src={m.avatar_url} className="rounded-md" />
-                                                                    <AvatarFallback className="rounded-md bg-slate-200 dark:bg-slate-700 text-[9px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                                            <div key={id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white dark:bg-[#2a3942] border border-[#e9edef] dark:border-[#3b4a54]">
+                                                                <Avatar className="h-5 w-5">
+                                                                    <AvatarImage src={m.avatar_url} />
+                                                                    <AvatarFallback className="bg-[#6b7b8d] text-white text-[8px] font-bold">{m.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
                                                                 </Avatar>
-                                                                <span className="text-xs font-medium">{m.full_name?.split(' ')[0]}</span>
+                                                                <span className="text-[12px] font-medium text-[#111b21] dark:text-[#e9edef]">{m.full_name?.split(' ')[0]}</span>
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Create */}
-                                        <div className="p-4 pt-2 border-t border-border/50">
-                                            <button
-                                                onClick={createRoom}
-                                                disabled={creating}
-                                                className="w-full h-12 rounded-2xl bg-[#1a5c2e] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#1e7a3a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                        <div className="p-4 pt-2 border-t border-[#e9edef] dark:border-[#222d34]">
+                                            <button onClick={createRoom} disabled={creating}
+                                                className="w-full h-12 rounded-full bg-[#00a884] text-white font-medium text-[15px] disabled:opacity-40 hover:bg-[#008f72] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                             >
                                                 {creating ? (
                                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                                                ) : (
-                                                    <>
-                                                        <Check className="h-4 w-4" strokeWidth={2.5} />
-                                                        Crear grupo
-                                                    </>
-                                                )}
+                                                ) : (<><Check className="h-4 w-4" strokeWidth={2.5} /> Crear grupo</>)}
                                             </button>
                                         </div>
                                     </motion.div>
