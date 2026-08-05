@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, Search, MoreVertical, Camera } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, Search, MoreVertical, Camera, User, Pencil } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -13,9 +13,10 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type Profile = { id: string; full_name: string; avatar_url: string; email?: string };
+type RoomMessage = { content: string; created_at: string; user_id: string };
 type Room = {
     id: string; name: string; is_group: boolean; family_id: string;
-    last_message?: { content: string; created_at: string; user_id: string };
+    last_messages: RoomMessage[];
     members: Profile[];
     unread: number;
 };
@@ -75,6 +76,13 @@ export default function ChatListPage() {
     const [creating, setCreating] = useState(false);
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [step, setStep] = useState<'members' | 'name'>('members');
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [showProfileEdit, setShowProfileEdit] = useState(false);
+    const [editNick, setEditNick] = useState('');
+    const [editAvatarUrl, setEditAvatarUrl] = useState('');
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => { if (user) init(); }, [user]);
 
@@ -123,12 +131,12 @@ export default function ChatListPage() {
         const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(lastSeenKey) || new Date(0).toISOString() : new Date(0).toISOString();
         const roomList: Room[] = [];
         for (const r of roomData) {
-            const { data: lastMsg } = await supabase.from('family_messages').select('content, created_at, user_id').eq('room_id', r.id).order('created_at', { ascending: false }).limit(1);
+            const { data: lastMsgs } = await supabase.from('family_messages').select('content, created_at, user_id').eq('room_id', r.id).order('created_at', { ascending: false }).limit(4);
             const { count } = await supabase.from('family_messages').select('*', { count: 'exact', head: true }).eq('room_id', r.id).neq('user_id', user!.id).gt('created_at', lastSeen);
             const roomMembers = allMembers?.filter(m => m.room_id === r.id).map(m => profMap[m.user_id]).filter(Boolean) || [];
-            roomList.push({ id: r.id, name: r.name, is_group: r.is_group, family_id: r.family_id, last_message: lastMsg?.[0] || undefined, members: roomMembers, unread: count || 0 });
+            roomList.push({ id: r.id, name: r.name, is_group: r.is_group, family_id: r.family_id, last_messages: lastMsgs?.reverse() || [], members: roomMembers, unread: count || 0 });
         }
-        roomList.sort((a, b) => { const aTime = a.last_message?.created_at || '0'; const bTime = b.last_message?.created_at || '0'; return bTime.localeCompare(aTime); });
+        roomList.sort((a, b) => { const aTime = a.last_messages[a.last_messages.length - 1]?.created_at || '0'; const bTime = b.last_messages[b.last_messages.length - 1]?.created_at || '0'; return bTime.localeCompare(aTime); });
         setRooms(roomList);
     };
 
@@ -145,14 +153,47 @@ export default function ChatListPage() {
         return 'Tú, ' + names.join(', ');
     };
 
-    const getLastMessagePreview = (room: Room) => {
-        if (!room.last_message) return 'Aún sin mensajes';
-        const isMine = room.last_message.user_id === user?.id;
-        const sender = profiles[room.last_message.user_id];
+    const formatMsgPreview = (msg: RoomMessage) => {
+        const isMine = msg.user_id === user?.id;
+        const sender = profiles[msg.user_id];
         const senderName = isMine ? 'Tú' : (sender?.full_name?.split(' ')[0] || '');
-        const text = room.last_message.content || 'Nota de voz';
-        const truncated = text.length > 50 ? text.slice(0, 50) + '…' : text;
-        return { isMine, senderName, text: truncated };
+        const text = msg.content || 'Nota de voz';
+        const truncated = text.length > 45 ? text.slice(0, 45) + '…' : text;
+        return { isMine, senderName, text: truncated, time: format(new Date(msg.created_at), 'HH:mm') };
+    };
+
+    const openProfileEdit = () => {
+        const myProfile = profiles[user!.id];
+        setEditNick(myProfile?.full_name || '');
+        setEditAvatarUrl(myProfile?.avatar_url || '');
+        setShowProfileMenu(false);
+        setShowProfileEdit(true);
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/') || file.size > 3 * 1024 * 1024) return;
+        setUploadingAvatar(true);
+        const ext = file.name.split('.').pop() || 'jpg';
+        const fileName = `avatars/${user.id}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('chat-images').upload(fileName, file, { contentType: file.type });
+        if (uploadError) { setUploadingAvatar(false); return; }
+        const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+        if (urlData?.publicUrl) setEditAvatarUrl(urlData.publicUrl);
+        setUploadingAvatar(false);
+    };
+
+    const saveProfile = async () => {
+        if (!user || !editNick.trim()) return;
+        setSavingProfile(true);
+        const updates: any = { full_name: editNick.trim() };
+        if (editAvatarUrl) updates.avatar_url = editAvatarUrl;
+        await supabase.from('profiles').update(updates).eq('id', user.id);
+        setProfiles(prev => ({ ...prev, [user.id]: { ...prev[user.id], full_name: editNick.trim(), avatar_url: editAvatarUrl } }));
+        setSavingProfile(false);
+        setShowProfileEdit(false);
     };
 
     const toggleMember = (id: string) => {
@@ -215,7 +256,21 @@ export default function ChatListPage() {
                     </div>
                     <div className="flex items-center gap-0.5">
                         <button className="p-2 rounded-full hover:bg-white/10"><Search className="h-5 w-5" /></button>
-                        <button className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-5 w-5" /></button>
+                        <div className="relative">
+                            <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-5 w-5" /></button>
+                            <AnimatePresence>
+                                {showProfileMenu && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                                        className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1e2a20] rounded-xl shadow-xl border border-[#e9ebe6] dark:border-[#2a4a34] overflow-hidden z-50"
+                                    >
+                                        <button onClick={openProfileEdit} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors">
+                                            <User className="h-4 w-4 text-[#1a5c2e]" />
+                                            Mi perfil de chat
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -242,20 +297,19 @@ export default function ChatListPage() {
                 )}
 
                 {rooms.map((room) => {
-                    const preview = getLastMessagePreview(room);
-                    const previewObj = typeof preview === 'string' ? { isMine: false, senderName: '', text: preview } : preview;
                     const hasUnread = room.unread > 0;
                     const memberAvatars = getMemberAvatars(room);
+                    const lastMsg = room.last_messages[room.last_messages.length - 1];
 
                     return (
                         <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`}
                             className={`block rounded-2xl bg-white dark:bg-[#1a2a1e] shadow-sm border overflow-hidden transition-all active:scale-[0.98] hover:shadow-md ${hasUnread ? 'border-[#1a5c2e]/25 ring-1 ring-[#1a5c2e]/10' : 'border-[#e9ebe6] dark:border-[#1e3324]'}`}
                         >
-                            {/* Card header: title + time + unread */}
-                            <div className="flex items-center justify-between px-4 pt-3.5 pb-1">
+                            {/* Card header: title + badge + time + unread */}
+                            <div className="flex items-center justify-between px-4 pt-3 pb-1.5 border-b border-[#f0ede8] dark:border-[#1e3324]">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${hasUnread ? 'bg-[#1a5c2e]' : 'bg-transparent'}`} />
-                                    <h3 className="text-[17px] font-semibold text-[#1a2318] dark:text-[#e0e8e2] truncate">
+                                    {hasUnread && <div className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1a5c2e]" />}
+                                    <h3 className="text-[16px] font-semibold text-[#1a2318] dark:text-[#e0e8e2] truncate">
                                         {getRoomDisplayName(room)}
                                     </h3>
                                     {room.is_group && (
@@ -271,38 +325,45 @@ export default function ChatListPage() {
                                         </span>
                                     )}
                                     <span className={`text-[12px] ${hasUnread ? 'text-[#1a5c2e] font-medium' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
-                                        {room.last_message ? formatTime(room.last_message.created_at) : ''}
+                                        {lastMsg ? formatTime(lastMsg.created_at) : ''}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Last message preview */}
-                            <div className="px-4 pb-2">
-                                <div className="flex items-center gap-1.5">
-                                    {previewObj.isMine && (
-                                        <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c] flex-shrink-0" />
-                                    )}
-                                    <p className="text-[13.5px] text-[#6b7b6e] dark:text-[#8a9b8e] truncate">
-                                        {previewObj.senderName ? <span className="font-medium text-[#4a5a4e] dark:text-[#a0b0a4]">{previewObj.senderName}: </span> : null}
-                                        {previewObj.text}
-                                    </p>
-                                </div>
+                            {/* Last 4 messages */}
+                            <div className="px-4 py-2 space-y-1">
+                                {room.last_messages.length === 0 && (
+                                    <p className="text-[13px] text-[#8a9b8e] italic py-1">Aún sin mensajes</p>
+                                )}
+                                {room.last_messages.map((msg, i) => {
+                                    const preview = formatMsgPreview(msg);
+                                    return (
+                                        <div key={i} className="flex items-center gap-1.5">
+                                            {preview.isMine && <CheckCheck className="h-[13px] w-[13px] text-[#c8a23c] flex-shrink-0" />}
+                                            <p className="text-[13px] text-[#6b7b6e] dark:text-[#8a9b8e] truncate flex-1">
+                                                <span className="font-medium text-[#4a5a4e] dark:text-[#a0b0a4]">{preview.senderName}: </span>
+                                                {preview.text}
+                                            </p>
+                                            <span className="text-[10px] text-[#a0aa9e] dark:text-[#5a6b5e] flex-shrink-0 tabular-nums">{preview.time}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Members strip */}
-                            <div className="flex items-center gap-2 px-4 pb-3 pt-1 border-t border-[#f0ede8] dark:border-[#1e3324]">
+                            <div className="flex items-center gap-2 px-4 pb-2.5 pt-1.5 border-t border-[#f0ede8] dark:border-[#1e3324]">
                                 <div className="flex -space-x-2">
                                     {memberAvatars.map((member) => (
-                                        <Avatar key={member.id} className="h-7 w-7 ring-2 ring-white dark:ring-[#1a2a1e]">
+                                        <Avatar key={member.id} className="h-6 w-6 ring-2 ring-white dark:ring-[#1a2a1e]">
                                             <AvatarImage src={member.avatar_url} />
-                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">
+                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[8px] font-bold">
                                                 {member.full_name?.slice(0, 1)?.toUpperCase()}
                                             </AvatarFallback>
                                         </Avatar>
                                     ))}
                                 </div>
-                                <p className="text-[12px] text-[#8a9b8e] dark:text-[#6b7b6e] truncate">
-                                    {getMembersPreview(room)}
+                                <p className="text-[11px] text-[#8a9b8e] dark:text-[#6b7b6e] truncate">
+                                    {getMembersPreview(room) || memberAvatars.map(m => m.full_name?.split(' ')[0]).join(', ')}
                                 </p>
                             </div>
                         </Link>
@@ -474,6 +535,92 @@ export default function ChatListPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ===== Profile Edit Modal ===== */}
+            <AnimatePresence>
+                {showProfileEdit && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
+                        onClick={() => setShowProfileEdit(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
+                            </div>
+
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
+                                <h2 className="text-[17px] font-medium">Mi perfil de chat</h2>
+                                <button onClick={() => setShowProfileEdit(false)} className="p-1.5 rounded-full hover:bg-white/10">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="px-5 py-6">
+                                {/* Avatar */}
+                                <div className="flex flex-col items-center mb-6">
+                                    <div className="relative">
+                                        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                                        {editAvatarUrl ? (
+                                            <div className="h-24 w-24 rounded-full overflow-hidden ring-4 ring-[#1a5c2e]/15">
+                                                <img src={editAvatarUrl} alt="" className="h-full w-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center ring-4 ring-[#1a5c2e]/15">
+                                                <span className="text-white text-3xl font-semibold">{editNick?.slice(0, 1)?.toUpperCase() || '?'}</span>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => avatarInputRef.current?.click()}
+                                            disabled={uploadingAvatar}
+                                            className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-[#1a5c2e] text-white flex items-center justify-center shadow-md hover:bg-[#1e7a3a] transition-colors disabled:opacity-50"
+                                        >
+                                            {uploadingAvatar ? (
+                                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                                            ) : (
+                                                <Camera className="h-3.5 w-3.5" />
+                                            )}
+                                        </button>
+                                    </div>
+                                    <p className="text-[12px] text-[#8a9b8e] mt-2">Toca para cambiar tu foto</p>
+                                </div>
+
+                                {/* Nick */}
+                                <div className="mb-6">
+                                    <label className="text-[12px] font-medium text-[#6b7b6e] uppercase tracking-wider mb-1.5 block">Nombre / Nick</label>
+                                    <div className="flex items-center gap-2">
+                                        <Pencil className="h-4 w-4 text-[#1a5c2e] flex-shrink-0" />
+                                        <Input
+                                            value={editNick}
+                                            onChange={e => setEditNick(e.target.value)}
+                                            placeholder="Tu nombre en el chat"
+                                            className="h-11 border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:border-[#1a5c2e] bg-transparent text-[16px] text-[#1a2318] dark:text-[#e0e8e2] placeholder:text-[#8a9b8e]"
+                                        />
+                                    </div>
+                                    <p className="text-[11px] text-[#8a9b8e] mt-1.5">Este nombre verán los demás miembros</p>
+                                </div>
+
+                                {/* Save */}
+                                <button onClick={saveProfile} disabled={savingProfile || !editNick.trim()}
+                                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white font-medium text-[15px] disabled:opacity-40 hover:from-[#1e7a3a] hover:to-[#22884a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    {savingProfile ? (
+                                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                    ) : (<><Check className="h-4 w-4" strokeWidth={2.5} /> Guardar</>)}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Click outside to close profile menu */}
+            {showProfileMenu && <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />}
         </div>
     );
 }
