@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
     id: string; user_id: string; content: string; created_at: string;
-    reply_to?: string | null; media_url?: string | null;
+    reply_to?: string | null; media_url?: string | null; tone?: string;
     reply_message?: { content: string; user_id: string; profile_name?: string } | null;
     profile?: { full_name: string; avatar_url: string } | null;
     reactions?: Reaction[];
@@ -26,6 +26,44 @@ type RoomInfo = { id: string; name: string; is_group: boolean; family_id: string
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const MAX_RECORD_SECONDS = 120;
 const CONTACT_COLORS = ['#2d7a4a', '#8b6914', '#a0522d', '#6b4c8a', '#2e7d8c', '#8c5e3c', '#5c7a3e', '#7a3e5c'];
+
+const MOODS = [
+    { emoji: '😊', label: 'Feliz' }, { emoji: '😢', label: 'Triste' }, { emoji: '😡', label: 'Enfadado' },
+    { emoji: '😴', label: 'Cansado' }, { emoji: '🤩', label: 'Emocionado' }, { emoji: '😌', label: 'Relajado' },
+    { emoji: '🤔', label: 'Pensativo' }, { emoji: '😰', label: 'Ansioso' }, { emoji: '🥰', label: 'Enamorado' },
+    { emoji: '😎', label: 'Genial' }, { emoji: '🤒', label: 'Enfermo' }, { emoji: '😤', label: 'Frustrado' },
+    { emoji: '🥳', label: 'De fiesta' }, { emoji: '😇', label: 'Agradecido' }, { emoji: '🫠', label: 'Derretido' },
+    { emoji: '😶', label: 'Sin palabras' }, { emoji: '🤗', label: 'Cariñoso' }, { emoji: '😏', label: 'Travieso' },
+    { emoji: '🥱', label: 'Aburrido' }, { emoji: '💪', label: 'Motivado' }, { emoji: '🧘', label: 'En paz' },
+    { emoji: '😬', label: 'Nervioso' }, { emoji: '🤯', label: 'Flipando' }, { emoji: '😋', label: 'Con hambre' },
+    { emoji: '☕', label: 'Necesito café' }, { emoji: '🎵', label: 'Musical' }, { emoji: '📚', label: 'Estudiando' },
+    { emoji: '💼', label: 'Trabajando' }, { emoji: '🏃', label: 'Activo' }, { emoji: '🛋️', label: 'Modo sofá' },
+    { emoji: '🌧️', label: 'Melancólico' }, { emoji: '✨', label: 'Inspirado' }, { emoji: '😵‍💫', label: 'Mareado' },
+    { emoji: '🔥', label: 'On fire' }, { emoji: '🫣', label: 'Vergüenza' }, { emoji: '💀', label: 'Muerto de risa' },
+];
+
+const TONES = [
+    { id: 'normal', emoji: '🗣️', label: 'Normal' },
+    { id: 'gritando', emoji: '📢', label: 'Gritando' },
+    { id: 'susurrando', emoji: '🤫', label: 'Susurrando' },
+    { id: 'cantando', emoji: '🎵', label: 'Cantando' },
+    { id: 'riendo', emoji: '😂', label: 'Riendo' },
+    { id: 'llorando', emoji: '😭', label: 'Llorando' },
+    { id: 'ironia', emoji: '😏', label: 'Con ironía' },
+    { id: 'amor', emoji: '💕', label: 'Con amor' },
+    { id: 'rabia', emoji: '😤', label: 'Con rabia' },
+    { id: 'miedo', emoji: '😱', label: 'Asustado' },
+    { id: 'suplicando', emoji: '🥺', label: 'Suplicando' },
+    { id: 'dramatizando', emoji: '🎭', label: 'Dramatizando' },
+    { id: 'sarcasmo', emoji: '🙃', label: 'Sarcástico' },
+    { id: 'autoridad', emoji: '👑', label: 'Con autoridad' },
+    { id: 'calma', emoji: '🧘', label: 'Con calma' },
+    { id: 'secreto', emoji: '🤐', label: 'En secreto' },
+    { id: 'emocion', emoji: '🤩', label: 'Emocionado' },
+    { id: 'cansancio', emoji: '😩', label: 'Agotado' },
+    { id: 'confusion', emoji: '🤷', label: 'Confuso' },
+    { id: 'orgullo', emoji: '😤', label: 'Con orgullo' },
+];
 const BUBBLE_COLOR_OPTIONS = [
     { id: 'green', label: 'Verde', mine: '#e4f0d8', mineDark: '#1a3322', border: '#1a5c2e' },
     { id: 'blue', label: 'Azul', mine: '#d8e8f0', mineDark: '#1a2d3e', border: '#2e6b8c' },
@@ -104,6 +142,13 @@ export default function ChatRoomPage() {
     const [savingGroup, setSavingGroup] = useState(false);
     const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
     const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+    const [showMoodPicker, setShowMoodPicker] = useState(false);
+    const [myMood, setMyMood] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('quioba_mood') || '';
+        return '';
+    });
+    const [showTonePicker, setShowTonePicker] = useState(false);
+    const [selectedTone, setSelectedTone] = useState('normal');
     const [myBubbleColor, setMyBubbleColor] = useState(() => {
         if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
         return 'green';
@@ -208,14 +253,24 @@ export default function ChatRoomPage() {
         const text = input.trim(); if (!text || !user || !room || sending) return;
         setSending(true); setInput('');
         const replyId = replyingTo?.id?.startsWith('tmp_') ? null : replyingTo?.id || null;
-        const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: text, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [], reply_to: replyId, reply_message: replyingTo ? { content: replyingTo.content, user_id: replyingTo.user_id, profile_name: replyingTo.profile?.full_name || profiles[replyingTo.user_id]?.full_name } : null };
-        setMessages(prev => [...prev, optimistic]); setReplyingTo(null);
-        const payload: any = { family_id: room.family_id, room_id: room.id, user_id: user.id, content: text }; if (replyId) payload.reply_to = replyId;
+        const tone = selectedTone !== 'normal' ? selectedTone : undefined;
+        const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: text, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [], reply_to: replyId, tone, reply_message: replyingTo ? { content: replyingTo.content, user_id: replyingTo.user_id, profile_name: replyingTo.profile?.full_name || profiles[replyingTo.user_id]?.full_name } : null };
+        setMessages(prev => [...prev, optimistic]); setReplyingTo(null); setSelectedTone('normal');
+        const payload: any = { family_id: room.family_id, room_id: room.id, user_id: user.id, content: text }; if (replyId) payload.reply_to = replyId; if (tone) payload.tone = tone;
         const { data: inserted, error } = await supabase.from('family_messages').insert(payload).select('*').single();
         if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
         else if (inserted) broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted });
         setSending(false); inputRef.current?.focus();
     };
+
+    const getToneInfo = (toneId?: string) => TONES.find(t => t.id === toneId) || null;
+    const selectMood = (emoji: string, label: string) => {
+        const val = `${emoji} ${label}`;
+        setMyMood(val);
+        localStorage.setItem('quioba_mood', val);
+        setShowMoodPicker(false);
+    };
+    const clearMood = () => { setMyMood(''); localStorage.removeItem('quioba_mood'); setShowMoodPicker(false); };
 
     const startRecording = async () => { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' }); audioChunksRef.current = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setRecording(true); setRecordTime(0); recordTimerRef.current = setInterval(() => { setRecordTime(prev => { if (prev >= MAX_RECORD_SECONDS - 1) { stopAndSendRecording(); return prev; } return prev + 1; }); }, 1000); } catch { /* mic unavailable */ } };
     const cancelRecording = () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.onstop = () => { mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop()); }; mediaRecorderRef.current.stop(); } if (recordTimerRef.current) clearInterval(recordTimerRef.current); audioChunksRef.current = []; setRecording(false); setRecordTime(0); };
@@ -403,6 +458,18 @@ export default function ChatRoomPage() {
                                         style={isMine ? { backgroundColor: bubbleColors.mine, border: `2px solid ${bubbleColors.border}30` } : undefined}
                                     >
 
+                                        {/* Tone label */}
+                                        {msg.tone && msg.tone !== 'normal' && (() => {
+                                            const toneInfo = getToneInfo(msg.tone);
+                                            return toneInfo ? (
+                                                <div className="text-[10px] font-semibold px-2 py-0.5 -mx-3 -mt-1.5 mb-1 text-center rounded-t-xl"
+                                                    style={{ backgroundColor: isMine ? `${bubbleColors.border}18` : '#1a5c2e10', color: isMine ? bubbleColors.border : '#5a6b5e' }}
+                                                >
+                                                    {toneInfo.emoji} {toneInfo.label}
+                                                </div>
+                                            ) : null;
+                                        })()}
+
                                         {/* Contact name (groups) */}
                                         {showName && profile && (
                                             <p className="text-[12px] font-semibold mb-0.5" style={{ color: contactCol }}>
@@ -465,13 +532,16 @@ export default function ChatRoomPage() {
                                         </div>
                                     )}
                                 </div>
-                                {/* Avatar right for mine */}
+                                {/* Avatar right for mine — clickable for mood */}
                                 {isMine && (
                                     isFirstInGroup ? (
-                                        <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
-                                            <AvatarImage src={profiles[user!.id]?.avatar_url} />
-                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profiles[user!.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}</AvatarFallback>
-                                        </Avatar>
+                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowMoodPicker(true); }} className="relative flex-shrink-0 mb-0.5">
+                                            <Avatar className="h-7 w-7">
+                                                <AvatarImage src={profiles[user!.id]?.avatar_url} />
+                                                <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profiles[user!.id]?.full_name?.slice(0, 1)?.toUpperCase() || 'T'}</AvatarFallback>
+                                            </Avatar>
+                                            {myMood && <span className="absolute -bottom-1 -right-1 text-[10px] leading-none">{myMood.split(' ')[0]}</span>}
+                                        </button>
                                     ) : <div className="w-7 flex-shrink-0" />
                                 )}
                             </div>
@@ -502,6 +572,30 @@ export default function ChatRoomPage() {
                     <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })} className="absolute bottom-20 right-3 z-20 h-10 w-10 rounded-full bg-white dark:bg-[#1e2a20] shadow-lg border border-[#1a5c2e]/10 flex items-center justify-center">
                         <ChevronDown className="h-5 w-5 text-[#1a5c2e]" />
                     </motion.button>
+                )}
+            </AnimatePresence>
+
+            {/* ===== TONE SELECTOR ===== */}
+            <AnimatePresence>
+                {showTonePicker && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-[#eae6df] dark:bg-[#141e16] border-t border-[#d4d0c8] dark:border-[#1e2a20]">
+                        <div className="px-2 py-2">
+                            <div className="flex items-center justify-between mb-1.5 px-1">
+                                <span className="text-[11px] font-semibold text-[#6b7b6e] uppercase tracking-wider">Entonación</span>
+                                <button onClick={() => setShowTonePicker(false)}><X className="h-3.5 w-3.5 text-[#6b7b6e]" /></button>
+                            </div>
+                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                                {TONES.map(t => (
+                                    <button key={t.id} onClick={() => { setSelectedTone(t.id); setShowTonePicker(false); }}
+                                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full whitespace-nowrap text-[12px] font-medium transition-all flex-shrink-0 ${selectedTone === t.id ? 'bg-[#1a5c2e] text-white shadow-sm' : 'bg-white dark:bg-[#1e2a20] text-[#4a5a4e] dark:text-[#a0b0a4] border border-[#e0dcd6] dark:border-[#2a3a2e]'}`}
+                                    >
+                                        <span>{t.emoji}</span>
+                                        <span>{t.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -542,7 +636,10 @@ export default function ChatRoomPage() {
                                 <button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending || uploadingImage} className="py-2.5 text-[#6b7b6e] hover:text-[#1a5c2e] transition-colors disabled:opacity-40 flex-shrink-0">
                                     <Paperclip className="h-[22px] w-[22px]" />
                                 </button>
-                                <input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="Escribe un mensaje..." className="flex-1 h-[46px] bg-transparent text-[15px] text-[#1a2318] dark:text-[#e0e8e2] placeholder:text-[#6b7b6e]/60 dark:placeholder:text-[#8a9b8e]/60 outline-none px-2" autoComplete="off" />
+                                <button type="button" onClick={() => setShowTonePicker(!showTonePicker)} className={`py-2.5 ml-0.5 transition-colors flex-shrink-0 text-[18px] ${selectedTone !== 'normal' ? '' : 'opacity-40 hover:opacity-70'}`}>
+                                    {TONES.find(t => t.id === selectedTone)?.emoji || '🗣️'}
+                                </button>
+                                <input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={selectedTone !== 'normal' ? `${TONES.find(t => t.id === selectedTone)?.label}...` : "Escribe un mensaje..."} className="flex-1 h-[46px] bg-transparent text-[15px] text-[#1a2318] dark:text-[#e0e8e2] placeholder:text-[#6b7b6e]/60 dark:placeholder:text-[#8a9b8e]/60 outline-none px-2" autoComplete="off" />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -628,6 +725,51 @@ export default function ChatRoomPage() {
                 )}
             </AnimatePresence>
 
+
+            {/* ===== Mood Picker Modal ===== */}
+            <AnimatePresence>
+                {showMoodPicker && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
+                        onClick={() => setShowMoodPicker(false)}
+                    >
+                        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                            className="bg-white dark:bg-[#162018] w-full max-w-md max-h-[70vh] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
+                            </div>
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
+                                <h2 className="text-[17px] font-medium">¿Cómo te sientes?</h2>
+                                <button onClick={() => setShowMoodPicker(false)} className="p-1.5 rounded-full hover:bg-white/10">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            {myMood && (
+                                <button onClick={clearMood} className="mx-4 mt-3 mb-1 flex items-center gap-2 text-[13px] text-red-500 hover:text-red-600 transition-colors">
+                                    <X className="h-3.5 w-3.5" /> Quitar estado
+                                </button>
+                            )}
+                            <div className="flex-1 overflow-y-auto px-2 py-2">
+                                {MOODS.map(m => {
+                                    const isSelected = myMood === `${m.emoji} ${m.label}`;
+                                    return (
+                                        <button key={m.label} onClick={() => selectMood(m.emoji, m.label)}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isSelected ? 'bg-[#1a5c2e]/10' : 'hover:bg-[#1a5c2e]/5'}`}
+                                        >
+                                            <span className="text-[26px]">{m.emoji}</span>
+                                            <span className="flex-1 text-left text-[15px] text-[#1a2318] dark:text-[#e0e8e2]">{m.label}</span>
+                                            {isSelected && <Check className="h-5 w-5 text-[#1a5c2e]" strokeWidth={2.5} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Backdrop for header menu */}
             {showHeaderMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowHeaderMenu(false)} />}
