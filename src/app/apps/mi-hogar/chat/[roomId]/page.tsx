@@ -207,7 +207,18 @@ export default function ChatRoomPage() {
             .subscribe(async (status) => { if (status === 'SUBSCRIBED') await onlineChannel.track({ user_id: user.id, last_seen: new Date().toISOString() }); });
 
         const hb = setInterval(() => onlineChannel.track({ user_id: user.id, last_seen: new Date().toISOString() }), 30000);
-        return () => { clearInterval(hb); supabase.removeChannel(channel); supabase.removeChannel(presenceChannel); supabase.removeChannel(onlineChannel); };
+
+        const poll = setInterval(async () => {
+            const current = messagesRef.current;
+            const lastReal = [...current].reverse().find(m => !m.id.startsWith('tmp_'));
+            const since = lastReal?.created_at || new Date(0).toISOString();
+            const { data } = await supabase.from('family_messages').select('*').eq('room_id', roomId).gt('created_at', since).order('created_at', { ascending: true });
+            if (data && data.length > 0) {
+                for (const msg of data) addIncomingMessage(msg);
+            }
+        }, 3000);
+
+        return () => { clearInterval(hb); clearInterval(poll); supabase.removeChannel(channel); supabase.removeChannel(presenceChannel); supabase.removeChannel(onlineChannel); };
     }, [room]);
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUser]);
