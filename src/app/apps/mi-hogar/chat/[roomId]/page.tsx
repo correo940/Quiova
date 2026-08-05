@@ -344,7 +344,7 @@ export default function ChatRoomPage() {
                                                 <img src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy" />
                                                 <div className="flex items-center justify-end gap-1 px-3 py-1.5">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
+                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
                                                 </div>
                                             </div>
                                         ) : hasAudioMsg ? (
@@ -352,7 +352,7 @@ export default function ChatRoomPage() {
                                                 <AudioPlayer url={msg.media_url!} isMine={isMine} />
                                                 <div className="flex items-center justify-end gap-1 -mt-0.5">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
+                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
                                                 </div>
                                             </>
                                         ) : (
@@ -360,7 +360,7 @@ export default function ChatRoomPage() {
                                                 <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
-                                                    {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
+                                                    {isMine && (<span className="inline-flex flex-col items-center gap-[1px]"><img src={profiles[user!.id]?.avatar_url} alt="" className="h-[14px] w-[14px] rounded-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />{read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />}</span>)}
                                                 </span>
                                             </div>
                                         )}
