@@ -128,6 +128,10 @@ export default function ChatRoomPage() {
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const profilesRef = useRef(profiles);
+    profilesRef.current = profiles;
+    const messagesRef = useRef(messages);
+    messagesRef.current = messages;
 
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
@@ -140,20 +144,30 @@ export default function ChatRoomPage() {
         const channel = supabase.channel('room_' + roomId)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'family_messages', filter: `room_id=eq.${roomId}` }, async (payload) => {
                 const msg = payload.new as any;
-                let profile = profiles[msg.user_id] || null;
+                const currentProfiles = profilesRef.current;
+                let profile = currentProfiles[msg.user_id] || null;
                 if (!profile) {
                     const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email').eq('id', msg.user_id).single();
                     if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
                 }
                 let reply_message = null;
                 if (msg.reply_to) {
-                    const replied = messages.find(m => m.id === msg.reply_to);
-                    if (replied) reply_message = { content: replied.content, user_id: replied.user_id, profile_name: replied.profile?.full_name || profiles[replied.user_id]?.full_name };
+                    const replied = messagesRef.current.find(m => m.id === msg.reply_to);
+                    if (replied) reply_message = { content: replied.content, user_id: replied.user_id, profile_name: replied.profile?.full_name || currentProfiles[replied.user_id]?.full_name };
                 }
                 setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profile, reactions: [], reply_message }]);
                 if (msg.user_id !== user.id) { setTypingUser(null); markAsRead(); }
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => fetchReactions())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => {
+                const msgIds = messagesRef.current.map(m => m.id).filter(id => !id.startsWith('tmp_'));
+                if (msgIds.length === 0) return;
+                supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds).then(({ data }) => {
+                    if (!data) return;
+                    const rm: Record<string, Reaction[]> = {};
+                    data.forEach((r: any) => { if (!rm[r.message_id]) rm[r.message_id] = []; rm[r.message_id].push({ emoji: r.emoji, user_id: r.user_id, user_name: profilesRef.current[r.user_id]?.full_name }); });
+                    setMessages(prev => prev.map(m => ({ ...m, reactions: rm[m.id] || m.reactions || [] })));
+                });
+            })
             .subscribe();
 
         const presenceChannel = supabase.channel('typing_room_' + roomId);
@@ -182,7 +196,7 @@ export default function ChatRoomPage() {
 
         const hb = setInterval(() => onlineChannel.track({ user_id: user.id, last_seen: new Date().toISOString() }), 30000);
         return () => { clearInterval(hb); supabase.removeChannel(channel); supabase.removeChannel(presenceChannel); supabase.removeChannel(onlineChannel); };
-    }, [room, profiles]);
+    }, [room]);
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUser]);
 
