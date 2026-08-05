@@ -245,6 +245,9 @@ export default function ChatListPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-[#f4f1ec] dark:bg-[#0f1612]">
+            {/* Backdrop to close profile menu */}
+            {showProfileMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowProfileMenu(false)} />}
+
             {/* ===== QUIOBA HEADER ===== */}
             <div className="bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -619,8 +622,6 @@ export default function ChatListPage() {
                 )}
             </AnimatePresence>
 
-            {/* Click outside to close profile menu */}
-            {showProfileMenu && <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />}
         </div>
     );
 }
