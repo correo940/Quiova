@@ -132,6 +132,27 @@ export default function ChatRoomPage() {
     profilesRef.current = profiles;
     const messagesRef = useRef(messages);
     messagesRef.current = messages;
+    const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    const addIncomingMessage = useCallback(async (msg: any) => {
+        const currentProfiles = profilesRef.current;
+        let profile = currentProfiles[msg.user_id] || null;
+        if (!profile) {
+            const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email').eq('id', msg.user_id).single();
+            if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
+        }
+        let reply_message = null;
+        if (msg.reply_to) {
+            const replied = messagesRef.current.find(m => m.id === msg.reply_to);
+            if (replied) reply_message = { content: replied.content, user_id: replied.user_id, profile_name: replied.profile?.full_name || currentProfiles[replied.user_id]?.full_name };
+        }
+        setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            const withoutOptimistic = msg.user_id === user?.id ? prev.filter(m => !(m.id.startsWith('tmp_') && m.content === msg.content && m.user_id === msg.user_id)) : prev;
+            return [...withoutOptimistic, { ...msg, profile, reactions: [], reply_message }];
+        });
+        if (msg.user_id !== user?.id) { setTypingUser(null); markAsRead(); }
+    }, [user]);
 
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
@@ -142,21 +163,8 @@ export default function ChatRoomPage() {
         markAsRead();
 
         const channel = supabase.channel('room_' + roomId)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'family_messages', filter: `room_id=eq.${roomId}` }, async (payload) => {
-                const msg = payload.new as any;
-                const currentProfiles = profilesRef.current;
-                let profile = currentProfiles[msg.user_id] || null;
-                if (!profile) {
-                    const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email').eq('id', msg.user_id).single();
-                    if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
-                }
-                let reply_message = null;
-                if (msg.reply_to) {
-                    const replied = messagesRef.current.find(m => m.id === msg.reply_to);
-                    if (replied) reply_message = { content: replied.content, user_id: replied.user_id, profile_name: replied.profile?.full_name || currentProfiles[replied.user_id]?.full_name };
-                }
-                setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, { ...msg, profile, reactions: [], reply_message }]);
-                if (msg.user_id !== user.id) { setTypingUser(null); markAsRead(); }
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'family_messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+                addIncomingMessage(payload.new);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => {
                 const msgIds = messagesRef.current.map(m => m.id).filter(id => !id.startsWith('tmp_'));
@@ -171,6 +179,7 @@ export default function ChatRoomPage() {
             .subscribe();
 
         const presenceChannel = supabase.channel('typing_room_' + roomId);
+        broadcastChannelRef.current = presenceChannel;
         presenceChannel
             .on('broadcast', { event: 'typing' }, ({ payload: p }) => {
                 if (p.user_id === user.id) return;
@@ -181,6 +190,9 @@ export default function ChatRoomPage() {
             .on('broadcast', { event: 'read' }, ({ payload: p }) => {
                 if (p.user_id === user.id) return;
                 setReadTimes(prev => ({ ...prev, [p.user_id]: p.read_at }));
+            })
+            .on('broadcast', { event: 'new_message' }, ({ payload: p }) => {
+                addIncomingMessage(p);
             })
             .subscribe();
 
@@ -295,8 +307,9 @@ export default function ChatRoomPage() {
         setReplyingTo(null);
         const payload: any = { family_id: room.family_id, room_id: room.id, user_id: user.id, content: text };
         if (replyId) payload.reply_to = replyId;
-        const { error } = await supabase.from('family_messages').insert(payload);
+        const { data: inserted, error } = await supabase.from('family_messages').insert(payload).select('*').single();
         if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        else if (inserted) broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted });
         setSending(false); inputRef.current?.focus();
     };
 
@@ -349,8 +362,9 @@ export default function ChatRoomPage() {
         if (!urlData?.publicUrl) { setSending(false); return; }
         const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(), media_url: urlData.publicUrl, profile: profiles[user.id] || null, reactions: [] };
         setMessages(prev => [...prev, optimistic]);
-        const { error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl });
+        const { data: inserted, error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl }).select('*').single();
         if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        else if (inserted) broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted });
         setSending(false);
     };
 
@@ -368,8 +382,9 @@ export default function ChatRoomPage() {
         if (!urlData?.publicUrl) { setUploadingImage(false); return; }
         const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(), media_url: urlData.publicUrl, profile: profiles[user.id] || null, reactions: [] };
         setMessages(prev => [...prev, optimistic]);
-        const { error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl });
+        const { data: inserted, error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl }).select('*').single();
         if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        else if (inserted) broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted });
         setUploadingImage(false);
     };
 
