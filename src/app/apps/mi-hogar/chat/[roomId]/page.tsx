@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Paperclip, MoreVertical, Phone, Camera, Pencil, Palette } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Paperclip, MoreVertical, Phone, Camera, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -104,7 +104,6 @@ export default function ChatRoomPage() {
     const [savingGroup, setSavingGroup] = useState(false);
     const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
     const [showHeaderMenu, setShowHeaderMenu] = useState(false);
-    const [showBubbleColorPicker, setShowBubbleColorPicker] = useState(false);
     const [myBubbleColor, setMyBubbleColor] = useState(() => {
         if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
         return 'green';
@@ -269,13 +268,6 @@ export default function ChatRoomPage() {
         setShowGroupEdit(false);
     };
 
-    const selectBubbleColor = (colorId: string) => {
-        setMyBubbleColor(colorId);
-        localStorage.setItem('quioba_bubble_color', colorId);
-        setShowBubbleColorPicker(false);
-        setShowHeaderMenu(false);
-    };
-
     const bubbleColors = BUBBLE_COLOR_OPTIONS.find(c => c.id === myBubbleColor) || BUBBLE_COLOR_OPTIONS[0];
 
     if (!user || !room) {
@@ -327,15 +319,11 @@ export default function ChatRoomPage() {
                                 className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1e2a20] rounded-xl shadow-xl border border-[#e9ebe6] dark:border-[#2a4a34] overflow-hidden z-50"
                             >
                                 {room?.is_group && (
-                                    <button onClick={openGroupEdit} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors border-b border-[#f0ede8] dark:border-[#1e3324]">
+                                    <button onClick={openGroupEdit} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors">
                                         <Pencil className="h-4 w-4 text-[#1a5c2e]" />
                                         Editar grupo
                                     </button>
                                 )}
-                                <button onClick={() => { setShowBubbleColorPicker(true); setShowHeaderMenu(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-left text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#f4f1ec] dark:hover:bg-[#1a3322] transition-colors">
-                                    <Palette className="h-4 w-4 text-[#1a5c2e]" />
-                                    Color de burbuja
-                                </button>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -640,46 +628,6 @@ export default function ChatRoomPage() {
                 )}
             </AnimatePresence>
 
-            {/* ===== Bubble Color Picker Modal ===== */}
-            <AnimatePresence>
-                {showBubbleColorPicker && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
-                        onClick={() => setShowBubbleColorPicker(false)}
-                    >
-                        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                                <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
-                            </div>
-                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
-                                <h2 className="text-[17px] font-medium">Color de tus burbujas</h2>
-                                <button onClick={() => setShowBubbleColorPicker(false)} className="p-1.5 rounded-full hover:bg-white/10">
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-                            <div className="p-5 grid grid-cols-3 gap-3">
-                                {BUBBLE_COLOR_OPTIONS.map(color => (
-                                    <button key={color.id} onClick={() => selectBubbleColor(color.id)}
-                                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${myBubbleColor === color.id ? 'border-[#1a5c2e] shadow-md scale-105' : 'border-[#e9ebe6] dark:border-[#1e3324] hover:border-[#1a5c2e]/30'}`}
-                                    >
-                                        <div className="w-full h-10 rounded-xl" style={{ backgroundColor: color.mine, border: `2px solid ${color.border}40` }} />
-                                        <span className="text-[12px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">{color.label}</span>
-                                        {myBubbleColor === color.id && (
-                                            <div className="w-5 h-5 rounded-full bg-[#1a5c2e] flex items-center justify-center">
-                                                <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                                            </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {/* Backdrop for header menu */}
             {showHeaderMenu && <div className="fixed inset-0 z-[9]" onClick={() => setShowHeaderMenu(false)} />}

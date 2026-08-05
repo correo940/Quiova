@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, Search, MoreVertical, Camera, User, Pencil } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Plus, Users, X, Check, CheckCheck, Search, MoreVertical, Camera, User, Pencil, Palette } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -20,6 +20,15 @@ type Room = {
     members: Profile[];
     unread: number;
 };
+
+const BUBBLE_COLOR_OPTIONS = [
+    { id: 'green', label: 'Verde', color: '#e4f0d8', border: '#1a5c2e' },
+    { id: 'blue', label: 'Azul', color: '#d8e8f0', border: '#2e6b8c' },
+    { id: 'purple', label: 'Morado', color: '#e8d8f0', border: '#6b4c8a' },
+    { id: 'orange', label: 'Naranja', color: '#f0e4d0', border: '#b8762e' },
+    { id: 'pink', label: 'Rosa', color: '#f0d8e4', border: '#8c4a6b' },
+    { id: 'gold', label: 'Dorado', color: '#f0ead0', border: '#8b7a14' },
+];
 
 function formatTime(dateStr: string) {
     const d = new Date(dateStr);
@@ -82,6 +91,10 @@ export default function ChatListPage() {
     const [editAvatarUrl, setEditAvatarUrl] = useState('');
     const [savingProfile, setSavingProfile] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [myBubbleColor, setMyBubbleColor] = useState(() => {
+        if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
+        return 'green';
+    });
     const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => { if (user) init(); }, [user]);
@@ -606,6 +619,24 @@ export default function ChatListPage() {
                                         />
                                     </div>
                                     <p className="text-[11px] text-[#8a9b8e] mt-1.5">Este nombre verán los demás miembros</p>
+                                </div>
+
+                                {/* Bubble color */}
+                                <div className="mb-6">
+                                    <label className="text-[12px] font-medium text-[#6b7b6e] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Palette className="h-3.5 w-3.5 text-[#1a5c2e]" />
+                                        Color de tus burbujas
+                                    </label>
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {BUBBLE_COLOR_OPTIONS.map(c => (
+                                            <button key={c.id} onClick={() => { setMyBubbleColor(c.id); localStorage.setItem('quioba_bubble_color', c.id); }}
+                                                className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${myBubbleColor === c.id ? 'border-[#1a5c2e] shadow-sm scale-105' : 'border-transparent hover:border-[#1a5c2e]/20'}`}
+                                            >
+                                                <div className="w-8 h-8 rounded-full" style={{ backgroundColor: c.color, border: `2px solid ${c.border}50` }} />
+                                                <span className="text-[9px] font-medium text-[#6b7b6e]">{c.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Save */}
