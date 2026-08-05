@@ -148,10 +148,11 @@ export default function ChatListPage() {
     const getLastMessagePreview = (room: Room) => {
         if (!room.last_message) return 'Aún sin mensajes';
         const isMine = room.last_message.user_id === user?.id;
-        const senderName = isMine ? '' : (profiles[room.last_message.user_id]?.full_name?.split(' ')[0] + ': ' || '');
-        const text = room.last_message.content;
-        const truncated = text.length > 35 ? text.slice(0, 35) + '…' : text;
-        return { isMine, text: senderName + truncated };
+        const sender = profiles[room.last_message.user_id];
+        const senderName = isMine ? 'Tú' : (sender?.full_name?.split(' ')[0] || '');
+        const text = room.last_message.content || 'Nota de voz';
+        const truncated = text.length > 50 ? text.slice(0, 50) + '…' : text;
+        return { isMine, senderName, text: truncated };
     };
 
     const toggleMember = (id: string) => {
@@ -197,31 +198,29 @@ export default function ChatListPage() {
         );
     }
 
+    const getMemberAvatars = (room: Room) => {
+        return room.members.filter(m => m.id !== user?.id).slice(0, 4);
+    };
+
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-white dark:bg-[#0f1612]">
+        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto bg-[#f4f1ec] dark:bg-[#0f1612]">
             {/* ===== QUIOBA HEADER ===== */}
             <div className="bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
-                <div className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2">
                         <Link href="/apps/mi-hogar" className="p-1">
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <h1 className="text-[20px] font-semibold tracking-tight">Chats</h1>
+                        <h1 className="text-[20px] font-semibold tracking-tight">Chats familiares</h1>
                     </div>
                     <div className="flex items-center gap-0.5">
                         <button className="p-2 rounded-full hover:bg-white/10"><Search className="h-5 w-5" /></button>
                         <button className="p-2 rounded-full hover:bg-white/10"><MoreVertical className="h-5 w-5" /></button>
                     </div>
                 </div>
-                {/* Tab bar */}
-                <div className="flex border-b border-white/10">
-                    <div className="flex-1 py-2.5 text-center text-[13px] font-semibold text-white border-b-[3px] border-white">
-                        CONVERSACIONES
-                    </div>
-                </div>
             </div>
 
-            {/* FAB button (Quioba green) */}
+            {/* FAB button */}
             <button
                 onClick={() => setShowCreate(true)}
                 className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform hover:from-[#1e7a3a] hover:to-[#22884a]"
@@ -229,12 +228,12 @@ export default function ChatListPage() {
                 <MessageCircle className="h-6 w-6" />
             </button>
 
-            {/* Room List */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Room Cards */}
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
                 {rooms.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-[60vh] text-center px-10">
-                        <div className="w-20 h-20 rounded-full bg-[#1a5c2e]/5 dark:bg-[#1a5c2e]/10 flex items-center justify-center mb-4">
-                            <MessageCircle className="h-9 w-9 text-[#6b7b6e]" />
+                        <div className="w-20 h-20 rounded-full bg-white dark:bg-[#1a5c2e]/10 flex items-center justify-center mb-4 shadow-sm">
+                            <MessageCircle className="h-9 w-9 text-[#1a5c2e]/40" />
                         </div>
                         <p className="text-[16px] font-normal text-[#6b7b6e] dark:text-[#8a9b8e]">
                             Toca el botón para iniciar un chat con tu familia
@@ -244,51 +243,67 @@ export default function ChatListPage() {
 
                 {rooms.map((room) => {
                     const preview = getLastMessagePreview(room);
-                    const previewObj = typeof preview === 'string' ? { isMine: false, text: preview } : preview;
+                    const previewObj = typeof preview === 'string' ? { isMine: false, senderName: '', text: preview } : preview;
                     const hasUnread = room.unread > 0;
+                    const memberAvatars = getMemberAvatars(room);
 
                     return (
-                        <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`} className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[#f4f1ec] dark:hover:bg-[#1a2a1e] active:bg-[#eae6df] dark:active:bg-[#1e3324] transition-colors">
-                            {room.is_group ? (
-                                <GroupAvatarStack members={room.members} userId={user.id} />
-                            ) : (
-                                <Avatar className="h-[50px] w-[50px] flex-shrink-0">
-                                    <AvatarImage src={room.members.find(m => m.id !== user.id)?.avatar_url} />
-                                    <AvatarFallback className="bg-[#2d5a3e] text-white text-lg font-medium">
-                                        {getRoomDisplayName(room).slice(0, 1).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
-
-                            <div className="flex-1 min-w-0 py-1 border-b border-[#e9ebe6] dark:border-[#1e2a20]">
-                                <div className="flex items-baseline justify-between">
-                                    <p className="text-[16.5px] truncate text-[#1a2318] dark:text-[#e0e8e2]">
+                        <Link key={room.id} href={`/apps/mi-hogar/chat/${room.id}`}
+                            className={`block rounded-2xl bg-white dark:bg-[#1a2a1e] shadow-sm border overflow-hidden transition-all active:scale-[0.98] hover:shadow-md ${hasUnread ? 'border-[#1a5c2e]/25 ring-1 ring-[#1a5c2e]/10' : 'border-[#e9ebe6] dark:border-[#1e3324]'}`}
+                        >
+                            {/* Card header: title + time + unread */}
+                            <div className="flex items-center justify-between px-4 pt-3.5 pb-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${hasUnread ? 'bg-[#1a5c2e]' : 'bg-transparent'}`} />
+                                    <h3 className="text-[17px] font-semibold text-[#1a2318] dark:text-[#e0e8e2] truncate">
                                         {getRoomDisplayName(room)}
-                                    </p>
-                                    <span className={`text-[12px] ml-3 flex-shrink-0 ${hasUnread ? 'text-[#1a5c2e]' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
-                                        {room.last_message ? formatTime(room.last_message.created_at) : ''}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <div className="flex items-center gap-1 min-w-0 flex-1">
-                                        {previewObj.isMine && (
-                                            <CheckCheck className="h-[18px] w-[18px] text-[#c8a23c] flex-shrink-0" />
-                                        )}
-                                        <p className={`text-[14px] truncate ${hasUnread ? 'text-[#1a2318] dark:text-[#e0e8e2]' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
-                                            {previewObj.isMine ? room.last_message?.content?.slice(0, 40) + (room.last_message?.content && room.last_message.content.length > 40 ? '...' : '') : previewObj.text}
-                                        </p>
-                                    </div>
-                                    {hasUnread && (
-                                        <span className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5 flex-shrink-0">
-                                            {room.unread > 99 ? '99+' : room.unread}
+                                    </h3>
+                                    {room.is_group && (
+                                        <span className="text-[10px] font-medium text-[#1a5c2e] bg-[#1a5c2e]/8 dark:bg-[#1a5c2e]/20 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                                            Grupo
                                         </span>
                                     )}
                                 </div>
+                                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                    {hasUnread && (
+                                        <span className="min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-[#1a5c2e] text-white text-[11px] font-bold px-1.5">
+                                            {room.unread > 99 ? '99+' : room.unread}
+                                        </span>
+                                    )}
+                                    <span className={`text-[12px] ${hasUnread ? 'text-[#1a5c2e] font-medium' : 'text-[#6b7b6e] dark:text-[#8a9b8e]'}`}>
+                                        {room.last_message ? formatTime(room.last_message.created_at) : ''}
+                                    </span>
+                                </div>
+                            </div>
 
-                                {room.is_group && (
-                                    <p className="text-[12px] text-[#6b7b6e] dark:text-[#8a9b8e] mt-0.5 truncate">{getMembersPreview(room)}</p>
-                                )}
+                            {/* Last message preview */}
+                            <div className="px-4 pb-2">
+                                <div className="flex items-center gap-1.5">
+                                    {previewObj.isMine && (
+                                        <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c] flex-shrink-0" />
+                                    )}
+                                    <p className="text-[13.5px] text-[#6b7b6e] dark:text-[#8a9b8e] truncate">
+                                        {previewObj.senderName ? <span className="font-medium text-[#4a5a4e] dark:text-[#a0b0a4]">{previewObj.senderName}: </span> : null}
+                                        {previewObj.text}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Members strip */}
+                            <div className="flex items-center gap-2 px-4 pb-3 pt-1 border-t border-[#f0ede8] dark:border-[#1e3324]">
+                                <div className="flex -space-x-2">
+                                    {memberAvatars.map((member) => (
+                                        <Avatar key={member.id} className="h-7 w-7 ring-2 ring-white dark:ring-[#1a2a1e]">
+                                            <AvatarImage src={member.avatar_url} />
+                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">
+                                                {member.full_name?.slice(0, 1)?.toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    ))}
+                                </div>
+                                <p className="text-[12px] text-[#8a9b8e] dark:text-[#6b7b6e] truncate">
+                                    {getMembersPreview(room)}
+                                </p>
                             </div>
                         </Link>
                     );
