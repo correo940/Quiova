@@ -182,10 +182,20 @@ export default function ChatRoomPage() {
         });
         if (msg.user_id !== user?.id) {
             setTypingUser(null); markAsRead();
-            if (typeof document !== 'undefined' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+            if (typeof document !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
                 const senderName = profile?.full_name || 'Alguien';
                 const body = msg.content || (msg.media_url?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
-                try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png', tag: 'chat_' + msg.id, requireInteraction: true }); } catch {}
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        (reg as any).showNotification(`💬 ${senderName}`, {
+                            body, icon: '/icon-192.png', badge: '/icon-192.png',
+                            tag: 'chat_' + msg.room_id, renotify: true,
+                            requireInteraction: true,
+                            vibrate: [300, 100, 300],
+                            data: { url: `/apps/mi-hogar/chat/${msg.room_id}` },
+                        });
+                    }).catch(() => {});
+                }
             }
         }
     }, [user]);
@@ -314,7 +324,7 @@ export default function ChatRoomPage() {
                     body: JSON.stringify({ subscription: sub.toJSON() }),
                 });
                 if (res.ok) {
-                    new Notification('Quioba Chat', { body: '¡Notificaciones activadas! Recibirás avisos de nuevos mensajes.', icon: '/icon-192.png' });
+                    reg.showNotification('Quioba Chat', { body: '¡Notificaciones activadas! Recibirás avisos de nuevos mensajes.', icon: '/icon-192.png', badge: '/icon-192.png' });
                 }
             }
         } catch (e) { console.error('[push] Error activando:', e); }
