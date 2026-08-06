@@ -152,6 +152,7 @@ export default function ChatRoomPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const notifAudioRef = useRef<HTMLAudioElement | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -183,21 +184,7 @@ export default function ChatRoomPage() {
         });
         if (msg.user_id !== user?.id) {
             setTypingUser(null); markAsRead();
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                const senderName = profile?.full_name || 'Alguien';
-                const body = msg.content || (msg.media_url?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.ready.then(reg => {
-                        (reg as any).showNotification(`💬 ${senderName}`, {
-                            body, icon: '/icon-192.png', badge: '/icon-192.png',
-                            tag: 'chat_' + msg.room_id, renotify: true,
-                            requireInteraction: true,
-                            vibrate: [300, 100, 300],
-                            data: { url: `/apps/mi-hogar/chat/${msg.room_id}` },
-                        });
-                    }).catch(() => {});
-                }
-            }
+            notifyIncoming(profile?.full_name || 'Alguien', msg.content, msg.media_url, msg.room_id);
         }
     }, [user]);
 
@@ -288,6 +275,32 @@ export default function ChatRoomPage() {
         setSending(false); inputRef.current?.focus();
     };
 
+    const notifyIncoming = (senderName: string, content: string, mediaUrl?: string | null, roomId?: string) => {
+        if (typeof window === 'undefined') return;
+        const body = content || (mediaUrl?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
+
+        try { if (!notifAudioRef.current) notifAudioRef.current = new Audio('/notif.wav'); notifAudioRef.current.play().catch(() => {}); } catch {}
+        try { navigator.vibrate?.([300, 100, 300]); } catch {}
+        try { (navigator as any).setAppBadge?.(); } catch {}
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.ready.then(reg => {
+                    (reg as any).showNotification(`💬 ${senderName}`, {
+                        body, icon: '/icon-192.png', badge: '/icon-192.png',
+                        tag: 'chat_' + (roomId || 'msg'), renotify: true,
+                        requireInteraction: true, vibrate: [300, 100, 300],
+                        data: { url: roomId ? `/apps/mi-hogar/chat/${roomId}` : '/' },
+                    });
+                }).catch(() => {
+                    try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png' }); } catch {}
+                });
+            } else {
+                try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png' }); } catch {}
+            }
+        }
+    };
+
     const sendChatPush = (preview: string) => {
         if (!room) return;
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -304,10 +317,7 @@ export default function ChatRoomPage() {
         if (typeof window === 'undefined') return;
         setPushStatus('activando...');
 
-        const hasNotifAPI = 'Notification' in window;
-        const hasSW = 'serviceWorker' in navigator;
-
-        if (!hasNotifAPI) {
+        if (!('Notification' in window)) {
             setPushStatus('⚠️ Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
             return;
         }
@@ -318,46 +328,36 @@ export default function ChatRoomPage() {
                 setPushStatus('⚠️ Permiso denegado. Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
                 return;
             }
-
             setPushEnabled(true);
+            setPushStatus('✅ ¡Activadas!');
+            notifyIncoming('Quioba', '¡Notificaciones activadas!');
+            setTimeout(() => setPushStatus(''), 3000);
 
-            if (hasSW) {
-                const reg = await navigator.serviceWorker.register('/sw.js');
-                await navigator.serviceWorker.ready;
-
-                (reg as any).showNotification('✅ Quioba Chat', {
-                    body: '¡Notificaciones activadas!',
-                    icon: '/icon-192.png', badge: '/icon-192.png',
-                    vibrate: [200, 100, 200],
-                });
-
-                if ('PushManager' in window) {
-                    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                    if (vapidKey) {
-                        let sub = await reg.pushManager.getSubscription();
-                        if (!sub) {
-                            const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
-                            const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-                            const raw = atob(b64);
-                            const arr = new Uint8Array(raw.length);
-                            for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-                            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
-                        }
-                        const { data: { session } } = await supabase.auth.getSession();
-                        if (session) {
-                            await fetch('/api/push/subscribe', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                                body: JSON.stringify({ subscription: sub.toJSON() }),
-                            });
-                        }
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                if (vapidKey) {
+                    const reg = await navigator.serviceWorker.ready;
+                    let sub = await reg.pushManager.getSubscription();
+                    if (!sub) {
+                        const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
+                        const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+                        const raw = atob(b64);
+                        const arr = new Uint8Array(raw.length);
+                        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
+                    }
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) {
+                        fetch('/api/push/subscribe', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                            body: JSON.stringify({ subscription: sub.toJSON() }),
+                        }).catch(() => {});
                     }
                 }
             }
-            setPushStatus('');
         } catch (e: any) {
-            console.error('[push] Error:', e);
-            setPushStatus(`⚠️ Error: ${e?.message || 'desconocido'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
+            setPushStatus(`⚠️ ${e?.message || 'Error'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
         }
     };
 
