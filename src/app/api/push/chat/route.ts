@@ -85,7 +85,8 @@ export async function POST(req: Request) {
     }
 
     // FCM Push
-    if (fcmMessaging) {
+    if (fcmMessaging !== null) {
+        const messaging = fcmMessaging;
         const { data: fcmTokens } = await supabaseAdmin
             .from('fcm_tokens')
             .select('token')
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
             await Promise.all(
                 fcmTokens.map(async ({ token }) => {
                     try {
-                        await fcmMessaging.send({
+                        await messaging.send({
                             token,
                             notification: { title, body: bodyText },
                             data: {
