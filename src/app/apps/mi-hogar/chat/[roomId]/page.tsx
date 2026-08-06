@@ -142,6 +142,7 @@ export default function ChatRoomPage() {
     const [savingGroup, setSavingGroup] = useState(false);
     const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
     const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
     const [showMoodPicker, setShowMoodPicker] = useState(false);
     const [myMood, setMyMood] = useState('');
     const [showTonePicker, setShowTonePicker] = useState(false);
@@ -183,6 +184,13 @@ export default function ChatRoomPage() {
     }, [user]);
 
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('Notification' in window) || !('PushManager' in window)) { setPushEnabled(false); return; }
+        if (Notification.permission === 'granted') {
+            navigator.serviceWorker?.ready?.then(reg => reg.pushManager.getSubscription().then(sub => setPushEnabled(!!sub))).catch(() => setPushEnabled(false));
+        } else { setPushEnabled(false); }
+    }, []);
 
     useEffect(() => {
         if (!room || !user) return;
@@ -270,6 +278,36 @@ export default function ChatRoomPage() {
                 body: JSON.stringify({ roomId: room.id, roomName: room.name, messagePreview: preview }),
             }).catch(() => {});
         });
+    };
+
+    const activatePush = async () => {
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) return;
+        try {
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') return;
+            const reg = await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.ready;
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
+                const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+                const raw = atob(b64);
+                const arr = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
+            }
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ subscription: sub.toJSON() }),
+                });
+            }
+            setPushEnabled(true);
+        } catch { /* denied or unsupported */ }
     };
 
     const getToneInfo = (toneId?: string) => TONES.find(t => t.id === toneId) || null;
@@ -407,6 +445,13 @@ export default function ChatRoomPage() {
                     </AnimatePresence>
                 </div>
             </div>
+
+            {/* Push notification banner */}
+            {pushEnabled === false && (
+                <button onClick={activatePush} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#1a5c2e] text-white text-[13px] font-medium hover:bg-[#1e7a3a] transition-colors">
+                    <span>🔔</span> Activa las notificaciones para no perderte mensajes
+                </button>
+            )}
 
             {/* ===== CHAT AREA ===== */}
             <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]">
