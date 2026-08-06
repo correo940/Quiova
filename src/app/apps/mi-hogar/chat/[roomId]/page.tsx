@@ -17,10 +17,10 @@ type Message = {
     id: string; user_id: string; content: string; created_at: string;
     reply_to?: string | null; media_url?: string | null; tone?: string;
     reply_message?: { content: string; user_id: string; profile_name?: string } | null;
-    profile?: { full_name: string; avatar_url: string } | null;
+    profile?: { full_name: string; avatar_url: string; bubble_color?: string; mood?: string } | null;
     reactions?: Reaction[];
 };
-type Profile = { full_name: string; avatar_url: string };
+type Profile = { full_name: string; avatar_url: string; bubble_color?: string; mood?: string };
 type RoomInfo = { id: string; name: string; is_group: boolean; family_id: string; avatar_url?: string | null };
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -143,16 +143,10 @@ export default function ChatRoomPage() {
     const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
     const [showHeaderMenu, setShowHeaderMenu] = useState(false);
     const [showMoodPicker, setShowMoodPicker] = useState(false);
-    const [myMood, setMyMood] = useState(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('quioba_mood') || '';
-        return '';
-    });
+    const [myMood, setMyMood] = useState('');
     const [showTonePicker, setShowTonePicker] = useState(false);
     const [selectedTone, setSelectedTone] = useState('normal');
-    const [myBubbleColor, setMyBubbleColor] = useState(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
-        return 'green';
-    });
+    const [myBubbleColor, setMyBubbleColor] = useState('green');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -172,8 +166,8 @@ export default function ChatRoomPage() {
         const currentProfiles = profilesRef.current;
         let profile = currentProfiles[msg.user_id] || null;
         if (!profile) {
-            const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email').eq('id', msg.user_id).single();
-            if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url };
+            const { data: p } = await supabase.from('profiles').select('full_name, avatar_url, email, bubble_color, mood').eq('id', msg.user_id).single();
+            if (p) profile = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url, bubble_color: p.bubble_color || 'green', mood: p.mood || '' };
         }
         let reply_message = null;
         if (msg.reply_to) {
@@ -232,14 +226,14 @@ export default function ChatRoomPage() {
     const markAsRead = useCallback(async () => { if (!room || !user) return; const now = new Date().toISOString(); await supabase.from('chat_read_status').upsert({ family_id: room.family_id, user_id: user.id, last_read_at: now }, { onConflict: 'family_id,user_id' }); supabase.channel('typing_room_' + roomId).send({ type: 'broadcast', event: 'read', payload: { user_id: user.id, read_at: now } }); }, [room, user, roomId]);
 
     const fetchRoom = async () => { const { data } = await supabase.from('chat_rooms').select('id, name, is_group, family_id, avatar_url').eq('id', roomId).single(); if (data) { setRoom(data); fetchRoomProfiles(data.id); } };
-    const fetchRoomProfiles = async (rId: string) => { const { data: members } = await supabase.from('chat_room_members').select('user_id').eq('room_id', rId); if (!members || members.length === 0) return; const ids = members.map(m => m.user_id); const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', ids); if (profs) { const map: Record<string, Profile> = {}; profs.forEach((p: any) => { map[p.id] = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url }; }); setProfiles(map); } };
+    const fetchRoomProfiles = async (rId: string) => { const { data: members } = await supabase.from('chat_room_members').select('user_id').eq('room_id', rId); if (!members || members.length === 0) return; const ids = members.map(m => m.user_id); const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email, bubble_color, mood').in('id', ids); if (profs) { const map: Record<string, Profile> = {}; profs.forEach((p: any) => { map[p.id] = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url, bubble_color: p.bubble_color || 'green', mood: p.mood || '' }; }); setProfiles(map); if (user && map[user.id]) { setMyBubbleColor(map[user.id].bubble_color || 'green'); setMyMood(map[user.id].mood || ''); } } };
     const fetchReadStatus = async () => { if (!room) return; const { data } = await supabase.from('chat_read_status').select('user_id, last_read_at').eq('family_id', room.family_id); if (data) { const map: Record<string, string> = {}; data.forEach((r: any) => { map[r.user_id] = r.last_read_at; }); setReadTimes(map); } };
     const fetchMessages = async () => {
         const { data } = await supabase.from('family_messages').select('*').eq('room_id', roomId).order('created_at', { ascending: true }).limit(200);
         if (!data || data.length === 0) { setMessages([]); return; }
         const userIds = [...new Set(data.map((m: any) => m.user_id))];
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', userIds);
-        const profMap: Record<string, Profile> = {}; if (profs) profs.forEach((p: any) => { profMap[p.id] = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url }; });
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email, bubble_color, mood').in('id', userIds);
+        const profMap: Record<string, Profile> = {}; if (profs) profs.forEach((p: any) => { profMap[p.id] = { full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url, bubble_color: p.bubble_color || 'green', mood: p.mood || '' }; });
         const msgIds = data.map((m: any) => m.id);
         const { data: reactionData } = await supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds);
         const reactionMap: Record<string, Reaction[]> = {}; if (reactionData) reactionData.forEach((r: any) => { if (!reactionMap[r.message_id]) reactionMap[r.message_id] = []; reactionMap[r.message_id].push({ emoji: r.emoji, user_id: r.user_id, user_name: profMap[r.user_id]?.full_name }); });
@@ -264,13 +258,22 @@ export default function ChatRoomPage() {
     };
 
     const getToneInfo = (toneId?: string) => TONES.find(t => t.id === toneId) || null;
-    const selectMood = (emoji: string, label: string) => {
+    const selectMood = async (emoji: string, label: string) => {
         const val = `${emoji} ${label}`;
         setMyMood(val);
-        localStorage.setItem('quioba_mood', val);
         setShowMoodPicker(false);
+        if (user) {
+            await supabase.from('profiles').update({ mood: val }).eq('id', user.id);
+            setProfiles(prev => ({ ...prev, [user.id]: { ...prev[user.id], mood: val } }));
+        }
     };
-    const clearMood = () => { setMyMood(''); localStorage.removeItem('quioba_mood'); setShowMoodPicker(false); };
+    const clearMood = async () => {
+        setMyMood(''); setShowMoodPicker(false);
+        if (user) {
+            await supabase.from('profiles').update({ mood: '' }).eq('id', user.id);
+            setProfiles(prev => ({ ...prev, [user.id]: { ...prev[user.id], mood: '' } }));
+        }
+    };
 
     const startRecording = async () => { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' }); audioChunksRef.current = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setRecording(true); setRecordTime(0); recordTimerRef.current = setInterval(() => { setRecordTime(prev => { if (prev >= MAX_RECORD_SECONDS - 1) { stopAndSendRecording(); return prev; } return prev + 1; }); }, 1000); } catch { /* mic unavailable */ } };
     const cancelRecording = () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.onstop = () => { mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop()); }; mediaRecorderRef.current.stop(); } if (recordTimerRef.current) clearInterval(recordTimerRef.current); audioChunksRef.current = []; setRecording(false); setRecordTime(0); };
@@ -324,6 +327,11 @@ export default function ChatRoomPage() {
     };
 
     const bubbleColors = BUBBLE_COLOR_OPTIONS.find(c => c.id === myBubbleColor) || BUBBLE_COLOR_OPTIONS[0];
+    const getBubbleColorsForUser = (userId: string) => {
+        const prof = profiles[userId];
+        const colorId = prof?.bubble_color || 'green';
+        return BUBBLE_COLOR_OPTIONS.find(c => c.id === colorId) || BUBBLE_COLOR_OPTIONS[0];
+    };
 
     if (!user || !room) {
         if (!user) return null;
@@ -407,6 +415,7 @@ export default function ChatRoomPage() {
                     const hasAudioMsg = isAudio(msg);
                     const hasImageMsg = isImage(msg);
                     const contactCol = getContactColor(msg.user_id);
+                    const msgBubbleColors = getBubbleColorsForUser(msg.user_id);
 
                     return (
                         <React.Fragment key={msg.id}>
@@ -428,10 +437,13 @@ export default function ChatRoomPage() {
                                 {/* Avatar left for others */}
                                 {!isMine && (
                                     isFirstInGroup ? (
-                                        <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
-                                            <AvatarImage src={profile?.avatar_url} />
-                                            <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profile?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
-                                        </Avatar>
+                                        <div className="relative flex-shrink-0 mb-0.5">
+                                            <Avatar className="h-7 w-7">
+                                                <AvatarImage src={profile?.avatar_url} />
+                                                <AvatarFallback className="bg-[#2d5a3e] text-white text-[9px] font-bold">{profile?.full_name?.slice(0, 1)?.toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            {profile?.mood && <span className="absolute -bottom-1 -right-1 text-[10px] leading-none">{profile.mood.split(' ')[0]}</span>}
+                                        </div>
                                     ) : <div className="w-7 flex-shrink-0" />
                                 )}
                                 <div className={`relative max-w-[75%] ${hasImageMsg ? 'max-w-[60%]' : ''}`}>
@@ -449,13 +461,9 @@ export default function ChatRoomPage() {
                                     {/* Bubble */}
                                     <div
                                         className={`relative text-[14.5px] leading-[20px] shadow-sm rounded-2xl ${
-                                            hasImageMsg
-                                                ? isMine ? 'overflow-hidden' : 'bg-[#f7f4ef] dark:bg-[#1e2a20] overflow-hidden'
-                                                : isMine
-                                                    ? 'px-3 py-1.5'
-                                                    : 'bg-[#f7f4ef] dark:bg-[#1e2a20] px-3 py-1.5'
+                                            hasImageMsg ? 'overflow-hidden' : 'px-3 py-1.5'
                                         } ${isFirstInGroup && isMine ? 'rounded-tr-sm' : ''} ${isFirstInGroup && !isMine ? 'rounded-tl-sm' : ''}`}
-                                        style={isMine ? { backgroundColor: bubbleColors.mine, border: `2px solid ${bubbleColors.border}30` } : undefined}
+                                        style={{ backgroundColor: msgBubbleColors.mine, border: `2px solid ${msgBubbleColors.border}30` }}
                                     >
 
                                         {/* Tone label */}
@@ -463,7 +471,7 @@ export default function ChatRoomPage() {
                                             const toneInfo = getToneInfo(msg.tone);
                                             return toneInfo ? (
                                                 <div className="text-[10px] font-semibold px-2 py-0.5 -mx-3 -mt-1.5 mb-1 text-center rounded-t-xl"
-                                                    style={{ backgroundColor: isMine ? `${bubbleColors.border}18` : '#1a5c2e10', color: isMine ? bubbleColors.border : '#5a6b5e' }}
+                                                    style={{ backgroundColor: `${msgBubbleColors.border}18`, color: msgBubbleColors.border }}
                                                 >
                                                     {toneInfo.emoji} {toneInfo.label}
                                                 </div>

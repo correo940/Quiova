@@ -91,10 +91,7 @@ export default function ChatListPage() {
     const [editAvatarUrl, setEditAvatarUrl] = useState('');
     const [savingProfile, setSavingProfile] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
-    const [myBubbleColor, setMyBubbleColor] = useState(() => {
-        if (typeof window !== 'undefined') return localStorage.getItem('quioba_bubble_color') || 'green';
-        return 'green';
-    });
+    const [myBubbleColor, setMyBubbleColor] = useState('green');
     const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => { if (user) init(); }, [user]);
@@ -114,7 +111,7 @@ export default function ChatListPage() {
         if (owner?.owner_id) ids.add(owner.owner_id);
         if (members) members.forEach(m => { if (m.user_id) ids.add(m.user_id); });
         if (ids.size === 0) return;
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', Array.from(ids));
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, email, bubble_color').in('id', Array.from(ids));
         if (profs) {
             const list: Profile[] = [];
             const map: Record<string, Profile> = {};
@@ -122,6 +119,7 @@ export default function ChatListPage() {
                 const prof = { id: p.id, full_name: p.full_name || p.email?.split('@')[0] || 'Usuario', avatar_url: p.avatar_url, email: p.email };
                 list.push(prof);
                 map[p.id] = prof;
+                if (user && p.id === user.id && p.bubble_color) setMyBubbleColor(p.bubble_color);
             });
             setFamilyMembers(list);
             setProfiles(map);
@@ -629,7 +627,7 @@ export default function ChatListPage() {
                                     </label>
                                     <div className="grid grid-cols-6 gap-2">
                                         {BUBBLE_COLOR_OPTIONS.map(c => (
-                                            <button key={c.id} onClick={() => { setMyBubbleColor(c.id); localStorage.setItem('quioba_bubble_color', c.id); }}
+                                            <button key={c.id} onClick={() => { setMyBubbleColor(c.id); if (user) supabase.from('profiles').update({ bubble_color: c.id }).eq('id', user.id).then(() => {}); }}
                                                 className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${myBubbleColor === c.id ? 'border-[#1a5c2e] shadow-sm scale-105' : 'border-transparent hover:border-[#1a5c2e]/20'}`}
                                             >
                                                 <div className="w-8 h-8 rounded-full" style={{ backgroundColor: c.color, border: `2px solid ${c.border}50` }} />
