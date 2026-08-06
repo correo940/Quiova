@@ -191,12 +191,14 @@ export default function ChatRoomPage() {
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !('Notification' in window)) { setPushEnabled(false); return; }
-        const granted = Notification.permission === 'granted';
-        setPushEnabled(granted);
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+            setPushEnabled(false); return;
         }
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        if (Notification.permission !== 'granted') { setPushEnabled(false); return; }
+        navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => {
+            setPushEnabled(!!sub);
+        }).catch(() => setPushEnabled(false));
     }, []);
 
     useEffect(() => {
@@ -315,10 +317,14 @@ export default function ChatRoomPage() {
 
     const activatePush = async () => {
         if (typeof window === 'undefined') return;
-        setPushStatus('activando...');
+        setPushStatus('🔄 Paso 1/4: Pidiendo permiso...');
 
         if (!('Notification' in window)) {
-            setPushStatus('⚠️ Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
+            setPushStatus('⚠️ Tu navegador no soporta notificaciones');
+            return;
+        }
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            setPushStatus('⚠️ Tu navegador no soporta push. Reinstala la app desde Chrome');
             return;
         }
 
@@ -328,36 +334,56 @@ export default function ChatRoomPage() {
                 setPushStatus('⚠️ Permiso denegado. Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
                 return;
             }
-            setPushEnabled(true);
-            setPushStatus('✅ ¡Activadas!');
-            notifyIncoming('Quioba', '¡Notificaciones activadas!');
-            setTimeout(() => setPushStatus(''), 3000);
 
-            if ('serviceWorker' in navigator && 'PushManager' in window) {
-                const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                if (vapidKey) {
-                    const reg = await navigator.serviceWorker.ready;
-                    let sub = await reg.pushManager.getSubscription();
-                    if (!sub) {
-                        const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
-                        const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-                        const raw = atob(b64);
-                        const arr = new Uint8Array(raw.length);
-                        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-                        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
-                    }
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session) {
-                        fetch('/api/push/subscribe', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                            body: JSON.stringify({ subscription: sub.toJSON() }),
-                        }).catch(() => {});
-                    }
+            setPushStatus('🔄 Paso 2/4: Registrando servicio...');
+            const reg = await navigator.serviceWorker.ready;
+
+            setPushStatus('🔄 Paso 3/4: Creando suscripción push...');
+            const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            if (!vapidKey) {
+                setPushStatus('⚠️ Error de configuración del servidor (VAPID). Contacta soporte.');
+                return;
+            }
+
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
+                const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+                const raw = atob(b64);
+                const arr = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                try {
+                    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
+                } catch (subErr: any) {
+                    setPushStatus(`⚠️ Error al suscribir: ${subErr?.message || 'desconocido'}`);
+                    return;
                 }
             }
+
+            setPushStatus('🔄 Paso 4/4: Guardando en servidor...');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setPushStatus('⚠️ Sesión expirada. Cierra y abre la app.');
+                return;
+            }
+
+            const res = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                body: JSON.stringify({ subscription: sub.toJSON() }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                setPushStatus(`⚠️ Error del servidor: ${errData?.error || res.status}`);
+                return;
+            }
+
+            setPushEnabled(true);
+            setPushStatus('');
+            notifyIncoming('Quioba', '¡Notificaciones activadas!');
         } catch (e: any) {
-            setPushStatus(`⚠️ ${e?.message || 'Error'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
+            setPushStatus(`⚠️ ${e?.message || 'Error desconocido'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
         }
     };
 
