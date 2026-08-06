@@ -317,14 +317,15 @@ export default function ChatRoomPage() {
 
     const activatePush = async () => {
         if (typeof window === 'undefined') return;
-        setPushStatus('🔄 Paso 1/4: Pidiendo permiso...');
 
-        if (!('Notification' in window)) {
-            setPushStatus('⚠️ Tu navegador no soporta notificaciones');
-            return;
-        }
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            setPushStatus('⚠️ Tu navegador no soporta push. Reinstala la app desde Chrome');
+        const hasNotif = 'Notification' in window;
+        const hasSW = 'serviceWorker' in navigator;
+        const hasPush = 'PushManager' in window;
+        const isSecure = location.protocol === 'https:';
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+        if (!hasNotif || !hasSW || !hasPush) {
+            setPushStatus(`⚠️ APIs: Notif=${hasNotif} SW=${hasSW} Push=${hasPush} HTTPS=${isSecure} Standalone=${isStandalone}. Abre quioba.com en Chrome y reinstala.`);
             return;
         }
 
