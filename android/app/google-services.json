@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "832225384914",
+    "project_id": "quioba-cdc93",
+    "storage_bucket": "quioba-cdc93.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:832225384914:android:c6d94c328701f56be8900b",
+        "android_client_info": {
+          "package_name": "com.quioba.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnWB5hxVfkS49_SSnGU5PrEPKjDDWicj0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

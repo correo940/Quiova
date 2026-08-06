@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics } from '@capacitor/haptics';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
@@ -193,11 +194,29 @@ export default function ChatRoomPage() {
 
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
+    const registerFcmToken = useCallback(async () => {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            await PushNotifications.addListener('registration', async (fcmToken) => {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    fetch('/api/push/fcm-register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({ token: fcmToken.value, platform: 'android' }),
+                    }).catch(() => {});
+                }
+            });
+            await PushNotifications.register();
+        } catch {}
+    }, []);
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         if (Capacitor.isNativePlatform()) {
             LocalNotifications.checkPermissions().then(({ display }) => {
                 setPushEnabled(display === 'granted');
+                if (display === 'granted') registerFcmToken();
             }).catch(() => setPushEnabled(false));
             LocalNotifications.createChannel({ id: 'chat_messages', name: 'Mensajes de chat', importance: 5, visibility: 1, vibration: true, sound: 'notif' }).catch(() => {});
             return;
@@ -355,6 +374,11 @@ export default function ChatRoomPage() {
                     return;
                 }
                 await LocalNotifications.createChannel({ id: 'chat_messages', name: 'Mensajes de chat', importance: 5, visibility: 1, vibration: true, sound: 'notif' }).catch(() => {});
+                setPushStatus('🔄 Registrando push en segundo plano...');
+                const pushPerm = await PushNotifications.requestPermissions();
+                if (pushPerm.receive === 'granted') {
+                    await registerFcmToken();
+                }
                 setPushEnabled(true);
                 setPushStatus('');
                 notifyIncoming('Quioba', '¡Notificaciones activadas!');

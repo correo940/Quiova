@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
+import { firebaseAdmin } from '@/lib/firebase-admin';
 
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -16,10 +17,6 @@ if (vapidPublicKey && vapidPrivateKey) {
 export async function POST(req: Request) {
     const user = await getAuthenticatedSupabaseUser(req);
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-        return NextResponse.json({ error: 'VAPID no configurado' }, { status: 500 });
-    }
 
     const body = await req.json().catch(() => null);
     const { roomId, roomName, messagePreview } = body || {};
@@ -49,38 +46,86 @@ export async function POST(req: Request) {
 
     if (recipientIds.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
-    const { data: subs } = await supabaseAdmin
-        .from('push_subscriptions')
-        .select('*')
-        .in('user_id', recipientIds);
+    let sentWeb = 0;
+    let sentFcm = 0;
 
-    if (!subs?.length) return NextResponse.json({ ok: true, sent: 0 });
+    // Web Push
+    if (vapidPublicKey && vapidPrivateKey) {
+        const { data: subs } = await supabaseAdmin
+            .from('push_subscriptions')
+            .select('*')
+            .in('user_id', recipientIds);
 
-    const payload = JSON.stringify({
-        title: roomName ? `💬 ${roomName}` : `💬 ${senderName}`,
-        body: `${senderName}: ${preview}`,
-        url: `/apps/mi-hogar/chat/${roomId}`,
-        type: 'chat',
-        tag: `chat_${roomId}`,
-    });
+        if (subs?.length) {
+            const payload = JSON.stringify({
+                title: roomName ? `💬 ${roomName}` : `💬 ${senderName}`,
+                body: `${senderName}: ${preview}`,
+                url: `/apps/mi-hogar/chat/${roomId}`,
+                type: 'chat',
+                tag: `chat_${roomId}`,
+            });
 
-    let sent = 0;
-    await Promise.all(
-        subs.map(async (sub) => {
-            try {
-                await webpush.sendNotification(
-                    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-                    payload,
-                    { urgency: 'high', TTL: 86400 }
-                );
-                sent++;
-            } catch (err: any) {
-                if (err?.statusCode === 404 || err?.statusCode === 410) {
-                    await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
-                }
-            }
-        })
-    );
+            await Promise.all(
+                subs.map(async (sub) => {
+                    try {
+                        await webpush.sendNotification(
+                            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                            payload,
+                            { urgency: 'high', TTL: 86400 }
+                        );
+                        sentWeb++;
+                    } catch (err: any) {
+                        if (err?.statusCode === 404 || err?.statusCode === 410) {
+                            await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+                        }
+                    }
+                })
+            );
+        }
+    }
 
-    return NextResponse.json({ ok: true, sent });
+    // FCM Push
+    if (firebaseAdmin.apps.length > 0) {
+        const { data: fcmTokens } = await supabaseAdmin
+            .from('fcm_tokens')
+            .select('token')
+            .in('user_id', recipientIds);
+
+        if (fcmTokens?.length) {
+            const title = roomName ? `💬 ${roomName}` : `💬 ${senderName}`;
+            const bodyText = `${senderName}: ${preview}`;
+
+            await Promise.all(
+                fcmTokens.map(async ({ token }) => {
+                    try {
+                        await firebaseAdmin.messaging().send({
+                            token,
+                            notification: { title, body: bodyText },
+                            data: {
+                                url: `/apps/mi-hogar/chat/${roomId}`,
+                                type: 'chat',
+                                roomId,
+                            },
+                            android: {
+                                priority: 'high',
+                                notification: {
+                                    channelId: 'chat_messages',
+                                    sound: 'notif',
+                                    icon: 'ic_launcher',
+                                },
+                            },
+                        });
+                        sentFcm++;
+                    } catch (err: any) {
+                        if (err?.code === 'messaging/registration-token-not-registered' ||
+                            err?.code === 'messaging/invalid-registration-token') {
+                            await supabaseAdmin.from('fcm_tokens').delete().eq('token', token);
+                        }
+                    }
+                })
+            );
+        }
+    }
+
+    return NextResponse.json({ ok: true, sentWeb, sentFcm });
 }
