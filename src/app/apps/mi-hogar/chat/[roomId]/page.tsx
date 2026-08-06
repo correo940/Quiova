@@ -11,6 +11,9 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Haptics } from '@capacitor/haptics';
 
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
@@ -191,7 +194,15 @@ export default function ChatRoomPage() {
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        if (typeof window === 'undefined') return;
+        if (Capacitor.isNativePlatform()) {
+            LocalNotifications.checkPermissions().then(({ display }) => {
+                setPushEnabled(display === 'granted');
+            }).catch(() => setPushEnabled(false));
+            LocalNotifications.createChannel({ id: 'chat_messages', name: 'Mensajes de chat', importance: 5, visibility: 1, vibration: true, sound: 'notif' }).catch(() => {});
+            return;
+        }
+        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
             setPushEnabled(false); return;
         }
         navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -281,24 +292,41 @@ export default function ChatRoomPage() {
         if (typeof window === 'undefined') return;
         const body = content || (mediaUrl?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
 
-        try { if (!notifAudioRef.current) notifAudioRef.current = new Audio('/notif.wav'); notifAudioRef.current.play().catch(() => {}); } catch {}
-        try { navigator.vibrate([500, 200, 500, 200, 500]); } catch {}
-        try { (navigator as any).setAppBadge?.(); } catch {}
+        if (Capacitor.isNativePlatform()) {
+            Haptics.vibrate({ duration: 500 }).catch(() => {});
+            LocalNotifications.schedule({
+                notifications: [{
+                    id: Math.floor(Math.random() * 100000),
+                    title: `💬 ${senderName}`,
+                    body,
+                    sound: 'notif',
+                    smallIcon: 'ic_launcher',
+                    largeIcon: 'ic_launcher',
+                    channelId: 'chat_messages',
+                    extra: { url: roomId ? `/apps/mi-hogar/chat/${roomId}` : '/' },
+                }],
+            }).catch(() => {});
+            try { if (!notifAudioRef.current) notifAudioRef.current = new Audio('/notif.wav'); notifAudioRef.current.play().catch(() => {}); } catch {}
+        } else {
+            try { if (!notifAudioRef.current) notifAudioRef.current = new Audio('/notif.wav'); notifAudioRef.current.play().catch(() => {}); } catch {}
+            try { navigator.vibrate([500, 200, 500, 200, 500]); } catch {}
+            try { (navigator as any).setAppBadge?.(); } catch {}
 
-        if ('Notification' in window && Notification.permission === 'granted') {
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.ready.then(reg => {
-                    (reg as any).showNotification(`💬 ${senderName}`, {
-                        body, icon: '/icon-192.png', badge: '/icon-192.png',
-                        tag: 'chat_' + (roomId || 'msg'), renotify: true,
-                        requireInteraction: true, vibrate: [300, 100, 300],
-                        data: { url: roomId ? `/apps/mi-hogar/chat/${roomId}` : '/' },
+            if ('Notification' in window && Notification.permission === 'granted') {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        (reg as any).showNotification(`💬 ${senderName}`, {
+                            body, icon: '/icon-192.png', badge: '/icon-192.png',
+                            tag: 'chat_' + (roomId || 'msg'), renotify: true,
+                            requireInteraction: true, vibrate: [300, 100, 300],
+                            data: { url: roomId ? `/apps/mi-hogar/chat/${roomId}` : '/' },
+                        });
+                    }).catch(() => {
+                        try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png' }); } catch {}
                     });
-                }).catch(() => {
+                } else {
                     try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png' }); } catch {}
-                });
-            } else {
-                try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png' }); } catch {}
+                }
             }
         }
     };
@@ -318,14 +346,30 @@ export default function ChatRoomPage() {
     const activatePush = async () => {
         if (typeof window === 'undefined') return;
 
+        if (Capacitor.isNativePlatform()) {
+            try {
+                setPushStatus('🔄 Pidiendo permiso...');
+                const { display } = await LocalNotifications.requestPermissions();
+                if (display !== 'granted') {
+                    setPushStatus('⚠️ Permiso denegado. Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
+                    return;
+                }
+                await LocalNotifications.createChannel({ id: 'chat_messages', name: 'Mensajes de chat', importance: 5, visibility: 1, vibration: true, sound: 'notif' }).catch(() => {});
+                setPushEnabled(true);
+                setPushStatus('');
+                notifyIncoming('Quioba', '¡Notificaciones activadas!');
+            } catch (e: any) {
+                setPushStatus(`⚠️ ${e?.message || 'Error'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
+            }
+            return;
+        }
+
         const hasNotif = 'Notification' in window;
         const hasSW = 'serviceWorker' in navigator;
         const hasPush = 'PushManager' in window;
-        const isSecure = location.protocol === 'https:';
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
         if (!hasNotif || !hasSW || !hasPush) {
-            setPushStatus(`⚠️ APIs: Notif=${hasNotif} SW=${hasSW} Push=${hasPush} HTTPS=${isSecure} Standalone=${isStandalone}. Abre quioba.com en Chrome y reinstala.`);
+            setPushStatus('⚠️ Tu navegador no soporta push. Abre quioba.com en Chrome.');
             return;
         }
 
@@ -336,13 +380,13 @@ export default function ChatRoomPage() {
                 return;
             }
 
-            setPushStatus('🔄 Paso 2/4: Registrando servicio...');
+            setPushStatus('🔄 Registrando servicio...');
             const reg = await navigator.serviceWorker.ready;
 
-            setPushStatus('🔄 Paso 3/4: Creando suscripción push...');
+            setPushStatus('🔄 Creando suscripción push...');
             const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
             if (!vapidKey) {
-                setPushStatus('⚠️ Error de configuración del servidor (VAPID). Contacta soporte.');
+                setPushStatus('⚠️ Error de configuración del servidor (VAPID).');
                 return;
             }
 
@@ -353,20 +397,12 @@ export default function ChatRoomPage() {
                 const raw = atob(b64);
                 const arr = new Uint8Array(raw.length);
                 for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-                try {
-                    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
-                } catch (subErr: any) {
-                    setPushStatus(`⚠️ Error al suscribir: ${subErr?.message || 'desconocido'}`);
-                    return;
-                }
+                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
             }
 
-            setPushStatus('🔄 Paso 4/4: Guardando en servidor...');
+            setPushStatus('🔄 Guardando en servidor...');
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setPushStatus('⚠️ Sesión expirada. Cierra y abre la app.');
-                return;
-            }
+            if (!session) { setPushStatus('⚠️ Sesión expirada.'); return; }
 
             const res = await fetch('/api/push/subscribe', {
                 method: 'POST',
@@ -376,7 +412,7 @@ export default function ChatRoomPage() {
 
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                setPushStatus(`⚠️ Error del servidor: ${errData?.error || res.status}`);
+                setPushStatus(`⚠️ Error: ${errData?.error || res.status}`);
                 return;
             }
 
@@ -384,7 +420,7 @@ export default function ChatRoomPage() {
             setPushStatus('');
             notifyIncoming('Quioba', '¡Notificaciones activadas!');
         } catch (e: any) {
-            setPushStatus(`⚠️ ${e?.message || 'Error desconocido'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
+            setPushStatus(`⚠️ ${e?.message || 'Error'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
         }
     };
 
