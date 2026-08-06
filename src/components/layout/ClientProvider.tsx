@@ -29,6 +29,9 @@ import { defineCustomElements } from '@ionic/pwa-elements/loader';
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     defineCustomElements(window);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
   }, []);
 
   return (
