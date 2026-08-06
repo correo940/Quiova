@@ -182,7 +182,7 @@ export default function ChatRoomPage() {
         });
         if (msg.user_id !== user?.id) {
             setTypingUser(null); markAsRead();
-            if (typeof document !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
                 const senderName = profile?.full_name || 'Alguien';
                 const body = msg.content || (msg.media_url?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
                 if ('serviceWorker' in navigator) {
@@ -204,7 +204,11 @@ export default function ChatRoomPage() {
 
     useEffect(() => {
         if (typeof window === 'undefined' || !('Notification' in window)) { setPushEnabled(false); return; }
-        setPushEnabled(Notification.permission === 'granted');
+        const granted = Notification.permission === 'granted';
+        setPushEnabled(granted);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
     }, []);
 
     useEffect(() => {
