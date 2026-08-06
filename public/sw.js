@@ -6,24 +6,27 @@ self.addEventListener('push', (event) => {
     data = { title: 'Quioba', body: event.data ? event.data.text() : '' };
   }
 
-  const isChat = data.type === 'chat';
   const title = data.title || 'Quioba';
   const options = {
     body: data.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/', type: data.type || 'general' },
-    tag: data.tag || 'quioba',
+    tag: data.tag || 'quioba-' + Date.now(),
     renotify: true,
-    vibrate: [200, 100, 200],
-    silent: false,
+    requireInteraction: true,
+    vibrate: [300, 100, 300, 100, 300],
+    actions: [
+      { action: 'open', title: 'Abrir' },
+      { action: 'close', title: 'Cerrar' },
+    ],
   };
 
   event.waitUntil(
     self.registration.showNotification(title, options).then(() => {
-      if (navigator.setAppBadge) {
+      if (self.navigator && self.navigator.setAppBadge) {
         return self.registration.getNotifications().then((notifications) => {
-          navigator.setAppBadge(notifications.length);
+          self.navigator.setAppBadge(notifications.length);
         });
       }
     })
@@ -32,16 +35,17 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  const action = event.action;
+  if (action === 'close') {
+    event.waitUntil(updateBadge());
+    return;
+  }
+
   const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
 
   event.waitUntil(
-    self.registration.getNotifications().then((notifications) => {
-      if (navigator.clearAppBadge && notifications.length === 0) {
-        navigator.clearAppBadge();
-      } else if (navigator.setAppBadge) {
-        navigator.setAppBadge(notifications.length);
-      }
-    }).then(() => {
+    updateBadge().then(() => {
       return clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
           if (client.url.includes(url) && 'focus' in client) return client.focus();
@@ -54,13 +58,16 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('notificationclose', (event) => {
-  event.waitUntil(
-    self.registration.getNotifications().then((notifications) => {
-      if (navigator.clearAppBadge && notifications.length === 0) {
-        navigator.clearAppBadge();
-      } else if (navigator.setAppBadge) {
-        navigator.setAppBadge(notifications.length);
-      }
-    })
-  );
+  event.waitUntil(updateBadge());
 });
+
+function updateBadge() {
+  return self.registration.getNotifications().then((notifications) => {
+    if (self.navigator && self.navigator.setAppBadge) {
+      if (notifications.length === 0) {
+        return self.navigator.clearAppBadge();
+      }
+      return self.navigator.setAppBadge(notifications.length);
+    }
+  });
+}
