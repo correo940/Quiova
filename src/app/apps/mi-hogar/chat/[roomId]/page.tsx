@@ -143,6 +143,7 @@ export default function ChatRoomPage() {
     const [uploadingGroupAvatar, setUploadingGroupAvatar] = useState(false);
     const [showHeaderMenu, setShowHeaderMenu] = useState(false);
     const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
+    const [pushStatus, setPushStatus] = useState<string>('');
     const [showMoodPicker, setShowMoodPicker] = useState(false);
     const [myMood, setMyMood] = useState('');
     const [showTonePicker, setShowTonePicker] = useState(false);
@@ -301,37 +302,63 @@ export default function ChatRoomPage() {
 
     const activatePush = async () => {
         if (typeof window === 'undefined') return;
-        if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
+        setPushStatus('activando...');
+
+        const hasNotifAPI = 'Notification' in window;
+        const hasSW = 'serviceWorker' in navigator;
+
+        if (!hasNotifAPI) {
+            setPushStatus('⚠️ Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
+            return;
+        }
+
         try {
             const perm = await Notification.requestPermission();
-            if (perm !== 'granted') { alert('Permiso de notificaciones denegado. Actívalo en los ajustes del navegador.'); return; }
-            setPushEnabled(true);
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-            const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-            if (!vapidKey) { console.error('[push] VAPID key no configurada'); return; }
-            const reg = await navigator.serviceWorker.register('/sw.js');
-            await navigator.serviceWorker.ready;
-            let sub = await reg.pushManager.getSubscription();
-            if (!sub) {
-                const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
-                const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-                const raw = atob(b64);
-                const arr = new Uint8Array(raw.length);
-                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
+            if (perm !== 'granted') {
+                setPushStatus('⚠️ Permiso denegado. Ve a Ajustes → Apps → Quioba → Notificaciones → Activar');
+                return;
             }
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                const res = await fetch('/api/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                    body: JSON.stringify({ subscription: sub.toJSON() }),
+
+            setPushEnabled(true);
+
+            if (hasSW) {
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                await navigator.serviceWorker.ready;
+
+                (reg as any).showNotification('✅ Quioba Chat', {
+                    body: '¡Notificaciones activadas!',
+                    icon: '/icon-192.png', badge: '/icon-192.png',
+                    vibrate: [200, 100, 200],
                 });
-                if (res.ok) {
-                    reg.showNotification('Quioba Chat', { body: '¡Notificaciones activadas! Recibirás avisos de nuevos mensajes.', icon: '/icon-192.png', badge: '/icon-192.png' });
+
+                if ('PushManager' in window) {
+                    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                    if (vapidKey) {
+                        let sub = await reg.pushManager.getSubscription();
+                        if (!sub) {
+                            const padding = '='.repeat((4 - (vapidKey.length % 4)) % 4);
+                            const b64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+                            const raw = atob(b64);
+                            const arr = new Uint8Array(raw.length);
+                            for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr });
+                        }
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (session) {
+                            await fetch('/api/push/subscribe', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                                body: JSON.stringify({ subscription: sub.toJSON() }),
+                            });
+                        }
+                    }
                 }
             }
-        } catch (e) { console.error('[push] Error activando:', e); }
+            setPushStatus('');
+        } catch (e: any) {
+            console.error('[push] Error:', e);
+            setPushStatus(`⚠️ Error: ${e?.message || 'desconocido'}. Ve a Ajustes → Apps → Quioba → Notificaciones`);
+        }
     };
 
     const getToneInfo = (toneId?: string) => TONES.find(t => t.id === toneId) || null;
@@ -472,9 +499,14 @@ export default function ChatRoomPage() {
 
             {/* Push notification banner */}
             {pushEnabled === false && (
-                <button onClick={activatePush} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#1a5c2e] text-white text-[13px] font-medium hover:bg-[#1e7a3a] transition-colors">
-                    <span>🔔</span> Activa las notificaciones para no perderte mensajes
-                </button>
+                <div className="w-full bg-[#1a5c2e] text-white">
+                    <button onClick={activatePush} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-medium hover:bg-[#1e7a3a] transition-colors">
+                        <span>🔔</span> Activa las notificaciones para no perderte mensajes
+                    </button>
+                    {pushStatus && (
+                        <p className="px-4 pb-2 text-[12px] text-white/90 text-center">{pushStatus}</p>
+                    )}
+                </div>
             )}
 
             {/* ===== CHAT AREA ===== */}
