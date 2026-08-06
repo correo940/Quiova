@@ -280,7 +280,7 @@ export default function ChatRoomPage() {
         const body = content || (mediaUrl?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
 
         try { if (!notifAudioRef.current) notifAudioRef.current = new Audio('/notif.wav'); notifAudioRef.current.play().catch(() => {}); } catch {}
-        try { navigator.vibrate?.([300, 100, 300]); } catch {}
+        try { navigator.vibrate([500, 200, 500, 200, 500]); } catch {}
         try { (navigator as any).setAppBadge?.(); } catch {}
 
         if ('Notification' in window && Notification.permission === 'granted') {
