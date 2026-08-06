@@ -1,12 +1,17 @@
-import admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getMessaging, type Messaging } from 'firebase-admin/messaging';
 
-if (!admin.apps.length) {
+let messaging: Messaging | null = null;
+
+if (getApps().length === 0) {
     const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (serviceAccount) {
-        admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(serviceAccount)),
-        });
+        initializeApp({ credential: cert(JSON.parse(serviceAccount)) });
     }
 }
 
-export const firebaseAdmin = admin;
+if (getApps().length > 0) {
+    messaging = getMessaging();
+}
+
+export const fcmMessaging = messaging;

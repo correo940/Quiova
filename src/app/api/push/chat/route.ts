@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
-import { firebaseAdmin } from '@/lib/firebase-admin';
+import { fcmMessaging } from '@/lib/firebase-admin';
 
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
 
     // FCM Push
-    if (firebaseAdmin.apps.length > 0) {
+    if (fcmMessaging) {
         const { data: fcmTokens } = await supabaseAdmin
             .from('fcm_tokens')
             .select('token')
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
             await Promise.all(
                 fcmTokens.map(async ({ token }) => {
                     try {
-                        await firebaseAdmin.messaging().send({
+                        await fcmMessaging.send({
                             token,
                             notification: { title, body: bodyText },
                             data: {
