@@ -180,16 +180,21 @@ export default function ChatRoomPage() {
             const withoutOptimistic = msg.user_id === user?.id ? prev.filter(m => !(m.id.startsWith('tmp_') && m.content === msg.content && m.user_id === msg.user_id)) : prev;
             return [...withoutOptimistic, { ...msg, profile, reactions: [], reply_message }];
         });
-        if (msg.user_id !== user?.id) { setTypingUser(null); markAsRead(); }
+        if (msg.user_id !== user?.id) {
+            setTypingUser(null); markAsRead();
+            if (typeof document !== 'undefined' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                const senderName = profile?.full_name || 'Alguien';
+                const body = msg.content || (msg.media_url?.endsWith('.webm') ? '🎤 Nota de voz' : '📷 Imagen');
+                try { new Notification(`💬 ${senderName}`, { body, icon: '/icon-192.png', tag: 'chat_' + msg.id, requireInteraction: true }); } catch {}
+            }
+        }
     }, [user]);
 
     useEffect(() => { if (user && roomId) fetchRoom(); }, [user, roomId]);
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !('Notification' in window) || !('PushManager' in window)) { setPushEnabled(false); return; }
-        if (Notification.permission === 'granted') {
-            navigator.serviceWorker?.ready?.then(reg => reg.pushManager.getSubscription().then(sub => setPushEnabled(!!sub))).catch(() => setPushEnabled(false));
-        } else { setPushEnabled(false); }
+        if (typeof window === 'undefined' || !('Notification' in window)) { setPushEnabled(false); return; }
+        setPushEnabled(Notification.permission === 'granted');
     }, []);
 
     useEffect(() => {
@@ -281,12 +286,15 @@ export default function ChatRoomPage() {
     };
 
     const activatePush = async () => {
-        if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) return;
+        if (typeof window === 'undefined') return;
+        if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
         try {
             const perm = await Notification.requestPermission();
-            if (perm !== 'granted') return;
+            if (perm !== 'granted') { alert('Permiso de notificaciones denegado. Actívalo en los ajustes del navegador.'); return; }
+            setPushEnabled(true);
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            if (!vapidKey) { console.error('[push] VAPID key no configurada'); return; }
             const reg = await navigator.serviceWorker.register('/sw.js');
             await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
@@ -300,14 +308,16 @@ export default function ChatRoomPage() {
             }
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                await fetch('/api/push/subscribe', {
+                const res = await fetch('/api/push/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
                     body: JSON.stringify({ subscription: sub.toJSON() }),
                 });
+                if (res.ok) {
+                    new Notification('Quioba Chat', { body: '¡Notificaciones activadas! Recibirás avisos de nuevos mensajes.', icon: '/icon-192.png' });
+                }
             }
-            setPushEnabled(true);
-        } catch { /* denied or unsupported */ }
+        } catch (e) { console.error('[push] Error activando:', e); }
     };
 
     const getToneInfo = (toneId?: string) => TONES.find(t => t.id === toneId) || null;
