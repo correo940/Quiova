@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
@@ -21,13 +21,17 @@ function getSessionId(): string {
 
 export default function PageViewTracker() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const tracked = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (loading) return;
     if (user?.email && EXCLUDED_EMAILS.includes(user.email)) return;
 
-    const sessionId = getSessionId();
+    const key = pathname + '|' + (user?.id || 'anon');
+    if (tracked.current === key) return;
+    tracked.current = key;
 
     fetch('/api/analytics/track', {
       method: 'POST',
@@ -35,10 +39,10 @@ export default function PageViewTracker() {
       body: JSON.stringify({
         path: pathname,
         referrer: document.referrer || null,
-        sessionId,
+        sessionId: getSessionId(),
       }),
     }).catch(() => {});
-  }, [pathname, user]);
+  }, [pathname, user, loading]);
 
   return null;
 }
