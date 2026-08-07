@@ -153,6 +153,7 @@ export default function ChatRoomPage() {
     const [showTonePicker, setShowTonePicker] = useState(false);
     const [selectedTone, setSelectedTone] = useState('normal');
     const [showAttachMenu, setShowAttachMenu] = useState(false);
+    const [aiMode, setAiMode] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
     const [myBubbleColor, setMyBubbleColor] = useState('green');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -367,20 +368,18 @@ export default function ChatRoomPage() {
     const handleAiAsk = async () => {
         const text = input.trim();
         if (!text || !user || !room || sending) return;
-        setSending(true); setInput(''); setShowAttachMenu(false);
+        setSending(true); setInput(''); setAiMode(false);
         const userMsg: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: `🤖 @Quioba: ${text}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
         setMessages(prev => [...prev, userMsg]);
         const { data: insertedQ, error: errQ } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: `🤖 @Quioba: ${text}` }).select('*').single();
         if (errQ) { setMessages(prev => prev.filter(m => m.id !== userMsg.id)); setSending(false); return; }
-        if (insertedQ) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: insertedQ }); sendChatPush(`🤖 @Quioba: ${text}`); }
+        if (insertedQ) broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: insertedQ });
         setAiLoading(true);
         try {
             const session = (await supabase.auth.getSession()).data.session;
             const res = await fetch('/api/chat/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ question: text, roomId: room.id, familyId: room.family_id }) });
             const data = await res.json();
             if (data?.answer) {
-                const aiMsg: Message = { id: 'tmp_ai_' + Date.now(), user_id: 'quioba-ai', content: data.answer, created_at: new Date().toISOString(), profile: { full_name: 'Quioba IA', avatar_url: '/icon-192.png' }, reactions: [] };
-                setMessages(prev => [...prev, aiMsg]);
                 const { data: insertedAi } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: `✨ Quioba IA: ${data.answer}` }).select('*').single();
                 if (insertedAi) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: insertedAi }); sendChatPush(`✨ Quioba IA respondió`); }
             }
@@ -888,26 +887,33 @@ export default function ChatRoomPage() {
                                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#8b6914] to-[#b8912e] flex items-center justify-center"><Volume2 className="h-[18px] w-[18px] text-white" /></div>
                                                 <span>Audio</span>
                                             </button>
-                                            <button type="button" onClick={() => { setShowAttachMenu(false); handleAiAsk(); }}
-                                                disabled={!input.trim() || aiLoading}
-                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors disabled:opacity-40">
+                                            <button type="button" onClick={() => { setShowAttachMenu(false); setAiMode(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors">
                                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center"><Sparkles className="h-[18px] w-[18px] text-white" /></div>
                                                 <span>IA Quioba</span>
                                             </button>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                <button type="button" onClick={() => setShowTonePicker(!showTonePicker)} className={`py-2.5 ml-0.5 transition-colors flex-shrink-0 text-[18px] ${selectedTone !== 'normal' ? '' : 'opacity-40 hover:opacity-70'}`}>
-                                    {TONES.find(t => t.id === selectedTone)?.emoji || '🗣️'}
-                                </button>
-                                <input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); broadcastTyping(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={selectedTone !== 'normal' ? `${TONES.find(t => t.id === selectedTone)?.label}...` : "Escribe un mensaje..."} className="flex-1 h-[46px] bg-transparent text-[15px] text-[#1a2318] dark:text-[#e0e8e2] placeholder:text-[#6b7b6e]/60 dark:placeholder:text-[#8a9b8e]/60 outline-none px-2" autoComplete="off" />
+                                {aiMode ? (
+                                    <button type="button" onClick={() => setAiMode(false)} className="py-2.5 ml-0.5 flex-shrink-0">
+                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white text-[11px] font-medium">
+                                            <Sparkles className="h-3 w-3" /> IA <X className="h-3 w-3 ml-0.5" />
+                                        </div>
+                                    </button>
+                                ) : (
+                                    <button type="button" onClick={() => setShowTonePicker(!showTonePicker)} className={`py-2.5 ml-0.5 transition-colors flex-shrink-0 text-[18px] ${selectedTone !== 'normal' ? '' : 'opacity-40 hover:opacity-70'}`}>
+                                        {TONES.find(t => t.id === selectedTone)?.emoji || '🗣️'}
+                                    </button>
+                                )}
+                                <input ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); if (!aiMode) broadcastTyping(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiMode ? handleAiAsk() : handleSend(); } }} placeholder={aiMode ? "Pregunta a Quioba IA..." : (selectedTone !== 'normal' ? `${TONES.find(t => t.id === selectedTone)?.label}...` : "Escribe un mensaje...")} className={`flex-1 h-[46px] bg-transparent text-[15px] text-[#1a2318] dark:text-[#e0e8e2] outline-none px-2 ${aiMode ? 'placeholder:text-[#1a5c2e]/60 dark:placeholder:text-[#4a9a5e]/60' : 'placeholder:text-[#6b7b6e]/60 dark:placeholder:text-[#8a9b8e]/60'}`} autoComplete="off" />
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    <button type="button" onClick={recording ? stopAndSendRecording : (input.trim() ? handleSend : startRecording)} disabled={sending}
-                        className="h-[46px] w-[46px] rounded-2xl bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] hover:from-[#1e7a3a] hover:to-[#22884a] flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 flex-shrink-0 shadow-sm"
+                    <button type="button" onClick={recording ? stopAndSendRecording : (aiMode && input.trim() ? handleAiAsk : (input.trim() ? handleSend : startRecording))} disabled={sending || aiLoading}
+                        className={`h-[46px] w-[46px] rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 flex-shrink-0 shadow-sm ${aiMode ? 'bg-gradient-to-br from-[#6b4c8a] to-[#8b6cb0] hover:from-[#7b5c9a] hover:to-[#9b7cc0]' : 'bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] hover:from-[#1e7a3a] hover:to-[#22884a]'}`}
                     >
-                        {input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {aiLoading ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full" /> : aiMode && input.trim() ? <Sparkles className="h-5 w-5" /> : input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                     </button>
                 </div>
             </div>

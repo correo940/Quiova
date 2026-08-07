@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 const INTENT_RULES: { re: RegExp; modules: string[] }[] = [
     { re: /tarea|pendiente|todo|que hacer|completar|urgente|recordatorio/i, modules: ['tasks'] },
     { re: /compr|mercado|supermercado|lista de la compra/i, modules: ['shopping'] },
-    { re: /dinero|saldo|gast|ahorro|finanz|€|presupuesto|patrimonio/i, modules: ['finance'] },
+    { re: /dinero|saldo|gast|ahorro|finanz|€|presupuesto|patrimonio|cuenta|cuánto|cuanto|tenemos|debemos|ingreso|nómina|balance/i, modules: ['finance'] },
     { re: /medicin|pastilla|fármaco|medicación|dosis/i, modules: ['medicines'] },
     { re: /turno|jornada|guardia|horario laboral/i, modules: ['shifts'] },
     { re: /hipoteca|préstamo|euribor|cuota/i, modules: ['mortgages'] },
