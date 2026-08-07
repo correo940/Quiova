@@ -15,6 +15,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
+import ChatAppsPanel from '@/components/apps/mi-hogar/chat/chat-apps-panel';
 
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
@@ -620,6 +621,9 @@ export default function ChatRoomPage() {
                     )}
                 </div>
             )}
+
+            {/* ===== APPS PANEL ===== */}
+            <ChatAppsPanel familyId={room.family_id} />
 
             {/* ===== CHAT AREA ===== */}
             <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]">
