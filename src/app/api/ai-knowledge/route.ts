@@ -8,37 +8,56 @@ function getSupabase() {
     );
 }
 
-// GET — lista todas las notas del usuario
+// GET — lista notas personales del usuario + familiares de su familia
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
+    const familyId = searchParams.get('familyId');
     if (!userId) return NextResponse.json({ error: 'Falta userId' }, { status: 400 });
 
     const supabase = getSupabase();
-    const { data, error } = await supabase
+
+    let query = supabase
         .from('ai_knowledge')
-        .select('id, title, content, created_at')
-        .eq('user_id', userId)
+        .select('id, title, content, scope, family_id, created_at')
         .order('created_at', { ascending: false });
 
+    if (familyId) {
+        query = query.or(`user_id.eq.${userId},and(scope.eq.family,family_id.eq.${familyId})`);
+    } else {
+        query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ knowledge: data });
 }
 
-// POST — guarda una nueva nota
+// POST — guarda una nueva nota (personal o familiar)
 export async function POST(req: Request) {
     const body = await req.json();
-    const { userId, title, content } = body as { userId: string; title: string; content: string };
+    const { userId, title, content, scope, familyId } = body as {
+        userId: string; title: string; content: string;
+        scope?: 'personal' | 'family'; familyId?: string;
+    };
 
     if (!userId || !content?.trim()) {
         return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
 
+    const record: any = {
+        user_id: userId,
+        title: title?.trim() || 'Sin título',
+        content: content.trim(),
+        scope: scope || 'personal',
+    };
+    if (scope === 'family' && familyId) record.family_id = familyId;
+
     const supabase = getSupabase();
     const { data, error } = await supabase
         .from('ai_knowledge')
-        .insert({ user_id: userId, title: title?.trim() || 'Sin título', content: content.trim() })
-        .select('id, title, content, created_at')
+        .insert(record)
+        .select('id, title, content, scope, family_id, created_at')
         .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
