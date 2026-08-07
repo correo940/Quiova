@@ -626,7 +626,7 @@ export default function ChatRoomPage() {
             <ChatAppsPanel familyId={room.family_id} />
 
             {/* ===== CHAT AREA ===== */}
-            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]">
+            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]">
                 {messages.length === 0 && (
                     <div className="flex justify-center pt-8">
                         <div className="bg-[#1a5c2e]/5 dark:bg-[#1a5c2e]/10 border border-[#1a5c2e]/10 rounded-2xl px-5 py-3.5 max-w-[85%]">
