@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Paperclip, MoreVertical, Phone, Camera, Pencil } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Plus, MoreVertical, Phone, Camera, Pencil, Image, Volume2, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -152,6 +152,8 @@ export default function ChatRoomPage() {
     const [myMood, setMyMood] = useState('');
     const [showTonePicker, setShowTonePicker] = useState(false);
     const [selectedTone, setSelectedTone] = useState('normal');
+    const [showAttachMenu, setShowAttachMenu] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
     const [myBubbleColor, setMyBubbleColor] = useState('green');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
@@ -362,6 +364,30 @@ export default function ChatRoomPage() {
         });
     };
 
+    const handleAiAsk = async () => {
+        const text = input.trim();
+        if (!text || !user || !room || sending) return;
+        setSending(true); setInput(''); setShowAttachMenu(false);
+        const userMsg: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: `🤖 @Quioba: ${text}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+        setMessages(prev => [...prev, userMsg]);
+        const { data: insertedQ, error: errQ } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: `🤖 @Quioba: ${text}` }).select('*').single();
+        if (errQ) { setMessages(prev => prev.filter(m => m.id !== userMsg.id)); setSending(false); return; }
+        if (insertedQ) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: insertedQ }); sendChatPush(`🤖 @Quioba: ${text}`); }
+        setAiLoading(true);
+        try {
+            const session = (await supabase.auth.getSession()).data.session;
+            const res = await fetch('/api/chat/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ question: text, roomId: room.id, familyId: room.family_id }) });
+            const data = await res.json();
+            if (data?.answer) {
+                const aiMsg: Message = { id: 'tmp_ai_' + Date.now(), user_id: 'quioba-ai', content: data.answer, created_at: new Date().toISOString(), profile: { full_name: 'Quioba IA', avatar_url: '/icon-192.png' }, reactions: [] };
+                setMessages(prev => [...prev, aiMsg]);
+                const { data: insertedAi } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: `✨ Quioba IA: ${data.answer}` }).select('*').single();
+                if (insertedAi) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: insertedAi }); sendChatPush(`✨ Quioba IA respondió`); }
+            }
+        } catch {}
+        setAiLoading(false); setSending(false);
+    };
+
     const activatePush = async () => {
         if (typeof window === 'undefined') return;
 
@@ -535,7 +561,7 @@ export default function ChatRoomPage() {
     const hasOnlineOthers = Object.keys(onlineUsers).filter(u => u !== user?.id).length > 0;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto relative" onClick={() => pickerMsgId && setPickerMsgId(null)}>
+        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto relative" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
             {/* ===== HEADER ===== */}
             <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
                 <Link href="/apps/mi-hogar/chat" className="p-1">
@@ -842,11 +868,35 @@ export default function ChatRoomPage() {
                                 </div>
                             </motion.div>
                         ) : (
-                            <motion.div key="inp" initial={false} className="flex items-end flex-1 bg-white dark:bg-[#1e2a20] rounded-2xl pl-3 pr-1.5">
+                            <motion.div key="inp" initial={false} className="flex items-end flex-1 bg-white dark:bg-[#1e2a20] rounded-2xl pl-3 pr-1.5 relative">
                                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending || uploadingImage} className="py-2.5 text-[#6b7b6e] hover:text-[#1a5c2e] transition-colors disabled:opacity-40 flex-shrink-0">
-                                    <Paperclip className="h-[22px] w-[22px]" />
+                                <button type="button" onClick={() => setShowAttachMenu(!showAttachMenu)} disabled={sending || uploadingImage} className="py-2.5 text-[#6b7b6e] hover:text-[#1a5c2e] transition-colors disabled:opacity-40 flex-shrink-0">
+                                    <Plus className={`h-[22px] w-[22px] transition-transform ${showAttachMenu ? 'rotate-45' : ''}`} />
                                 </button>
+                                <AnimatePresence>
+                                    {showAttachMenu && (
+                                        <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.15 }}
+                                            className="absolute bottom-full left-0 mb-2 bg-white dark:bg-[#1e2a20] rounded-2xl shadow-xl border border-[#1a5c2e]/10 dark:border-[#1a5c2e]/20 overflow-hidden z-30 min-w-[180px]"
+                                        >
+                                            <button type="button" onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}
+                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors">
+                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#2e7d8c] to-[#3a9aad] flex items-center justify-center"><Image className="h-[18px] w-[18px] text-white" /></div>
+                                                <span>Imagen</span>
+                                            </button>
+                                            <button type="button" onClick={() => { setShowAttachMenu(false); startRecording(); }}
+                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors">
+                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#8b6914] to-[#b8912e] flex items-center justify-center"><Volume2 className="h-[18px] w-[18px] text-white" /></div>
+                                                <span>Audio</span>
+                                            </button>
+                                            <button type="button" onClick={() => { setShowAttachMenu(false); handleAiAsk(); }}
+                                                disabled={!input.trim() || aiLoading}
+                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors disabled:opacity-40">
+                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center"><Sparkles className="h-[18px] w-[18px] text-white" /></div>
+                                                <span>IA Quioba</span>
+                                            </button>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 <button type="button" onClick={() => setShowTonePicker(!showTonePicker)} className={`py-2.5 ml-0.5 transition-colors flex-shrink-0 text-[18px] ${selectedTone !== 'normal' ? '' : 'opacity-40 hover:opacity-70'}`}>
                                     {TONES.find(t => t.id === selectedTone)?.emoji || '🗣️'}
                                 </button>
