@@ -13,12 +13,14 @@ export async function POST(req: Request) {
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) return NextResponse.json({ error: 'IA no configurada' }, { status: 500 });
 
-    const { data: familyMembers } = await supabaseAdmin
-        .from('family_members')
-        .select('user_id')
-        .eq('family_id', familyId)
-        .eq('status', 'active');
-    const memberIds = familyMembers?.map(m => m.user_id) || [user.id];
+    const [{ data: familyMembers }, { data: familyRow }] = await Promise.all([
+        supabaseAdmin.from('family_members').select('user_id').eq('family_id', familyId).eq('status', 'active'),
+        supabaseAdmin.from('families').select('owner_id').eq('id', familyId).single(),
+    ]);
+    const memberSet = new Set<string>([user.id]);
+    familyMembers?.forEach(m => memberSet.add(m.user_id));
+    if (familyRow?.owner_id) memberSet.add(familyRow.owner_id);
+    const memberIds = Array.from(memberSet);
 
     const today = new Date().toISOString().split('T')[0];
     const month = today.substring(0, 7) + '-01';
