@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 
 type AppData = { label: string; emoji: string; count: number; items: { text: string; sub?: string }[] };
 
@@ -38,8 +38,7 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
     const activeApps = apps ? APP_ORDER.filter(k => apps[k] && apps[k].count > 0) : [];
 
     return (
-        <>
-            {/* Toggle button - small bar below header */}
+        <div className="flex-shrink-0">
             <button
                 type="button"
                 onClick={() => setShowStrip(!showStrip)}
@@ -54,7 +53,6 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
                 )}
             </button>
 
-            {/* App strip */}
             <AnimatePresence>
                 {showStrip && (
                     <motion.div
@@ -108,7 +106,6 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
                 )}
             </AnimatePresence>
 
-            {/* Expanded app card */}
             <AnimatePresence>
                 {expanded && apps?.[expanded] && (
                     <motion.div
@@ -126,12 +123,9 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
                             className="bg-white dark:bg-[#162018] w-full max-w-md max-h-[65vh] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
                             onClick={e => e.stopPropagation()}
                         >
-                            {/* Handle bar */}
                             <div className="flex justify-center pt-3 pb-1 sm:hidden">
                                 <div className="w-10 h-1 rounded-full bg-[#6b7b6e]/30" />
                             </div>
-
-                            {/* Header */}
                             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[22px]">{apps[expanded].emoji}</span>
@@ -144,8 +138,6 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
-
-                            {/* Items list */}
                             <div className="flex-1 overflow-y-auto">
                                 {apps[expanded].items.length === 0 ? (
                                     <p className="text-center text-[13px] text-[#6b7b6e] py-8">Sin datos</p>
@@ -169,6 +161,6 @@ export default function ChatAppsPanel({ familyId }: { familyId: string }) {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </>
+        </div>
     );
 }

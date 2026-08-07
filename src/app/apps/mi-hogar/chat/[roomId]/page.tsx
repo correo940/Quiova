@@ -561,9 +561,9 @@ export default function ChatRoomPage() {
     const hasOnlineOthers = Object.keys(onlineUsers).filter(u => u !== user?.id).length > 0;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto relative" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
+        <div className="flex flex-col h-dvh max-w-2xl mx-auto relative" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
             {/* ===== HEADER ===== */}
-            <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
+            <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white flex-shrink-0 z-10 shadow-md">
                 <Link href="/apps/mi-hogar/chat" className="p-1">
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
@@ -612,7 +612,7 @@ export default function ChatRoomPage() {
 
             {/* Push notification banner */}
             {pushEnabled === false && (
-                <div className="w-full bg-[#1a5c2e] text-white">
+                <div className="w-full bg-[#1a5c2e] text-white flex-shrink-0">
                     <button onClick={activatePush} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-medium hover:bg-[#1e7a3a] transition-colors">
                         <span>🔔</span> Activa las notificaciones para no perderte mensajes
                     </button>
@@ -840,7 +840,7 @@ export default function ChatRoomPage() {
             </AnimatePresence>
 
             {/* ===== INPUT AREA ===== */}
-            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5">
+            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0">
                 <AnimatePresence>
                     {replyingTo && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-1">
