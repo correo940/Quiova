@@ -561,7 +561,7 @@ export default function ChatRoomPage() {
     const hasOnlineOthers = Object.keys(onlineUsers).filter(u => u !== user?.id).length > 0;
 
     return (
-        <div className="flex flex-col h-dvh max-w-2xl mx-auto relative" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
+        <div className="fixed inset-0 z-30 flex flex-col bg-[#f4f1ec] dark:bg-[#0f1612]" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
             {/* ===== HEADER ===== */}
             <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white flex-shrink-0 z-10 shadow-md">
                 <Link href="/apps/mi-hogar/chat" className="p-1">
