@@ -682,10 +682,13 @@ export default function ChatRoomPage() {
                                     {/* Emoji picker */}
                                     <AnimatePresence>
                                         {pickerMsgId === msg.id && (
-                                            <motion.div initial={{ opacity: 0, scale: 0.8, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute -top-11 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1e2a20] rounded-full shadow-xl border border-[#1a5c2e]/10 px-1 py-0.5 flex gap-0 items-center z-30">
-                                                <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setPickerMsgId(null); }} className="p-1.5 hover:bg-[#1a5c2e]/5 rounded-full"><Reply className="h-4 w-4 text-[#5a6b5e]" /></button>
-                                                <div className="w-px h-4 bg-[#1a5c2e]/10 mx-0.5" />
-                                                {QUICK_EMOJIS.map(emoji => <button key={emoji} onClick={() => { toggleReaction(msg.id, emoji); setPickerMsgId(null); }} className="text-[17px] p-1 hover:scale-110 active:scale-90 transition-transform">{emoji}</button>)}
+                                            <motion.div initial={{ opacity: 0, scale: 0.8, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8 }}
+                                                className={`fixed top-auto bottom-auto bg-white dark:bg-[#1e2a20] rounded-2xl shadow-xl border border-[#1a5c2e]/10 px-1.5 py-1 flex gap-0.5 items-center z-[80] left-3 right-3 justify-center`}
+                                                style={{ marginTop: '-48px' }}
+                                            >
+                                                <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setPickerMsgId(null); }} className="p-2 hover:bg-[#1a5c2e]/5 rounded-full"><Reply className="h-5 w-5 text-[#5a6b5e]" /></button>
+                                                <div className="w-px h-5 bg-[#1a5c2e]/10 mx-0.5" />
+                                                {QUICK_EMOJIS.map(emoji => <button key={emoji} onClick={() => { toggleReaction(msg.id, emoji); setPickerMsgId(null); }} className="text-[22px] p-1.5 hover:scale-110 active:scale-90 transition-transform">{emoji}</button>)}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -755,7 +758,7 @@ export default function ChatRoomPage() {
                                                 {msg.content.startsWith('✨ Quioba IA:') ? (
                                                     <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">
                                                         <span className="inline-flex items-center gap-1 mr-1 align-middle">
-                                                            <img src="/images/quioba-avatar.png" alt="Quioba" className="h-5 w-5 rounded-full inline-block" />
+                                                            <img src="/images/logo.png" alt="Quioba" className="h-5 w-5 rounded-full inline-block" />
                                                             <span className="font-semibold text-[#3b82f6]">Quioba IA:</span>
                                                         </span>
                                                         {msg.content.replace('✨ Quioba IA:', '').trim()}
@@ -906,7 +909,7 @@ export default function ChatRoomPage() {
                                 </AnimatePresence>
                                 <button type="button" onClick={() => { setAiMode(!aiMode); if (!aiMode) setTimeout(() => inputRef.current?.focus(), 100); }} className={`py-1.5 ml-0.5 flex-shrink-0 transition-all active:scale-90 ${aiMode ? 'scale-110' : ''}`}>
                                     <div className={`h-8 w-8 rounded-full overflow-hidden ring-2 transition-all ${aiMode ? 'ring-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'ring-transparent opacity-60 hover:opacity-100'}`}>
-                                        <img src="/images/quioba-avatar.png" alt="IA Quioba" className="h-full w-full object-cover" />
+                                        <img src="/images/logo.png" alt="IA Quioba" className="h-full w-full object-cover" />
                                     </div>
                                 </button>
                                 {!aiMode && (
@@ -921,7 +924,7 @@ export default function ChatRoomPage() {
                     <button type="button" onClick={recording ? stopAndSendRecording : (aiMode && input.trim() ? handleAiAsk : (input.trim() ? handleSend : startRecording))} disabled={sending || aiLoading}
                         className={`h-[46px] w-[46px] rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 flex-shrink-0 shadow-sm ${aiMode ? 'bg-gradient-to-br from-[#2563eb] to-[#3b82f6] hover:from-[#1d4ed8] hover:to-[#2563eb]' : 'bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] hover:from-[#1e7a3a] hover:to-[#22884a]'}`}
                     >
-                        {aiLoading ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full" /> : aiMode && input.trim() ? <img src="/images/quioba-avatar.png" alt="IA" className="h-6 w-6 rounded-full" /> : input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {aiLoading ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full" /> : aiMode && input.trim() ? <img src="/images/logo.png" alt="IA" className="h-6 w-6 rounded-full" /> : input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                     </button>
                 </div>
             </div>
