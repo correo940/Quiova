@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf, Bot, GraduationCap, Building2 } from 'lucide-react';
+import { ShoppingCart, Home, Shield, FileText, Bell, ChevronUp, ChevronDown, LogOut, Book, ChefHat, Pill, Car, Receipt, ShieldCheck, PiggyBank, Calendar, MessageCircle, Wallet, LayoutDashboard, BookOpen, Brain, CreditCard, Lock, LockOpen, Sparkles, Leaf, Bot, GraduationCap, Building2, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -375,6 +375,7 @@ export default function StartMenu() {
                                             </Link>
 
                                             {isAdmin && (
+                                                <>
                                                 <Link
                                                     href="/apps/oficina"
                                                     onClick={() => closeStartMenu()}
@@ -385,6 +386,17 @@ export default function StartMenu() {
                                                     </div>
                                                     <span className="text-xs font-medium">Oficina</span>
                                                 </Link>
+                                                <Link
+                                                    href="/apps/analisis"
+                                                    onClick={() => closeStartMenu()}
+                                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors bg-white/40 dark:bg-zinc-800/40 shadow-sm text-center"
+                                                >
+                                                    <div className="p-2 bg-blue-500/10 rounded-full text-blue-600">
+                                                        <BarChart3 className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="text-xs font-medium">Análisis</span>
+                                                </Link>
+                                                </>
                                             )}
                                         </div>
                                     </div>

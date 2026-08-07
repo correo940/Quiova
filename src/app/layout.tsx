@@ -9,6 +9,8 @@ import ClientProvider from '@/components/layout/ClientProvider';
 import { AuthProvider } from '@/components/apps/mi-hogar/auth-context';
 import { WorkSessionProvider } from '@/context/work-session-context';
 import CookieBanner from '@/components/cookie-banner';
+import { Analytics } from '@vercel/analytics/react';
+import PageViewTracker from '@/components/analytics/page-view-tracker';
 
 export const metadata: Metadata = {
   title: 'Quioba — El sistema operativo para tu vida personal y familiar',
@@ -108,6 +110,8 @@ export default function RootLayout({
                 <MobileNav />
               </div>
               <CookieBanner />
+              <Analytics />
+              <PageViewTracker />
             </ClientProvider>
           </WorkSessionProvider>
         </AuthProvider>

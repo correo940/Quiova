@@ -68,6 +68,7 @@
     "@types/recharts": "^1.8.29",
     "@uiw/react-md-editor": "^4.0.8",
     "@uploadthing/react": "^7.3.3",
+    "@vercel/analytics": "^2.0.1",
     "@yudiel/react-qr-scanner": "^2.5.0",
     "@zxing/library": "^0.21.3",
     "browser-image-compression": "^2.0.2",

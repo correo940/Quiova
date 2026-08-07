@@ -28,7 +28,7 @@ import { translateAuthError } from '@/lib/utils';
 import { useAi } from '@/context/AiContext';
 import { useJournal } from '@/context/JournalContext';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
-import { Mic, MicOff, Plus, Book, Sparkles, Shield } from 'lucide-react';
+import { Mic, MicOff, Plus, Book, Sparkles, Shield, BarChart3 } from 'lucide-react';
 import NotificationSettingsDialog from '@/components/dashboard/notifications/notification-settings-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWorkSession } from '@/context/work-session-context';
@@ -77,6 +77,7 @@ export default function HeaderAuth() {
     const ownerActions = [
         { label: 'Panel Beta', icon: Shield, href: '/beta/admin', color: 'bg-[#1a5c2e]' },
         { label: 'Oficina', icon: LayoutDashboard, href: '/apps/oficina', color: 'bg-slate-800' },
+        { label: 'Análisis', icon: BarChart3, href: '/apps/analisis', color: 'bg-blue-600' },
     ];
 
     useEffect(() => {
