@@ -853,7 +853,7 @@ export default function ChatRoomPage() {
             </AnimatePresence>
 
             {/* ===== INPUT AREA ===== */}
-            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0">
+            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0 overflow-hidden">
                 <AnimatePresence>
                     {replyingTo && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-1">
@@ -907,9 +907,9 @@ export default function ChatRoomPage() {
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                <button type="button" onClick={() => { setAiMode(!aiMode); if (!aiMode) setTimeout(() => inputRef.current?.focus(), 100); }} className={`py-1.5 ml-0.5 flex-shrink-0 transition-all active:scale-90 ${aiMode ? 'scale-110' : ''}`}>
-                                    <div className={`h-8 w-8 rounded-full overflow-hidden ring-2 transition-all ${aiMode ? 'ring-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'ring-transparent opacity-60 hover:opacity-100'}`}>
-                                        <img src="/images/logo.png" alt="IA Quioba" className="h-full w-full object-contain p-0.5" />
+                                <button type="button" onClick={() => { setAiMode(!aiMode); if (!aiMode) setTimeout(() => inputRef.current?.focus(), 100); }} className={`py-1.5 ml-0.5 flex-shrink-0 transition-all active:scale-90`}>
+                                    <div className={`h-7 w-7 flex items-center justify-center transition-all ${aiMode ? 'drop-shadow-[0_0_6px_rgba(59,130,246,0.6)]' : 'opacity-60 hover:opacity-100'}`}>
+                                        <img src="/images/logo.png" alt="IA Quioba" className="h-7 w-7 object-contain" />
                                     </div>
                                 </button>
                                 {!aiMode && (
