@@ -561,7 +561,7 @@ export default function ChatRoomPage() {
     const hasOnlineOthers = Object.keys(onlineUsers).filter(u => u !== user?.id).length > 0;
 
     return (
-        <div className="fixed inset-0 z-[70] flex flex-col bg-[#f4f1ec] dark:bg-[#0f1612] overflow-hidden" onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
+        <div className="fixed inset-0 z-[70] flex flex-col bg-[#f4f1ec] dark:bg-[#0f1612] overflow-hidden max-w-[100vw]" style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y pinch-zoom' }} onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
             {/* ===== HEADER ===== */}
             <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white flex-shrink-0 z-10 shadow-md">
                 <Link href="/apps/mi-hogar/chat" className="p-1">
@@ -626,7 +626,7 @@ export default function ChatRoomPage() {
             <ChatAppsPanel familyId={room.family_id} />
 
             {/* ===== CHAT AREA ===== */}
-            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]">
+            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-[3px] bg-[#f4f1ec] dark:bg-[#0f1612]" style={{ overscrollBehaviorX: 'none' }}>
                 {messages.length === 0 && (
                     <div className="flex justify-center pt-8">
                         <div className="bg-[#1a5c2e]/5 dark:bg-[#1a5c2e]/10 border border-[#1a5c2e]/10 rounded-2xl px-5 py-3.5 max-w-[85%]">
@@ -678,7 +678,7 @@ export default function ChatRoomPage() {
                                         </div>
                                     ) : <div className="w-7 flex-shrink-0" />
                                 )}
-                                <div className={`relative max-w-[75%] ${hasImageMsg ? 'max-w-[60%]' : ''}`}>
+                                <div className={`relative max-w-[75%] overflow-hidden ${hasImageMsg ? 'max-w-[60%]' : ''}`}>
                                     {/* Emoji picker */}
                                     <AnimatePresence>
                                         {pickerMsgId === msg.id && (
@@ -756,7 +756,7 @@ export default function ChatRoomPage() {
                                         ) : (
                                             <div className="flex flex-wrap items-end">
                                                 {msg.content.startsWith('✨ Quioba IA:') ? (
-                                                    <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">
+                                                    <span className="whitespace-pre-wrap break-words break-all text-[#1a2318] dark:text-[#e0e8e2]">
                                                         <span className="inline-flex items-center gap-1 mr-1 align-middle">
                                                             <img src="/images/logo.png" alt="Quioba" className="h-5 w-5 object-contain inline-block" />
                                                             <span className="font-semibold text-[#3b82f6]">Quioba IA:</span>
@@ -764,7 +764,7 @@ export default function ChatRoomPage() {
                                                         {msg.content.replace('✨ Quioba IA:', '').trim()}
                                                     </span>
                                                 ) : (
-                                                    <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
+                                                    <span className="whitespace-pre-wrap break-words break-all text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
