@@ -752,7 +752,17 @@ export default function ChatRoomPage() {
                                             </>
                                         ) : (
                                             <div className="flex flex-wrap items-end">
-                                                <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
+                                                {msg.content.startsWith('✨ Quioba IA:') ? (
+                                                    <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">
+                                                        <span className="inline-flex items-center gap-1 mr-1 align-middle">
+                                                            <img src="/images/quioba-avatar.png" alt="Quioba" className="h-5 w-5 rounded-full inline-block" />
+                                                            <span className="font-semibold text-[#3b82f6]">Quioba IA:</span>
+                                                        </span>
+                                                        {msg.content.replace('✨ Quioba IA:', '').trim()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="whitespace-pre-wrap break-words text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
+                                                )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
@@ -891,21 +901,15 @@ export default function ChatRoomPage() {
                                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#8b6914] to-[#b8912e] flex items-center justify-center"><Volume2 className="h-[18px] w-[18px] text-white" /></div>
                                                 <span>Audio</span>
                                             </button>
-                                            <button type="button" onClick={() => { setShowAttachMenu(false); setAiMode(true); setTimeout(() => inputRef.current?.focus(), 100); }}
-                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors">
-                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] flex items-center justify-center"><Sparkles className="h-[18px] w-[18px] text-white" /></div>
-                                                <span>IA Quioba</span>
-                                            </button>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                {aiMode ? (
-                                    <button type="button" onClick={() => setAiMode(false)} className="py-2.5 ml-0.5 flex-shrink-0">
-                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white text-[11px] font-medium">
-                                            <Sparkles className="h-3 w-3" /> IA <X className="h-3 w-3 ml-0.5" />
-                                        </div>
-                                    </button>
-                                ) : (
+                                <button type="button" onClick={() => { setAiMode(!aiMode); if (!aiMode) setTimeout(() => inputRef.current?.focus(), 100); }} className={`py-1.5 ml-0.5 flex-shrink-0 transition-all active:scale-90 ${aiMode ? 'scale-110' : ''}`}>
+                                    <div className={`h-8 w-8 rounded-full overflow-hidden ring-2 transition-all ${aiMode ? 'ring-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'ring-transparent opacity-60 hover:opacity-100'}`}>
+                                        <img src="/images/quioba-avatar.png" alt="IA Quioba" className="h-full w-full object-cover" />
+                                    </div>
+                                </button>
+                                {!aiMode && (
                                     <button type="button" onClick={() => setShowTonePicker(!showTonePicker)} className={`py-2.5 ml-0.5 transition-colors flex-shrink-0 text-[18px] ${selectedTone !== 'normal' ? '' : 'opacity-40 hover:opacity-70'}`}>
                                         {TONES.find(t => t.id === selectedTone)?.emoji || '🗣️'}
                                     </button>
@@ -915,9 +919,9 @@ export default function ChatRoomPage() {
                         )}
                     </AnimatePresence>
                     <button type="button" onClick={recording ? stopAndSendRecording : (aiMode && input.trim() ? handleAiAsk : (input.trim() ? handleSend : startRecording))} disabled={sending || aiLoading}
-                        className={`h-[46px] w-[46px] rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 flex-shrink-0 shadow-sm ${aiMode ? 'bg-gradient-to-br from-[#6b4c8a] to-[#8b6cb0] hover:from-[#7b5c9a] hover:to-[#9b7cc0]' : 'bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] hover:from-[#1e7a3a] hover:to-[#22884a]'}`}
+                        className={`h-[46px] w-[46px] rounded-2xl flex items-center justify-center text-white transition-all active:scale-95 disabled:opacity-50 flex-shrink-0 shadow-sm ${aiMode ? 'bg-gradient-to-br from-[#2563eb] to-[#3b82f6] hover:from-[#1d4ed8] hover:to-[#2563eb]' : 'bg-gradient-to-br from-[#1a5c2e] to-[#1e7a3a] hover:from-[#1e7a3a] hover:to-[#22884a]'}`}
                     >
-                        {aiLoading ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full" /> : aiMode && input.trim() ? <Sparkles className="h-5 w-5" /> : input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {aiLoading ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full" /> : aiMode && input.trim() ? <img src="/images/quioba-avatar.png" alt="IA" className="h-6 w-6 rounded-full" /> : input.trim() || recording ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                     </button>
                 </div>
             </div>
