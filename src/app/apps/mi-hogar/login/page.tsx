@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Lock, Mail, Loader2, Home, Eye, EyeOff } from 'lucide-react'
@@ -20,6 +20,9 @@ export default function LoginPage() {
     const [forgotMode, setForgotMode] = useState(false)
     const [forgotSent, setForgotSent] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const rawRedirect = searchParams?.get('redirect')
+    const redirectTo = rawRedirect?.startsWith('/apps/mi-hogar') ? rawRedirect : '/apps/mi-hogar'
 
     const handleForgot = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -55,7 +58,7 @@ export default function LoginPage() {
             ])
             const { error } = result
             if (error) throw error
-            router.replace('/apps/mi-hogar')
+            router.replace(redirectTo)
         } catch (err: any) {
             setError(translateAuthError(err.message))
         } finally {

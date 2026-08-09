@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/components/apps/mi-hogar/auth-context'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { Lock, Sword } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, loading, isPremium } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
+    const searchParams = useSearchParams()
 
     const [hasPartners, setHasPartners] = useState(false)
     const [hasTaskInvite, setHasTaskInvite] = useState(false)
@@ -118,9 +119,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
             if (pathname?.startsWith('/apps/mi-hogar/expenses')) {
                 return // Allow guest expenses access
             }
-            router.push('/apps/mi-hogar/login')
+            const query = searchParams?.toString()
+            const fullPath = query ? `${pathname}?${query}` : pathname
+            const redirect = fullPath && fullPath !== '/apps/mi-hogar'
+                ? `?redirect=${encodeURIComponent(fullPath!)}`
+                : ''
+            router.push(`/apps/mi-hogar/login${redirect}`)
         }
-    }, [user, loading, pathname, router])
+    }, [user, loading, pathname, searchParams, router])
 
     // ONLY block on initial auth loading — NEVER on access checks
     if (loading) {
