@@ -77,7 +77,11 @@ export function FamilyManager() {
         toast.error(json?.error ?? 'No se pudo enviar la invitación');
         return;
       }
-      toast.success(`Invitación enviada a ${email.trim()}`);
+      if (json.emailSent === false) {
+        toast.warning(json.emailError ?? 'La invitación se creó pero no se pudo enviar el correo');
+      } else {
+        toast.success(`Invitación enviada a ${email.trim()}`);
+      }
       setEmail('');
       await loadMembers();
     } catch (err: any) {

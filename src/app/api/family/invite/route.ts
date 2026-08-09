@@ -66,7 +66,11 @@ export async function POST(req: NextRequest) {
   // Enviar email de invitación via Gmail
   const gmailUser = process.env.GMAIL_USER || 'quioba.web@gmail.com';
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  if (gmailPass && member) {
+  if (!gmailPass) {
+    console.error('[family/invite] GMAIL_APP_PASSWORD no configurada — no se puede enviar email');
+    return NextResponse.json({ member, emailSent: false, emailError: 'Configuración de email incompleta' });
+  }
+  if (member) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://quioba.com';
     const acceptUrl = `${siteUrl}/apps/mi-hogar/familia?code=${invite_code}`;
     const credentialsBlock = tempPassword
@@ -78,22 +82,30 @@ export async function POST(req: NextRequest) {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
-    transporter.sendMail({
-      from: `Quioba <${gmailUser}>`,
-      to: email,
-      subject: 'Te han invitado a una familia en Quioba',
-      html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
-        <div style="font-size:22px;font-weight:800;color:#1a5c2e;margin-bottom:16px">Quioba</div>
-        <h1 style="font-size:20px;margin:0 0 12px">¡Te han invitado a un plan familiar!</h1>
-        <p style="font-size:15px;line-height:1.6;color:#334155">Alguien quiere compartir su hogar digital contigo en Quioba. Inicia sesión y haz clic en el botón para aceptar.</p>
-        ${credentialsBlock}
-        <p style="font-size:15px;color:#334155;margin-top:12px">Tu código de invitación: <code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-weight:bold">${invite_code}</code></p>
-        <a href="${acceptUrl}" style="display:inline-block;background:#1a5c2e;color:#fff;text-decoration:none;padding:12px 24px;border-radius:9999px;font-weight:700;margin-top:16px">Aceptar invitación</a>
-        <p style="font-size:12px;color:#94a3b8;margin-top:32px">Si no conoces a quien te invitó, ignora este correo.</p>
-      </div>`,
-    }).catch(() => {});
+    try {
+      await transporter.sendMail({
+        from: `Quioba <${gmailUser}>`,
+        to: email,
+        subject: 'Te han invitado a una familia en Quioba',
+        html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
+          <div style="font-size:22px;font-weight:800;color:#1a5c2e;margin-bottom:16px">Quioba</div>
+          <h1 style="font-size:20px;margin:0 0 12px">¡Te han invitado a un plan familiar!</h1>
+          <p style="font-size:15px;line-height:1.6;color:#334155">Alguien quiere compartir su hogar digital contigo en Quioba. Inicia sesión y haz clic en el botón para aceptar.</p>
+          ${credentialsBlock}
+          <p style="font-size:15px;color:#334155;margin-top:12px">Tu código de invitación: <code style="background:#f1f5f9;padding:4px 10px;border-radius:6px;font-weight:bold">${invite_code}</code></p>
+          <a href="${acceptUrl}" style="display:inline-block;background:#1a5c2e;color:#fff;text-decoration:none;padding:12px 24px;border-radius:9999px;font-weight:700;margin-top:16px">Aceptar invitación</a>
+          <p style="font-size:12px;color:#94a3b8;margin-top:32px">Si no conoces a quien te invitó, ignora este correo.</p>
+        </div>`,
+      });
+    } catch (e: any) {
+      console.error('[family/invite] Error enviando email:', e?.message || e);
+      return NextResponse.json({ member, emailSent: false, emailError: 'No se pudo enviar el correo de invitación' });
+    }
   }
 
-  return NextResponse.json({ member });
+  return NextResponse.json({ member, emailSent: true });
 }
