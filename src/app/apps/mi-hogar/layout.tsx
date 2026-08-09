@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/apps/mi-hogar/auth-context'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
+import { Suspense, useEffect, useState, useRef } from 'react'
 import { Lock, Sword } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { GuestExpensesAccess } from '@/components/apps/mi-hogar/expenses/guest-access'
@@ -239,6 +239,8 @@ export default function MiHogarLayout({
     children: React.ReactNode
 }) {
     return (
-        <AuthGuard>{children}</AuthGuard>
+        <Suspense>
+            <AuthGuard>{children}</AuthGuard>
+        </Suspense>
     )
 }
