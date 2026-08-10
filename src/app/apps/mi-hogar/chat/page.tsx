@@ -390,13 +390,13 @@ export default function ChatListPage() {
                 {showCreate && (
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center"
+                        className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center pb-20 sm:pb-0"
                         onClick={resetModal}
                     >
                         <motion.div
                             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-hidden shadow-2xl pb-[env(safe-area-inset-bottom)] mb-16 sm:mb-0"
+                            className="bg-white dark:bg-[#162018] w-full max-w-md rounded-2xl max-h-[70vh] overflow-hidden shadow-2xl mx-3 sm:mx-0"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Handle bar */}
