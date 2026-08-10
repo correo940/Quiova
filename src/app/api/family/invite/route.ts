@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
   // Comprobar si el email ya tiene cuenta; si no, crear una con contraseña temporal
   let tempPassword: string | null = null;
   const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const exists = existingUsers?.users?.some((u) => u.email === email);
-  if (!exists) {
+  const existingUser = existingUsers?.users?.find((u) => u.email === email);
+  if (!existingUser) {
     tempPassword = generateTempPassword();
     const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
       email_confirm: true,
     });
     if (createErr) return NextResponse.json({ error: `No se pudo crear cuenta: ${createErr.message}` }, { status: 400 });
+  } else if (!existingUser.last_sign_in_at) {
+    tempPassword = generateTempPassword();
+    await supabaseAdmin.auth.admin.updateUserById(existingUser.id, { password: tempPassword });
   }
 
   const invite_code = generateInviteCode();
