@@ -7,6 +7,7 @@ import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 const EXCLUDED_EMAILS = [
   'todojuntomirar@gmail.com',
   'jacho1404@gmail.com',
+  'natalialamban@gmail.com',
 ];
 
 const OWNER_FLAG_KEY = 'q_owner';
