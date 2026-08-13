@@ -45,6 +45,7 @@ export default function PushSubscriptionPrompt() {
             navigator.serviceWorker
                 .register('/sw.js')
                 .then(async (registration) => {
+                    await navigator.serviceWorker.ready;
                     const existing = await registration.pushManager.getSubscription();
                     if (existing) return;
 
