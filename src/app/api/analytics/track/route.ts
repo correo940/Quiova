@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return _supabase;
+}
 
 function parseUserAgent(ua: string) {
   let device = 'desktop';
@@ -37,7 +43,7 @@ export async function POST(req: NextRequest) {
     const country = req.headers.get('x-vercel-ip-country') || null;
     const city = req.headers.get('x-vercel-ip-city') || null;
 
-    await supabase.from('page_views').insert({
+    await getSupabase().from('page_views').insert({
       path: body.path || '/',
       referrer: body.referrer || null,
       user_agent: ua.slice(0, 500),
