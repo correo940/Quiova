@@ -39,19 +39,44 @@ export default function Taskbar() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const lastTouchY = useRef(0);
+
     useEffect(() => {
-        const handleScroll = () => {
-            const currentY = window.scrollY;
-            const delta = currentY - lastScrollY.current;
-            if (delta > SCROLL_THRESHOLD) {
-                setHidden(true);
-            } else if (delta < -SCROLL_THRESHOLD) {
-                setHidden(false);
+        const handleScroll = (e: Event) => {
+            const target = e.target as Element | null;
+            if (!target || target === document) {
+                const currentY = window.scrollY;
+                const delta = currentY - lastScrollY.current;
+                if (delta > SCROLL_THRESHOLD) setHidden(true);
+                else if (delta < -SCROLL_THRESHOLD) setHidden(false);
+                lastScrollY.current = currentY;
+            } else {
+                const currentY = (target as HTMLElement).scrollTop;
+                const delta = currentY - lastScrollY.current;
+                if (delta > SCROLL_THRESHOLD) setHidden(true);
+                else if (delta < -SCROLL_THRESHOLD) setHidden(false);
+                lastScrollY.current = currentY;
             }
-            lastScrollY.current = currentY;
         };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        const handleTouchStart = (e: TouchEvent) => {
+            lastTouchY.current = e.touches[0].clientY;
+        };
+        const handleTouchMove = (e: TouchEvent) => {
+            const delta = lastTouchY.current - e.touches[0].clientY;
+            if (delta > SCROLL_THRESHOLD) setHidden(true);
+            else if (delta < -SCROLL_THRESHOLD) setHidden(false);
+            lastTouchY.current = e.touches[0].clientY;
+        };
+
+        document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+        document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', handleTouchMove, { passive: true });
+        return () => {
+            document.removeEventListener('scroll', handleScroll, true);
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+        };
     }, []);
 
     useEffect(() => {
