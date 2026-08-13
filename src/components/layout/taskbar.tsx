@@ -138,6 +138,8 @@ export default function Taskbar() {
 
     // if (isLauncherMode) return null;
 
+    if (!mounted) return null;
+
     const handleNavClick = async () => {
         try {
             await Haptics.impact({ style: ImpactStyle.Heavy });
