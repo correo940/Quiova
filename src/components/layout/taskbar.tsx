@@ -42,21 +42,20 @@ export default function Taskbar() {
     const lastTouchY = useRef(0);
 
     useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            if (e.deltaY > 0) setHidden(true);
+            else if (e.deltaY < 0) setHidden(false);
+        };
+
         const handleScroll = (e: Event) => {
             const target = e.target as Element | null;
-            if (!target || target === document) {
-                const currentY = window.scrollY;
-                const delta = currentY - lastScrollY.current;
-                if (delta > SCROLL_THRESHOLD) setHidden(true);
-                else if (delta < -SCROLL_THRESHOLD) setHidden(false);
-                lastScrollY.current = currentY;
-            } else {
-                const currentY = (target as HTMLElement).scrollTop;
-                const delta = currentY - lastScrollY.current;
-                if (delta > SCROLL_THRESHOLD) setHidden(true);
-                else if (delta < -SCROLL_THRESHOLD) setHidden(false);
-                lastScrollY.current = currentY;
-            }
+            const currentY = (!target || target === document)
+                ? window.scrollY
+                : (target as HTMLElement).scrollTop;
+            const delta = currentY - lastScrollY.current;
+            if (delta > SCROLL_THRESHOLD) setHidden(true);
+            else if (delta < -SCROLL_THRESHOLD) setHidden(false);
+            lastScrollY.current = currentY;
         };
 
         const handleTouchStart = (e: TouchEvent) => {
@@ -69,10 +68,12 @@ export default function Taskbar() {
             lastTouchY.current = e.touches[0].clientY;
         };
 
+        document.addEventListener('wheel', handleWheel, { passive: true });
         document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
         document.addEventListener('touchstart', handleTouchStart, { passive: true });
         document.addEventListener('touchmove', handleTouchMove, { passive: true });
         return () => {
+            document.removeEventListener('wheel', handleWheel);
             document.removeEventListener('scroll', handleScroll, true);
             document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchmove', handleTouchMove);
