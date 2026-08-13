@@ -325,10 +325,9 @@ export default function Taskbar() {
     ];
 
     return (
-        <motion.div
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)]"
-            animate={{ y: hidden ? 120 : 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        <div
+            className="fixed bottom-6 left-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-50%) translateY(${mounted && hidden ? 120 : 0}px)` }}
         >
             <motion.div
                 initial={{ y: 40, opacity: 0 }}
@@ -393,7 +392,7 @@ export default function Taskbar() {
                     );
                 })}
             </motion.div>
-        </motion.div>
+        </div>
     );
 }
 
