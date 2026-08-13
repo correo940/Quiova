@@ -9,6 +9,18 @@ const EXCLUDED_EMAILS = [
   'jacho1404@gmail.com',
 ];
 
+const OWNER_FLAG_KEY = 'q_owner';
+
+function isOwnerBrowser(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(OWNER_FLAG_KEY) === '1';
+}
+
+function markAsOwnerBrowser() {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(OWNER_FLAG_KEY, '1');
+}
+
 function getSessionId(): string {
   if (typeof window === 'undefined') return '';
   let id = sessionStorage.getItem('q_sid');
@@ -27,7 +39,13 @@ export default function PageViewTracker() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (loading) return;
-    if (user?.email && EXCLUDED_EMAILS.includes(user.email)) return;
+
+    if (user?.email && EXCLUDED_EMAILS.includes(user.email)) {
+      markAsOwnerBrowser();
+      return;
+    }
+
+    if (isOwnerBrowser()) return;
 
     const key = pathname + '|' + (user?.id || 'anon');
     if (tracked.current === key) return;
