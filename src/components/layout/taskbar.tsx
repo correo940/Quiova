@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, User, Newspaper, LayoutGrid, MessageCircle } from 'lucide-react';
@@ -9,6 +9,8 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import { supabase } from '@/lib/supabase';
+
+const SCROLL_THRESHOLD = 10;
 
 export default function Taskbar() {
     const pathname = usePathname();
@@ -19,6 +21,8 @@ export default function Taskbar() {
 
     const [unreadChat, setUnreadChat] = useState(0);
     const [userId, setUserId] = useState<string | null>(null);
+    const [hidden, setHidden] = useState(false);
+    const lastScrollY = useRef(0);
 
     // Prevent hydration mismatch - only check window after mount
     useEffect(() => {
@@ -33,6 +37,21 @@ export default function Taskbar() {
         });
 
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentY = window.scrollY;
+            const delta = currentY - lastScrollY.current;
+            if (delta > SCROLL_THRESHOLD) {
+                setHidden(true);
+            } else if (delta < -SCROLL_THRESHOLD) {
+                setHidden(false);
+            }
+            lastScrollY.current = currentY;
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     useEffect(() => {
@@ -280,7 +299,11 @@ export default function Taskbar() {
     ];
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+        <motion.div
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)]"
+            animate={{ y: hidden ? 120 : 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
             <motion.div
                 initial={{ y: 40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -344,7 +367,7 @@ export default function Taskbar() {
                     );
                 })}
             </motion.div>
-        </div>
+        </motion.div>
     );
 }
 
