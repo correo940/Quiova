@@ -49,7 +49,7 @@ export default function Taskbar() {
         };
 
         const handleScroll = (e: Event) => {
-            const target = e.target as Element | null;
+            const target = e.target as EventTarget | null;
             const currentY = (!target || target === document)
                 ? window.scrollY
                 : (target as HTMLElement).scrollTop;
