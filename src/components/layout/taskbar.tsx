@@ -43,6 +43,7 @@ export default function Taskbar() {
 
     useEffect(() => {
         const handleWheel = (e: WheelEvent) => {
+            console.log('[Taskbar] wheel deltaY:', e.deltaY);
             if (e.deltaY > 0) setHidden(true);
             else if (e.deltaY < 0) setHidden(false);
         };
