@@ -405,7 +405,7 @@ export function ChatView({ conversationId, userId }: Props) {
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <button className={cn(
-                                                            "absolute top-1 z-10 h-6 w-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 hover:bg-black/10",
+                                                            "absolute top-1 z-10 h-6 w-6 rounded-full flex items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity bg-black/5 hover:bg-black/10",
                                                             isMe ? "left-1" : "right-1"
                                                         )}>
                                                             <MoreVertical className="h-3.5 w-3.5 text-gray-500" />

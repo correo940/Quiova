@@ -677,7 +677,7 @@ export default function ChatRoomPage() {
                             )}
                             <div
                                 id={'msg-' + msg.id}
-                                className={`flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
+                                className={`group flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
                                 onTouchStart={() => handleLongPressStart(msg.id)}
                                 onTouchEnd={handleLongPressEnd}
                                 onMouseDown={() => handleLongPressStart(msg.id)}
@@ -817,6 +817,16 @@ export default function ChatRoomPage() {
                                         </div>
                                     )}
                                 </div>
+                                {/* Delete button for own messages */}
+                                {isMine && !msg.deleted_at && !msg.id.startsWith('tmp_') && (
+                                    <button
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                                        className="flex-shrink-0 mb-0.5 p-1 rounded-full hover:bg-red-50 active:bg-red-100 transition-all opacity-40 group-hover:opacity-100"
+                                        title="Eliminar mensaje"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                                    </button>
+                                )}
                                 {/* Avatar right for mine — clickable for mood */}
                                 {isMine && (
                                     isFirstInGroup ? (

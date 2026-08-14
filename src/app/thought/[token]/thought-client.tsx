@@ -449,7 +449,7 @@ export default function ThoughtClientPage() {
                                         {msg.sender_type === 'recipient' && (
                                             <button
                                                 onClick={() => handleDeleteMessage(msg.id)}
-                                                className="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                                className="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity shadow-sm"
                                                 title="Eliminar mensaje"
                                             >
                                                 <Trash2 className="w-3 h-3" />
