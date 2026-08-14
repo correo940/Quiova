@@ -2,13 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Pause, Send, Mic, Video, Type, Clock, AlertCircle, Check, CheckCheck } from 'lucide-react';
+import { Pause, Send, Mic, Video, Type, Clock, AlertCircle, Check, CheckCheck, Trash2, Ban, MoreVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { MessageComposer } from './message-composer';
 import { PauseDialog } from './pause-dialog';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -23,6 +29,7 @@ type Message = {
     intonation?: string | null;
     created_at: string;
     read_at: string | null;
+    deleted_at?: string | null;
 };
 
 type Props = {
@@ -46,6 +53,7 @@ export function ChatView({ conversationId, userId }: Props) {
     const [pauseInfo, setPauseInfo] = useState<any>(null);
     const [showPauseDialog, setShowPauseDialog] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isCreatorUser, setIsCreatorUser] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -57,11 +65,22 @@ export function ChatView({ conversationId, userId }: Props) {
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'thought_messages', // Corrected table name
-                filter: `thought_id=eq.${conversationId}` // Using thought_id based on schema
+                table: 'thought_messages',
+                filter: `thought_id=eq.${conversationId}`
             }, (payload) => {
                 setMessages(prev => [...prev, payload.new as Message]);
                 scrollToBottom();
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'thought_messages',
+                filter: `thought_id=eq.${conversationId}`
+            }, (payload) => {
+                const updated = payload.new as Message;
+                if (updated.deleted_at) {
+                    setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, deleted_at: updated.deleted_at } : m));
+                }
             })
             .subscribe();
 
@@ -87,6 +106,7 @@ export function ChatView({ conversationId, userId }: Props) {
 
         // Determine other user display logic
         const isCreator = thoughtData.creator_id === userId;
+        setIsCreatorUser(isCreator);
 
         // Fetch creator profile if we are the guest
         let creatorProfile = null;
@@ -240,6 +260,25 @@ export function ChatView({ conversationId, userId }: Props) {
         }
     };
 
+    const handleDeleteMessage = async (messageId: string) => {
+        if (!confirm('¿Eliminar este mensaje? Será visible como eliminado para todos.')) return;
+        const { error } = await supabase
+            .from('thought_messages')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', messageId);
+        if (error) {
+            toast.error('Error al eliminar mensaje');
+            return;
+        }
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted_at: new Date().toISOString() } : m));
+        toast.success('Mensaje eliminado');
+    };
+
+    const canDeleteMessage = (msg: Message) => {
+        if (isCreatorUser) return (msg as any).sender_type === 'creator' || msg.sender_id === userId;
+        return (msg as any).sender_type === 'recipient' || msg.sender_id === userId || (msg as any).sender_session_id === userId;
+    };
+
     if (isLoading) {
         return (
             <div className="flex-1 flex items-center justify-center bg-[#e5ddd5]">
@@ -355,10 +394,44 @@ export function ChatView({ conversationId, userId }: Props) {
                                     >
                                         <div className={cn(
                                             "relative max-w-[80%] md:max-w-[65%] rounded-2xl px-3 py-2 shadow-sm text-sm group",
-                                            isMe
-                                                ? "bg-[#dcf8c6] dark:bg-green-700 text-gray-900 rounded-tr-none"
-                                                : "bg-white dark:bg-gray-800 text-gray-900 rounded-tl-none border border-gray-100"
+                                            msg.deleted_at
+                                                ? "bg-gray-100 dark:bg-gray-800/50 text-gray-500"
+                                                : isMe
+                                                    ? "bg-[#dcf8c6] dark:bg-green-700 text-gray-900 rounded-tr-none"
+                                                    : "bg-white dark:bg-gray-800 text-gray-900 rounded-tl-none border border-gray-100"
                                         )}>
+                                            {/* Delete action menu */}
+                                            {!msg.deleted_at && canDeleteMessage(msg) && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <button className={cn(
+                                                            "absolute top-1 z-10 h-6 w-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 hover:bg-black/10",
+                                                            isMe ? "left-1" : "right-1"
+                                                        )}>
+                                                            <MoreVertical className="h-3.5 w-3.5 text-gray-500" />
+                                                        </button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align={isMe ? "start" : "end"}>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDeleteMessage(msg.id)}
+                                                            className="text-destructive focus:text-destructive"
+                                                        >
+                                                            <Trash2 className="w-4 h-4 mr-2" />
+                                                            Eliminar mensaje
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+
+                                            {msg.deleted_at ? (
+                                                <div className="flex items-center gap-1.5 py-0.5">
+                                                    <Ban className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                    <span className="text-[13px] italic text-gray-400">Este mensaje fue eliminado</span>
+                                                    <span className="text-[10px] text-gray-400 ml-auto pl-2">
+                                                        {format(new Date(msg.created_at), 'HH:mm')}
+                                                    </span>
+                                                </div>
+                                            ) : (<>
                                             {/* Intonation Badge (Cookie) */}
                                             {intonation && (
                                                 <div className={cn(
@@ -404,6 +477,7 @@ export function ChatView({ conversationId, userId }: Props) {
                                                     </span>
                                                 )}
                                             </div>
+                                            </>)}
                                         </div>
                                     </motion.div>
                                 </div>

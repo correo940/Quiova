@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Send, Mic, Video, Type, Lock, Shield, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Pause, Send, Mic, Video, Type, Lock, Shield, Clock, Calendar as CalendarIcon, X, Trash2, Ban } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +23,7 @@ type Message = {
     type: 'text' | 'audio' | 'video';
     content: string;
     created_at: string;
+    deleted_at?: string | null;
 };
 
 type Thought = {
@@ -165,6 +166,17 @@ export default function ThoughtClientPage() {
             }, (payload) => {
                 setMessages(prev => [...prev, payload.new as Message]);
             })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'thought_messages',
+                filter: `thought_id=eq.${thoughtInfo.id}`
+            }, (payload) => {
+                const updated = payload.new as Message;
+                if (updated.deleted_at) {
+                    setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, deleted_at: updated.deleted_at } : m));
+                }
+            })
             .subscribe();
 
         return () => {
@@ -213,6 +225,19 @@ export default function ThoughtClientPage() {
             setShowPauseDialog(false);
             fetchThought();
         }
+    };
+
+    const handleDeleteMessage = async (messageId: string) => {
+        if (!confirm('¿Eliminar este mensaje?')) return;
+        const { error } = await supabase
+            .from('thought_messages')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', messageId);
+        if (error) {
+            toast.error('Error al eliminar mensaje');
+            return;
+        }
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted_at: new Date().toISOString() } : m));
     };
 
     if (isLoading) {
@@ -406,19 +431,40 @@ export default function ThoughtClientPage() {
                             className={`flex ${msg.sender_type === 'creator' ? 'justify-start' : 'justify-end'}`}
                         >
                             <div
-                                className={`max-w-[70%] rounded-lg p-3 ${msg.sender_type === 'creator'
-                                    ? 'bg-muted'
-                                    : 'bg-primary text-primary-foreground'
-                                    }`}
+                                className={`max-w-[70%] rounded-lg p-3 group relative ${
+                                    msg.deleted_at
+                                        ? 'bg-muted/50'
+                                        : msg.sender_type === 'creator'
+                                            ? 'bg-muted'
+                                            : 'bg-primary text-primary-foreground'
+                                }`}
                             >
-                                {msg.type === 'text' && (
-                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                )}
-                                {msg.type === 'audio' && (
-                                    <audio controls src={msg.content} className="max-w-full" />
-                                )}
-                                {msg.type === 'video' && (
-                                    <video controls src={msg.content} className="max-w-full rounded" />
+                                {msg.deleted_at ? (
+                                    <div className="flex items-center gap-1.5">
+                                        <Ban className="w-3.5 h-3.5 opacity-50 flex-shrink-0" />
+                                        <span className="text-sm italic opacity-60">Este mensaje fue eliminado</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {msg.sender_type === 'recipient' && (
+                                            <button
+                                                onClick={() => handleDeleteMessage(msg.id)}
+                                                className="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                                title="Eliminar mensaje"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                        {msg.type === 'text' && (
+                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                        )}
+                                        {msg.type === 'audio' && (
+                                            <audio controls src={msg.content} className="max-w-full" />
+                                        )}
+                                        {msg.type === 'video' && (
+                                            <video controls src={msg.content} className="max-w-full rounded" />
+                                        )}
+                                    </>
                                 )}
                                 <span className="text-xs opacity-70 mt-1 block">
                                     {formatDistanceToNow(new Date(msg.created_at), {
