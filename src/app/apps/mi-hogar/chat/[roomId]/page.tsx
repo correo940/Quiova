@@ -772,6 +772,9 @@ export default function ChatRoomPage() {
                                             <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.media_url!); }}>
                                                 <img src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy" />
                                                 <div className="flex items-center justify-end gap-1 px-3 py-1.5">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
@@ -780,6 +783,9 @@ export default function ChatRoomPage() {
                                             <>
                                                 <AudioPlayer url={msg.media_url!} isMine={isMine} />
                                                 <div className="flex items-center justify-end gap-1 -mt-0.5">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
@@ -798,6 +804,9 @@ export default function ChatRoomPage() {
                                                     <span className="whitespace-pre-wrap break-words break-all text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </span>
@@ -817,16 +826,6 @@ export default function ChatRoomPage() {
                                         </div>
                                     )}
                                 </div>
-                                {/* Delete button for own messages */}
-                                {isMine && !msg.deleted_at && !msg.id.startsWith('tmp_') && (
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                                        className="flex-shrink-0 mb-0.5 p-1 rounded-full hover:bg-red-50 active:bg-red-100 transition-all opacity-40 group-hover:opacity-100"
-                                        title="Eliminar mensaje"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                                    </button>
-                                )}
                                 {/* Avatar right for mine — clickable for mood */}
                                 {isMine && (
                                     isFirstInGroup ? (
