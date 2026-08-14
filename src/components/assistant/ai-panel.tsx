@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAi } from '@/context/AiContext';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus, Fingerprint, Lock, Unlock, Eye, EyeOff, Settings, CalendarDays } from 'lucide-react';
+import { X, Send, Loader2, Volume2, VolumeX, BookOpen, Trash2, Plus, Fingerprint, Lock, Unlock, Eye, EyeOff, Settings, CalendarDays, ImagePlus, ShoppingCart, ListTodo, Receipt, Pill, Info, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
@@ -120,9 +120,71 @@ function EphemeralPasswordRequest({ passwordId, passwordName, userId }: { passwo
     );
 }
 
-function AiReply({ content, userId }: { content: string, userId: string }) {
+function ImageAnalysisSuggestions({ suggestions, onExecute, executingAction }: {
+    suggestions: ImageSuggestion[];
+    onExecute: (s: ImageSuggestion) => void;
+    executingAction: string | null;
+}) {
+    const iconMap: Record<string, React.ReactNode> = {
+        add_to_shopping: <ShoppingCart className="w-4 h-4" />,
+        create_task: <ListTodo className="w-4 h-4" />,
+        add_expense: <Receipt className="w-4 h-4" />,
+        add_medicine: <Pill className="w-4 h-4" />,
+        none: <Info className="w-4 h-4" />,
+    };
+
+    const colorMap: Record<string, string> = {
+        add_to_shopping: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-950/50',
+        create_task: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-950/50',
+        add_expense: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-950/50',
+        add_medicine: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-950/50',
+        none: 'bg-slate-50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800',
+    };
+
+    return (
+        <div className="space-y-2 mt-1">
+            {suggestions.map((s, i) => (
+                <button
+                    key={i}
+                    onClick={() => s.action !== 'none' && onExecute(s)}
+                    disabled={executingAction === s.action || s.action === 'none'}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${colorMap[s.action] || colorMap.none} ${s.action === 'none' ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
+                >
+                    <span className="text-lg shrink-0">{s.icon}</span>
+                    <span className="flex-1 text-sm font-medium text-foreground">{s.label}</span>
+                    {executingAction === s.action ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
+                    ) : s.action !== 'none' ? (
+                        iconMap[s.action] || <CheckCircle2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    ) : null}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function AiReply({ content, userId, onExecuteSuggestion, executingAction }: {
+    content: string;
+    userId: string;
+    onExecuteSuggestion?: (s: ImageSuggestion) => void;
+    executingAction?: string | null;
+}) {
     try {
         const parsed = JSON.parse(content);
+        if (parsed.type === 'image_analysis') {
+            return (
+                <div>
+                    <p className="text-sm mb-2">{parsed.analysis}</p>
+                    {parsed.suggestions && onExecuteSuggestion && (
+                        <ImageAnalysisSuggestions
+                            suggestions={parsed.suggestions}
+                            onExecute={onExecuteSuggestion}
+                            executingAction={executingAction || null}
+                        />
+                    )}
+                </div>
+            );
+        }
         if (parsed.type === 'password_request') {
             return <EphemeralPasswordRequest passwordId={parsed.id} passwordName={parsed.name} userId={userId} />;
         }
@@ -179,6 +241,21 @@ function AiReply({ content, userId }: { content: string, userId: string }) {
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+    imageUrl?: string;
+}
+
+interface ImageSuggestion {
+    type: string;
+    action: string;
+    label: string;
+    icon: string;
+    data: Record<string, any>;
+}
+
+interface ImageAnalysis {
+    analysis: string;
+    suggestions: ImageSuggestion[];
+    imageUrl: string;
 }
 
 interface KnowledgeItem {
@@ -370,6 +447,11 @@ export default function AiPanel() {
     const [speaking, setSpeaking] = useState(false);
     const [waitingForMic, setWaitingForMic] = useState(false);
     const [showKnowledge, setShowKnowledge] = useState(false);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
+    const [analyzingImage, setAnalyzingImage] = useState(false);
+    const [executingAction, setExecutingAction] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Contexto de secretaria
@@ -464,6 +546,121 @@ export default function AiPanel() {
     };
 
     const sendMessage = () => sendMessageWithText(input);
+
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+            toast.error('Selecciona una imagen de menos de 10MB');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            setImagePreview(dataUrl);
+            analyzeImage(dataUrl);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const analyzeImage = async (dataUrl: string) => {
+        if (!user) return;
+        setAnalyzingImage(true);
+        setMessages(prev => [...prev, { role: 'user', content: '📷 Imagen adjuntada', imageUrl: dataUrl }]);
+
+        try {
+            const response = await fetch('/api/ai-chat/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl, userId: user.id }),
+            });
+
+            if (!response.ok) throw new Error('Error del servidor');
+            const result = await response.json();
+
+            setImageAnalysis({ ...result, imageUrl: dataUrl });
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: JSON.stringify({ type: 'image_analysis', analysis: result.analysis, suggestions: result.suggestions }),
+            }]);
+        } catch (err) {
+            console.error('Error analyzing image:', err);
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: JSON.stringify({ type: 'text', content: 'No he podido analizar la imagen. Intenta de nuevo.' }),
+            }]);
+        } finally {
+            setAnalyzingImage(false);
+            setImagePreview(null);
+        }
+    };
+
+    const executeSuggestion = async (suggestion: ImageSuggestion) => {
+        if (!user) return;
+        setExecutingAction(suggestion.action);
+        try {
+            switch (suggestion.action) {
+                case 'add_to_shopping': {
+                    const { error } = await supabase.from('shopping_items').insert({
+                        user_id: user.id,
+                        name: suggestion.data.name,
+                        category: suggestion.data.category || 'Otros',
+                        is_checked: false,
+                    });
+                    if (error) throw error;
+                    toast.success(`"${suggestion.data.name}" añadido a la lista de la compra`);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: JSON.stringify({ type: 'text', content: `Hecho, he añadido "${suggestion.data.name}" a tu lista de la compra.` }),
+                    }]);
+                    break;
+                }
+                case 'create_task': {
+                    const taskData: any = {
+                        user_id: user.id,
+                        title: suggestion.data.title,
+                        is_completed: false,
+                    };
+                    if (suggestion.data.due_date) taskData.due_date = suggestion.data.due_date;
+                    if (suggestion.data.description) taskData.description = suggestion.data.description;
+                    const { error } = await supabase.from('tasks').insert(taskData);
+                    if (error) throw error;
+                    toast.success(`Tarea "${suggestion.data.title}" creada`);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: JSON.stringify({ type: 'text', content: `Perfecto, he creado la tarea "${suggestion.data.title}"${suggestion.data.due_date ? ` para el ${suggestion.data.due_date}` : ''}.` }),
+                    }]);
+                    break;
+                }
+                case 'add_medicine': {
+                    const { error } = await supabase.from('medicines').insert({
+                        user_id: user.id,
+                        name: suggestion.data.name,
+                        dosage: suggestion.data.dosage || '',
+                        frequency: suggestion.data.frequency || 'daily',
+                    });
+                    if (error) throw error;
+                    toast.success(`Medicamento "${suggestion.data.name}" registrado`);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: JSON.stringify({ type: 'text', content: `Listo, he añadido "${suggestion.data.name}" a tu medicación.` }),
+                    }]);
+                    break;
+                }
+                default: {
+                    toast.info(suggestion.label);
+                    break;
+                }
+            }
+            setImageAnalysis(null);
+        } catch (err) {
+            console.error('Error executing suggestion:', err);
+            toast.error('No se pudo realizar la acción');
+        } finally {
+            setExecutingAction(null);
+        }
+    };
 
     const startListening = () => {
         if (listeningRef.current || !isOpenRef.current) {
@@ -704,9 +901,23 @@ export default function AiPanel() {
                                             : 'bg-muted text-foreground rounded-bl-sm'
                                             }`}>
                                             {msg.role === 'assistant' ? (
-                                                <AiReply content={msg.content} userId={user?.id || ''} />
+                                                <AiReply
+                                                    content={msg.content}
+                                                    userId={user?.id || ''}
+                                                    onExecuteSuggestion={executeSuggestion}
+                                                    executingAction={executingAction}
+                                                />
                                             ) : (
-                                                <p>{msg.content}</p>
+                                                <div>
+                                                    {msg.imageUrl && (
+                                                        <img
+                                                            src={msg.imageUrl}
+                                                            alt="Imagen adjunta"
+                                                            className="rounded-lg mb-1 max-h-40 w-auto"
+                                                        />
+                                                    )}
+                                                    <p>{msg.content}</p>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -724,6 +935,41 @@ export default function AiPanel() {
 
                             {/* Input */}
                             <div className="p-3 border-t border-border shrink-0">
+                                {/* Preview de imagen seleccionada */}
+                                <AnimatePresence>
+                                    {(imagePreview || analyzingImage) && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mb-2 relative"
+                                        >
+                                            <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-2">
+                                                {imagePreview && (
+                                                    <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    {analyzingImage ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                                            <span className="text-xs text-muted-foreground">Analizando imagen...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Imagen lista</span>
+                                                    )}
+                                                </div>
+                                                {!analyzingImage && (
+                                                    <button
+                                                        onClick={() => { setImagePreview(null); setImageAnalysis(null); }}
+                                                        className="p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-500 transition-colors"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 {/* Indicador modo voz */}
                                 {listening && (
                                     <div className="flex items-center justify-center gap-2 mb-2 text-xs font-medium animate-pulse text-red-500">
@@ -731,7 +977,23 @@ export default function AiPanel() {
                                         Escuchando... habla ahora
                                     </div>
                                 )}
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    className="hidden"
+                                />
                                 <div className="flex gap-2 items-center rounded-2xl px-3 py-2 bg-muted">
+                                    {/* Botón adjuntar imagen */}
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={loading || listening || analyzingImage}
+                                        className="w-7 h-7 flex items-center justify-center rounded-full transition-colors shrink-0 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 disabled:opacity-40"
+                                        title="Adjuntar imagen"
+                                    >
+                                        <ImagePlus className="w-3.5 h-3.5" />
+                                    </button>
                                     <input
                                         className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground"
                                         placeholder={listening ? 'Escuchando...' : 'Escríbeme algo...'}
