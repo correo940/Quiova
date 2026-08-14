@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Plus, MoreVertical, Phone, Camera, Pencil, Image, Volume2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Plus, MoreVertical, Phone, Camera, Pencil, Image, Volume2, Sparkles, Trash2, Ban } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +21,7 @@ type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
     id: string; user_id: string; content: string; created_at: string;
     reply_to?: string | null; media_url?: string | null; tone?: string;
+    deleted_at?: string | null;
     reply_message?: { content: string; user_id: string; profile_name?: string } | null;
     profile?: { full_name: string; avatar_url: string; bubble_color?: string; mood?: string } | null;
     reactions?: Reaction[];
@@ -256,6 +257,7 @@ export default function ChatRoomPage() {
             .on('broadcast', { event: 'typing' }, ({ payload: p }) => { if (p.user_id === user.id) return; setTypingUser(p.name || 'Alguien'); if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 3000); })
             .on('broadcast', { event: 'read' }, ({ payload: p }) => { if (p.user_id === user.id) return; setReadTimes(prev => ({ ...prev, [p.user_id]: p.read_at })); })
             .on('broadcast', { event: 'new_message' }, ({ payload: p }) => { addIncomingMessage(p); })
+            .on('broadcast', { event: 'message_deleted' }, ({ payload: p }) => { setMessages(prev => prev.map(m => m.id === p.id ? { ...m, deleted_at: new Date().toISOString() } : m)); })
             .subscribe();
         const onlineChannel = supabase.channel('online_room_' + roomId);
         onlineChannel.on('presence', { event: 'sync' }, () => { const state = onlineChannel.presenceState(); const online: Record<string, string> = {}; Object.values(state).forEach((presences: any) => presences.forEach((p: any) => { online[p.user_id] = p.last_seen || new Date().toISOString(); })); setOnlineUsers(online); })
@@ -293,6 +295,23 @@ export default function ChatRoomPage() {
     };
     const fetchReactions = async () => { const msgIds = messages.map(m => m.id).filter(id => !id.startsWith('tmp_')); if (msgIds.length === 0) return; const { data } = await supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds); if (!data) return; const rm: Record<string, Reaction[]> = {}; data.forEach((r: any) => { if (!rm[r.message_id]) rm[r.message_id] = []; rm[r.message_id].push({ emoji: r.emoji, user_id: r.user_id, user_name: profiles[r.user_id]?.full_name }); }); setMessages(prev => prev.map(m => ({ ...m, reactions: rm[m.id] || m.reactions || [] }))); };
     const toggleReaction = async (messageId: string, emoji: string) => { if (!user || messageId.startsWith('tmp_')) return; const existing = messages.find(m => m.id === messageId)?.reactions?.find(r => r.emoji === emoji && r.user_id === user.id); if (existing) await supabase.from('message_reactions').delete().eq('message_id', messageId).eq('user_id', user.id).eq('emoji', emoji); else await supabase.from('message_reactions').insert({ message_id: messageId, user_id: user.id, emoji }); };
+
+    const handleDeleteMessage = async (messageId: string) => {
+        if (!user || messageId.startsWith('tmp_')) return;
+        const msg = messages.find(m => m.id === messageId);
+        if (!msg || msg.user_id !== user.id) return;
+        if (!confirm('¿Eliminar este mensaje? Será visible como eliminado para todos.')) return;
+        setPickerMsgId(null);
+        const { error } = await supabase
+            .from('family_messages')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', messageId)
+            .eq('user_id', user.id);
+        if (!error) {
+            setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted_at: new Date().toISOString() } : m));
+            broadcastChannelRef.current?.send({ type: 'broadcast', event: 'message_deleted', payload: { id: messageId } });
+        }
+    };
 
     const handleSend = async () => {
         const text = input.trim(); if (!text || !user || !room || sending) return;
@@ -658,7 +677,7 @@ export default function ChatRoomPage() {
                             )}
                             <div
                                 id={'msg-' + msg.id}
-                                className={`flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
+                                className={`group flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
                                 onTouchStart={() => handleLongPressStart(msg.id)}
                                 onTouchEnd={handleLongPressEnd}
                                 onMouseDown={() => handleLongPressStart(msg.id)}
@@ -686,9 +705,12 @@ export default function ChatRoomPage() {
                                                 className={`fixed top-auto bottom-auto bg-white dark:bg-[#1e2a20] rounded-2xl shadow-xl border border-[#1a5c2e]/10 px-1.5 py-1 flex gap-0.5 items-center z-[80] left-3 right-3 justify-center`}
                                                 style={{ marginTop: '-48px' }}
                                             >
-                                                <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setPickerMsgId(null); }} className="p-2 hover:bg-[#1a5c2e]/5 rounded-full"><Reply className="h-5 w-5 text-[#5a6b5e]" /></button>
-                                                <div className="w-px h-5 bg-[#1a5c2e]/10 mx-0.5" />
-                                                {QUICK_EMOJIS.map(emoji => <button key={emoji} onClick={() => { toggleReaction(msg.id, emoji); setPickerMsgId(null); }} className="text-[22px] p-1.5 hover:scale-110 active:scale-90 transition-transform">{emoji}</button>)}
+                                                {!msg.deleted_at && <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setPickerMsgId(null); }} className="p-2 hover:bg-[#1a5c2e]/5 rounded-full"><Reply className="h-5 w-5 text-[#5a6b5e]" /></button>}
+                                                {!msg.deleted_at && isMine && (
+                                                    <button onClick={() => handleDeleteMessage(msg.id)} className="p-2 hover:bg-red-50 rounded-full"><Trash2 className="h-5 w-5 text-red-500" /></button>
+                                                )}
+                                                {!msg.deleted_at && <div className="w-px h-5 bg-[#1a5c2e]/10 mx-0.5" />}
+                                                {!msg.deleted_at && QUICK_EMOJIS.map(emoji => <button key={emoji} onClick={() => { toggleReaction(msg.id, emoji); setPickerMsgId(null); }} className="text-[22px] p-1.5 hover:scale-110 active:scale-90 transition-transform">{emoji}</button>)}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -698,9 +720,18 @@ export default function ChatRoomPage() {
                                         className={`relative text-[14.5px] leading-[20px] shadow-sm rounded-2xl ${
                                             hasImageMsg ? 'overflow-hidden' : 'px-3 py-1.5'
                                         } ${isFirstInGroup && isMine ? 'rounded-tr-sm' : ''} ${isFirstInGroup && !isMine ? 'rounded-tl-sm' : ''}`}
-                                        style={{ backgroundColor: msgBubbleColors.mine, border: `2px solid ${msgBubbleColors.border}30` }}
+                                        style={{ backgroundColor: msg.deleted_at ? '#f0efed' : msgBubbleColors.mine, border: `2px solid ${msg.deleted_at ? '#d0cec8' : msgBubbleColors.border}30` }}
                                     >
 
+                                        {msg.deleted_at ? (
+                                            <div className="flex items-center gap-1.5 py-0.5">
+                                                <Ban className="h-3.5 w-3.5 text-[#6b7b6e]/60 flex-shrink-0" />
+                                                <span className="text-[13.5px] italic text-[#6b7b6e]/80 dark:text-[#8a9b8e]/80">Este mensaje fue eliminado</span>
+                                                <span className="flex items-center gap-0.5 ml-auto pl-2 flex-shrink-0">
+                                                    <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
+                                                </span>
+                                            </div>
+                                        ) : (<>
                                         {/* Tone label */}
                                         {msg.tone && msg.tone !== 'normal' && (() => {
                                             const toneInfo = getToneInfo(msg.tone);
@@ -741,6 +772,9 @@ export default function ChatRoomPage() {
                                             <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.media_url!); }}>
                                                 <img src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy" />
                                                 <div className="flex items-center justify-end gap-1 px-3 py-1.5">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
@@ -749,6 +783,9 @@ export default function ChatRoomPage() {
                                             <>
                                                 <AudioPlayer url={msg.media_url!} isMine={isMine} />
                                                 <div className="flex items-center justify-end gap-1 -mt-0.5">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </div>
@@ -767,11 +804,15 @@ export default function ChatRoomPage() {
                                                     <span className="whitespace-pre-wrap break-words break-all text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
+                                                    {isMine && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
+                                                    )}
                                                     <span className="text-[11px] text-[#6b7b6e] dark:text-[#8a9b8e]">{formatMsgTime(msg.created_at)}</span>
                                                     {isMine && (read ? <CheckCheck className="h-[15px] w-[15px] text-[#c8a23c]" /> : <CheckCheck className="h-[15px] w-[15px] text-[#6b7b6e]/50" />)}
                                                 </span>
                                             </div>
                                         )}
+                                        </>)}
                                     </div>
 
                                     {/* Reactions */}
