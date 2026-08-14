@@ -894,7 +894,7 @@ export default function ChatRoomPage() {
             </AnimatePresence>
 
             {/* ===== INPUT AREA ===== */}
-            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0 overflow-hidden">
+            <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0 overflow-visible">
                 <AnimatePresence>
                     {replyingTo && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-1">
