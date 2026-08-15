@@ -137,6 +137,7 @@ export default function ChatRoomPage() {
     const [readTimes, setReadTimes] = useState<Record<string, string>>({});
     const [pickerMsgId, setPickerMsgId] = useState<string | null>(null);
     const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const longPressTriggeredRef = useRef(false);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [recording, setRecording] = useState(false);
     const [recordTime, setRecordTime] = useState(0);
@@ -704,7 +705,13 @@ export default function ChatRoomPage() {
         }
     };
 
-    const handleLongPressStart = (msgId: string) => { setLongPressTimer(setTimeout(() => setPickerMsgId(msgId), 400)); };
+    const handleLongPressStart = (msgId: string) => {
+        setLongPressTimer(setTimeout(() => {
+            longPressTriggeredRef.current = true;
+            setPickerMsgId(msgId);
+            setTimeout(() => { longPressTriggeredRef.current = false; }, 400);
+        }, 400));
+    };
     const handleLongPressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
     const isMessageRead = (msg: Message) => { if (msg.user_id !== user?.id) return false; return Object.entries(readTimes).some(([uid, readAt]) => uid !== user?.id && new Date(readAt) >= new Date(msg.created_at)); };
     const getOnlineStatus = () => { const others = Object.keys(onlineUsers).filter(uid => uid !== user?.id); if (others.length === 0) return `${Object.keys(profiles).length} participantes`; if (!room?.is_group && others.length > 0) return 'en línea'; const names = others.map(uid => profiles[uid]?.full_name || 'Usuario').slice(0, 2); return names.join(', ') + ' en línea'; };
@@ -767,7 +774,7 @@ export default function ChatRoomPage() {
     const hasOnlineOthers = Object.keys(onlineUsers).filter(u => u !== user?.id).length > 0;
 
     return (
-        <div className="fixed inset-0 z-[70] flex flex-col bg-[#f4f1ec] dark:bg-[#0f1612] overflow-hidden max-w-[100vw]" style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y pinch-zoom' }} onClick={() => { pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
+        <div className="fixed inset-0 z-[70] flex flex-col bg-[#f4f1ec] dark:bg-[#0f1612] overflow-hidden max-w-[100vw]" style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y pinch-zoom' }} onClick={() => { if (longPressTriggeredRef.current) return; pickerMsgId && setPickerMsgId(null); showAttachMenu && setShowAttachMenu(false); }}>
             {/* ===== HEADER ===== */}
             <div className="flex items-center gap-2.5 px-2 py-2 bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white flex-shrink-0 z-10 shadow-md">
                 <Link href="/apps/mi-hogar/chat" className="p-1">
@@ -865,12 +872,13 @@ export default function ChatRoomPage() {
                             <div
                                 id={'msg-' + msg.id}
                                 className={`group flex items-end gap-1.5 transition-all duration-500 ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : ''}`}
-                                onTouchStart={() => handleLongPressStart(msg.id)}
+                                onTouchStart={(e) => { e.stopPropagation(); handleLongPressStart(msg.id); }}
                                 onTouchEnd={handleLongPressEnd}
-                                onMouseDown={() => handleLongPressStart(msg.id)}
+                                onMouseDown={(e) => { e.stopPropagation(); handleLongPressStart(msg.id); }}
                                 onMouseUp={handleLongPressEnd}
                                 onMouseLeave={handleLongPressEnd}
-                                onContextMenu={(e) => { e.preventDefault(); setPickerMsgId(msg.id); }}
+                                onContextMenu={(e) => { e.preventDefault(); longPressTriggeredRef.current = true; setPickerMsgId(msg.id); setTimeout(() => { longPressTriggeredRef.current = false; }, 400); }}
+                                style={{ WebkitTouchCallout: 'none' } as React.CSSProperties}
                             >
                                 {/* Avatar left for others */}
                                 {!isMine && (
