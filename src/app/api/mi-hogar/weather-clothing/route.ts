@@ -3,7 +3,7 @@ import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_MODEL_FALLBACK = 'gemini-2.5-flash-lite';
 

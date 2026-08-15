@@ -102,10 +102,9 @@ Cuando el usuario indique que quiere terminar o hagas la 4ª pregunta, genera un
     }
 
     const FALLBACK_MODELS = [
-      'llama-3.3-70b-versatile',
-      'llama-3.1-8b-instant',
-      'mixtral-8x7b-32768',
-      'gemma2-9b-it'
+      'openai/gpt-oss-120b',
+      'qwen/qwen3.6-27b',
+      'openai/gpt-oss-20b',
     ];
 
     let response;

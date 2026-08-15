@@ -115,7 +115,7 @@ Instrucciones:
                 { role: 'user', content: message }
             ],
             // Usamos un modelo rápido y capaz
-            model: 'llama3-8b-8192',
+            model: 'openai/gpt-oss-20b',
             temperature: 0.6,
             max_tokens: 1024,
         });

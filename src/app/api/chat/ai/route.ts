@@ -110,7 +110,7 @@ export async function POST(req: Request) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
             body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
+                model: 'openai/gpt-oss-120b',
                 messages: [
                     { role: 'system', content: `Eres Quioba IA, el asistente de la familia dentro de su chat. SOLO puedes responder con la información que te proporciono a continuación. Si la pregunta no se puede responder con estos datos, di "No tengo esa información registrada en Quioba". Nunca inventes datos ni uses conocimiento externo. Responde en español, conciso (2-3 frases). No uses markdown.\n\nDATOS DE LA FAMILIA:\n${context}` },
                     { role: 'user', content: question },
