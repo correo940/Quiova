@@ -47,8 +47,7 @@ REGLAS:
 - Si dice "dentista", "reunión", "ir a", "a las X" → create_task
 - Si dice "cuesta X", "me cobró X" → create_task con el gasto
 - Máximo 3 sugerencias, mínimo 1
-- Idioma: español
-/no_think`;
+- Idioma: español`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -61,7 +60,6 @@ REGLAS:
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         max_tokens: 500,
-        reasoning_effort: 'none',
       }),
     });
 

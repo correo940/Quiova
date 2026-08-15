@@ -1005,8 +1005,8 @@ export default function ChatRoomPage() {
                                                 )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
                                                     {!msg.content.startsWith('✨ Quioba') && !msg.id.startsWith('tmp_') && (
-                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); analyzeTextWithQuioba(msg.id); }} disabled={analyzingText} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-blue-100">
-                                                            {analyzingText ? <Loader2 className="h-3 w-3 text-blue-400 animate-spin" /> : <Sparkles className="h-3 w-3 text-blue-400 active:text-blue-600" />}
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); analyzeTextWithQuioba(msg.id); }} disabled={analyzingText} className="p-0.5 -m-0.5 mr-1 rounded-full active:bg-blue-100">
+                                                            {analyzingText ? <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" /> : <img src="/images/logo.png" alt="Quioba" className="h-3.5 w-3.5 object-contain opacity-60 active:opacity-100" />}
                                                         </button>
                                                     )}
                                                     {isMine && !msg.id.startsWith('tmp_') && (
