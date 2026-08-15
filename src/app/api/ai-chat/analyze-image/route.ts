@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 30;
+
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 export async function POST(req: Request) {
   try {
-    const { image, userId } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Error al leer la petición' }, { status: 400 });
+    }
+    const { image, userId } = body;
 
     if (!GROQ_API_KEY) {
       console.error('[analyze-image] No GROQ_API_KEY found');
@@ -22,10 +30,15 @@ export async function POST(req: Request) {
       ? image.split('base64,')[1]
       : image;
 
+    const sizeKB = Math.round(base64Data.length / 1024);
+    console.log(`[analyze-image] Image size: ${sizeKB}KB base64`);
+
+    if (sizeKB > 4000) {
+      return NextResponse.json({ error: `Imagen demasiado grande (${sizeKB}KB). Máximo 4MB.` }, { status: 400 });
+    }
+
     const mimeMatch = image.match(/data:([^;]+);/);
     const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
-    console.log(`[analyze-image] Image size: ${(base64Data.length / 1024).toFixed(0)}KB base64, mime: ${mimeType}`);
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -53,32 +66,46 @@ REGLAS:
 - Fecha de hoy: ${today}
 - Idioma: español`;
 
+    const groqBody = {
+      model: GROQ_VISION_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } },
+          ],
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 800,
+    };
+
+    console.log(`[analyze-image] Calling Groq API with model ${GROQ_VISION_MODEL}`);
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: GROQ_VISION_MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } },
-            ],
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 800,
-      }),
+      body: JSON.stringify(groqBody),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error('[analyze-image] Groq API error:', response.status, err);
-      return NextResponse.json({ error: `Error de IA: ${response.status}` }, { status: 500 });
+      const errText = await response.text();
+      console.error('[analyze-image] Groq API error:', response.status, errText);
+
+      let userError = `Error de IA (${response.status})`;
+      if (response.status === 401) userError = 'Clave API inválida';
+      else if (response.status === 413) userError = 'Imagen demasiado grande para el modelo';
+      else if (response.status === 429) userError = 'Demasiadas peticiones, espera un momento';
+      else if (response.status === 400) {
+        if (errText.includes('too large') || errText.includes('maximum')) userError = 'Imagen demasiado grande para el modelo';
+        else userError = `Error en la petición: ${errText.substring(0, 100)}`;
+      }
+
+      return NextResponse.json({ error: userError }, { status: 500 });
     }
 
     const data = await response.json();
@@ -90,10 +117,11 @@ REGLAS:
     let result;
     try {
       result = JSON.parse(cleaned);
-    } catch (parseErr) {
-      console.error('[analyze-image] JSON parse error:', parseErr, 'Content:', cleaned.substring(0, 200));
+    } catch {
+      console.error('[analyze-image] JSON parse error. Content:', cleaned.substring(0, 200));
+      const analysisText = cleaned || 'No he podido analizar la imagen correctamente.';
       result = {
-        analysis: cleaned || 'No he podido analizar la imagen correctamente.',
+        analysis: analysisText.length > 200 ? analysisText.substring(0, 200) + '...' : analysisText,
         suggestions: [{ type: 'info', action: 'none', label: 'Intenta con otra imagen', icon: '🔄', data: {} }],
       };
     }

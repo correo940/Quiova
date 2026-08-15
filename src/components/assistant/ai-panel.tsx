@@ -552,7 +552,7 @@ export default function AiPanel() {
             const img = new window.Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX = 1024;
+                const MAX = 768;
                 let w = img.width, h = img.height;
                 if (w > MAX || h > MAX) {
                     if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -562,7 +562,7 @@ export default function AiPanel() {
                 canvas.height = h;
                 const ctx = canvas.getContext('2d')!;
                 ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                resolve(canvas.toDataURL('image/jpeg', 0.5));
             };
             img.onerror = () => resolve(dataUrl);
             img.src = dataUrl;
@@ -599,7 +599,11 @@ export default function AiPanel() {
                 body: JSON.stringify({ image: dataUrl, userId: user.id }),
             });
 
-            if (!response.ok) throw new Error('Error del servidor');
+            if (!response.ok) {
+                let errorDetail = `Status ${response.status}`;
+                try { const errData = await response.json(); errorDetail = errData.error || errorDetail; } catch {}
+                throw new Error(errorDetail);
+            }
             const result = await response.json();
 
             setImageAnalysis({ ...result, imageUrl: dataUrl });
@@ -607,11 +611,11 @@ export default function AiPanel() {
                 role: 'assistant',
                 content: JSON.stringify({ type: 'image_analysis', analysis: result.analysis, suggestions: result.suggestions }),
             }]);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error analyzing image:', err);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: JSON.stringify({ type: 'text', content: 'No he podido analizar la imagen. Intenta de nuevo.' }),
+                content: JSON.stringify({ type: 'text', content: `Error: ${err.message || 'No he podido analizar la imagen'}. Intenta de nuevo.` }),
             }]);
         } finally {
             setAnalyzingImage(false);

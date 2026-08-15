@@ -537,7 +537,7 @@ export default function ChatRoomPage() {
             const img = new window.Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX = 1024;
+                const MAX = 768;
                 let w = img.width, h = img.height;
                 if (w > MAX || h > MAX) {
                     if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -547,7 +547,7 @@ export default function ChatRoomPage() {
                 canvas.height = h;
                 const ctx = canvas.getContext('2d')!;
                 ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                resolve(canvas.toDataURL('image/jpeg', 0.5));
             };
             img.onerror = () => resolve(dataUrl);
             img.src = dataUrl;
@@ -601,18 +601,26 @@ export default function ChatRoomPage() {
         const userMsg: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '🤖 @Quioba: 📷 Analiza esta imagen', created_at: new Date().toISOString(), media_url: dataUrl, profile: profiles[user.id] || null, reactions: [] };
         setMessages(prev => [...prev, userMsg]);
         try {
+            const base64Part = dataUrl.includes('base64,') ? dataUrl.split('base64,')[1] : dataUrl;
+            const sizeKB = Math.round(base64Part.length / 1024);
+            console.log(`[Quioba] Sending image: ${sizeKB}KB base64`);
             const response = await fetch('/api/ai-chat/analyze-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: dataUrl, userId: user.id }),
             });
-            if (!response.ok) throw new Error('Error del servidor');
+            if (!response.ok) {
+                let errorDetail = `Status ${response.status}`;
+                try { const errData = await response.json(); errorDetail = errData.error || errorDetail; } catch {}
+                throw new Error(errorDetail);
+            }
             const result = await response.json();
             setQuiobaAnalysis({ ...result, imageUrl: dataUrl });
             const aiMsg: Message = { id: 'tmp_ai_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: ${result.analysis}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
             setMessages(prev => [...prev, aiMsg]);
-        } catch {
-            const errMsg: Message = { id: 'tmp_err_' + Date.now(), user_id: user.id, content: '✨ Quioba IA: No he podido analizar la imagen. Intenta de nuevo.', created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+        } catch (err: any) {
+            console.error('[Quioba] Analysis error:', err);
+            const errMsg: Message = { id: 'tmp_err_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: Error: ${err.message || 'No he podido analizar la imagen'}. Intenta de nuevo.`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
             setMessages(prev => [...prev, errMsg]);
         } finally {
             setAnalyzingImage(false);
