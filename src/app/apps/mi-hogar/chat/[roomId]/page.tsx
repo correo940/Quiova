@@ -161,8 +161,9 @@ export default function ChatRoomPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const quiobaFileInputRef = useRef<HTMLInputElement>(null);
     const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
-    const [quiobaAnalysis, setQuiobaAnalysis] = useState<{ analysis: string; suggestions: any[]; imageUrl: string } | null>(null);
+    const [quiobaAnalysis, setQuiobaAnalysis] = useState<{ analysis: string; suggestions: any[]; imageUrl?: string } | null>(null);
     const [analyzingImage, setAnalyzingImage] = useState(false);
+    const [analyzingText, setAnalyzingText] = useState(false);
     const [executingAction, setExecutingAction] = useState<string | null>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -627,6 +628,35 @@ export default function ChatRoomPage() {
         }
     };
 
+    const analyzeTextWithQuioba = async (messageId: string) => {
+        const msg = messages.find(m => m.id === messageId);
+        if (!msg || !msg.content || !user || !room) return;
+        setPickerMsgId(null);
+        setAnalyzingText(true);
+        try {
+            const response = await fetch('/api/ai-chat/analyze-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: msg.content, userId: user.id }),
+            });
+            if (!response.ok) {
+                let errorDetail = `Status ${response.status}`;
+                try { const errData = await response.json(); errorDetail = errData.error || errorDetail; } catch {}
+                throw new Error(errorDetail);
+            }
+            const result = await response.json();
+            setQuiobaAnalysis({ analysis: result.analysis, suggestions: result.suggestions });
+            const aiMsg: Message = { id: 'tmp_ai_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: ${result.analysis}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+            setMessages(prev => [...prev, aiMsg]);
+        } catch (err: any) {
+            console.error('[Quioba] Text analysis error:', err);
+            const errMsg: Message = { id: 'tmp_err_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: Error: ${err.message || 'No pude analizar el mensaje'}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+            setMessages(prev => [...prev, errMsg]);
+        } finally {
+            setAnalyzingText(false);
+        }
+    };
+
     const executeQuiobaSuggestion = async (suggestion: any) => {
         if (!user) return;
         setExecutingAction(suggestion.action);
@@ -863,6 +893,11 @@ export default function ChatRoomPage() {
                                                 style={{ marginTop: '-48px' }}
                                             >
                                                 {!msg.deleted_at && <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setPickerMsgId(null); }} className="p-2 hover:bg-[#1a5c2e]/5 rounded-full"><Reply className="h-5 w-5 text-[#5a6b5e]" /></button>}
+                                                {!msg.deleted_at && msg.content && !msg.content.startsWith('✨ Quioba') && !msg.id.startsWith('tmp_') && (
+                                                    <button onClick={() => analyzeTextWithQuioba(msg.id)} disabled={analyzingText} className="p-2 hover:bg-blue-50 rounded-full">
+                                                        {analyzingText ? <Loader2 className="h-5 w-5 text-blue-500 animate-spin" /> : <Sparkles className="h-5 w-5 text-blue-500" />}
+                                                    </button>
+                                                )}
                                                 {!msg.deleted_at && isMine && (
                                                     <button onClick={() => handleDeleteMessage(msg.id)} className="p-2 hover:bg-red-50 rounded-full"><Trash2 className="h-5 w-5 text-red-500" /></button>
                                                 )}
