@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Plus, MoreVertical, Phone, Camera, Pencil, Image, Volume2, Sparkles, Trash2, Ban } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Check, CheckCheck, Reply, X, Mic, Play, Pause, Plus, MoreVertical, Phone, Camera, Pencil, Image, Volume2, Sparkles, Trash2, Ban, Loader2, ShoppingCart, ListTodo, Receipt, Pill, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -159,6 +159,11 @@ export default function ChatRoomPage() {
     const [aiLoading, setAiLoading] = useState(false);
     const [myBubbleColor, setMyBubbleColor] = useState('green');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const quiobaFileInputRef = useRef<HTMLInputElement>(null);
+    const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
+    const [quiobaAnalysis, setQuiobaAnalysis] = useState<{ analysis: string; suggestions: any[]; imageUrl: string } | null>(null);
+    const [analyzingImage, setAnalyzingImage] = useState(false);
+    const [executingAction, setExecutingAction] = useState<string | null>(null);
     const groupAvatarInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const notifAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -515,7 +520,127 @@ export default function ChatRoomPage() {
     const cancelRecording = () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.onstop = () => { mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop()); }; mediaRecorderRef.current.stop(); } if (recordTimerRef.current) clearInterval(recordTimerRef.current); audioChunksRef.current = []; setRecording(false); setRecordTime(0); };
     const stopAndSendRecording = async () => { if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return; if (recordTimerRef.current) clearInterval(recordTimerRef.current); const recorder = mediaRecorderRef.current; recorder.onstop = () => { recorder.stream?.getTracks().forEach(t => t.stop()); const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); if (blob.size < 1000) { setRecording(false); setRecordTime(0); return; } setRecording(false); setRecordTime(0); uploadAndSendAudio(blob); }; recorder.stop(); };
     const uploadAndSendAudio = async (blob: Blob) => { if (!user || !room) return; setSending(true); const fileName = `${room.id}/${user.id}_${Date.now()}.webm`; const { error: uploadError } = await supabase.storage.from('chat-audio').upload(fileName, blob, { contentType: 'audio/webm' }); if (uploadError) { setSending(false); return; } const { data: urlData } = supabase.storage.from('chat-audio').getPublicUrl(fileName); if (!urlData?.publicUrl) { setSending(false); return; } const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(), media_url: urlData.publicUrl, profile: profiles[user.id] || null, reactions: [] }; setMessages(prev => [...prev, optimistic]); const { data: inserted, error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl }).select('*').single(); if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id)); else if (inserted) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted }); sendChatPush('🎤 Nota de voz'); } setSending(false); };
-    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file || !user || !room) return; e.target.value = ''; if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) return; setUploadingImage(true); const ext = file.name.split('.').pop() || 'jpg'; const fileName = `${room.id}/${user.id}_${Date.now()}.${ext}`; const { error: uploadError } = await supabase.storage.from('chat-images').upload(fileName, file, { contentType: file.type }); if (uploadError) { setUploadingImage(false); return; } const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName); if (!urlData?.publicUrl) { setUploadingImage(false); return; } const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(), media_url: urlData.publicUrl, profile: profiles[user.id] || null, reactions: [] }; setMessages(prev => [...prev, optimistic]); const { data: inserted, error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl }).select('*').single(); if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id)); else if (inserted) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted }); sendChatPush('📷 Imagen'); } setUploadingImage(false); };
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPendingImage({ file, previewUrl: reader.result as string });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleQuiobaImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+        if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            analyzeImageWithQuioba(dataUrl);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const sendPendingImageToChat = async () => {
+        if (!pendingImage || !user || !room) return;
+        setUploadingImage(true);
+        setPendingImage(null);
+        const file = pendingImage.file;
+        const ext = file.name.split('.').pop() || 'jpg';
+        const fileName = `${room.id}/${user.id}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('chat-images').upload(fileName, file, { contentType: file.type });
+        if (uploadError) { setUploadingImage(false); return; }
+        const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+        if (!urlData?.publicUrl) { setUploadingImage(false); return; }
+        const optimistic: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '', created_at: new Date().toISOString(), media_url: urlData.publicUrl, profile: profiles[user.id] || null, reactions: [] };
+        setMessages(prev => [...prev, optimistic]);
+        const { data: inserted, error } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: '', media_url: urlData.publicUrl }).select('*').single();
+        if (error) setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+        else if (inserted) { broadcastChannelRef.current?.send({ type: 'broadcast', event: 'new_message', payload: inserted }); sendChatPush('📷 Imagen'); }
+        setUploadingImage(false);
+    };
+
+    const sendPendingImageToQuioba = () => {
+        if (!pendingImage) return;
+        const dataUrl = pendingImage.previewUrl;
+        setPendingImage(null);
+        analyzeImageWithQuioba(dataUrl);
+    };
+
+    const analyzeImageWithQuioba = async (dataUrl: string) => {
+        if (!user || !room) return;
+        setAnalyzingImage(true);
+        const userMsg: Message = { id: 'tmp_' + Date.now(), user_id: user.id, content: '🤖 @Quioba: 📷 Analiza esta imagen', created_at: new Date().toISOString(), media_url: dataUrl, profile: profiles[user.id] || null, reactions: [] };
+        setMessages(prev => [...prev, userMsg]);
+        try {
+            const response = await fetch('/api/ai-chat/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl, userId: user.id }),
+            });
+            if (!response.ok) throw new Error('Error del servidor');
+            const result = await response.json();
+            setQuiobaAnalysis({ ...result, imageUrl: dataUrl });
+            const aiMsg: Message = { id: 'tmp_ai_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: ${result.analysis}`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+            setMessages(prev => [...prev, aiMsg]);
+        } catch {
+            const errMsg: Message = { id: 'tmp_err_' + Date.now(), user_id: user.id, content: '✨ Quioba IA: No he podido analizar la imagen. Intenta de nuevo.', created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+            setMessages(prev => [...prev, errMsg]);
+        } finally {
+            setAnalyzingImage(false);
+        }
+    };
+
+    const executeQuiobaSuggestion = async (suggestion: any) => {
+        if (!user) return;
+        setExecutingAction(suggestion.action);
+        try {
+            switch (suggestion.action) {
+                case 'add_to_shopping': {
+                    const { error } = await supabase.from('shopping_items').insert({
+                        user_id: user.id,
+                        name: suggestion.data.name,
+                        category: suggestion.data.category || 'Otros',
+                        is_checked: false,
+                    });
+                    if (error) throw error;
+                    const msg: Message = { id: 'tmp_act_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: Hecho, he añadido "${suggestion.data.name}" a tu lista de la compra 🛒`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+                    setMessages(prev => [...prev, msg]);
+                    break;
+                }
+                case 'create_task': {
+                    const taskData: any = { user_id: user.id, title: suggestion.data.title, is_completed: false };
+                    if (suggestion.data.due_date) taskData.due_date = suggestion.data.due_date;
+                    if (suggestion.data.description) taskData.description = suggestion.data.description;
+                    const { error } = await supabase.from('tasks').insert(taskData);
+                    if (error) throw error;
+                    const msg: Message = { id: 'tmp_act_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: Tarea "${suggestion.data.title}" creada ${suggestion.data.due_date ? `para el ${suggestion.data.due_date}` : ''} ✅`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+                    setMessages(prev => [...prev, msg]);
+                    break;
+                }
+                case 'add_medicine': {
+                    const { error } = await supabase.from('medicines').insert({
+                        user_id: user.id, name: suggestion.data.name,
+                        dosage: suggestion.data.dosage || '', frequency: suggestion.data.frequency || 'daily',
+                    });
+                    if (error) throw error;
+                    const msg: Message = { id: 'tmp_act_' + Date.now(), user_id: user.id, content: `✨ Quioba IA: Medicamento "${suggestion.data.name}" registrado 💊`, created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+                    setMessages(prev => [...prev, msg]);
+                    break;
+                }
+            }
+            setQuiobaAnalysis(null);
+        } catch {
+            const msg: Message = { id: 'tmp_err_' + Date.now(), user_id: user.id, content: '✨ Quioba IA: No se pudo realizar la acción. Intenta de nuevo.', created_at: new Date().toISOString(), profile: profiles[user.id] || null, reactions: [] };
+            setMessages(prev => [...prev, msg]);
+        } finally {
+            setExecutingAction(null);
+        }
+    };
 
     const handleLongPressStart = (msgId: string) => { setLongPressTimer(setTimeout(() => setPickerMsgId(msgId), 400)); };
     const handleLongPressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
@@ -895,6 +1020,93 @@ export default function ChatRoomPage() {
 
             {/* ===== INPUT AREA ===== */}
             <div className="bg-[#eae6df] dark:bg-[#141e16] px-2 py-1.5 flex-shrink-0 overflow-visible">
+                {/* Sugerencias de Quioba tras análisis de imagen */}
+                <AnimatePresence>
+                    {quiobaAnalysis && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-1.5">
+                            <div className="bg-white dark:bg-[#1e2a20] rounded-2xl mx-0.5 border border-[#2563eb]/20 overflow-hidden shadow-sm">
+                                <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#2563eb]/10 to-[#3b82f6]/5">
+                                    <div className="flex items-center gap-2">
+                                        <img src="/images/logo.png" alt="Quioba" className="h-5 w-5 object-contain" />
+                                        <span className="text-[12px] font-semibold text-[#2563eb]">Quioba sugiere</span>
+                                    </div>
+                                    <button onClick={() => setQuiobaAnalysis(null)} className="p-1 rounded-full hover:bg-[#2563eb]/10"><X className="h-3.5 w-3.5 text-[#6b7b6e]" /></button>
+                                </div>
+                                <div className="px-3 py-2 space-y-1.5">
+                                    {quiobaAnalysis.suggestions?.map((s: any, i: number) => {
+                                        const colors: Record<string, string> = {
+                                            add_to_shopping: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
+                                            create_task: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
+                                            add_medicine: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
+                                            add_expense: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+                                        };
+                                        const icons: Record<string, React.ReactNode> = {
+                                            add_to_shopping: <ShoppingCart className="h-3.5 w-3.5" />,
+                                            create_task: <ListTodo className="h-3.5 w-3.5" />,
+                                            add_medicine: <Pill className="h-3.5 w-3.5" />,
+                                            add_expense: <Receipt className="h-3.5 w-3.5" />,
+                                        };
+                                        return (
+                                            <button key={i} onClick={() => s.action !== 'none' && executeQuiobaSuggestion(s)}
+                                                disabled={executingAction === s.action || s.action === 'none'}
+                                                className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all active:scale-[0.98] ${colors[s.action] || 'bg-slate-50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800'} ${s.action === 'none' ? 'cursor-default' : 'cursor-pointer'}`}
+                                            >
+                                                <span className="text-base shrink-0">{s.icon}</span>
+                                                <span className="flex-1 text-[13px] font-medium text-[#1a2318] dark:text-[#e0e8e2]">{s.label}</span>
+                                                {executingAction === s.action ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#6b7b6e] shrink-0" />
+                                                ) : s.action !== 'none' ? (
+                                                    icons[s.action] || <Info className="h-3.5 w-3.5 text-[#6b7b6e] shrink-0" />
+                                                ) : null}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                {/* Indicador analizando imagen */}
+                <AnimatePresence>
+                    {analyzingImage && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-1.5">
+                            <div className="bg-white dark:bg-[#1e2a20] rounded-2xl mx-0.5 border border-[#2563eb]/20 px-4 py-3 flex items-center gap-3">
+                                <Loader2 className="h-5 w-5 animate-spin text-[#2563eb]" />
+                                <div>
+                                    <p className="text-[13px] font-semibold text-[#1a2318] dark:text-[#e0e8e2]">Quioba está analizando la imagen...</p>
+                                    <p className="text-[11px] text-[#6b7b6e]">Esto puede tardar unos segundos</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                {/* Preview de imagen pendiente */}
+                <AnimatePresence>
+                    {pendingImage && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-1.5">
+                            <div className="bg-white dark:bg-[#1e2a20] rounded-2xl mx-0.5 border border-[#1a5c2e]/10 overflow-hidden shadow-sm">
+                                <div className="flex items-center gap-3 p-3">
+                                    <img src={pendingImage.previewUrl} alt="Preview" className="w-16 h-16 object-cover rounded-xl" />
+                                    <div className="flex-1 flex flex-col gap-1.5">
+                                        <button onClick={sendPendingImageToChat}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white text-[13px] font-medium active:scale-[0.98] transition-all">
+                                            <Send className="h-3.5 w-3.5" />
+                                            Enviar al chat
+                                        </button>
+                                        <button onClick={sendPendingImageToQuioba}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-[13px] font-medium active:scale-[0.98] transition-all">
+                                            <img src="/images/logo.png" alt="Quioba" className="h-4 w-4 object-contain brightness-[10]" />
+                                            Analizar con Quioba
+                                        </button>
+                                    </div>
+                                    <button onClick={() => setPendingImage(null)} className="p-1.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 self-start">
+                                        <X className="h-4 w-4 text-[#6b7b6e]" />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 <AnimatePresence>
                     {replyingTo && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-1">
@@ -927,6 +1139,7 @@ export default function ChatRoomPage() {
                         ) : (
                             <motion.div key="inp" initial={false} className="flex items-end flex-1 bg-white dark:bg-[#1e2a20] rounded-2xl pl-3 pr-1.5 relative">
                                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                                <input ref={quiobaFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleQuiobaImageSelect} />
                                 <button type="button" onClick={() => setShowAttachMenu(!showAttachMenu)} disabled={sending || uploadingImage} className="py-2.5 text-[#6b7b6e] hover:text-[#1a5c2e] transition-colors disabled:opacity-40 flex-shrink-0">
                                     <Plus className={`h-[22px] w-[22px] transition-transform ${showAttachMenu ? 'rotate-45' : ''}`} />
                                 </button>
@@ -944,6 +1157,13 @@ export default function ChatRoomPage() {
                                                 className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#1a5c2e]/5 dark:hover:bg-[#1a5c2e]/10 transition-colors">
                                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#8b6914] to-[#b8912e] flex items-center justify-center"><Volume2 className="h-[18px] w-[18px] text-white" /></div>
                                                 <span>Audio</span>
+                                            </button>
+                                            <button type="button" onClick={() => { setShowAttachMenu(false); quiobaFileInputRef.current?.click(); }}
+                                                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#2563eb]/5 dark:hover:bg-[#2563eb]/10 transition-colors">
+                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#2563eb] to-[#3b82f6] flex items-center justify-center">
+                                                    <img src="/images/logo.png" alt="Quioba" className="h-5 w-5 object-contain brightness-[10]" />
+                                                </div>
+                                                <span>Imagen + Quioba</span>
                                             </button>
                                         </motion.div>
                                     )}
