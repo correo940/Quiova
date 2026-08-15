@@ -532,15 +532,38 @@ export default function ChatRoomPage() {
         reader.readAsDataURL(file);
     };
 
+    const compressImageForAi = (dataUrl: string): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 1024;
+                let w = img.width, h = img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else { w = Math.round(w * MAX / h); h = MAX; }
+                }
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d')!;
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        });
+    };
+
     const handleQuiobaImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         e.target.value = '';
         if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) return;
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
             const dataUrl = reader.result as string;
-            analyzeImageWithQuioba(dataUrl);
+            const compressed = await compressImageForAi(dataUrl);
+            analyzeImageWithQuioba(compressed);
         };
         reader.readAsDataURL(file);
     };
@@ -564,11 +587,12 @@ export default function ChatRoomPage() {
         setUploadingImage(false);
     };
 
-    const sendPendingImageToQuioba = () => {
+    const sendPendingImageToQuioba = async () => {
         if (!pendingImage) return;
         const dataUrl = pendingImage.previewUrl;
         setPendingImage(null);
-        analyzeImageWithQuioba(dataUrl);
+        const compressed = await compressImageForAi(dataUrl);
+        analyzeImageWithQuioba(compressed);
     };
 
     const analyzeImageWithQuioba = async (dataUrl: string) => {
@@ -1095,7 +1119,7 @@ export default function ChatRoomPage() {
                                         </button>
                                         <button onClick={sendPendingImageToQuioba}
                                             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-[13px] font-medium active:scale-[0.98] transition-all">
-                                            <img src="/images/logo.png" alt="Quioba" className="h-4 w-4 object-contain brightness-[10]" />
+                                            <Sparkles className="h-4 w-4" />
                                             Analizar con Quioba
                                         </button>
                                     </div>
@@ -1161,7 +1185,7 @@ export default function ChatRoomPage() {
                                             <button type="button" onClick={() => { setShowAttachMenu(false); quiobaFileInputRef.current?.click(); }}
                                                 className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-[#1a2318] dark:text-[#e0e8e2] hover:bg-[#2563eb]/5 dark:hover:bg-[#2563eb]/10 transition-colors">
                                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#2563eb] to-[#3b82f6] flex items-center justify-center">
-                                                    <img src="/images/logo.png" alt="Quioba" className="h-5 w-5 object-contain brightness-[10]" />
+                                                    <Sparkles className="h-[18px] w-[18px] text-white" />
                                                 </div>
                                                 <span>Imagen + Quioba</span>
                                             </button>

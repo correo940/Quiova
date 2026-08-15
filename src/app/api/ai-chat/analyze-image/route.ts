@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 export async function POST(req: Request) {
@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     const { image, userId } = await req.json();
 
     if (!GROQ_API_KEY) {
+      console.error('[analyze-image] No GROQ_API_KEY found');
       return NextResponse.json({ error: 'Clave API no configurada' }, { status: 500 });
     }
     if (!image) {
@@ -21,9 +22,14 @@ export async function POST(req: Request) {
       ? image.split('base64,')[1]
       : image;
 
-    const prompt = `Eres Quioba, un asistente IA familiar inteligente. Analiza esta imagen y determina qué tipo de contenido muestra.
+    const mimeMatch = image.match(/data:([^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
 
-DEBES responder SOLO con JSON válido (sin markdown, sin \`\`\`).
+    console.log(`[analyze-image] Image size: ${(base64Data.length / 1024).toFixed(0)}KB base64, mime: ${mimeType}`);
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const prompt = `Eres Quioba, un asistente IA familiar inteligente. Analiza esta imagen y determina qué tipo de contenido muestra.
 
 Analiza la imagen y clasifica en una o varias de estas categorías:
 1. "shopping" — Si ves un producto, alimento, objeto que se puede comprar, una lista de compras, un estante de tienda
@@ -34,44 +40,17 @@ Analiza la imagen y clasifica en una o varias de estas categorías:
 
 Para CADA categoría detectada, genera una sugerencia de acción que el usuario pueda ejecutar.
 
-FORMATO DE RESPUESTA:
-{
-  "analysis": "Descripción breve y amigable de lo que ves en la imagen (1-2 frases en español)",
-  "suggestions": [
-    {
-      "type": "shopping",
-      "action": "add_to_shopping",
-      "label": "Texto del botón de acción",
-      "icon": "emoji apropiado",
-      "data": {
-        "name": "nombre del producto",
-        "category": "categoría (Lácteos, Carnes, Frutas, Verduras, Limpieza, Higiene, Bebidas, Panadería, Congelados, Otros)"
-      }
-    },
-    {
-      "type": "task",
-      "action": "create_task",
-      "label": "Texto del botón de acción",
-      "icon": "emoji apropiado",
-      "data": {
-        "title": "título de la tarea",
-        "due_date": "YYYY-MM-DD si se detecta fecha",
-        "due_time": "HH:MM si se detecta hora",
-        "description": "detalles adicionales"
-      }
-    }
-  ]
-}
+RESPONDE SOLO CON JSON VÁLIDO (sin markdown, sin backticks). El formato EXACTO:
+{"analysis":"Descripción breve de lo que ves en español","suggestions":[{"type":"shopping","action":"add_to_shopping","label":"Añadir X a la compra","icon":"🛒","data":{"name":"nombre","category":"categoría"}},{"type":"task","action":"create_task","label":"Crear tarea X","icon":"📋","data":{"title":"título","due_date":"${today}","description":"detalles"}}]}
+
+Categorías válidas para compra: Lácteos, Carnes, Frutas, Verduras, Limpieza, Higiene, Bebidas, Panadería, Congelados, Otros
 
 REGLAS:
-- Si ves un PRODUCTO: sugiere añadir a la compra Y opcionalmente crear recordatorio de compra
-- Si ves TEXTO con FECHAS/EVENTOS: extrae CADA evento como sugerencia de tarea separada. Lee bien nombres, fechas y horas
-- Si ves un RECIBO: sugiere registrar el gasto
-- Si ves un MEDICAMENTO: sugiere añadirlo a medicación
-- Si no puedes clasificar claramente: usa tipo "info" con una descripción útil
-- Siempre incluye al menos 1 sugerencia
-- Máximo 4 sugerencias
-- Fecha de hoy: ${new Date().toISOString().split('T')[0]}
+- Si ves un PRODUCTO: sugiere añadir a la compra con action "add_to_shopping"
+- Si ves TEXTO con FECHAS/EVENTOS: crea sugerencias con action "create_task"
+- Si ves un MEDICAMENTO: sugiere con action "add_medicine"
+- Siempre incluye al menos 1 sugerencia, máximo 4
+- Fecha de hoy: ${today}
 - Idioma: español`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -87,39 +66,45 @@ REGLAS:
             role: 'user',
             content: [
               { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } },
             ],
           },
         ],
         temperature: 0.2,
         max_tokens: 800,
-        response_format: { type: 'json_object' },
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('[analyze-image] Groq error:', err);
-      return NextResponse.json({ error: 'Error al analizar la imagen' }, { status: 500 });
+      console.error('[analyze-image] Groq API error:', response.status, err);
+      return NextResponse.json({ error: `Error de IA: ${response.status}` }, { status: 500 });
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    console.log('[analyze-image] Raw response:', content.substring(0, 300));
+
+    const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
     let result;
     try {
       result = JSON.parse(cleaned);
-    } catch {
+    } catch (parseErr) {
+      console.error('[analyze-image] JSON parse error:', parseErr, 'Content:', cleaned.substring(0, 200));
       result = {
-        analysis: 'No he podido analizar la imagen correctamente.',
+        analysis: cleaned || 'No he podido analizar la imagen correctamente.',
         suggestions: [{ type: 'info', action: 'none', label: 'Intenta con otra imagen', icon: '🔄', data: {} }],
       };
     }
 
+    if (!result.suggestions || !Array.isArray(result.suggestions)) {
+      result.suggestions = [{ type: 'info', action: 'none', label: 'No se detectaron acciones', icon: 'ℹ️', data: {} }];
+    }
+
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('[analyze-image] Error:', error.message);
-    return NextResponse.json({ error: 'Error interno al procesar la imagen' }, { status: 500 });
+    console.error('[analyze-image] Error:', error.message, error.stack);
+    return NextResponse.json({ error: `Error interno: ${error.message}` }, { status: 500 });
   }
 }
