@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { SALAS } from '@/app/apps/oficina/vista/salas-data';
 import { leerTablonPendiente } from '@/app/apps/oficina/vista/tablon-store';
@@ -139,7 +140,7 @@ async function responderAgente(chatId: string, texto: string, salaId: string, ag
         ],
     });
 
-    const respuesta = completion.choices[0]?.message?.content ?? '(sin respuesta)';
+    const respuesta = stripThinkTags(completion.choices[0]?.message?.content ?? '(sin respuesta)');
     await guardarMensaje(salaId, agente, 'user', texto);
     await guardarMensaje(salaId, agente, 'assistant', respuesta);
     await sendMessage(chatId, `<b>${agente}:</b>\n${respuesta}`);

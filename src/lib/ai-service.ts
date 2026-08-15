@@ -1,4 +1,5 @@
 import { scanRosterImage as scanRosterLocal } from './roster-scanner';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
@@ -44,7 +45,7 @@ export async function identifyProduct(base64Image: string): Promise<string | nul
         });
         if (!response.ok) return null;
         const data = await response.json();
-        return data.choices?.[0]?.message?.content?.trim() || null;
+        return stripThinkTags(data.choices?.[0]?.message?.content || '').trim() || null;
     } catch (e) { console.error(e); return null; }
 }
 
@@ -96,7 +97,7 @@ async function callGroqVision(base64Image: string, promptText: string): Promise<
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "";
+    return stripThinkTags(data.choices?.[0]?.message?.content || '');
 }
 
 export async function scanRosterImage(base64Image: string): Promise<DigitalRoster | null> {

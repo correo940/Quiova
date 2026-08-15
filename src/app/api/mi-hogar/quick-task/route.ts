@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 
 export async function POST(req: Request) {
     try {
@@ -44,10 +45,10 @@ Si hay día sin hora, usa 09:00. Si no hay fecha, due_date es null.`
             ]
         });
 
-        const content = completion.choices[0]?.message?.content;
-        if (!content) throw new Error('Empty Groq response');
+        const rawContent = completion.choices[0]?.message?.content;
+        if (!rawContent) throw new Error('Empty Groq response');
 
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(stripThinkTags(rawContent));
         return NextResponse.json({
             title: parsed.title || text.trim(),
             due_date: parsed.due_date || null,

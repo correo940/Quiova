@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 import { filtrarTareasReales } from '@/lib/oficina/tareas-reales';
 
 // Categorías de biblioteca relevantes por director
@@ -221,7 +222,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 700,
         });
 
-        const reply = completion.choices[0]?.message?.content ?? 'No pude procesar tu consulta.';
+        const reply = stripThinkTags(completion.choices[0]?.message?.content ?? 'No pude procesar tu consulta.');
         return NextResponse.json({ reply });
 
     } catch (err: any) {

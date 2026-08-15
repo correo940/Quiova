@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -36,7 +37,7 @@ async function callGroq(textForAI: string) {
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return stripThinkTags(data.choices?.[0]?.message?.content || '');
 }
 
 function parseAIResponse(content: string) {

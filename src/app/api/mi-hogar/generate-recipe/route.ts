@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -67,8 +68,8 @@ Devuelve solo JSON:
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    const parsed = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+    const rawContent = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(stripThinkTags(rawContent).replace(/```json/g, '').replace(/```/g, '').trim());
 
     if (user) {
       await recordApiUsage(user.id, 'generate-recipe');

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stripThinkTags } from '@/lib/strip-think';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API Route: /api/secretary-chat
@@ -148,7 +149,7 @@ Cuando el usuario indique que quiere terminar o hagas la 4ª pregunta, genera un
       return NextResponse.json({ error: 'Nuestros servidores están muy ocupados. Inténtalo de nuevo.' }, { status: 500 });
     }
 
-    const reply = data.choices?.[0]?.message?.content ?? '';
+    const reply = stripThinkTags(data.choices?.[0]?.message?.content ?? '');
     console.log(`[Secretary] Respuesta generada con éxito usando: ${usedModel}`);
 
     // Detectar si el reply contiene un JSON de resumen final

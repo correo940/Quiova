@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
@@ -84,8 +85,8 @@ Si no se puede identificar, devuelve {"productName":"Desconocido","supermarket":
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    const cleanedContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    const rawContent = data.choices?.[0]?.message?.content || '';
+    const cleanedContent = stripThinkTags(rawContent).replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanedContent);
 
     if (parsed.productName?.toLowerCase().includes('desconocido')) {

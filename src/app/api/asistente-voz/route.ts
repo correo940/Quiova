@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 import {
     fetchPendingTasks,
     fetchShoppingList,
@@ -94,7 +95,7 @@ FECHA: si dicen hora sin fecha usa hoy (${todayStr}). "mañana"=${tomorrowStr}. 
             ],
         });
 
-        const raw = completion.choices[0]?.message?.content || '{}';
+        const raw = stripThinkTags(completion.choices[0]?.message?.content || '{}');
         let parsed: any;
         try {
             parsed = JSON.parse(raw);

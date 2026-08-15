@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { stripThinkTags } from '@/lib/strip-think';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -396,7 +397,7 @@ JSON obligatorio:
       return NextResponse.json({ error: 'Nuestros servidores de IA están muy ocupados. Inténtalo en unos segundos.' }, { status: 500 });
     }
 
-    const reply = data.choices?.[0]?.message?.content ?? '{"type":"text","content":"Lo siento, no pude procesar tu mensaje."}';
+    const reply = stripThinkTags(data.choices?.[0]?.message?.content ?? '{"type":"text","content":"Lo siento, no pude procesar tu mensaje."}');
     console.log(`✅ Respuesta OK con modelo: ${usedModel}`);
 
     return NextResponse.json({ reply });

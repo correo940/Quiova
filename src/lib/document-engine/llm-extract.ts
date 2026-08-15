@@ -3,6 +3,7 @@
 // el caller pasa su propio prompt de sistema y esquema; este modulo solo resuelve "texto -> JSON" con proveedores intercambiables.
 
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -37,7 +38,7 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
     ],
   });
 
-  return completion.choices?.[0]?.message?.content || '';
+  return stripThinkTags(completion.choices?.[0]?.message?.content || '');
 }
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {

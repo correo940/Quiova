@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -35,7 +36,7 @@ async function callGroq(systemPrompt: string, userPrompt: string): Promise<strin
     throw new Error(`Groq error: ${err}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+  return stripThinkTags(data.choices?.[0]?.message?.content || '');
 }
 
 async function callGeminiModel(model: string, systemPrompt: string, userPrompt: string): Promise<string> {

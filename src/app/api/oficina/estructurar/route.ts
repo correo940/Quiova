@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 
 const DIRECTOR_CONTEXTO: Record<string, string> = {
     'director':             'Puedes asignar tareas a cualquier director según el contenido.',
@@ -105,7 +106,7 @@ RESPONDE EXCLUSIVAMENTE CON JSON VÁLIDO (sin markdown, sin texto extra):
             response_format: { type: 'json_object' },
         });
 
-        const raw = completion.choices[0]?.message?.content ?? '{}';
+        const raw = stripThinkTags(completion.choices[0]?.message?.content ?? '{}');
         const parsed = JSON.parse(raw);
 
         if (!parsed.expediente || !Array.isArray(parsed.tareas)) {

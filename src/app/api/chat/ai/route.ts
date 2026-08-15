@@ -120,7 +120,8 @@ export async function POST(req: Request) {
             }),
         });
         const data = await res.json();
-        const answer = data?.choices?.[0]?.message?.content || 'No pude generar una respuesta.';
+        const rawAnswer = data?.choices?.[0]?.message?.content || 'No pude generar una respuesta.';
+        const answer = rawAnswer.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || rawAnswer;
         return NextResponse.json({ answer });
     } catch {
         return NextResponse.json({ error: 'Error al consultar IA' }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 import { getSala, agenteEnSala } from '@/app/apps/oficina/vista/salas-data';
 import { leerDirectrices } from '@/app/apps/oficina/vista/directrices-store';
 import { leerChat, guardarMensaje, limpiarChat } from '@/app/apps/oficina/vista/chat-store';
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
         ],
     });
 
-    const respuesta = completion.choices[0]?.message?.content ?? '(sin respuesta)';
+    const respuesta = stripThinkTags(completion.choices[0]?.message?.content ?? '(sin respuesta)');
     const ts = Date.now();
 
     await guardarMensaje(salaId, nombreAgente, { role: 'user', content: mensaje, ts });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { stripThinkTags } from '@/lib/strip-think';
 import {
     fetchSavingsSummary,
     fetchPendingTasks,
@@ -120,7 +121,7 @@ Instrucciones:
             max_tokens: 1024,
         });
 
-        const reply = completion.choices[0]?.message?.content || 'Lo siento, no pude entender eso.';
+        const reply = stripThinkTags(completion.choices[0]?.message?.content || 'Lo siento, no pude entender eso.');
 
         return NextResponse.json({ response: reply });
 

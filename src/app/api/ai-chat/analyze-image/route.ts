@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stripThinkTags } from '@/lib/strip-think';
 
 export const maxDuration = 30;
 
@@ -109,9 +110,10 @@ REGLAS:
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    console.log('[analyze-image] Raw response:', content.substring(0, 300));
+    const rawContent = data.choices?.[0]?.message?.content || '';
+    console.log('[analyze-image] Raw response:', rawContent.substring(0, 300));
 
+    const content = stripThinkTags(rawContent);
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
     let result;

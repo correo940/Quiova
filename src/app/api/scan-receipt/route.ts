@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { stripThinkTags } from '@/lib/strip-think';
 
 export async function POST(req: NextRequest) {
     try {
@@ -114,12 +115,11 @@ Responde SOLO con el JSON, sin texto adicional:
 }
 
 function extractJSON(text: string): any {
+    const clean = stripThinkTags(text);
     try {
-        // Try direct parse
-        return JSON.parse(text);
+        return JSON.parse(clean);
     } catch {
-        // Try to find JSON in response
-        const match = text.match(/\{[\s\S]*?\}/);
+        const match = clean.match(/\{[\s\S]*?\}/);
         if (match) {
             try {
                 return JSON.parse(match[0]);

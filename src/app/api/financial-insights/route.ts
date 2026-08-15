@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stripThinkTags } from '@/lib/strip-think';
 
 export async function POST(req: Request) {
     try {
@@ -67,8 +68,8 @@ Responde EXCLUSIVAMENTE con el siguiente formato JSON estricto, sin markdown (\`
             return NextResponse.json({ error: 'Respuesta inválida de la IA' }, { status: 500 });
         }
 
-        const rawContent = data.choices[0].message.content;
-        
+        const rawContent = stripThinkTags(data.choices[0].message.content);
+
         let parsed;
         try {
             parsed = JSON.parse(rawContent);
