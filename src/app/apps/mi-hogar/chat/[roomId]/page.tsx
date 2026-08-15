@@ -1004,6 +1004,11 @@ export default function ChatRoomPage() {
                                                     <span className="whitespace-pre-wrap break-words break-all text-[#1a2318] dark:text-[#e0e8e2]">{msg.content}</span>
                                                 )}
                                                 <span className="flex items-center gap-0.5 ml-auto pl-2.5 pb-[1px] flex-shrink-0 translate-y-[2px]">
+                                                    {!msg.content.startsWith('✨ Quioba') && !msg.id.startsWith('tmp_') && (
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); analyzeTextWithQuioba(msg.id); }} disabled={analyzingText} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-blue-100">
+                                                            {analyzingText ? <Loader2 className="h-3 w-3 text-blue-400 animate-spin" /> : <Sparkles className="h-3 w-3 text-blue-400 active:text-blue-600" />}
+                                                        </button>
+                                                    )}
                                                     {isMine && !msg.id.startsWith('tmp_') && (
                                                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
                                                     )}
