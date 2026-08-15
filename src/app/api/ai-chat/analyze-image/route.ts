@@ -65,7 +65,8 @@ REGLAS:
 - Si ves un MEDICAMENTO: sugiere con action "add_medicine"
 - Siempre incluye al menos 1 sugerencia, máximo 4
 - Fecha de hoy: ${today}
-- Idioma: español`;
+- Idioma: español
+/no_think`;
 
     const groqBody = {
       model: GROQ_VISION_MODEL,
@@ -80,6 +81,7 @@ REGLAS:
       ],
       temperature: 0.2,
       max_tokens: 800,
+      reasoning_effort: 'none',
     };
 
     console.log(`[analyze-image] Calling Groq API with model ${GROQ_VISION_MODEL}`);
