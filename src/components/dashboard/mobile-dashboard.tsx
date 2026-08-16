@@ -136,12 +136,12 @@ export default function MobileDashboard() {
                 <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
                     <Icon className="w-8 h-8" style={{ color: app.color }} />
                     {val && (
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] rounded-full bg-[#1a5c2e] text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[26px] h-[26px] rounded-full bg-[#1a5c2e] text-white text-sm font-bold flex items-center justify-center px-1.5 shadow-sm">
                             {val}
                         </span>
                     )}
                 </div>
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>
+                <span className="text-base font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>
             </Link>
         );
     };
@@ -152,15 +152,15 @@ export default function MobileDashboard() {
             <div className="shrink-0 px-5 pt-5 pb-2">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">
                             {dateInfo.greeting}{nickname ? `, ${nickname}` : ''}
                         </h1>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 capitalize">{dateInfo.shortDate}</p>
+                        <p className="text-base text-slate-500 dark:text-slate-400 mt-1 capitalize">{dateInfo.shortDate}</p>
                     </div>
                     {stats.tasks > 0 && (
                         <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-4 py-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">{stats.tasks} pend.</span>
+                            <span className="text-base font-bold text-amber-700 dark:text-amber-400">{stats.tasks} pend.</span>
                         </Link>
                     )}
                 </div>
@@ -215,10 +215,10 @@ export default function MobileDashboard() {
                 <div className="px-5">
                     <button
                         onClick={() => setShowAllApps(!showAllApps)}
-                        className="w-full py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
+                        className="w-full py-3 text-base font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
                     >
                         {showAllApps ? 'Ver menos' : `Ver todas las apps (${APPS.length})`}
-                        {showAllApps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        {showAllApps ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
                 </div>
 

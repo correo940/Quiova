@@ -242,8 +242,8 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
             ) : smartBlocks.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                     <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-xs font-medium">Agenda vacía</p>
-                    <Button variant="link" asChild className="text-quioba-cuerpo p-0 h-auto text-xs">
+                    <p className="text-sm font-medium">Agenda vacía</p>
+                    <Button variant="link" asChild className="text-quioba-cuerpo p-0 h-auto text-sm">
                         <Link href="/apps/organizador-vital">Generar →</Link>
                     </Button>
                 </div>
@@ -275,13 +275,13 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                                 )}>
                                     <div className="flex items-center justify-between gap-1.5">
                                         <div className="min-w-0 flex-1">
-                                            <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 leading-tight">
+                                            <div className="text-xs font-bold text-muted-foreground flex items-center gap-1 leading-tight">
                                                 <span className="tabular-nums">{block.start_time}–{block.end_time}</span>
-                                                {isFixed && <span className="px-1 py-0 rounded-full bg-blue-100 text-blue-700 text-[9px] font-medium dark:bg-blue-900/40 dark:text-blue-300">Fijo</span>}
-                                                {isNow && <span className="px-1 py-0 rounded-full bg-green-100 text-green-700 text-[9px] font-bold dark:bg-green-900/40 dark:text-green-300">Ahora</span>}
+                                                {isFixed && <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium dark:bg-blue-900/40 dark:text-blue-300">Fijo</span>}
+                                                {isNow && <span className="px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold dark:bg-green-900/40 dark:text-green-300">Ahora</span>}
                                             </div>
                                             <h4 className={cn(
-                                                "font-semibold text-[12.5px] leading-tight truncate",
+                                                "font-semibold text-sm leading-tight truncate",
                                                 isFixed ? 'text-blue-900 dark:text-blue-300' : 'text-green-900 dark:text-green-300'
                                             )}>
                                                 {block.title}
@@ -310,11 +310,11 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                 {medSlots.length > 0 && (
                     <div className="mb-3 pb-3 border-b border-border">
                         <div className="flex items-center gap-1.5 mb-2">
-                            <Pill className="w-3 h-3 text-emerald-600" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tomas hoy</span>
-                            <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-1.5 rounded-full font-semibold">{takenCount}/{medSlots.length}</span>
+                            <Pill className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tomas hoy</span>
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-1.5 rounded-full font-semibold">{takenCount}/{medSlots.length}</span>
                             <Link href="/apps/mi-hogar/pharmacy" className="ml-auto text-muted-foreground hover:text-primary transition-colors">
-                                <ArrowRight className="w-3 h-3" />
+                                <ArrowRight className="w-4 h-4" />
                             </Link>
                         </div>
                         <div className="space-y-1">
@@ -335,12 +335,12 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                                             {slot.form ? MEDICINE_FORM_META[slot.form].icon : '💊'}
                                         </span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[12px] font-semibold truncate leading-tight">{slot.medicineName}</p>
-                                            {slot.dosage && <p className="text-[10px] text-muted-foreground truncate">{slot.dosage}</p>}
+                                            <p className="text-sm font-semibold truncate leading-tight">{slot.medicineName}</p>
+                                            {slot.dosage && <p className="text-xs text-muted-foreground truncate">{slot.dosage}</p>}
                                         </div>
                                         <div className="shrink-0 text-right">
                                             <span className={cn(
-                                                "text-[11px] font-mono font-bold tabular-nums block",
+                                                "text-xs font-mono font-bold tabular-nums block",
                                                 slot.taken ? 'text-emerald-600 dark:text-emerald-400'
                                                     : past ? 'text-rose-600 dark:text-rose-400'
                                                         : 'text-amber-600 dark:text-amber-400'
@@ -348,7 +348,7 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                                             {slot.taken
                                                 ? <Check className="w-3 h-3 text-emerald-500 ml-auto" />
                                                 : past
-                                                    ? <span className="text-[9px] text-rose-500">Pendiente</span>
+                                                    ? <span className="text-[10px] text-rose-500">Pendiente</span>
                                                     : null
                                             }
                                         </div>
@@ -367,8 +367,8 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                         <div className="w-10 h-10 mx-auto bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-2">
                             <CheckCircle2 className="w-5 h-5 text-quioba-cuerpo" />
                         </div>
-                        <p className="text-xs font-medium">¡Todo al día!</p>
-                        <p className="text-[10px] opacity-70 mt-0.5">Sin pendientes</p>
+                        <p className="text-sm font-medium">¡Todo al día!</p>
+                        <p className="text-xs opacity-70 mt-0.5">Sin pendientes</p>
                     </div>
                 ) : (
                     <div className="space-y-1">
@@ -378,12 +378,12 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                                     onClick={() => toggleTask(task.id, task.is_completed)}
                                     className="mt-0.5 text-muted-foreground hover:text-quioba-cuerpo transition-colors shrink-0"
                                 >
-                                    <Circle className="w-4 h-4" />
+                                    <Circle className="w-5 h-5" />
                                 </button>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-[12.5px] leading-snug truncate">{task.title}</p>
-                                    <div className="flex items-center text-[10px] text-muted-foreground gap-1 mt-0.5">
-                                        <Clock className="w-2.5 h-2.5" />
+                                    <p className="font-medium text-sm leading-snug truncate">{task.title}</p>
+                                    <div className="flex items-center text-xs text-muted-foreground gap-1 mt-0.5">
+                                        <Clock className="w-3 h-3" />
                                         <span className="tabular-nums">{format(new Date(task.due_date), "HH:mm", { locale: es })}</span>
                                     </div>
                                 </div>
@@ -404,8 +404,8 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                     <div className="w-10 h-10 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-2">
                         <Clock className="w-5 h-5 text-slate-400" />
                     </div>
-                    <p className="text-xs font-medium">Sin turnos</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Día despejado</p>
+                    <p className="text-sm font-medium">Sin turnos</p>
+                    <p className="text-xs opacity-70 mt-0.5">Día despejado</p>
                 </div>
             ) : (
                 <div className="space-y-1.5">
@@ -416,8 +416,8 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                             <Link href="/apps/mi-hogar/roster" key={shift.id} className="block group">
                                 <div className={cn("px-2 py-1.5 rounded-md border border-l-[3px]", borderColor, "bg-white dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 transition-all hover:shadow-sm")}>
                                     <div className="flex justify-between items-center gap-1.5">
-                                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-[12.5px] truncate">{shift.title}</span>
-                                        <span className="text-[10px] bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded font-mono tabular-nums shrink-0">
+                                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm truncate">{shift.title}</span>
+                                        <span className="text-xs bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded font-mono tabular-nums shrink-0">
                                             {format(new Date(shift.start_time), "HH:mm")}–{format(new Date(shift.end_time), "HH:mm")}
                                         </span>
                                     </div>
@@ -435,9 +435,9 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
             {availableTags.length > 1 && (
                 <div className="mb-2">
                     <Select value={selectedTag} onValueChange={setSelectedTag}>
-                        <SelectTrigger className="h-7 text-[11px] w-full">
+                        <SelectTrigger className="h-9 text-sm w-full">
                             <div className="flex items-center gap-1.5">
-                                <Tag className="w-3 h-3" />
+                                <Tag className="w-4 h-4" />
                                 <SelectValue placeholder="Etiqueta" />
                             </div>
                         </SelectTrigger>
@@ -453,7 +453,7 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
             ) : journalEntries.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground">
                     <Book className="w-6 h-6 mx-auto opacity-30 mb-1" />
-                    <p className="text-[11px] font-medium">Sin apuntes hoy</p>
+                    <p className="text-sm font-medium">Sin apuntes hoy</p>
                 </div>
             ) : (
                 <div className="space-y-1">
@@ -474,11 +474,11 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                                 >
                                     <span className={cn("w-1 self-stretch rounded-full shrink-0 mt-0.5", catColor)} />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[12.5px] font-medium leading-tight truncate">{title}</p>
+                                        <p className="text-sm font-medium leading-tight truncate">{title}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[9.5px] text-muted-foreground tabular-nums">{format(new Date(entry.updated_at), "HH:mm", { locale: es })}</span>
+                                            <span className="text-xs text-muted-foreground tabular-nums">{format(new Date(entry.updated_at), "HH:mm", { locale: es })}</span>
                                             {(entry.tags || []).slice(0, 1).map((t: string) => (
-                                                <span key={t} className="text-[9px] text-muted-foreground px-1 py-0 rounded-full bg-muted">{t}</span>
+                                                <span key={t} className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">{t}</span>
                                             ))}
                                         </div>
                                     </div>
@@ -511,15 +511,15 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
     const PanelHeader = ({ icon: Icon, label, count, href, color }: { icon: any; label: string; count?: number; href?: string; color: string }) => (
         <div className="flex items-center justify-between mb-1.5 px-0.5 shrink-0">
             <div className="flex items-center gap-1.5">
-                <Icon className={cn("w-3.5 h-3.5", color)} />
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground">{label}</h3>
+                <Icon className={cn("w-4 h-4", color)} />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">{label}</h3>
                 {count !== undefined && count > 0 && (
-                    <span className="text-[9.5px] font-semibold px-1.5 py-0 rounded-full bg-muted text-muted-foreground tabular-nums">{count}</span>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground tabular-nums">{count}</span>
                 )}
             </div>
             {href && (
-                <Link href={href} className="text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                    <ArrowRight className="w-3 h-3" />
+                <Link href={href} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                    <ArrowRight className="w-4 h-4" />
                 </Link>
             )}
         </div>
@@ -559,34 +559,34 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                 {/* === UNIFIED TABS LAYOUT === */}
                 <div className="flex-1 min-h-0 flex flex-col">
                     <Tabs defaultValue="agenda" className="flex-1 flex flex-col min-h-0">
-                        <TabsList className="grid w-full grid-cols-4 mb-3 h-11 sm:h-10 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl shrink-0">
-                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1 text-xs sm:text-xs py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-600 data-[state=active]:to-green-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-green-900/30 rounded-lg transition-all font-semibold h-full">
-                                <CalendarIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                        <TabsList className="grid w-full grid-cols-4 mb-3 h-12 sm:h-10 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl shrink-0">
+                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-600 data-[state=active]:to-green-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-green-900/30 rounded-lg transition-all font-bold h-full">
+                                <CalendarIcon className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                                 <span>Agenda</span>
-                                {smartBlocks.length > 0 && <span className="text-[10px] sm:text-xs">({smartBlocks.length})</span>}
+                                {smartBlocks.length > 0 && <span className="text-xs sm:text-xs">({smartBlocks.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="tasks" className="flex items-center justify-center gap-1 text-xs sm:text-xs py-2 data-[state=active]:bg-quioba-mente data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-semibold h-full">
-                                <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="tasks" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-quioba-mente data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <CheckCircle2 className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                                 <span>Tareas</span>
-                                {tasks.length > 0 && <span className="text-[10px] sm:text-xs">({tasks.length})</span>}
+                                {tasks.length > 0 && <span className="text-xs sm:text-xs">({tasks.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="shifts" className="flex items-center justify-center gap-1 text-xs sm:text-xs py-2 data-[state=active]:bg-quioba-finanzas data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-semibold h-full">
-                                <Clock className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="shifts" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-quioba-finanzas data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <Clock className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                                 <span>Turnos</span>
-                                {shifts.length > 0 && <span className="text-[10px] sm:text-xs">({shifts.length})</span>}
+                                {shifts.length > 0 && <span className="text-xs sm:text-xs">({shifts.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="journal" className="flex items-center justify-center gap-1 text-xs sm:text-xs py-2 data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-semibold h-full">
-                                <Book className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="journal" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <Book className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                                 <span>Notas</span>
-                                {journalEntries.length > 0 && <span className="text-[10px] sm:text-xs">({journalEntries.length})</span>}
+                                {journalEntries.length > 0 && <span className="text-xs sm:text-xs">({journalEntries.length})</span>}
                             </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="agenda" className="flex-1 min-h-0 data-[state=active]:flex flex-col bg-card rounded-xl border border-border/60 shadow-sm p-3">
                             <div className="flex-1 overflow-y-auto pr-2 min-h-0">{AgendaPanel}</div>
-                            <div className="mt-2 text-center pt-3 border-t text-xs">
+                            <div className="mt-2 text-center pt-3 border-t text-sm">
                                 <Link href="/apps/organizador-vital" className="text-muted-foreground hover:text-quioba-cuerpo hover:underline flex items-center justify-center gap-1 transition-colors font-medium">
-                                    Ver Agenda Completa <ArrowRight className="w-3.5 h-3.5" />
+                                    Ver Agenda Completa <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </div>
                         </TabsContent>
