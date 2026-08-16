@@ -6,7 +6,7 @@ import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
     Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot,
-    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronRight
+    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -96,34 +96,34 @@ export default function MobileDashboard() {
 
     const getValue = useCallback((key: string): string => {
         const v = stats[key];
-        if (key === 'savings' && v) return `${(v / 1000).toFixed(1)}k€`;
-        if (key === 'expenses' && v) return `${v.toFixed(0)}€`;
-        if (key === 'meditation') return '🧘';
+        if (key === 'savings' && v) return `${(v / 1000).toFixed(1)}k`;
+        if (key === 'expenses' && v) return `${v.toFixed(0)}`;
+        if (key === 'meditation') return '';
         if (v && v > 0) return `${v}`;
         return '';
     }, [stats]);
 
-    const topApps = APPS.slice(0, 8);
-    const restApps = APPS.slice(8);
+    const topApps = APPS.slice(0, 9);
+    const restApps = APPS.slice(9);
     const displayApps = showAllApps ? APPS : topApps;
 
     if (!user) return null;
 
     return (
         <div className="flex flex-col h-[calc(100dvh-64px)] bg-[#f8faf8] dark:bg-slate-950 overflow-hidden">
-            {/* Header compacto */}
-            <div className="shrink-0 px-5 pt-4 pb-2">
+            {/* Header grande y legible */}
+            <div className="shrink-0 px-5 pt-5 pb-3">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                            {dateInfo.greeting}{nickname ? `, ${nickname}` : ''} 👋
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                            {dateInfo.greeting}{nickname ? `, ${nickname}` : ''}
                         </h1>
-                        <p className="text-xs text-slate-400 mt-0.5 capitalize">{dateInfo.shortDate}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 capitalize">{dateInfo.shortDate}</p>
                     </div>
                     {stats.tasks > 0 && (
-                        <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span className="text-xs font-bold text-amber-700">{stats.tasks} pend.</span>
+                        <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-4 py-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">{stats.tasks} pend.</span>
                         </Link>
                     )}
                 </div>
@@ -131,23 +131,23 @@ export default function MobileDashboard() {
 
             {/* Contenido scrollable */}
             <div className="flex-1 overflow-y-auto pb-28">
-                {/* Grid de apps */}
-                <div className="px-4 pt-2">
-                    <div className="grid grid-cols-4 gap-2.5">
+                {/* Grid de apps - 3 columnas, iconos grandes */}
+                <div className="px-5 pt-1">
+                    <div className="grid grid-cols-3 gap-4">
                         {displayApps.map(app => {
                             const Icon = ICON_MAP[app.iconKey];
                             const val = getValue(app.key);
                             return (
-                                <Link key={app.key} href={app.href} className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
-                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: app.bg }}>
-                                        <Icon className="w-6 h-6" style={{ color: app.color }} />
-                                        {val && val !== '🧘' && (
-                                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#1a5c2e] text-white text-[10px] font-bold flex items-center justify-center px-1">
+                                <Link key={app.key} href={app.href} className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1">
+                                    <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
+                                        <Icon className="w-8 h-8" style={{ color: app.color }} />
+                                        {val && (
+                                            <span className="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] rounded-full bg-[#1a5c2e] text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
                                                 {val}
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">{app.label}</span>
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>
                                 </Link>
                             );
                         })}
@@ -155,16 +155,16 @@ export default function MobileDashboard() {
                     {restApps.length > 0 && (
                         <button
                             onClick={() => setShowAllApps(!showAllApps)}
-                            className="w-full mt-2 py-1.5 text-xs font-semibold text-slate-400 flex items-center justify-center gap-1"
+                            className="w-full mt-3 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
                         >
-                            {showAllApps ? 'Menos apps' : `Más apps (+${restApps.length})`}
-                            <ChevronRight className={`w-3 h-3 transition-transform ${showAllApps ? 'rotate-90' : ''}`} />
+                            {showAllApps ? 'Ver menos' : `Ver más (+${restApps.length})`}
+                            {showAllApps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
                     )}
                 </div>
 
-                {/* Organizador (Agenda + Tareas + Turnos + Apuntes) */}
-                <div className="px-3 pt-3">
+                {/* Organizador */}
+                <div className="px-4 pt-4">
                     <OrganizerWidget
                         selectedDate={selectedDate}
                         user={user}
