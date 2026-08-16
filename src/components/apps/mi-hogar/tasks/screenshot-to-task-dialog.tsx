@@ -110,11 +110,16 @@ export default function ScreenshotToTaskDialog({
                 setEvents(extractedEvents.map(evt => ({ ...evt, selected: true })));
                 toast.success(`¡${extractedEvents.length} evento(s) detectado(s)!`);
             } else {
-                toast.error('No se detectaron eventos con fecha en la imagen');
+                toast.error('No se detectaron eventos con fecha en la imagen. Puedes crear la tarea manualmente.');
             }
-        } catch (error) {
-            console.error(error);
-            toast.error('Error al analizar la imagen');
+        } catch (error: any) {
+            console.error('[ScreenshotToTask] Analysis error:', error);
+            const msg = error?.message || '';
+            if (msg.includes('API') || msg.includes('fetch') || msg.includes('network')) {
+                toast.error('Error de conexión con la IA. Comprueba tu conexión a Internet.');
+            } else {
+                toast.error('Error al analizar la imagen. Inténtalo de nuevo.');
+            }
         } finally {
             setIsLoading(false);
         }

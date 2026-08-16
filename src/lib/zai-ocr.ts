@@ -70,14 +70,20 @@ export async function callZaiVision(base64Image: string, prompt: string): Promis
 
     console.log(`[Z.AI] Enviando imagen (${(pureBase64.length / 1024).toFixed(0)} KB base64) a ${MODEL}...`);
 
-    const response = await fetch(ZAI_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ZAI_API_KEY}`
-        },
-        body: JSON.stringify(body)
-    });
+    let response: Response;
+    try {
+        response = await fetch(ZAI_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ZAI_API_KEY}`
+            },
+            body: JSON.stringify(body)
+        });
+    } catch (fetchError: any) {
+        console.error('[Z.AI] Network error:', fetchError.message);
+        throw new Error(`API network error: ${fetchError.message}`);
+    }
 
     const data = await response.json();
 
