@@ -3,6 +3,7 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import type { CSSProperties } from 'react';
 import VideoScenarios from '@/components/home/VideoScenarios';
+import AuthRedirect from '@/components/home/AuthRedirect';
 
 export const metadata: Metadata = {
   title: 'QUIOBA — Tu sistema operativo personal y familiar',
@@ -253,6 +254,7 @@ function ProductMockup() {
 export default function HomePage() {
   return (
     <div style={{ backgroundColor: '#ffffff', color: '#0f172a', overflowX: 'hidden' }}>
+      <AuthRedirect />
 
       {/* ── 1. HERO ─────────────────────────────────────────────────────────── */}
       <section
