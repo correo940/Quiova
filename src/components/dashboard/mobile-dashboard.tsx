@@ -1,0 +1,177 @@
+'use client';
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { User } from '@supabase/supabase-js';
+import {
+    ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
+    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot,
+    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronRight
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { format, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import OrganizerWidget from './widgets/organizer-widget';
+
+const ICON_MAP: Record<string, any> = {
+    ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
+    Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
+    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot, GraduationCap, Sparkles, Users, Plane
+};
+
+const APPS = [
+    { key: 'shopping', label: 'Compra', iconKey: 'ShoppingCart', color: '#166534', bg: '#f0fdf4', href: '/apps/mi-hogar/shopping' },
+    { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-hogar/tasks' },
+    { key: 'savings', label: 'Economía', iconKey: 'PiggyBank', color: '#b45309', bg: '#fffbeb', href: '/apps/mi-hogar/savings' },
+    { key: 'expenses', label: 'Gastos', iconKey: 'Receipt', color: '#c2410c', bg: '#fff7ed', href: '/apps/mi-hogar/expenses' },
+    { key: 'chat', label: 'Chat', iconKey: 'MessageCircle', color: '#166534', bg: '#f0fdf4', href: '/apps/mi-hogar/chat' },
+    { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: '#059669', bg: '#ecfdf5', href: '/apps/mi-hogar/pharmacy' },
+    { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: '#4338ca', bg: '#eef2ff', href: '/apps/mi-hogar/garage' },
+    { key: 'documents', label: 'Docs', iconKey: 'FileText', color: '#475569', bg: '#f8fafc', href: '/apps/mi-hogar/documents' },
+    { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: '#166534', bg: '#f0fdf4', href: '/apps/mi-hogar/meditation' },
+    { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: '#b45309', bg: '#fffbeb', href: '/apps/mi-hogar/insurance' },
+    { key: 'passwords', label: 'Claves', iconKey: 'Key', color: '#475569', bg: '#f8fafc', href: '/apps/mi-hogar/passwords' },
+    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-hogar/roster' },
+    { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: '#475569', bg: '#f8fafc', href: '/apps/mi-hogar/warranties' },
+    { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: '#166534', bg: '#f0fdf4', href: '/apps/mi-hogar/recipes' },
+    { key: 'mi-viaje', label: 'Viaje', iconKey: 'Plane', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-viaje' },
+    { key: 'familia', label: 'Familia', iconKey: 'Users', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-hogar/familia' },
+];
+
+export default function MobileDashboard() {
+    const { user } = useAuth();
+    const [stats, setStats] = useState<Record<string, number>>({});
+    const [nickname, setNickname] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [showAllApps, setShowAllApps] = useState(false);
+    const [selectedDate] = useState<Date>(new Date());
+
+    const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', shortDate: '' });
+
+    useEffect(() => {
+        const now = new Date();
+        const hrs = now.getHours();
+        let greeting = 'Buenas noches';
+        if (hrs >= 6 && hrs < 12) greeting = 'Buenos días';
+        else if (hrs >= 12 && hrs < 21) greeting = 'Buenas tardes';
+        const shortDate = format(now, "EEEE d 'de' MMMM", { locale: es });
+        setDateInfo({ greeting, shortDate: shortDate.charAt(0).toUpperCase() + shortDate.slice(1) });
+    }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchAll = async () => {
+            setLoading(true);
+            const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', user.id).single();
+            if (profile?.nickname) setNickname(profile.nickname.split(' ')[0]);
+
+            const results: Record<string, number> = {};
+            try { const { count } = await supabase.from('shopping_items').select('*', { count: 'exact', head: true }).eq('is_checked', false); results.shopping = count || 0; } catch {}
+            try { const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('is_completed', false); results.tasks = count || 0; } catch {}
+            try {
+                const { data: accounts } = await supabase.from('savings_accounts').select('current_balance');
+                const { data: goals } = await supabase.from('savings_goals').select('current_amount, linked_account_id');
+                const at = accounts?.reduce((a, c) => a + (c.current_balance || 0), 0) || 0;
+                const gt = goals?.filter(g => !g.linked_account_id).reduce((a, c) => a + (c.current_amount || 0), 0) || 0;
+                results.savings = at + gt;
+            } catch {}
+            try {
+                const { data: grupos } = await supabase.from('splitsmart_grupos').select('id');
+                if (grupos?.length) {
+                    const { data: gastos } = await supabase.from('splitsmart_gastos').select('monto').in('grupo_id', grupos.map(g => g.id));
+                    results.expenses = gastos?.reduce((s, i) => s + (Number(i.monto) || 0), 0) || 0;
+                }
+            } catch {}
+            try { const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true }); results.vehicles = count || 0; } catch {}
+            try { const { count } = await supabase.from('medicines').select('*', { count: 'exact', head: true }); results.pharmacy = count || 0; } catch {}
+            try { const { count } = await supabase.from('documents').select('*', { count: 'exact', head: true }); results.documents = count || 0; } catch {}
+
+            setStats(results);
+            setLoading(false);
+        };
+        fetchAll();
+    }, [user]);
+
+    const getValue = useCallback((key: string): string => {
+        const v = stats[key];
+        if (key === 'savings' && v) return `${(v / 1000).toFixed(1)}k€`;
+        if (key === 'expenses' && v) return `${v.toFixed(0)}€`;
+        if (key === 'meditation') return '🧘';
+        if (v && v > 0) return `${v}`;
+        return '';
+    }, [stats]);
+
+    const topApps = APPS.slice(0, 8);
+    const restApps = APPS.slice(8);
+    const displayApps = showAllApps ? APPS : topApps;
+
+    if (!user) return null;
+
+    return (
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-[#f8faf8] dark:bg-slate-950 overflow-hidden">
+            {/* Header compacto */}
+            <div className="shrink-0 px-5 pt-4 pb-2">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
+                            {dateInfo.greeting}{nickname ? `, ${nickname}` : ''} 👋
+                        </h1>
+                        <p className="text-xs text-slate-400 mt-0.5 capitalize">{dateInfo.shortDate}</p>
+                    </div>
+                    {stats.tasks > 0 && (
+                        <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span className="text-xs font-bold text-amber-700">{stats.tasks} pend.</span>
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            {/* Contenido scrollable */}
+            <div className="flex-1 overflow-y-auto pb-28">
+                {/* Grid de apps */}
+                <div className="px-4 pt-2">
+                    <div className="grid grid-cols-4 gap-2.5">
+                        {displayApps.map(app => {
+                            const Icon = ICON_MAP[app.iconKey];
+                            const val = getValue(app.key);
+                            return (
+                                <Link key={app.key} href={app.href} className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
+                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: app.bg }}>
+                                        <Icon className="w-6 h-6" style={{ color: app.color }} />
+                                        {val && val !== '🧘' && (
+                                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#1a5c2e] text-white text-[10px] font-bold flex items-center justify-center px-1">
+                                                {val}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">{app.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                    {restApps.length > 0 && (
+                        <button
+                            onClick={() => setShowAllApps(!showAllApps)}
+                            className="w-full mt-2 py-1.5 text-xs font-semibold text-slate-400 flex items-center justify-center gap-1"
+                        >
+                            {showAllApps ? 'Menos apps' : `Más apps (+${restApps.length})`}
+                            <ChevronRight className={`w-3 h-3 transition-transform ${showAllApps ? 'rotate-90' : ''}`} />
+                        </button>
+                    )}
+                </div>
+
+                {/* Organizador (Agenda + Tareas + Turnos + Apuntes) */}
+                <div className="px-3 pt-3">
+                    <OrganizerWidget
+                        selectedDate={selectedDate}
+                        user={user}
+                        className="h-auto"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}

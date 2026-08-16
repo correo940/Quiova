@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OrganizerWidget from './widgets/organizer-widget';
 import AppsSummaryWidget from './widgets/apps-summary-widget';
+import MobileDashboard from './mobile-dashboard';
 import { usePlatform } from '@/hooks/use-platform';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
@@ -11,6 +12,7 @@ export default function HomeDashboard() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [isCalendarMinimized, setIsCalendarMinimized] = useState(false);
     const { user } = useAuth();
+    const { isMobile } = usePlatform();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -24,6 +26,10 @@ export default function HomeDashboard() {
         setIsCalendarMinimized(newVal);
         localStorage.setItem('quioba_calendar_minimized', String(newVal));
     };
+
+    if (isMobile) {
+        return <MobileDashboard />;
+    }
 
     return (
         <div className="flex flex-col overflow-hidden h-[calc(100dvh-64px)]">
