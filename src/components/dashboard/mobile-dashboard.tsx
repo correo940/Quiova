@@ -6,7 +6,8 @@ import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
     Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot,
-    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronDown, ChevronUp
+    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronDown, ChevronUp,
+    Clock
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -40,6 +41,30 @@ const APPS = [
     { key: 'familia', label: 'Familia', iconKey: 'Users', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-hogar/familia' },
 ];
 
+const RECENT_APPS_KEY = 'quioba_recent_apps';
+
+function getRecentApps(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(RECENT_APPS_KEY);
+        if (!raw) return [];
+        const parsed: { key: string; ts: number }[] = JSON.parse(raw);
+        return parsed.sort((a, b) => b.ts - a.ts).map(e => e.key);
+    } catch { return []; }
+}
+
+function trackAppUsage(appKey: string) {
+    if (typeof window === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(RECENT_APPS_KEY);
+        let entries: { key: string; ts: number }[] = raw ? JSON.parse(raw) : [];
+        entries = entries.filter(e => e.key !== appKey);
+        entries.unshift({ key: appKey, ts: Date.now() });
+        entries = entries.slice(0, 10);
+        localStorage.setItem(RECENT_APPS_KEY, JSON.stringify(entries));
+    } catch {}
+}
+
 export default function MobileDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState<Record<string, number>>({});
@@ -47,6 +72,7 @@ export default function MobileDashboard() {
     const [loading, setLoading] = useState(true);
     const [showAllApps, setShowAllApps] = useState(false);
     const [selectedDate] = useState<Date>(new Date());
+    const [recentKeys, setRecentKeys] = useState<string[]>([]);
 
     const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', shortDate: '' });
 
@@ -58,6 +84,7 @@ export default function MobileDashboard() {
         else if (hrs >= 12 && hrs < 21) greeting = 'Buenas tardes';
         const shortDate = format(now, "EEEE d 'de' MMMM", { locale: es });
         setDateInfo({ greeting, shortDate: shortDate.charAt(0).toUpperCase() + shortDate.slice(1) });
+        setRecentKeys(getRecentApps());
     }, []);
 
     useEffect(() => {
@@ -107,6 +134,17 @@ export default function MobileDashboard() {
     const restApps = APPS.slice(9);
     const displayApps = showAllApps ? APPS : topApps;
 
+    const topAppKeys = new Set(topApps.map(a => a.key));
+    const recentApps = recentKeys
+        .filter(k => !topAppKeys.has(k))
+        .map(k => APPS.find(a => a.key === k))
+        .filter(Boolean)
+        .slice(0, 3) as typeof APPS;
+
+    const handleAppClick = (appKey: string) => {
+        trackAppUsage(appKey);
+    };
+
     if (!user) return null;
 
     return (
@@ -138,7 +176,12 @@ export default function MobileDashboard() {
                             const Icon = ICON_MAP[app.iconKey];
                             const val = getValue(app.key);
                             return (
-                                <Link key={app.key} href={app.href} className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1">
+                                <Link
+                                    key={app.key}
+                                    href={app.href}
+                                    onClick={() => handleAppClick(app.key)}
+                                    className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1"
+                                >
                                     <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
                                         <Icon className="w-8 h-8" style={{ color: app.color }} />
                                         {val && (
@@ -152,6 +195,7 @@ export default function MobileDashboard() {
                             );
                         })}
                     </div>
+
                     {restApps.length > 0 && (
                         <button
                             onClick={() => setShowAllApps(!showAllApps)}
@@ -160,6 +204,34 @@ export default function MobileDashboard() {
                             {showAllApps ? 'Ver menos' : `Ver más (+${restApps.length})`}
                             {showAllApps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
+                    )}
+
+                    {/* Últimas 3 apps usadas */}
+                    {!showAllApps && recentApps.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-1.5 mb-3 px-1">
+                                <Clock className="w-4 h-4 text-slate-400" />
+                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Recientes</span>
+                            </div>
+                            <div className="flex gap-3">
+                                {recentApps.map(app => {
+                                    const Icon = ICON_MAP[app.iconKey];
+                                    return (
+                                        <Link
+                                            key={app.key}
+                                            href={app.href}
+                                            onClick={() => handleAppClick(app.key)}
+                                            className="flex-1 flex items-center gap-3 px-3 py-3 rounded-2xl active:scale-95 transition-transform border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900"
+                                        >
+                                            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: app.bg }}>
+                                                <Icon className="w-5 h-5" style={{ color: app.color }} />
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">{app.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     )}
                 </div>
 
