@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bot, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { useAppPermission } from '@/hooks/useAppPermission';
 import ChatInterface from '@/components/apps/asistente/chat-interface';
 
 export default function AsistentePage() {
+    const router = useRouter();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.asistente');
     const readOnly = permLevel === 'view';
     const [userId, setUserId] = useState<string | null>(null);
@@ -91,11 +93,9 @@ export default function AsistentePage() {
         <div className="h-screen flex flex-col">
             {/* Back button for mobile */}
             <div className="md:hidden flex items-center gap-2 p-2 border-b bg-background">
-                <Link href="/apps/mi-hogar">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                </Link>
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="w-5 h-5" />
+                </Button>
                 <span className="font-medium">Asistente</span>
             </div>
 

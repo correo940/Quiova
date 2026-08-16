@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { nanoid } from 'nanoid';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { differenceInDays, format, parseISO, startOfDay, subDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import type { DocumentAnalysisResult, DocumentForm, DocumentMetadata } from '@/components/apps/mi-hogar/documents/document-dialog';
@@ -424,6 +425,7 @@ function DocumentAlertSettingsDialog({ open, onOpenChange, settings, onChange }:
 }
 
 export default function DocumentsPage() {
+    const router = useRouter();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.documents');
     const readOnly = permLevel === 'view';
     const [documents, setDocuments] = useState<SecureDocument[]>([]);
@@ -1132,16 +1134,15 @@ export default function DocumentsPage() {
                                 <span className="hidden sm:inline font-bold text-[10px] uppercase tracking-wider">Inicio</span>
                             </Button>
                         </Link>
-                        <Link href="/apps/mi-hogar">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="bg-slate-100/30 dark:bg-slate-800/20 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-full px-4 h-9 flex items-center gap-2 transition-all group"
-                            >
-                                <ArrowLeft className="h-4 w-4 text-slate-500 group-hover:-translate-x-1 transition-transform" />
-                                <span className="font-bold text-[10px] uppercase tracking-wider">Mi Hogar</span>
-                            </Button>
-                        </Link>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="bg-slate-100/30 dark:bg-slate-800/20 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-full px-4 h-9 flex items-center gap-2 transition-all group"
+                            onClick={() => router.back()}
+                        >
+                            <ArrowLeft className="h-4 w-4 text-slate-500 group-hover:-translate-x-1 transition-transform" />
+                            <span className="font-bold text-[10px] uppercase tracking-wider">Volver</span>
+                        </Button>
                     </div>
 
                     <div className="flex items-center gap-3">

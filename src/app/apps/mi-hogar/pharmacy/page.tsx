@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Webcam from 'react-webcam';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getApiUrl } from '@/lib/api-utils';
@@ -44,6 +44,7 @@ type Medicine = {
 type ViewTab = 'today' | 'all' | 'history';
 
 export default function PharmacyPage() {
+    const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.pharmacy');
     const readOnly = permLevel === 'view';
@@ -390,11 +391,9 @@ export default function PharmacyPage() {
                 {/* HEADER */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
                     <div>
-                        <Link href="/apps/mi-hogar">
-                            <Button variant="ghost" size="sm" className="pl-0 mb-1 hover:pl-2 transition-all -ml-1">
-                                <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Volver
-                            </Button>
-                        </Link>
+                        <Button variant="ghost" size="sm" className="pl-0 mb-1 hover:pl-2 transition-all -ml-1" onClick={() => router.back()}>
+                            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Volver
+                        </Button>
                         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3 tracking-tight">
                             <span className="relative">
                                 <span className="absolute inset-0 bg-rose-500/20 blur-xl rounded-2xl" />

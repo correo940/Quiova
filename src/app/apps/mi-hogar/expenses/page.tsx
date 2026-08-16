@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { useAppPermission } from '@/hooks/useAppPermission';
@@ -35,6 +35,7 @@ const QUICK_REPLIES = ['👍 Ok, lo apunto!', '💸 Yo puedo pagar', '⏰ ¿Cuá
 const CAT_ICONS = { comida: '🍽', transporte: '🚕', alojamiento: '🏨', ocio: '🎉', otros: '📌' };
 
 export default function SplitSmartExpensesPage() {
+  const router = useRouter();
   const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.expenses');
   const readOnly = permLevel === 'view';
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -2258,9 +2259,9 @@ export default function SplitSmartExpensesPage() {
 
       {/* Return to Mi Hogar Button */}
       <div style={{ padding: '10px 20px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
-        <Link href="/apps/mi-hogar" className="btn sm" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
-          <i className="ti ti-arrow-left"></i> Volver a Mi Hogar
-        </Link>
+        <button onClick={() => router.back()} className="btn sm" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
+          <i className="ti ti-arrow-left"></i> Volver
+        </button>
       </div>
 
       <div className="app">

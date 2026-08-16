@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAppPermission } from '@/hooks/useAppPermission';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Plus, ArrowLeft, Receipt, Calendar, AlertTriangle, CheckCircle, Trash2, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import { format, addMonths, differenceInDays, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { WarrantyDialog, WarrantyForm } from '@/components/apps/mi-hogar/warranties/warranty-dialog';
@@ -33,6 +33,7 @@ const DEFAULT_FORM: WarrantyForm = {
 };
 
 export default function WarrantyPage() {
+    const router = useRouter();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.warranties');
     const readOnly = permLevel === 'view';
     const [warranties, setWarranties] = useState<Warranty[]>([]);
@@ -218,11 +219,9 @@ export default function WarrantyPage() {
             <div className="max-w-5xl mx-auto space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <Link href="/apps/mi-hogar">
-                            <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-                            </Button>
-                        </Link>
+                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all" onClick={() => router.back()}>
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                        </Button>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <span className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded-xl text-purple-600 dark:text-purple-400">
                                 <Receipt className="w-8 h-8" />

@@ -6,11 +6,13 @@ import { Lock, ArrowLeft, ShieldAlert, Sparkles, AlertTriangle } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAppPermission } from '@/hooks/useAppPermission';
 import WorkspaceManager from '@/components/apps/mi-hogar/workspace/workspace-manager';
 
 export default function WorkspacePage() {
+  const router = useRouter();
   const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.workspace');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
@@ -128,11 +130,9 @@ export default function WorkspacePage() {
         <p className="text-slate-500 text-sm mt-2 max-w-xs leading-relaxed z-10">
           Esta aplicación es privada y solo está disponible para el administrador de Quioba Studios.
         </p>
-        <Link href="/apps/mi-hogar" className="mt-6 z-10">
-          <Button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl px-6 py-2.5 shadow-sm transition-all">
-            Volver a Mi Hogar
-          </Button>
-        </Link>
+        <Button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl px-6 py-2.5 shadow-sm transition-all mt-6 z-10" onClick={() => router.back()}>
+            Volver
+        </Button>
       </div>
     );
   }
@@ -150,12 +150,10 @@ export default function WorkspacePage() {
       
       {/* Header */}
       <header className="z-10 flex items-center justify-between w-full max-w-md mx-auto">
-        <Link href="/apps/mi-hogar">
-          <Button variant="ghost" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-4 gap-2 transition-all">
+        <Button variant="ghost" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-4 gap-2 transition-all" onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
-          </Button>
-        </Link>
+        </Button>
         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold bg-white/90 border border-slate-200 px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
           <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
           <span>Quioba Studios</span>

@@ -263,9 +263,9 @@ export default function ChatListPage() {
             <div className="bg-gradient-to-r from-[#1a5c2e] to-[#1e7a3a] text-white sticky top-0 z-10 shadow-md">
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2">
-                        <Link href="/apps/mi-hogar" className="p-1">
+                        <button onClick={() => router.back()} className="p-1">
                             <ArrowLeft className="h-5 w-5" />
-                        </Link>
+                        </button>
                         <h1 className="text-[20px] font-semibold tracking-tight">Chats familiares</h1>
                     </div>
                     <div className="flex items-center gap-0.5">

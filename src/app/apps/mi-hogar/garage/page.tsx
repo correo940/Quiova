@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Bike, Plus, Calendar, AlertTriangle, Droplets, Wrench, ArrowLeft, Trash2, Fuel, Gauge, CheckCircle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format, differenceInDays, parseISO, addYears, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -70,6 +70,7 @@ const MAINTENANCE_ITEMS = [
 ];
 
 export default function GaragePage() {
+    const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.garage');
     const readOnly = permLevel === 'view';
@@ -582,11 +583,9 @@ export default function GaragePage() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 pb-nav">
             <div className="max-w-5xl mx-auto space-y-6">
                 <div>
-                    <Link href="/apps/mi-hogar">
-                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-                        </Button>
-                    </Link>
+                    <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all" onClick={() => router.back()}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                    </Button>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <span className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-xl text-blue-600 dark:text-blue-400">
                             <Car className="w-8 h-8" />

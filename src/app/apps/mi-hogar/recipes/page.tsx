@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { useAppPermission } from '@/hooks/useAppPermission';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getApiUrl } from '@/lib/api-utils';
 // import { generateRecipeAction, RecipeData } from '@/app/actions/generate-recipe';
 // Moved type definition here to avoid importing the server action file
@@ -23,6 +23,7 @@ export interface RecipeData {
 }
 
 export default function RecipesPage() {
+    const router = useRouter();
     const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.recipes');
     const readOnly = permLevel === 'view';
     const { user } = useAuth();
@@ -132,11 +133,9 @@ export default function RecipesPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20 p-4">
             <div className="flex items-center gap-4 mb-6">
-                <Link href="/apps/mi-hogar">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <ChefHat className="h-8 w-8 text-orange-500" />
