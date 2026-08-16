@@ -411,23 +411,26 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
 
     return (
         <Card className="h-full overflow-hidden border-none shadow-md bg-white dark:bg-slate-950 flex flex-col relative">
-            <CardHeader className="pb-2 pt-3 shrink-0 relative z-10 px-6 lg:px-8">
-                <div className="flex items-center justify-between gap-4">
+            <CardHeader className="pb-1 pt-2 lg:pt-3 shrink-0 relative z-10 px-3 lg:px-8">
+                <div className="flex items-center justify-between gap-2 lg:gap-4">
 
                     {/* ── Bienvenida ─────────────────────────────────────── */}
-                    <div className="flex flex-col gap-1 min-w-0">
-                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white">
+                    <div className="flex flex-col gap-0.5 lg:gap-1 min-w-0">
+                        <h1 className="text-lg lg:text-3xl font-black tracking-tight leading-none text-slate-900 dark:text-white">
                             {dateInfo.greeting}{userProfile?.profile?.nickname ? `, ${userProfile.profile.nickname.split(' ')[0]}` : ''} 👋
                         </h1>
-                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500 capitalize">
-                            {dateInfo.fullDate}
-                        </p>
-                        {!loading && (
-                            <span className={`self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot}`} />
-                                {statusLabel}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <p className="text-xs lg:text-sm font-medium text-slate-400 dark:text-slate-500 capitalize">
+                                {dateInfo.fullDate}
+                            </p>
+                            {!loading && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] lg:text-xs font-semibold ${statusColor}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot}`} />
+                                    <span className="hidden sm:inline">{statusLabel}</span>
+                                    <span className="sm:hidden">{isCalm ? 'OK' : `${stats.taskCount} pend.`}</span>
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* ── Calendario (desktop) ────────────────────────────── */}
@@ -442,21 +445,21 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                     </div>
 
                     {/* ── Botón Apps + Diario ─────────────────────────────── */}
-                    <div className="shrink-0 flex items-center gap-2">
+                    <div className="shrink-0 flex items-center gap-1.5 lg:gap-2">
                         <button
                             onClick={() => {
                                 const newVal = !isAppsMinimized;
                                 setIsAppsMinimized(newVal);
                                 localStorage.setItem('quioba_apps_minimized', String(newVal));
                             }}
-                            className="w-[52px] h-[22px] flex items-center justify-center gap-1 rounded-full text-[10px] font-semibold transition-all duration-200 bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:shadow-green-900/50 hover:scale-105"
+                            className="w-[40px] lg:w-[52px] h-[20px] lg:h-[22px] flex items-center justify-center gap-1 rounded-full text-[10px] font-semibold transition-all duration-200 bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:shadow-green-900/50 hover:scale-105"
                             title={isAppsMinimized ? 'Mostrar aplicaciones' : 'Minimizar aplicaciones'}
                         >
                             <span className="hidden sm:inline">Apps</span>
                             {isAppsMinimized ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                         </button>
-                        <span className="w-px h-3 bg-border" />
-                        <div className="flex flex-col items-center gap-1">
+                        <span className="w-px h-3 bg-border hidden lg:block" />
+                        <div className="hidden lg:flex flex-col items-center gap-1">
                             <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-700/50 leading-none text-center w-full">Dashboard</span>
                             <div className="relative flex items-center bg-amber-50 border border-amber-200/60 rounded-full p-0.5 gap-0">
                                 <div className={`absolute top-0.5 h-[22px] w-[52px] rounded-full bg-amber-200 shadow-sm transition-all duration-200 ease-out ${pathname === '/apps/resumen-diario' ? 'left-[54px]' : 'left-0.5'}`} />
@@ -478,7 +481,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 </div>
 
                 {/* ── Calendario (mobile) ─────────────────────────────────── */}
-                <div className="lg:hidden mt-4">
+                <div className="lg:hidden mt-2">
                     {onDateSelect && (
                         <TopbarCalendar
                             selectedDate={selectedDate}
@@ -492,14 +495,14 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 isAppsMinimized ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
             }`}>
                 <div className="overflow-hidden">
-                    <CardContent className="flex-1 min-h-0 flex flex-col gap-2 pb-2 pt-0">
+                    <CardContent className="flex-1 min-h-0 flex flex-col gap-1 pb-1 lg:pb-2 pt-0 px-3 lg:px-6">
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <LogoLoader size="md" />
                             </div>
                         ) : (
                             <div className="w-full">
-                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 p-1">
+                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 lg:gap-2 p-0.5 lg:p-1">
                                     {displayedItems.map((item) => (
                                         <div
                                             key={item.key}
@@ -526,13 +529,13 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                 }}
                                                 draggable={false}
                                             >
-                                                <div className={`p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[60px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
+                                                <div className={`p-1.5 lg:p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 h-[50px] lg:h-[60px] flex flex-col justify-between ${dragOverKey === item.key && draggedKey !== item.key
                                                     ? 'border-primary/70 shadow-sm shadow-primary/10'
                                                     : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
                                                     } ${item.lockedForFamily ? 'opacity-25 pointer-events-none' : item.count === 0 ? 'opacity-50' : ''}`}>
-                                                    <div className="flex justify-between items-start mb-0.5">
-                                                        <div className={`p-1 rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200 relative`}>
-                                                            <item.icon className="w-3 h-3" />
+                                                    <div className="flex justify-between items-start">
+                                                        <div className={`p-0.5 lg:p-1 rounded-md lg:rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200 relative`}>
+                                                            <item.icon className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
                                                             {item.hasFamily && (
                                                                 <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#1a5c2e] flex items-center justify-center">
                                                                     <Users className="w-2 h-2 text-white" />
@@ -542,8 +545,8 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                         <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
-                                                        <div className="text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
+                                                        <div className="font-bold text-xs lg:text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
+                                                        <div className="text-[8px] lg:text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
                                                     </div>
                                                 </div>
                                             </Link>
@@ -554,7 +557,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                 {hiddenCount > 0 && (
                                     <button
                                         onClick={() => setShowAll(!showAll)}
-                                        className="w-full mt-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
+                                        className="w-full mt-1 lg:mt-2 py-1 lg:py-1.5 text-[10px] lg:text-xs font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1"
                                     >
                                         {showAll ? 'Ocultar' : `Ver todo (+${hiddenCount})`}
                                         <ArrowRight className={`w-3 h-3 transition-transform ${showAll ? 'rotate-90' : ''}`} />

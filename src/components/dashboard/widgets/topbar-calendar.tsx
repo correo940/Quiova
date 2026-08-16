@@ -104,12 +104,12 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
     );
 
     return (
-        <div className="flex flex-col gap-1.5 bg-slate-50/50 dark:bg-slate-900/30 p-2 rounded-xl border border-slate-100 dark:border-slate-800 w-full">
+        <div className="flex flex-col gap-1 lg:gap-1.5 bg-slate-50/50 dark:bg-slate-900/30 p-1.5 lg:p-2 rounded-xl border border-slate-100 dark:border-slate-800 w-full">
 
             {/* Fila 1: flechas + etiqueta + controles */}
-            <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary">
-                    <ChevronLeft className="w-4 h-4" />
+            <div className="flex items-center gap-0.5 lg:gap-1">
+                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-6 w-6 lg:h-8 lg:w-8 shrink-0 text-muted-foreground hover:text-primary">
+                    <ChevronLeft className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 </Button>
 
                 <div className="flex-1 flex justify-center">
@@ -132,8 +132,8 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                     )}
                 </div>
 
-                <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary">
-                    <ChevronRight className="w-4 h-4" />
+                <Button variant="ghost" size="icon" onClick={handleNext} className="h-6 w-6 lg:h-8 lg:w-8 shrink-0 text-muted-foreground hover:text-primary">
+                    <ChevronRight className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 </Button>
 
                 {viewControls}
@@ -141,7 +141,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
 
             {/* Fila 2: los 7 días de la semana (solo en modo semana) */}
             {viewMode === 'week' && (
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-0.5 lg:gap-1">
                     {weekDays.map(day => {
                         const isSelected = isSameDay(day, current);
                         const isTodayDate = isSameDay(day, new Date());
@@ -150,7 +150,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
                                 key={day.toISOString()}
                                 onClick={() => onDateSelect(day)}
                                 className={cn(
-                                    "flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-200 active:scale-95",
+                                    "flex flex-col items-center justify-center py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl transition-all duration-200 active:scale-95",
                                     isSelected
                                         ? "bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 font-bold"
                                         : isTodayDate
