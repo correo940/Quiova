@@ -131,10 +131,10 @@ export default function MobileDashboard() {
         return (
             <Link
                 href={app.href}
-                className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1"
+                className="flex flex-col items-center gap-2.5 active:scale-95 transition-transform py-2"
             >
-                <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
-                    <Icon className="w-8 h-8" style={{ color: app.color }} />
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
+                    <Icon className="w-9 h-9" style={{ color: app.color }} />
                     {val && (
                         <span className="absolute -top-1.5 -right-1.5 min-w-[26px] h-[26px] rounded-full bg-[#1a5c2e] text-white text-sm font-bold flex items-center justify-center px-1.5 shadow-sm">
                             {val}
@@ -180,7 +180,7 @@ export default function MobileDashboard() {
 
                 {/* Apps: carrusel deslizable */}
                 {!showAllApps && (
-                    <div className="px-0 pt-2">
+                    <div className="px-0 pt-3">
                         <div
                             ref={carouselRef}
                             className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
@@ -189,7 +189,7 @@ export default function MobileDashboard() {
                             {PAGES.map((page, pageIdx) => (
                                 <div
                                     key={pageIdx}
-                                    className="snap-center shrink-0 w-full grid grid-cols-4 gap-2 px-5"
+                                    className="snap-center shrink-0 w-full grid grid-cols-4 gap-3 px-4"
                                 >
                                     {page.map(app => (
                                         <AppCard key={app.key} app={app} />
@@ -198,12 +198,12 @@ export default function MobileDashboard() {
                             ))}
                         </div>
                         {/* Indicadores de página */}
-                        <div className="flex justify-center gap-1.5 pt-2 pb-1">
+                        <div className="flex justify-center gap-2 pt-3 pb-1">
                             {PAGES.map((_, idx) => (
                                 <span
                                     key={idx}
-                                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                                        idx === currentPage ? 'w-5 bg-green-600' : 'w-1.5 bg-slate-300 dark:bg-slate-600'
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                        idx === currentPage ? 'w-6 bg-green-600' : 'w-2 bg-slate-300 dark:bg-slate-600'
                                     }`}
                                 />
                             ))}
@@ -212,7 +212,7 @@ export default function MobileDashboard() {
                 )}
 
                 {/* Botón ver más / ver menos */}
-                <div className="px-5">
+                <div className="px-5 pt-1">
                     <button
                         onClick={() => setShowAllApps(!showAllApps)}
                         className="w-full py-3 text-base font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
@@ -224,7 +224,7 @@ export default function MobileDashboard() {
 
                 {/* Grid completo cuando se pulsa "Ver más" */}
                 {showAllApps && (
-                    <div className="px-5 pt-1 pb-4">
+                    <div className="px-4 pt-2 pb-4">
                         <div className="grid grid-cols-4 gap-3">
                             {APPS.map(app => (
                                 <AppCard key={app.key} app={app} />
