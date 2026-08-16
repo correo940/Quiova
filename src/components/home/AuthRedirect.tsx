@@ -10,7 +10,7 @@ export default function AuthRedirect() {
 
     useEffect(() => {
         if (!loading && user) {
-            router.replace('/apps/mi-hogar');
+            router.replace('/desktop');
         }
     }, [user, loading, router]);
 
