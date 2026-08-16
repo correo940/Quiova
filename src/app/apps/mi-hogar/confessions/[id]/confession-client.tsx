@@ -26,7 +26,7 @@ export default function ConfessionClientPage({ id }: { id: string }) {
     return (
         <div className="flex flex-col h-screen max-w-4xl mx-auto bg-background border-x">
             <div className="p-4 border-b flex items-center gap-4">
-                <Button variant="ghost" onClick={() => router.back()}>
+                <Button variant="ghost" onClick={() => router.push('/desktop')}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Volver
                 </Button>

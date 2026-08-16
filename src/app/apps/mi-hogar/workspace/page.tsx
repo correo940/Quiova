@@ -130,7 +130,7 @@ export default function WorkspacePage() {
         <p className="text-slate-500 text-sm mt-2 max-w-xs leading-relaxed z-10">
           Esta aplicación es privada y solo está disponible para el administrador de Quioba Studios.
         </p>
-        <Button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl px-6 py-2.5 shadow-sm transition-all mt-6 z-10" onClick={() => router.back()}>
+        <Button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl px-6 py-2.5 shadow-sm transition-all mt-6 z-10" onClick={() => router.push('/desktop')}>
             Volver
         </Button>
       </div>
@@ -150,7 +150,7 @@ export default function WorkspacePage() {
       
       {/* Header */}
       <header className="z-10 flex items-center justify-between w-full max-w-md mx-auto">
-        <Button variant="ghost" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-4 gap-2 transition-all" onClick={() => router.back()}>
+        <Button variant="ghost" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-4 gap-2 transition-all" onClick={() => router.push('/desktop')}>
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
         </Button>

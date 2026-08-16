@@ -2259,7 +2259,7 @@ export default function SplitSmartExpensesPage() {
 
       {/* Return to Mi Hogar Button */}
       <div style={{ padding: '10px 20px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => router.back()} className="btn sm" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
+        <button onClick={() => router.push('/desktop')} className="btn sm" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
           <i className="ti ti-arrow-left"></i> Volver
         </button>
       </div>

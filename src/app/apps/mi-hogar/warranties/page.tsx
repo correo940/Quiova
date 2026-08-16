@@ -219,7 +219,7 @@ export default function WarrantyPage() {
             <div className="max-w-5xl mx-auto space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all" onClick={() => router.back()}>
+                        <Button variant="ghost" className="pl-0 mb-2 hover:pl-2 transition-all" onClick={() => router.push('/desktop')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Volver
                         </Button>
                         <h1 className="text-3xl font-bold flex items-center gap-3">

@@ -110,7 +110,7 @@ export default function MobileNav() {
             {/* Global Back Button (only on subpages) */}
             {pathname !== '/' && (
                 <button
-                    onClick={() => router.back()}
+                    onClick={() => router.push('/desktop')}
                     className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-2xl border border-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:text-green-800 hover:bg-green-100 transition-all active:scale-90"
                     title="Volver"
                 >

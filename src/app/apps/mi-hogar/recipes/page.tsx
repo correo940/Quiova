@@ -133,7 +133,7 @@ export default function RecipesPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20 p-4">
             <div className="flex items-center gap-4 mb-6">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" onClick={() => router.push('/desktop')}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>

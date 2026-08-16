@@ -45,7 +45,7 @@ export default function CuadrantePage() {
                 } else if (step === 'search') {
                     setStep('capture');
                 } else {
-                    router.back();
+                    router.push('/desktop');
                 }
             }
         });

@@ -93,7 +93,7 @@ export default function AsistentePage() {
         <div className="h-screen flex flex-col">
             {/* Back button for mobile */}
             <div className="md:hidden flex items-center gap-2 p-2 border-b bg-background">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" onClick={() => router.push('/desktop')}>
                     <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <span className="font-medium">Asistente</span>

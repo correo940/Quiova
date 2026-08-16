@@ -391,7 +391,7 @@ export default function PharmacyPage() {
                 {/* HEADER */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
                     <div>
-                        <Button variant="ghost" size="sm" className="pl-0 mb-1 hover:pl-2 transition-all -ml-1" onClick={() => router.back()}>
+                        <Button variant="ghost" size="sm" className="pl-0 mb-1 hover:pl-2 transition-all -ml-1" onClick={() => router.push('/desktop')}>
                             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Volver
                         </Button>
                         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3 tracking-tight">
