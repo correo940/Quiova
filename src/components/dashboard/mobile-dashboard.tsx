@@ -1,17 +1,15 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { User } from '@supabase/supabase-js';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
     Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot,
-    GraduationCap, Sparkles, Users, Plane, ArrowRight, ChevronDown, ChevronUp,
-    Clock
+    GraduationCap, Sparkles, Users, Plane, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import OrganizerWidget from './widgets/organizer-widget';
@@ -41,29 +39,13 @@ const APPS = [
     { key: 'familia', label: 'Familia', iconKey: 'Users', color: '#1d4ed8', bg: '#eff6ff', href: '/apps/mi-hogar/familia' },
 ];
 
-const RECENT_APPS_KEY = 'quioba_recent_apps';
-
-function getRecentApps(): string[] {
-    if (typeof window === 'undefined') return [];
-    try {
-        const raw = localStorage.getItem(RECENT_APPS_KEY);
-        if (!raw) return [];
-        const parsed: { key: string; ts: number }[] = JSON.parse(raw);
-        return parsed.sort((a, b) => b.ts - a.ts).map(e => e.key);
-    } catch { return []; }
-}
-
-function trackAppUsage(appKey: string) {
-    if (typeof window === 'undefined') return;
-    try {
-        const raw = localStorage.getItem(RECENT_APPS_KEY);
-        let entries: { key: string; ts: number }[] = raw ? JSON.parse(raw) : [];
-        entries = entries.filter(e => e.key !== appKey);
-        entries.unshift({ key: appKey, ts: Date.now() });
-        entries = entries.slice(0, 10);
-        localStorage.setItem(RECENT_APPS_KEY, JSON.stringify(entries));
-    } catch {}
-}
+const PAGES = (() => {
+    const pages: typeof APPS[] = [];
+    for (let i = 0; i < APPS.length; i += 4) {
+        pages.push(APPS.slice(i, i + 4));
+    }
+    return pages;
+})();
 
 export default function MobileDashboard() {
     const { user } = useAuth();
@@ -72,7 +54,8 @@ export default function MobileDashboard() {
     const [loading, setLoading] = useState(true);
     const [showAllApps, setShowAllApps] = useState(false);
     const [selectedDate] = useState<Date>(new Date());
-    const [recentKeys, setRecentKeys] = useState<string[]>([]);
+    const [currentPage, setCurrentPage] = useState(0);
+    const carouselRef = useRef<HTMLDivElement>(null);
 
     const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', shortDate: '' });
 
@@ -84,7 +67,6 @@ export default function MobileDashboard() {
         else if (hrs >= 12 && hrs < 21) greeting = 'Buenas tardes';
         const shortDate = format(now, "EEEE d 'de' MMMM", { locale: es });
         setDateInfo({ greeting, shortDate: shortDate.charAt(0).toUpperCase() + shortDate.slice(1) });
-        setRecentKeys(getRecentApps());
     }, []);
 
     useEffect(() => {
@@ -130,27 +112,44 @@ export default function MobileDashboard() {
         return '';
     }, [stats]);
 
-    const topApps = APPS.slice(0, 9);
-    const restApps = APPS.slice(9);
-    const displayApps = showAllApps ? APPS : topApps;
-
-    const topAppKeys = new Set(topApps.map(a => a.key));
-    const recentApps = recentKeys
-        .filter(k => !topAppKeys.has(k))
-        .map(k => APPS.find(a => a.key === k))
-        .filter(Boolean)
-        .slice(0, 3) as typeof APPS;
-
-    const handleAppClick = (appKey: string) => {
-        trackAppUsage(appKey);
-    };
+    useEffect(() => {
+        const el = carouselRef.current;
+        if (!el) return;
+        const onScroll = () => {
+            const page = Math.round(el.scrollLeft / el.clientWidth);
+            setCurrentPage(page);
+        };
+        el.addEventListener('scroll', onScroll, { passive: true });
+        return () => el.removeEventListener('scroll', onScroll);
+    }, []);
 
     if (!user) return null;
 
+    const AppCard = ({ app }: { app: typeof APPS[0] }) => {
+        const Icon = ICON_MAP[app.iconKey];
+        const val = getValue(app.key);
+        return (
+            <Link
+                href={app.href}
+                className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1"
+            >
+                <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
+                    <Icon className="w-8 h-8" style={{ color: app.color }} />
+                    {val && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] rounded-full bg-[#1a5c2e] text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
+                            {val}
+                        </span>
+                    )}
+                </div>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>
+            </Link>
+        );
+    };
+
     return (
         <div className="flex flex-col h-[calc(100dvh-64px)] bg-[#f8faf8] dark:bg-slate-950 overflow-hidden">
-            {/* Header grande y legible */}
-            <div className="shrink-0 px-5 pt-5 pb-3">
+            {/* Header */}
+            <div className="shrink-0 px-5 pt-5 pb-2">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
@@ -169,80 +168,71 @@ export default function MobileDashboard() {
 
             {/* Contenido scrollable */}
             <div className="flex-1 overflow-y-auto pb-28">
-                {/* Grid de apps - 3 columnas, iconos grandes */}
-                <div className="px-5 pt-1">
-                    <div className="grid grid-cols-3 gap-4">
-                        {displayApps.map(app => {
-                            const Icon = ICON_MAP[app.iconKey];
-                            const val = getValue(app.key);
-                            return (
-                                <Link
-                                    key={app.key}
-                                    href={app.href}
-                                    onClick={() => handleAppClick(app.key)}
-                                    className="flex flex-col items-center gap-2 active:scale-95 transition-transform py-1"
-                                >
-                                    <div className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center relative shadow-sm" style={{ backgroundColor: app.bg }}>
-                                        <Icon className="w-8 h-8" style={{ color: app.color }} />
-                                        {val && (
-                                            <span className="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] rounded-full bg-[#1a5c2e] text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
-                                                {val}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
 
-                    {restApps.length > 0 && (
-                        <button
-                            onClick={() => setShowAllApps(!showAllApps)}
-                            className="w-full mt-3 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
-                        >
-                            {showAllApps ? 'Ver menos' : `Ver más (+${restApps.length})`}
-                            {showAllApps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                    )}
-
-                    {/* Últimas 3 apps usadas */}
-                    {!showAllApps && recentApps.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center gap-1.5 mb-3 px-1">
-                                <Clock className="w-4 h-4 text-slate-400" />
-                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Recientes</span>
-                            </div>
-                            <div className="flex gap-3">
-                                {recentApps.map(app => {
-                                    const Icon = ICON_MAP[app.iconKey];
-                                    return (
-                                        <Link
-                                            key={app.key}
-                                            href={app.href}
-                                            onClick={() => handleAppClick(app.key)}
-                                            className="flex-1 flex items-center gap-3 px-3 py-3 rounded-2xl active:scale-95 transition-transform border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900"
-                                        >
-                                            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: app.bg }}>
-                                                <Icon className="w-5 h-5" style={{ color: app.color }} />
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">{app.label}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Organizador */}
-                <div className="px-4 pt-4">
+                {/* Organizador ARRIBA */}
+                <div className="px-4 pt-1 pb-2">
                     <OrganizerWidget
                         selectedDate={selectedDate}
                         user={user}
                         className="h-auto"
                     />
                 </div>
+
+                {/* Apps: carrusel deslizable */}
+                {!showAllApps && (
+                    <div className="px-0 pt-2">
+                        <div
+                            ref={carouselRef}
+                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                        >
+                            {PAGES.map((page, pageIdx) => (
+                                <div
+                                    key={pageIdx}
+                                    className="snap-center shrink-0 w-full grid grid-cols-4 gap-2 px-5"
+                                >
+                                    {page.map(app => (
+                                        <AppCard key={app.key} app={app} />
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                        {/* Indicadores de página */}
+                        <div className="flex justify-center gap-1.5 pt-2 pb-1">
+                            {PAGES.map((_, idx) => (
+                                <span
+                                    key={idx}
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                        idx === currentPage ? 'w-5 bg-green-600' : 'w-1.5 bg-slate-300 dark:bg-slate-600'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Botón ver más / ver menos */}
+                <div className="px-5">
+                    <button
+                        onClick={() => setShowAllApps(!showAllApps)}
+                        className="w-full py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 active:bg-slate-100 dark:active:bg-slate-800 rounded-xl transition-colors"
+                    >
+                        {showAllApps ? 'Ver menos' : `Ver todas las apps (${APPS.length})`}
+                        {showAllApps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                </div>
+
+                {/* Grid completo cuando se pulsa "Ver más" */}
+                {showAllApps && (
+                    <div className="px-5 pt-1 pb-4">
+                        <div className="grid grid-cols-4 gap-3">
+                            {APPS.map(app => (
+                                <AppCard key={app.key} app={app} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
