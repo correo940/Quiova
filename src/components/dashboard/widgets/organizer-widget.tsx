@@ -559,26 +559,26 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
                 {/* === UNIFIED TABS LAYOUT === */}
                 <div className="flex-1 min-h-0 flex flex-col">
                     <Tabs defaultValue="agenda" className="flex-1 flex flex-col min-h-0">
-                        <TabsList className="grid w-full grid-cols-4 mb-3 h-12 sm:h-10 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl shrink-0">
-                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-600 data-[state=active]:to-green-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-green-900/30 rounded-lg transition-all font-bold h-full">
-                                <CalendarIcon className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
+                        <TabsList className="grid w-full grid-cols-4 mb-3 h-14 sm:h-10 bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl shrink-0">
+                            <TabsTrigger value="agenda" className="flex items-center justify-center gap-1.5 text-base sm:text-xs py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-600 data-[state=active]:to-green-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-green-900/30 rounded-lg transition-all font-bold h-full">
+                                <CalendarIcon className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                                 <span>Agenda</span>
-                                {smartBlocks.length > 0 && <span className="text-xs sm:text-xs">({smartBlocks.length})</span>}
+                                {smartBlocks.length > 0 && <span className="text-sm sm:text-xs">({smartBlocks.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="tasks" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-quioba-mente data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
-                                <CheckCircle2 className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="tasks" className="flex items-center justify-center gap-1.5 text-base sm:text-xs py-2.5 data-[state=active]:bg-quioba-mente data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <CheckCircle2 className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                                 <span>Tareas</span>
-                                {tasks.length > 0 && <span className="text-xs sm:text-xs">({tasks.length})</span>}
+                                {tasks.length > 0 && <span className="text-sm sm:text-xs">({tasks.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="shifts" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-quioba-finanzas data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
-                                <Clock className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="shifts" className="flex items-center justify-center gap-1.5 text-base sm:text-xs py-2.5 data-[state=active]:bg-quioba-finanzas data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <Clock className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                                 <span>Turnos</span>
-                                {shifts.length > 0 && <span className="text-xs sm:text-xs">({shifts.length})</span>}
+                                {shifts.length > 0 && <span className="text-sm sm:text-xs">({shifts.length})</span>}
                             </TabsTrigger>
-                            <TabsTrigger value="journal" className="flex items-center justify-center gap-1.5 text-sm sm:text-xs py-2 data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
-                                <Book className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
+                            <TabsTrigger value="journal" className="flex items-center justify-center gap-1.5 text-base sm:text-xs py-2.5 data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:shadow rounded-lg transition-all font-bold h-full">
+                                <Book className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
                                 <span>Notas</span>
-                                {journalEntries.length > 0 && <span className="text-xs sm:text-xs">({journalEntries.length})</span>}
+                                {journalEntries.length > 0 && <span className="text-sm sm:text-xs">({journalEntries.length})</span>}
                             </TabsTrigger>
                         </TabsList>
 
