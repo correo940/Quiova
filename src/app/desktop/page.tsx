@@ -20,7 +20,7 @@ export default function DesktopPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      router.replace('/');
     }
   }, [user, loading, router]);
 
