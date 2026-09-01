@@ -78,6 +78,30 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        {/*
+          Salto al panel ANTES del primer pintado. Tiene que ser un script
+          inline y bloqueante: si esperamos a que React hidrate para redirigir,
+          el navegador ya ha pintado la landing y se ve un destello de la
+          pagina de articulos. Supabase guarda la sesion en localStorage, asi
+          que saber si el usuario esta registrado es una lectura sincrona.
+          Sin sesion no hace nada y la landing se muestra con normalidad.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+var p=window.location.pathname;
+if(p!=='/'&&p!==''&&p!=='/index.html')return;
+var F='quioba:optimistic-desktop-redirect';
+if(sessionStorage.getItem(F))return;
+for(var i=0;i<localStorage.length;i++){
+var k=localStorage.key(i);
+if(k&&/^sb-.+-auth-token$/.test(k)&&localStorage.getItem(k)){
+sessionStorage.setItem(F,'1');
+window.location.replace('/desktop');
+return;}}
+}catch(e){}})();`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
