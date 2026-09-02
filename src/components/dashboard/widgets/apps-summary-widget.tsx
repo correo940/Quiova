@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, ChevronUp, ChevronDown, Users } from 'lucide-react';
-import { IconBubble, type QuiobaIconName, type PastelTone } from '@/components/icons/quioba-icons';
+import { AppIcon, type PastelTone } from '@/components/icons/app-icon';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,32 +17,33 @@ import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 import TopbarCalendar from './topbar-calendar';
 
 // Default item order (keys used for persistence)
-// Cada app lleva un icono del QUIOBA Icon System y un tono pastel de la paleta
-// compartida, para que la parrilla se vea de la misma familia que el Modern.
+// El icono de cada app es public/icons/apps/<key>.svg, asi que la key hace de
+// nombre de archivo. El tono es el fondo de la pastilla: agrupa apps de la
+// misma familia y da contraste a los iconos mas claros.
 const DEFAULT_ITEMS_CONFIG: {
-    key: string; label: string; icon: QuiobaIconName; tone: PastelTone; href: string;
+    key: string; label: string; tone: PastelTone; href: string;
 }[] = [
-        { key: 'shopping', label: 'Lista Compra', icon: 'shopping', tone: 'green', href: '/apps/mi-hogar/shopping' },
-        { key: 'tasks', label: 'Tareas', icon: 'task', tone: 'sky', href: '/apps/mi-hogar/tasks' },
-        { key: 'savings', label: 'Mi Economía', icon: 'wallet', tone: 'amber', href: '/apps/mi-hogar/savings' },
-        { key: 'meditation', label: 'Pausa', icon: 'leaf', tone: 'violet', href: '/apps/mi-hogar/meditation' },
-        { key: 'debates', label: 'Debates', icon: 'message', tone: 'violet', href: '/apps/debate' },
-        { key: 'vehicles', label: 'Vehículos', icon: 'car', tone: 'green', href: '/apps/mi-hogar/garage' },
-        { key: 'pharmacy', label: 'Botiquín', icon: 'firstaid', tone: 'pink', href: '/apps/mi-hogar/pharmacy' },
-        { key: 'documents', label: 'Documentos', icon: 'document', tone: 'sky', href: '/apps/mi-hogar/documents' },
-        { key: 'expenses', label: 'Gastos', icon: 'receipt', tone: 'amber', href: '/apps/mi-hogar/expenses' },
-        { key: 'warranties', label: 'Garantías', icon: 'shield', tone: 'slate', href: '/apps/mi-hogar/warranties' },
-        { key: 'recipes', label: 'Recetas', icon: 'utensils', tone: 'green', href: '/apps/mi-hogar/recipes' },
-        { key: 'manuals', label: 'Mantenimiento', icon: 'wrench', tone: 'green', href: '/apps/mi-hogar/manuals' },
-        { key: 'passwords', label: 'Claves', icon: 'key', tone: 'amber', href: '/apps/mi-hogar/passwords' },
-        { key: 'insurance', label: 'Seguros', icon: 'umbrella', tone: 'orange', href: '/apps/mi-hogar/insurance' },
-        { key: 'roster', label: 'Turnos', icon: 'calendar', tone: 'sky', href: '/apps/mi-hogar/roster' },
-        { key: 'summary', label: 'Resumen', icon: 'newspaper', tone: 'slate', href: '/apps/resumen-diario' },
-        { key: 'el-campus', label: 'Campus', icon: 'graduation', tone: 'violet', href: '/apps/el-campus' },
-        { key: 'chat', label: 'Chat familiar', icon: 'message', tone: 'green', href: '/apps/mi-hogar/chat' },
-        { key: 'familia', label: 'Familia', icon: 'users', tone: 'orange', href: '/apps/mi-hogar/familia' },
-        { key: 'workspace', label: 'Quioba Studios', icon: 'sparkle', tone: 'emerald', href: '/apps/mi-hogar/workspace' },
-        { key: 'mi-viaje', label: 'Mi Viaje', icon: 'plane', tone: 'sky', href: '/apps/mi-viaje' },
+        { key: 'shopping', label: 'Lista Compra', tone: 'green', href: '/apps/mi-hogar/shopping' },
+        { key: 'tasks', label: 'Tareas', tone: 'sky', href: '/apps/mi-hogar/tasks' },
+        { key: 'savings', label: 'Mi Economía', tone: 'amber', href: '/apps/mi-hogar/savings' },
+        { key: 'meditation', label: 'Pausa', tone: 'violet', href: '/apps/mi-hogar/meditation' },
+        { key: 'debates', label: 'Debates', tone: 'violet', href: '/apps/debate' },
+        { key: 'vehicles', label: 'Vehículos', tone: 'green', href: '/apps/mi-hogar/garage' },
+        { key: 'pharmacy', label: 'Botiquín', tone: 'pink', href: '/apps/mi-hogar/pharmacy' },
+        { key: 'documents', label: 'Documentos', tone: 'sky', href: '/apps/mi-hogar/documents' },
+        { key: 'expenses', label: 'Gastos', tone: 'amber', href: '/apps/mi-hogar/expenses' },
+        { key: 'warranties', label: 'Garantías', tone: 'slate', href: '/apps/mi-hogar/warranties' },
+        { key: 'recipes', label: 'Recetas', tone: 'green', href: '/apps/mi-hogar/recipes' },
+        { key: 'manuals', label: 'Mantenimiento', tone: 'green', href: '/apps/mi-hogar/manuals' },
+        { key: 'passwords', label: 'Claves', tone: 'amber', href: '/apps/mi-hogar/passwords' },
+        { key: 'insurance', label: 'Seguros', tone: 'orange', href: '/apps/mi-hogar/insurance' },
+        { key: 'roster', label: 'Turnos', tone: 'sky', href: '/apps/mi-hogar/roster' },
+        { key: 'summary', label: 'Resumen', tone: 'slate', href: '/apps/resumen-diario' },
+        { key: 'el-campus', label: 'Campus', tone: 'violet', href: '/apps/el-campus' },
+        { key: 'chat', label: 'Chat familiar', tone: 'green', href: '/apps/mi-hogar/chat' },
+        { key: 'familia', label: 'Familia', tone: 'orange', href: '/apps/mi-hogar/familia' },
+        { key: 'workspace', label: 'Quioba Studios', tone: 'emerald', href: '/apps/mi-hogar/workspace' },
+        { key: 'mi-viaje', label: 'Mi Viaje', tone: 'sky', href: '/apps/mi-viaje' },
     ];
 
 function getStorageKey(userId: string) {
@@ -531,7 +532,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                             <div className="text-[8px] lg:text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
                                                         </div>
                                                         <div className="relative shrink-0 group-hover:scale-110 transition-transform duration-200">
-                                                            <IconBubble name={item.icon} tone={item.tone} size={30} iconSize={16} />
+                                                            <AppIcon name={item.key} tone={item.tone} size={30} iconSize={20} />
                                                             {item.hasFamily && (
                                                                 <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#1a5c2e] flex items-center justify-center">
                                                                     <Users className="w-2 h-2 text-white" />
