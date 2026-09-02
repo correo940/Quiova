@@ -3,11 +3,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    ShoppingCart, CheckSquare, PiggyBank, MessageCircle, ArrowRight, Loader2,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils, Book, Key, Shield, CalendarDays, Newspaper, GripVertical, Brain, Bot, Mic, MicOff,
-    ChevronUp, ChevronDown, GraduationCap, Sparkles, Users, Plane
-} from 'lucide-react';
+import { ArrowRight, ChevronUp, ChevronDown, Users } from 'lucide-react';
+import { AppIcon, type PastelTone } from '@/components/icons/app-icon';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -19,38 +16,35 @@ import LogoLoader from '@/components/ui/logo-loader';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 import TopbarCalendar from './topbar-calendar';
 
-// Icon map for serialization
-const ICON_MAP: Record<string, any> = {
-    ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
-    Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
-    Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot, GraduationCap, Sparkles, Users, Plane
-};
-
 // Default item order (keys used for persistence)
-// Paleta reducida: verde=hogar, amber=economía, blue=organización, slate=documentos
-const DEFAULT_ITEMS_CONFIG = [
-    { key: 'shopping', label: 'Lista Compra', iconKey: 'ShoppingCart', color: 'bg-green-800', href: '/apps/mi-hogar/shopping' },
-    { key: 'tasks', label: 'Tareas', iconKey: 'CheckSquare', color: 'bg-blue-600', href: '/apps/mi-hogar/tasks' },
-    { key: 'savings', label: 'Mi Economía', iconKey: 'PiggyBank', color: 'bg-amber-600', href: '/apps/mi-hogar/savings' },
-    { key: 'meditation', label: 'Pausa', iconKey: 'Brain', color: 'bg-green-800', href: '/apps/mi-hogar/meditation' },
-    { key: 'debates', label: 'Debates', iconKey: 'MessageCircle', color: 'bg-blue-600', href: '/apps/debate' },
-    { key: 'vehicles', label: 'Vehículos', iconKey: 'Car', color: 'bg-green-800', href: '/apps/mi-hogar/garage' },
-    { key: 'pharmacy', label: 'Botiquín', iconKey: 'Pill', color: 'bg-green-800', href: '/apps/mi-hogar/pharmacy' },
-    { key: 'documents', label: 'Documentos', iconKey: 'FileText', color: 'bg-slate-600', href: '/apps/mi-hogar/documents' },
-    { key: 'expenses', label: 'Gastos', iconKey: 'Receipt', color: 'bg-amber-600', href: '/apps/mi-hogar/expenses' },
-    { key: 'warranties', label: 'Garantías', iconKey: 'ShieldCheck', color: 'bg-slate-600', href: '/apps/mi-hogar/warranties' },
-    { key: 'recipes', label: 'Recetas', iconKey: 'Utensils', color: 'bg-green-800', href: '/apps/mi-hogar/recipes' },
-    { key: 'manuals', label: 'Mantenimiento', iconKey: 'Book', color: 'bg-green-800', href: '/apps/mi-hogar/manuals' },
-    { key: 'passwords', label: 'Claves', iconKey: 'Key', color: 'bg-slate-600', href: '/apps/mi-hogar/passwords' },
-    { key: 'insurance', label: 'Seguros', iconKey: 'Shield', color: 'bg-amber-600', href: '/apps/mi-hogar/insurance' },
-    { key: 'roster', label: 'Turnos', iconKey: 'CalendarDays', color: 'bg-blue-600', href: '/apps/mi-hogar/roster' },
-    { key: 'summary', label: 'Resumen', iconKey: 'Newspaper', color: 'bg-blue-600', href: '/apps/resumen-diario' },
-    { key: 'el-campus', label: 'Campus', iconKey: 'GraduationCap', color: 'bg-blue-600', href: '/apps/el-campus' },
-    { key: 'chat', label: 'Chat familiar', iconKey: 'MessageCircle', color: 'bg-green-800', href: '/apps/mi-hogar/chat' },
-    { key: 'familia', label: 'Familia', iconKey: 'Users', color: 'bg-blue-600', href: '/apps/mi-hogar/familia' },
-    { key: 'workspace', label: 'Quioba Studios', iconKey: 'Sparkles', color: 'bg-emerald-600', href: '/apps/mi-hogar/workspace' },
-    { key: 'mi-viaje', label: 'Mi Viaje', iconKey: 'Plane', color: 'bg-blue-600', href: '/apps/mi-viaje' },
-];
+// El icono de cada app es public/icons/apps/<key>.svg, asi que la key hace de
+// nombre de archivo. El tono es el fondo de la pastilla: agrupa apps de la
+// misma familia y da contraste a los iconos mas claros.
+const DEFAULT_ITEMS_CONFIG: {
+    key: string; label: string; tone: PastelTone; href: string;
+}[] = [
+        { key: 'shopping', label: 'Lista Compra', tone: 'green', href: '/apps/mi-hogar/shopping' },
+        { key: 'tasks', label: 'Tareas', tone: 'sky', href: '/apps/mi-hogar/tasks' },
+        { key: 'savings', label: 'Mi Economía', tone: 'amber', href: '/apps/mi-hogar/savings' },
+        { key: 'meditation', label: 'Pausa', tone: 'violet', href: '/apps/mi-hogar/meditation' },
+        { key: 'debates', label: 'Debates', tone: 'violet', href: '/apps/debate' },
+        { key: 'vehicles', label: 'Vehículos', tone: 'green', href: '/apps/mi-hogar/garage' },
+        { key: 'pharmacy', label: 'Botiquín', tone: 'pink', href: '/apps/mi-hogar/pharmacy' },
+        { key: 'documents', label: 'Documentos', tone: 'sky', href: '/apps/mi-hogar/documents' },
+        { key: 'expenses', label: 'Gastos', tone: 'amber', href: '/apps/mi-hogar/expenses' },
+        { key: 'warranties', label: 'Garantías', tone: 'slate', href: '/apps/mi-hogar/warranties' },
+        { key: 'recipes', label: 'Recetas', tone: 'green', href: '/apps/mi-hogar/recipes' },
+        { key: 'manuals', label: 'Mantenimiento', tone: 'green', href: '/apps/mi-hogar/manuals' },
+        { key: 'passwords', label: 'Claves', tone: 'amber', href: '/apps/mi-hogar/passwords' },
+        { key: 'insurance', label: 'Seguros', tone: 'orange', href: '/apps/mi-hogar/insurance' },
+        { key: 'roster', label: 'Turnos', tone: 'sky', href: '/apps/mi-hogar/roster' },
+        { key: 'summary', label: 'Resumen', tone: 'slate', href: '/apps/resumen-diario' },
+        { key: 'el-campus', label: 'Campus', tone: 'violet', href: '/apps/el-campus' },
+        { key: 'chat', label: 'Chat familiar', tone: 'green', href: '/apps/mi-hogar/chat' },
+        { key: 'familia', label: 'Familia', tone: 'orange', href: '/apps/mi-hogar/familia' },
+        { key: 'workspace', label: 'Quioba Studios', tone: 'emerald', href: '/apps/mi-hogar/workspace' },
+        { key: 'mi-viaje', label: 'Mi Viaje', tone: 'sky', href: '/apps/mi-viaje' },
+    ];
 
 function getStorageKey(userId: string) {
     return `quioba_widget_order_${userId}`;
@@ -306,11 +300,10 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
             ...config,
             value: getItemValue(key),
             count: getItemCount(key),
-            icon: ICON_MAP[config.iconKey],
             hasFamily,
             lockedForFamily,
         };
-    }).filter(Boolean) as (typeof DEFAULT_ITEMS_CONFIG[0] & { value: string; count: number; icon: any; hasFamily: boolean; lockedForFamily: boolean })[];
+    }).filter(Boolean) as (typeof DEFAULT_ITEMS_CONFIG[0] & { value: string; count: number; hasFamily: boolean; lockedForFamily: boolean })[];
 
     // Sort: active items first (same logic as before), but respect user drag order
     const sortedItems = [...orderedItems].sort((a, b) => {
@@ -533,20 +526,19 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                                                     ? 'border-primary/70 shadow-sm shadow-primary/10'
                                                     : 'border-slate-100 dark:border-slate-700 hover:border-primary/30'
                                                     } ${item.lockedForFamily ? 'opacity-25 pointer-events-none' : item.count === 0 ? 'opacity-50' : ''}`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <div className={`p-0.5 lg:p-1 rounded-md lg:rounded-lg ${item.color} text-white group-hover:scale-110 transition-transform duration-200 relative`}>
-                                                            <item.icon className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
+                                                    <div className="flex items-center justify-between gap-1.5 flex-1">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="font-bold text-xs lg:text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
+                                                            <div className="text-[8px] lg:text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
+                                                        </div>
+                                                        <div className="relative shrink-0 group-hover:scale-110 transition-transform duration-200">
+                                                            <AppIcon name={item.key} tone={item.tone} size={30} iconSize={20} />
                                                             {item.hasFamily && (
                                                                 <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#1a5c2e] flex items-center justify-center">
                                                                     <Users className="w-2 h-2 text-white" />
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <ArrowRight className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-xs lg:text-sm leading-tight mb-0 truncate text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.value}</div>
-                                                        <div className="text-[8px] lg:text-[9px] font-medium text-muted-foreground truncate">{item.label}</div>
                                                     </div>
                                                 </div>
                                             </Link>
