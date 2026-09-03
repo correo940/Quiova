@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Newspaper, LayoutGrid, MessageCircle } from 'lucide-react';
+import { Home, User, Newspaper, LayoutGrid, MessageCircle, Sparkles, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import SmartScanner from '@/components/mobile/smart-scanner';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
 import { useAi } from '@/context/AiContext';
 import { supabase } from '@/lib/supabase';
@@ -27,6 +28,8 @@ export default function Taskbar() {
     const lastScrollY = useRef(0);
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const longPressFired = useRef(false);
+    const [showLogoMenu, setShowLogoMenu] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
 
     // Prevent hydration mismatch - only check window after mount
     useEffect(() => {
@@ -218,7 +221,7 @@ export default function Taskbar() {
     const apps = [
         {
             id: 'start',
-            label: 'IA Quioba',
+            label: 'Quioba',
             icon: (active: boolean) => (
                 <div className={cn(
                     "relative w-12 h-12 rounded-2xl p-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
@@ -344,6 +347,51 @@ export default function Taskbar() {
     ];
 
     return (
+        <>
+            {showScanner && (
+                <SmartScanner
+                    onClose={() => setShowScanner(false)}
+                    onProductAdded={() => {}}
+                />
+            )}
+
+            <AnimatePresence>
+                {showLogoMenu && (
+                    <>
+                        <div
+                            className="fixed inset-0 z-[55]"
+                            onClick={() => setShowLogoMenu(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                            className="fixed bottom-28 left-4 z-[56] w-60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl p-2 mb-[env(safe-area-inset-bottom)]"
+                        >
+                            <button
+                                onClick={() => { setShowLogoMenu(false); setAiOpen(true); }}
+                                className="w-full flex items-center gap-3 p-3 rounded-2xl text-left hover:bg-green-50 dark:hover:bg-green-900/20 active:scale-95 transition-all"
+                            >
+                                <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center shadow-md">
+                                    <Sparkles className="w-5 h-5 text-white" />
+                                </span>
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Hablar con la IA</span>
+                            </button>
+                            <button
+                                onClick={() => { setShowLogoMenu(false); setShowScanner(true); }}
+                                className="w-full flex items-center gap-3 p-3 rounded-2xl text-left hover:bg-orange-50 dark:hover:bg-orange-900/20 active:scale-95 transition-all"
+                            >
+                                <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-md">
+                                    <Camera className="w-5 h-5 text-white" />
+                                </span>
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Foto de un producto</span>
+                            </button>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
         <div
             className="fixed bottom-6 left-1/2 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-50%) translateY(${mounted && hidden ? 120 : 0}px)` }}
@@ -360,7 +408,7 @@ export default function Taskbar() {
                     if (app.isMobileOnly && !isMobile) return null;
 
                     const isActive = !!(app.isStart
-                        ? (isAiOpen || isStartMenuOpen)
+                        ? (isAiOpen || isStartMenuOpen || showLogoMenu)
                         : (pathname === app.href || (app.href !== '/' && pathname?.startsWith(app.href))));
 
                     const isHovered = hoveredApp === app.id;
@@ -377,7 +425,7 @@ export default function Taskbar() {
                                             longPressFired.current = false;
                                             return;
                                         }
-                                        setAiOpen(true);
+                                        setShowLogoMenu(prev => !prev);
                                     }
                                 }}
                                 onPointerDown={app.isStart ? startLongPress : undefined}
@@ -420,6 +468,6 @@ export default function Taskbar() {
                 })}
             </motion.div>
         </div>
+        </>
     );
 }
-
