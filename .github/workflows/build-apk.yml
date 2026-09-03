@@ -5,12 +5,16 @@ on:
   push:
     branches:
       - claude/quioba-web-to-apk-ydcgbz
+      - claude/quioba-apk-mobile-awj6os
     paths:
       - '.github/workflows/build-apk.yml'
       - 'android/**'
       - 'capacitor.config.json'
       - 'package.json'
       - 'package-lock.json'
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -67,3 +71,17 @@ jobs:
         with:
           name: quioba-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Publica el APK en una Release para poder descargarlo directamente
+      # desde el movil (sin login ni descomprimir el zip del artefacto).
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk quioba-debug.apk
+          TAG="apk-build-${{ github.run_number }}"
+          gh release create "$TAG" quioba-debug.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Quioba APK (debug) build ${{ github.run_number }}" \
+            --notes "APK de depuracion generada desde ${GITHUB_SHA}. Instalar permitiendo origenes desconocidos." \
+            --latest
