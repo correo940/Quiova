@@ -32,6 +32,15 @@ android {
             }
         }
     }
+    // Permite limitar las ABIs empaquetadas (p.ej. -PquiobaAbiFilter=arm64-v8a en CI)
+    // para reducir el tamano del APK; sin la propiedad el build no cambia.
+    if (project.hasProperty('quiobaAbiFilter')) {
+        defaultConfig {
+            ndk {
+                abiFilters = project.property('quiobaAbiFilter').split(',').collect { it.trim() }
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false

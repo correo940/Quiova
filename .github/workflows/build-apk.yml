@@ -64,7 +64,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon -PquiobaAbiFilter=arm64-v8a
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -83,5 +83,5 @@ jobs:
           gh release create "$TAG" quioba-debug.apk \
             --repo "$GITHUB_REPOSITORY" \
             --title "Quioba APK (debug) build ${{ github.run_number }}" \
-            --notes "APK de depuracion generada desde ${GITHUB_SHA}. Instalar permitiendo origenes desconocidos." \
+            --notes "APK de depuracion (solo arm64-v8a) generada desde ${GITHUB_SHA}. Instalar permitiendo origenes desconocidos." \
             --latest
