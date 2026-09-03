@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { motion } from 'framer-motion';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
+import { useAi } from '@/context/AiContext';
 import { supabase } from '@/lib/supabase';
 
 const SCROLL_THRESHOLD = 10;
@@ -18,11 +19,14 @@ export default function Taskbar() {
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const { toggleStartMenu, isStartMenuOpen, isLauncherMode, setIsLauncherMode } = useGlobalMenu();
+    const { isOpen: isAiOpen, setIsOpen: setAiOpen } = useAi();
 
     const [unreadChat, setUnreadChat] = useState(0);
     const [userId, setUserId] = useState<string | null>(null);
     const [hidden, setHidden] = useState(false);
     const lastScrollY = useRef(0);
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressFired = useRef(false);
 
     // Prevent hydration mismatch - only check window after mount
     useEffect(() => {
@@ -149,6 +153,18 @@ export default function Taskbar() {
         }
     };
 
+    // Pulsacion larga sobre el logo: abre el menu de inicio
+    const startLongPress = () => {
+        longPressFired.current = false;
+        longPressTimer.current = setTimeout(() => {
+            longPressFired.current = true;
+            toggleStartMenu();
+        }, 500);
+    };
+    const cancelLongPress = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+
     // Estilos premium para los iconos
     const getIconStyles = (id: string, active: boolean) => {
         if (!active) return {
@@ -202,7 +218,7 @@ export default function Taskbar() {
     const apps = [
         {
             id: 'start',
-            label: 'Menú',
+            label: 'IA Quioba',
             icon: (active: boolean) => (
                 <div className={cn(
                     "relative w-12 h-12 rounded-2xl p-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
@@ -344,7 +360,7 @@ export default function Taskbar() {
                     if (app.isMobileOnly && !isMobile) return null;
 
                     const isActive = !!(app.isStart
-                        ? isStartMenuOpen
+                        ? (isAiOpen || isStartMenuOpen)
                         : (pathname === app.href || (app.href !== '/' && pathname?.startsWith(app.href))));
 
                     const isHovered = hoveredApp === app.id;
@@ -357,9 +373,17 @@ export default function Taskbar() {
                                     handleNavClick();
                                     if (app.isStart) {
                                         e.preventDefault();
-                                        toggleStartMenu();
+                                        if (longPressFired.current) {
+                                            longPressFired.current = false;
+                                            return;
+                                        }
+                                        setAiOpen(true);
                                     }
                                 }}
+                                onPointerDown={app.isStart ? startLongPress : undefined}
+                                onPointerUp={app.isStart ? cancelLongPress : undefined}
+                                onPointerLeave={app.isStart ? cancelLongPress : undefined}
+                                onContextMenu={app.isStart ? (e) => e.preventDefault() : undefined}
                                 onMouseEnter={() => setHoveredApp(app.id)}
                                 onMouseLeave={() => setHoveredApp(null)}
                                 className="relative flex items-center justify-center active:scale-90 touch-manipulation transition-transform duration-200 px-1"
