@@ -143,7 +143,7 @@ export default function VoiceAssistantModal({ open, onClose, userName }: Props) 
         try {
             const history = messages.slice(-8).map(m => ({ role: m.role, content: m.content }));
 
-            const res = await fetch('/api/asistente-voz', {
+            const res = await apiFetch('/api/asistente-voz', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

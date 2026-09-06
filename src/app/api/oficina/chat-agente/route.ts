@@ -5,6 +5,7 @@ import { getSala, agenteEnSala } from '@/app/apps/oficina/vista/salas-data';
 import { leerDirectrices } from '@/app/apps/oficina/vista/directrices-store';
 import { leerChat, guardarMensaje, limpiarChat } from '@/app/apps/oficina/vista/chat-store';
 import { leerTablonPendiente } from '@/app/apps/oficina/vista/tablon-store';
+import { requireUser } from '@/lib/require-user';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,9 @@ function buildSystemPrompt(nombre: string, rol: string, sala: string, directrice
 }
 
 export async function GET(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const salaId = searchParams.get('salaId');
     const agente = searchParams.get('agente');
@@ -43,6 +47,9 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const salaId = searchParams.get('salaId');
     const agente = searchParams.get('agente');
@@ -54,6 +61,9 @@ export async function DELETE(req: Request) {
 interface Body { salaId?: string; agente?: string; mensaje?: string; }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     let body: Body;
     try { body = await req.json(); } catch {
         return NextResponse.json({ ok: false, error: 'Body JSON inválido.' }, { status: 400 });

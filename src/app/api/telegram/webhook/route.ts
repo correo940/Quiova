@@ -149,6 +149,14 @@ async function responderAgente(chatId: string, texto: string, salaId: string, ag
 // ── Webhook ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+    // Esta ruta la llama Telegram, no un usuario, asi que no vale requireUser().
+    // Telegram reenvia el secreto configurado en setWebhook en esta cabecera.
+    // Si TELEGRAM_WEBHOOK_SECRET no esta configurado, se comporta como antes.
+    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (expectedSecret && req.headers.get('x-telegram-bot-api-secret-token') !== expectedSecret) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const update = await req.json().catch(() => null);
     if (!update) return NextResponse.json({ ok: true });
 

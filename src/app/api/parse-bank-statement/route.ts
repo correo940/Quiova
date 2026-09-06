@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -59,6 +60,9 @@ function parseAIResponse(content: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (auth.response) return auth.response;
+
   try {
     const user = await getAuthUser(request);
     if (!user) {

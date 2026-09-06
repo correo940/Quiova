@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     const user = await getAuthenticatedSupabaseUser(req);
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 

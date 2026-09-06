@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -113,6 +114,9 @@ function packContext(parts: ContextPart[]): string {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
   try {
     const body = await req.json();
     let { messages, userId, secretarySettings, todaySyncStatus } = body as {

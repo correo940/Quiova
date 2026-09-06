@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getApiUrl } from '@/lib/api-utils';
+import { apiFetch } from '@/lib/api-fetch';
 
 type BankAccount = {
     id: string;
@@ -261,7 +262,7 @@ export default function BankStatementImporter({
                 if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
 
                 const apiUrl = getApiUrl('api/parse-bank-statement');
-                const response = await fetch(apiUrl, {
+                const response = await apiFetch(apiUrl, {
                     method: 'POST',
                     headers,
                     body: (() => { const fd = new FormData(); fd.append('file', new Blob([pastedText], { type: 'text/csv' }), 'pasted.csv'); return fd; })()
@@ -304,7 +305,7 @@ export default function BankStatementImporter({
                 if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
 
                 const apiUrl = getApiUrl('api/parse-bank-statement');
-                const response = await fetch(apiUrl, {
+                const response = await apiFetch(apiUrl, {
                     method: 'POST',
                     headers,
                     body: formData

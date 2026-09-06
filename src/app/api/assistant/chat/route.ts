@@ -14,8 +14,12 @@ import {
     fetchMortgages,
 } from '@/lib/server/assistant-data';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const groqKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
         if (!groqKey) {

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
   try {
     let body;
     try {

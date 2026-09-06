@@ -3,6 +3,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { getApiUrl } from '@/lib/api-utils';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface AssistantDataContext {
     userId: string;
@@ -21,7 +22,7 @@ export async function processQuery(query: string, ctx: AssistantDataContext): Pr
     try {
         const { data: { session } } = await supabase.auth.getSession();
         const apiUrl = getApiUrl('api/assistant/chat');
-        const res = await fetch(apiUrl, {
+        const res = await apiFetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

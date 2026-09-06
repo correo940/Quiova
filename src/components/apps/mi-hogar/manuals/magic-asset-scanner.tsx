@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UploadCloud, Wand2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface AssetAnalysisData {
     title: string;
@@ -43,7 +44,7 @@ export function MagicAssetScanner({ onScanComplete }: MagicAssetScannerProps) {
             const formData = new FormData();
             formData.append('file', file);
 
-            const res = await fetch('/api/mi-hogar/parse-asset', {
+            const res = await apiFetch('/api/mi-hogar/parse-asset', {
                 method: 'POST',
                 body: formData,
             });

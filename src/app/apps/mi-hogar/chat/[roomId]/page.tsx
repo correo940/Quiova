@@ -18,6 +18,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import ChatAppsPanel from '@/components/apps/mi-hogar/chat/chat-apps-panel';
 import { useSignedMedia } from '@/hooks/useSignedMedia';
 import { SignedImg } from '@/components/ui/signed-img';
+import { apiFetch } from '@/lib/api-fetch';
 
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
@@ -408,7 +409,7 @@ export default function ChatRoomPage() {
         setAiLoading(true);
         try {
             const session = (await supabase.auth.getSession()).data.session;
-            const res = await fetch('/api/chat/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ question: text, roomId: room.id, familyId: room.family_id }) });
+            const res = await apiFetch('/api/chat/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ question: text, roomId: room.id, familyId: room.family_id }) });
             const data = await res.json();
             if (data?.answer) {
                 const { data: insertedAi } = await supabase.from('family_messages').insert({ family_id: room.family_id, room_id: room.id, user_id: user.id, content: `✨ Quioba IA: ${data.answer}` }).select('*').single();
@@ -610,7 +611,7 @@ export default function ChatRoomPage() {
             const base64Part = dataUrl.includes('base64,') ? dataUrl.split('base64,')[1] : dataUrl;
             const sizeKB = Math.round(base64Part.length / 1024);
             console.log(`[Quioba] Sending image: ${sizeKB}KB base64`);
-            const response = await fetch('/api/ai-chat/analyze-image', {
+            const response = await apiFetch('/api/ai-chat/analyze-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: dataUrl, userId: user.id }),
@@ -639,7 +640,7 @@ export default function ChatRoomPage() {
         setPickerMsgId(null);
         setAnalyzingText(true);
         try {
-            const response = await fetch('/api/ai-chat/analyze-text', {
+            const response = await apiFetch('/api/ai-chat/analyze-text', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: msg.content, userId: user.id }),

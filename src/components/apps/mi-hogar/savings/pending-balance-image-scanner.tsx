@@ -92,7 +92,7 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
                 const formData = new FormData();
                 formData.append('file', file);
 
-                const response = await fetch(getApiUrl('api/expenses/parse-receipt'), {
+                const response = await apiFetch(getApiUrl('api/expenses/parse-receipt'), {
                     method: 'POST',
                     body: formData
                 });

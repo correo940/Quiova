@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import CryptoJS from 'crypto-js';
 import { getSecretarySettings, getAvatarById } from '@/lib/secretary-settings';
 import { format } from 'date-fns';
+import { apiFetch } from '@/lib/api-fetch';
 
 function EphemeralPasswordRequest({ passwordId, passwordName, userId }: { passwordId: string, passwordName: string, userId: string }) {
     const [state, setState] = useState<'idle' | 'verifying' | 'unlocked' | 'faded'>('idle');
@@ -509,7 +510,7 @@ export default function AiPanel() {
             // Obtener contexto de secretaria
             const settings = getSecretarySettings();
 
-            const response = await fetch('/api/ai-chat', {
+            const response = await apiFetch('/api/ai-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -593,7 +594,7 @@ export default function AiPanel() {
         setMessages(prev => [...prev, { role: 'user', content: '📷 Imagen adjuntada', imageUrl: dataUrl }]);
 
         try {
-            const response = await fetch('/api/ai-chat/analyze-image', {
+            const response = await apiFetch('/api/ai-chat/analyze-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: dataUrl, userId: user.id }),

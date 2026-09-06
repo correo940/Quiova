@@ -135,7 +135,7 @@ export default function OficinaPage() {
     useEffect(() => {
         if (!seleccion) return;
         setMensajes([]); setInputChat(''); setMostrarDirectrices(false); setPestana('chat'); setFijados(new Set());
-        fetch(`/api/oficina/chat-agente?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`)
+        apiFetch(`/api/oficina/chat-agente?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`)
             .then(r => r.json()).then(d => setMensajes(d.historial ?? []));
         fetch(`/api/oficina/directrices?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`)
             .then(r => r.json()).then(d => { setDirectrices(d.texto ?? ''); setDirectricesGuardadas(d.texto ?? ''); });
@@ -187,7 +187,7 @@ export default function OficinaPage() {
         setInputChat('');
         setEnviandoChat(true);
         try {
-            const res = await fetch('/api/oficina/chat-agente', {
+            const res = await apiFetch('/api/oficina/chat-agente', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ salaId: seleccion.salaId, agente: seleccion.agente, mensaje: texto }),
@@ -199,7 +199,7 @@ export default function OficinaPage() {
 
     async function limpiarChat() {
         if (!seleccion) return;
-        await fetch(`/api/oficina/chat-agente?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`, { method: 'DELETE' });
+        await apiFetch(`/api/oficina/chat-agente?salaId=${seleccion.salaId}&agente=${encodeURIComponent(seleccion.agente)}`, { method: 'DELETE' });
         setMensajes([]);
     }
 
