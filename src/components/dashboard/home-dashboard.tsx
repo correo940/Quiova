@@ -7,6 +7,7 @@ import AppsSummaryWidget from './widgets/apps-summary-widget';
 import MobileDashboard from './mobile-dashboard';
 import { usePlatform } from '@/hooks/use-platform';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
+import LogoLoader from '@/components/ui/logo-loader';
 
 export default function HomeDashboard() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -30,7 +31,15 @@ export default function HomeDashboard() {
     // Hasta saber si es movil no se monta ninguno de los dos: montar el que no
     // toca y cambiarlo despues hacia que cada widget pidiera sus datos dos veces.
     if (!isResolved) {
-        return <div className="h-[calc(100dvh-64px)]" aria-busy="true" />;
+        return (
+            <div
+                className="h-[calc(100dvh-64px)] flex items-center justify-center"
+                aria-busy="true"
+                aria-label="Cargando el panel"
+            >
+                <LogoLoader size="lg" />
+            </div>
+        );
     }
 
     if (isMobile) {
