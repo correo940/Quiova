@@ -160,29 +160,24 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                     setFamilyPerms(new Set((perms ?? []).map(p => p.app_slug)));
                 }
 
-                // 1. Shopping (Global)
-                const { count: sCount } = await supabase
-                    .from('shopping_items')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('is_checked', false);
-
-                // 2. Tasks (Filtered by Date if provided, else pending)
-                let taskQuery = supabase
-                    .from('tasks')
-                    .select('*', { count: 'exact', head: true });
-
+                // 1 y 2. Todos los contadores en una sola llamada: antes eran once
+                // peticiones simultaneas y Supabase rechazaba la mitad con 503.
+                let dayStart: string | null = null;
+                let dayEnd: string | null = null;
                 if (selectedDate) {
-                    const startOfDay = new Date(selectedDate);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    const endOfDay = new Date(selectedDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-                    taskQuery = taskQuery
-                        .gte('due_date', startOfDay.toISOString())
-                        .lte('due_date', endOfDay.toISOString());
-                } else {
-                    taskQuery = taskQuery.eq('is_completed', false);
+                    const d0 = new Date(selectedDate); d0.setHours(0, 0, 0, 0);
+                    const d1 = new Date(selectedDate); d1.setHours(23, 59, 59, 999);
+                    dayStart = d0.toISOString();
+                    dayEnd = d1.toISOString();
                 }
-                const { count: tCount } = await taskQuery;
+
+                const { data: counts } = await supabase.rpc('dashboard_counts', {
+                    p_day_start: dayStart,
+                    p_day_end: dayEnd,
+                });
+                const c = (counts ?? {}) as Record<string, number>;
+                const sCount = c.shopping ?? 0;
+                const tCount = c.tasks ?? 0;
 
                 // 3. Savings
                 const { data: accounts } = await supabase.from('savings_accounts').select('current_balance');
@@ -192,14 +187,14 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                 const totalSavings = accountsTotal + unlinkedGoalsTotal;
 
                 // 4. Debates
-                const { count: dCount } = await supabase.from('debates').select('*', { count: 'exact', head: true }).eq('status', 'active');
+                const dCount = c.debates ?? 0;
 
                 // 5. New Apps Counts (Try/Catch for safety individually)
                 let vCount = 0, mCount = 0, docCount = 0, expCount = 0, wCount = 0, rCount = 0, manCount = 0, passCount = 0, iCount = 0;
 
-                try { const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true }); vCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('medicines').select('*', { count: 'exact', head: true }); mCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('documents').select('*', { count: 'exact', head: true }); docCount = count || 0; } catch (e) { }
+                vCount = c.vehicles ?? 0;
+                mCount = c.medicines ?? 0;
+                docCount = c.documents ?? 0;
                 try {
                     const { data: grupos } = await supabase.from('splitsmart_grupos').select('id');
                     if (grupos && grupos.length > 0) {
@@ -209,11 +204,11 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
                     }
                 } catch (e) { }
 
-                try { const { count } = await supabase.from('warranties').select('*', { count: 'exact', head: true }); wCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('recipes').select('*', { count: 'exact', head: true }); rCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('manuals').select('*', { count: 'exact', head: true }); manCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('passwords').select('*', { count: 'exact', head: true }); passCount = count || 0; } catch (e) { }
-                try { const { count } = await supabase.from('knowledge_entities').select('*', { count: 'exact', head: true }).eq('entity_type', 'insurance_policy').eq('status', 'active'); iCount = count || 0; } catch (e) { }
+                wCount = c.warranties ?? 0;
+                rCount = c.recipes ?? 0;
+                manCount = c.manuals ?? 0;
+                passCount = c.passwords ?? 0;
+                iCount = c.insurances ?? 0;
                 setStats({
                     shoppingCount: sCount || 0,
                     taskCount: tCount || 0,
