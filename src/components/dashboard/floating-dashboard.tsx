@@ -78,7 +78,7 @@ export default function FloatingDashboard() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user]);
+    }, [user?.id]);
 
     const fetchCounts = async (userId: string) => {
         // Shopping Count

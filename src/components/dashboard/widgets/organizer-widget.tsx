@@ -196,7 +196,7 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
 
     useEffect(() => {
         fetchData();
-    }, [selectedDate, user]);
+    }, [selectedDate, user?.id]);
 
     useEffect(() => {
         const channel = supabase
@@ -207,7 +207,7 @@ export default function OrganizerWidget({ selectedDate, user, className }: Organ
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [selectedDate, user]);
+    }, [selectedDate, user?.id]);
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);

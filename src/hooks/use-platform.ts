@@ -9,6 +9,12 @@ export interface PlatformInfo {
     isAndroid: boolean;
     isMobile: boolean;
     platform: 'web' | 'ios' | 'android';
+    /**
+     * false hasta que el efecto mide la pantalla. Antes de eso isMobile todavia
+     * es el valor por defecto: quien elija entre movil y escritorio debe esperar,
+     * o monta un arbol, lo tira y monta el otro, duplicando todas sus peticiones.
+     */
+    isResolved: boolean;
 }
 
 /**
@@ -23,6 +29,7 @@ export function usePlatform(): PlatformInfo {
         isAndroid: false,
         isMobile: false,
         platform: 'web',
+        isResolved: false,
     });
 
     useEffect(() => {
@@ -34,12 +41,21 @@ export function usePlatform(): PlatformInfo {
                 (currentPlatform === 'ios' || currentPlatform === 'android');
             const isSmallScreen = window.innerWidth < 1024;
 
-            setPlatformInfo({
+            const next: PlatformInfo = {
                 isWeb: !hasNativeContext,
                 isIOS: currentPlatform === 'ios' && hasNativeContext,
                 isAndroid: currentPlatform === 'android' && hasNativeContext,
                 isMobile: hasNativeContext || isNative || isSmallScreen,
                 platform: currentPlatform as 'web' | 'ios' | 'android',
+                isResolved: true,
+            };
+
+            // Sin esto, cada resize crea un objeto nuevo y vuelve a renderizar
+            // todo lo que use el hook aunque la plataforma no haya cambiado.
+            setPlatformInfo((prev) => {
+                const igual = (Object.keys(next) as (keyof PlatformInfo)[])
+                    .every((k) => prev[k] === next[k]);
+                return igual ? prev : next;
             });
         };
 

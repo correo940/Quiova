@@ -34,7 +34,7 @@ export default function TopbarCalendar({ selectedDate, onDateSelect, user }: Top
             if (shifts) setShiftDates(shifts.map((shift: any) => new Date(shift.start_time)));
         };
         fetchCalendarData();
-    }, [user, selectedDate]);
+    }, [user?.id, selectedDate]);
 
     const hasTask = (day: Date) => taskDates.some(d => isSameDay(d, day));
     const hasJournal = (day: Date) => journalDates.some(d => isSameDay(d, day));

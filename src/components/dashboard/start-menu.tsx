@@ -201,7 +201,7 @@ export default function StartMenu() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user]);
+    }, [user?.id]);
 
     const fetchCounts = async (userId: string) => {
         const { count: sCount } = await supabase

@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -135,8 +135,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // Sin useMemo, cada render del provider crea un objeto nuevo y vuelve a
+    // renderizar a todos los consumidores aunque nada haya cambiado.
+    const value = useMemo(
+        () => ({ session, user, loading, isPremium, signOut }),
+        [session, user, loading, isPremium]
+    )
+
     return (
-        <AuthContext.Provider value={{ session, user, loading, isPremium, signOut }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     )

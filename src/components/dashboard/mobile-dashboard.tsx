@@ -101,7 +101,7 @@ export default function MobileDashboard() {
             setLoading(false);
         };
         fetchAll();
-    }, [user]);
+    }, [user?.id]);
 
     const getValue = useCallback((key: string): string => {
         const v = stats[key];

@@ -93,7 +93,7 @@ export default function CalendarWidget({
             window.removeEventListener('quioba-calendar-refresh', handleExternalRefresh);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [user, date]); // ✅ re-ejecutar cuando user cambia de null → User
+    }, [user?.id, date]); // ✅ re-ejecutar cuando user cambia de null → User
 
     useEffect(() => {
         if (date) {

@@ -36,7 +36,7 @@ export default function TaskPostIts() {
             return;
         }
         fetchTasks(user.id);
-    }, [user]);
+    }, [user?.id]);
 
     const fetchTasks = async (userId: string) => {
         const { data, error } = await supabase

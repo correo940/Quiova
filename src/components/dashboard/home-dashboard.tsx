@@ -12,7 +12,7 @@ export default function HomeDashboard() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [isCalendarMinimized, setIsCalendarMinimized] = useState(false);
     const { user } = useAuth();
-    const { isMobile } = usePlatform();
+    const { isMobile, isResolved } = usePlatform();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -26,6 +26,12 @@ export default function HomeDashboard() {
         setIsCalendarMinimized(newVal);
         localStorage.setItem('quioba_calendar_minimized', String(newVal));
     };
+
+    // Hasta saber si es movil no se monta ninguno de los dos: montar el que no
+    // toca y cambiarlo despues hacia que cada widget pidiera sus datos dos veces.
+    if (!isResolved) {
+        return <div className="h-[calc(100dvh-64px)]" aria-busy="true" />;
+    }
 
     if (isMobile) {
         return <MobileDashboard />;

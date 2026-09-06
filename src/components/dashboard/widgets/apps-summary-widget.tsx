@@ -237,7 +237,7 @@ export default function AppsSummaryWidget({ selectedDate, onDateSelect, user }: 
         };
 
         fetchStats();
-    }, [selectedDate, user]); // ✅ re-ejecutar cuando user cambia de null → User
+    }, [selectedDate, user?.id]); // ✅ re-ejecutar cuando user cambia de null → User
 
     // Build display value for each key
     const getItemValue = useCallback((key: string): string => {

@@ -42,7 +42,7 @@ export default function SystemPostIts() {
         }
 
         checkPremiumAndFetch(user.id);
-    }, [user]);
+    }, [user?.id]);
 
     const checkPremiumAndFetch = async (userId: string) => {
         // Fetch Premium Status

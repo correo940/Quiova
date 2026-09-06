@@ -64,7 +64,7 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
     useEffect(() => {
         if (!user) return;
         fetchTasks();
-    }, [selectedDate, user]); // Refetch when date changes
+    }, [selectedDate, user?.id]); // Refetch when date changes
 
     useEffect(() => {
         if (!user) return;
@@ -81,7 +81,7 @@ export default function TasksWidget({ selectedDate }: TasksWidgetProps) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user]);
+    }, [user?.id]);
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         const { error } = await supabase
