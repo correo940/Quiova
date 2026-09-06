@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const { text } = await req.json();
         if (!text?.trim()) {

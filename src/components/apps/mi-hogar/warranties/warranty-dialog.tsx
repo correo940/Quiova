@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format, addMonths } from 'date-fns';
+import { SignedImg } from '@/components/ui/signed-img';
 
 export type WarrantyForm = {
     id?: string;
@@ -98,7 +99,7 @@ export function WarrantyDialog({ open, onOpenChange, form, setForm, onSave, uplo
                     <div className="flex flex-col items-center justify-center space-y-4">
                         {form.image_url ? (
                             <div className="relative w-full h-48 bg-slate-100 rounded-lg overflow-hidden border">
-                                <img src={form.image_url} alt="Ticket" className="w-full h-full object-contain" />
+                                <SignedImg src={form.image_url} alt="Ticket" className="w-full h-full object-contain" />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button

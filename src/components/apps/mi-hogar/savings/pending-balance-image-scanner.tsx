@@ -3,6 +3,7 @@ import { Camera, RefreshCw, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api-utils';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface PendingBalanceImageScannerProps {
     onScanSuccess: (data: { amount: string, concept: string, date: string, merchant: string }) => void;
@@ -35,7 +36,7 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
             });
 
             const apiUrl = getApiUrl('api/scan-receipt');
-            const response = await fetch(apiUrl, {
+            const response = await apiFetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageBase64: base64 })
@@ -122,7 +123,7 @@ export function PendingBalanceImageScanner({ onScanSuccess }: PendingBalanceImag
                     reader.readAsDataURL(file);
                 });
 
-                const response = await fetch(getApiUrl('api/scan-receipt'), {
+                const response = await apiFetch(getApiUrl('api/scan-receipt'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64 })

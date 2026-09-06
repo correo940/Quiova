@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API Route: /api/secretary-chat
@@ -23,6 +24,9 @@ interface UserContext {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
   try {
     const body = await req.json();
     const { messages, userContext, isFirstMessage } = body as {

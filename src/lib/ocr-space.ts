@@ -1,5 +1,6 @@
 
 import { getApiUrl } from '@/lib/api-utils';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface UserShiftResult {
     found: boolean;
@@ -29,7 +30,7 @@ export async function findUserShiftOCRSpace(base64Image: string, targetName: str
         formData.append("scale", "true");
         formData.append("OCREngine", "2");
 
-        const response = await fetch(getApiUrl('api/ocr-space'), {
+        const response = await apiFetch(getApiUrl('api/ocr-space'), {
             method: "POST",
             body: formData,
         });

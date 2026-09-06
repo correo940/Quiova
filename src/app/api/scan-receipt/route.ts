@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const body = await req.json();
         const { imageBase64, provider, apiKey, modelName } = body;

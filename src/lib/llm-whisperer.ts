@@ -1,4 +1,5 @@
 import { getApiUrl } from '@/lib/api-utils';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface LLMWhispererResponse {
     extraction: {
@@ -21,7 +22,7 @@ export async function processWithLLMWhisperer(base64Image: string, apiKey: strin
         formData.append("output_format", "text");
 
         const apiUrl = getApiUrl('api/whisperer');
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: "POST",
             headers: {
                 "unstract-key": apiKey

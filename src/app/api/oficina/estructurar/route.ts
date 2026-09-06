@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 const DIRECTOR_CONTEXTO: Record<string, string> = {
     'director':             'Puedes asignar tareas a cualquier director según el contenido.',
@@ -18,6 +19,9 @@ function buildContextoEmpresa(ctx: Record<string, unknown>): string {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const { mensaje, contexto = {}, directorId = 'director' } = await req.json();
 

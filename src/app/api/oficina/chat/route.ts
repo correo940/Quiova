@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { stripThinkTags } from '@/lib/strip-think';
 import { filtrarTareasReales } from '@/lib/oficina/tareas-reales';
+import { requireUser } from '@/lib/require-user';
 
 // Categorías de biblioteca relevantes por director
 const BIBLIOTECA_RELEVANTE: Record<string, string[]> = {
@@ -191,6 +192,9 @@ Responde siempre en español. Sé natural y directo. Usa el nombre exacto de exp
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const { directorId, message, history = [], contexto = {} } = await req.json();
 

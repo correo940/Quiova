@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 import { stripThinkTags } from '@/lib/strip-think';
+import { requireUser } from '@/lib/require-user';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -81,6 +82,9 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request);
+  if (auth.response) return auth.response;
+
   if (!GROQ_API_KEY && !GEMINI_API_KEY) {
     return NextResponse.json({ success: false, error: 'Clave API no configurada' }, { status: 500 });
   }

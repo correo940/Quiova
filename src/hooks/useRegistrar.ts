@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { AccionEstructurada, CrearExpedienteConDecisionFn } from '@/lib/oficina/registrar';
+import { apiFetch } from '@/lib/api-fetch';
 
 export function useRegistrar(
     directorId: string,
@@ -14,7 +15,7 @@ export function useRegistrar(
         setEstructurando(true);
         setAccionPendiente(null);
         try {
-            const res = await fetch('/api/oficina/estructurar', {
+            const res = await apiFetch('/api/oficina/estructurar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mensaje: contenido, contexto, directorId }),

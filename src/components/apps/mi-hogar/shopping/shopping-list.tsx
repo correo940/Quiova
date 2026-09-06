@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { ChefHat, Wand2, CalendarDays, Timer, Layers } from 'lucide-react';
 import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP, getProductEmoji } from '@/lib/shopping-list-ai-helpers';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiFetch } from '@/lib/api-fetch';
 
 type ShoppingItem = {
     id: string;
@@ -380,7 +381,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
             try {
                 // Call API Route instead of Server Action
                 const apiUrl = getApiUrl('api/mi-hogar/identify-product');
-                const response = await fetch(apiUrl, {
+                const response = await apiFetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

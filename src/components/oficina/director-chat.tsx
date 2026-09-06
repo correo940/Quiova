@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Loader2, Sparkles } from 'lucide-react';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Mensaje {
     role: 'user' | 'assistant';
@@ -84,7 +85,7 @@ export default function DirectorChat({
         setCargando(true);
 
         try {
-            const res = await fetch('/api/oficina/chat', {
+            const res = await apiFetch('/api/oficina/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

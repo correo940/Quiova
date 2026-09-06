@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface TTSParams {
     selectedLanguage: string;
@@ -40,7 +41,7 @@ export function useTTS(): UseTTSReturn {
         setModelLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/tts', {
+            const res = await apiFetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -65,7 +66,7 @@ export function useTTS(): UseTTSReturn {
 
     const loadVoices = useCallback(async (language: string): Promise<string[]> => {
         try {
-            const res = await fetch('/api/tts', {
+            const res = await apiFetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'load_names', language }),
@@ -104,7 +105,7 @@ export function useTTS(): UseTTSReturn {
         setError(null);
 
         try {
-            const res = await fetch('/api/tts', {
+            const res = await apiFetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

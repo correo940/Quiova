@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { requireUser } from '@/lib/require-user';
 
 const BASE_URL = 'https://llmwhisperer-api.us-central.unstract.com/api/v2';
 
 export async function POST(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (auth.response) return auth.response;
+
   try {
     const user = await getAuthUser(request);
     if (user) {
@@ -50,6 +54,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const hash = searchParams.get('hash');

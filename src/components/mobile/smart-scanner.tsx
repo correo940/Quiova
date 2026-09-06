@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api-utils';
 import { supabase } from '@/lib/supabase';
 import { guessCategoryAndPrice } from '@/lib/shopping-list-ai-helpers';
+import { apiFetch } from '@/lib/api-fetch';
 
 type Destination = 'shopping' | 'pantry';
 
@@ -220,7 +221,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
             });
 
             const apiUrl = getApiUrl('api/mi-hogar/identify-product');
-            const response = await fetch(apiUrl, {
+            const response = await apiFetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ base64Image: base64 })
@@ -376,7 +377,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
                 const resizedBase64 = await resizeImage(image.base64String);
 
-                const response = await fetch(getApiUrl('api/mi-hogar/identify-product'), {
+                const response = await apiFetch(getApiUrl('api/mi-hogar/identify-product'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ base64Image: resizedBase64 })

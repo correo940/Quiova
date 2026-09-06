@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { getApiUrl } from '@/lib/api-utils';
 import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface WeatherDay {
     date: string;
@@ -390,7 +391,7 @@ export default function TiempoApp() {
                 if (isWithinForecast(date)) {
                     weatherDay = await fetchWeatherForDay(tripSelectedCity.lat, tripSelectedCity.lon, date);
                     if (weatherDay) {
-                        const res = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
+                        const res = await apiFetch(getApiUrl('api/mi-hogar/weather-clothing'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -566,7 +567,7 @@ export default function TiempoApp() {
             };
         });
 
-        const response = await fetch(getApiUrl('api/mi-hogar/weather-clothing'), {
+        const response = await apiFetch(getApiUrl('api/mi-hogar/weather-clothing'), {
             method: 'POST',
             signal,
             headers: { 'Content-Type': 'application/json' },

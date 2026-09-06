@@ -25,6 +25,7 @@ import {
   type DayConflict, type DayLoad, type TaskWithScore
 } from '@/lib/secretary-intelligence';
 import { usePredictiveShopping } from '@/lib/hooks/use-predictive-shopping';
+import { apiFetch } from '@/lib/api-fetch';
 
 // â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -271,7 +272,7 @@ export default function SecretariaSyncPage() {
     setChatMessages(newMessages);
     setChatLoading(true);
     try {
-      const res = await fetch('/api/secretary-chat', {
+      const res = await apiFetch('/api/secretary-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,7 +307,7 @@ export default function SecretariaSyncPage() {
   const initChat = async () => {
     setChatLoading(true);
     try {
-      const res = await fetch('/api/secretary-chat', {
+      const res = await apiFetch('/api/secretary-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

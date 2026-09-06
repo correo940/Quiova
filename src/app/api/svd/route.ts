@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getPhantomConfig, savePhantomConfig } from '@/lib/server/phantom-config';
 import { Client } from "@gradio/client";
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const body = await req.json();
         const { action } = body;

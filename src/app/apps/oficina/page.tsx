@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SALAS, type EstadoAgente } from './vista/salas-data';
 import { fetchHistorial, tiempoRelativo, type RegistroEncargo } from './vista/historial';
 import { ArrowLeft, Settings2, Send, ChevronDown, ChevronUp, Zap, Pin, Check, Mic } from 'lucide-react';
+import { apiFetch } from '@/lib/api-fetch';
 
 const ADMIN_EMAIL = 'todojuntomirar@gmail.com';
 
@@ -208,7 +209,7 @@ export default function OficinaPage() {
         setEnviando(true); setResultado(null);
         setEstados(prev => ({ ...prev, [k]: 'trabajando' }));
         try {
-            const res = await fetch('/api/oficina/encargo', {
+            const res = await apiFetch('/api/oficina/encargo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ salaId: seleccion.salaId, agente: seleccion.agente, encargo }),

@@ -7,6 +7,7 @@ import {
     CheckSquare, ShoppingBag, Sparkles, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Message {
     id: string;
@@ -103,7 +104,7 @@ export default function VoiceAssistantModal({ open, onClose, userName }: Props) 
         if (!clean) return;
 
         try {
-            const res = await fetch('/api/tts-google', {
+            const res = await apiFetch('/api/tts-google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: clean }),

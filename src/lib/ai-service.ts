@@ -1,5 +1,6 @@
 import { scanRosterImage as scanRosterLocal } from './roster-scanner';
 import { stripThinkTags } from '@/lib/strip-think';
+import { apiFetch } from '@/lib/api-fetch';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
@@ -51,7 +52,7 @@ export async function identifyProduct(base64Image: string): Promise<string | nul
 
 export async function extractReceiptData(base64Image: string): Promise<any | null> {
     try {
-        const response = await fetch('/api/scan-receipt', {
+        const response = await apiFetch('/api/scan-receipt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageBase64: base64Image.includes(',') ? base64Image.split(',')[1] : base64Image })

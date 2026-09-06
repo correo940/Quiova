@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, X, Trash2, Download, ZoomIn, ZoomOut, RotateCcw, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { SignedImg } from '@/components/ui/signed-img';
 
 interface Image {
     id: string;
@@ -172,7 +173,7 @@ export function ImageGalleryDialog({
                                         wrapperClass="!w-full !h-full flex items-center justify-center p-4"
                                         contentClass="!w-full !h-full flex items-center justify-center"
                                     >
-                                        <img
+                                        <SignedImg
                                             src={currentImage.image_url}
                                             alt={currentImage.caption || `Imagen ${currentIndex + 1}`}
                                             className="max-w-full max-h-full object-contain shadow-2xl transition-transform duration-300 ease-in-out"
@@ -218,7 +219,7 @@ export function ImageGalleryDialog({
                                         : 'border-transparent opacity-50 hover:opacity-100'
                                         }`}
                                 >
-                                    <img
+                                    <SignedImg
                                         src={image.image_url}
                                         alt={`Thumbnail ${index + 1}`}
                                         className="w-full h-full object-cover rounded"

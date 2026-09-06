@@ -14,6 +14,8 @@ import { WarrantyDialog, WarrantyForm } from '@/components/apps/mi-hogar/warrant
 import { NotificationManager } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { SignedImg } from '@/components/ui/signed-img';
+import { getSignedMediaUrl } from '@/lib/storage-url';
 
 type Warranty = {
     id: string;
@@ -271,8 +273,8 @@ export default function WarrantyPage() {
                             <Card key={warranty.id} className="group hover:shadow-lg transition-all overflow-hidden border-purple-100 dark:border-purple-900/20">
                                 <div className="h-32 bg-slate-100 dark:bg-slate-900 relative">
                                     {warranty.image_url ? (
-                                        <div className="w-full h-full relative cursor-pointer" onClick={() => window.open(warranty.image_url, '_blank')}>
-                                            <img src={warranty.image_url} alt="Ticket" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                        <div className="w-full h-full relative cursor-pointer" onClick={async () => { const u = await getSignedMediaUrl(warranty.image_url); if (u) window.open(u, '_blank'); }}>
+                                            <SignedImg src={warranty.image_url} alt="Ticket" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                                         </div>
                                     ) : (

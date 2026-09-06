@@ -25,6 +25,7 @@ import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getApiUrl } from '@/lib/api-utils';
 import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api-fetch';
 import {
     parseMeta, buildDescription, decrementStock, recordIntake, stockPercentage, stockColor,
     getExpiryStatus, getTodayIntakeSlots, MedicineMeta, MedicineForm, MedicineCategory, MealTiming,
@@ -291,7 +292,7 @@ export default function PharmacyPage() {
         setCapturedImage(imageSrc);
         setIsProcessing(true);
         try {
-            const response = await fetch(getApiUrl('api/mi-hogar/identify-medicine'), {
+            const response = await apiFetch(getApiUrl('api/mi-hogar/identify-medicine'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ base64Image: imageSrc }),

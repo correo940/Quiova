@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSala, agenteEnSala } from '@/app/apps/oficina/vista/salas-data';
 import { ejecutarEncargo } from '@/app/apps/oficina/vista/motor';
+import { requireUser } from '@/lib/require-user';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     let body: Body;
     try {
         body = await req.json();

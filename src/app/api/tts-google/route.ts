@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/require-user';
 
 // Gemini 2.5 Flash TTS — Google AI Studio (gratuito, sin facturación)
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {

@@ -16,6 +16,8 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
 import ChatAppsPanel from '@/components/apps/mi-hogar/chat/chat-apps-panel';
+import { useSignedMedia } from '@/hooks/useSignedMedia';
+import { SignedImg } from '@/components/ui/signed-img';
 
 type Reaction = { emoji: string; user_id: string; user_name?: string };
 type Message = {
@@ -91,6 +93,7 @@ function formatDuration(s: number) { const m = Math.floor(s / 60); const sec = M
 function getContactColor(userId: string) { let hash = 0; for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash); return CONTACT_COLORS[Math.abs(hash) % CONTACT_COLORS.length]; }
 
 function AudioPlayer({ url, isMine }: { url: string; isMine: boolean }) {
+    const signedUrl = useSignedMedia(url);
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
@@ -107,7 +110,7 @@ function AudioPlayer({ url, isMine }: { url: string; isMine: boolean }) {
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
     return (
         <div className="flex items-center gap-2 min-w-[200px]">
-            <audio ref={audioRef} src={url} preload="metadata" />
+            <audio ref={audioRef} src={signedUrl} preload="metadata" />
             <button onClick={toggle} className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMine ? 'bg-[#1a5c2e]/15' : 'bg-[#1a5c2e]/10'}`}>
                 {playing ? <Pause className="h-5 w-5 text-[#1a5c2e]" /> : <Play className="h-5 w-5 ml-0.5 text-[#1a5c2e]" />}
             </button>
@@ -142,6 +145,7 @@ export default function ChatRoomPage() {
     const [recording, setRecording] = useState(false);
     const [recordTime, setRecordTime] = useState(0);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const signedPreviewImage = useSignedMedia(previewImage);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [showGroupEdit, setShowGroupEdit] = useState(false);
     const [editGroupName, setEditGroupName] = useState('');
@@ -970,7 +974,7 @@ export default function ChatRoomPage() {
                                         {/* Content */}
                                         {hasImageMsg ? (
                                             <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.media_url!); }}>
-                                                <img src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy" />
+                                                <SignedImg src={msg.media_url!} alt="" className="w-full max-w-[300px] max-h-[320px] object-cover" loading="lazy"/>
                                                 <div className="flex items-center justify-end gap-1 px-3 py-1.5">
                                                     {isMine && !msg.id.startsWith('tmp_') && (
                                                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteMessage(msg.id); }} className="p-0.5 -m-0.5 mr-0.5 rounded-full active:bg-red-100"><Trash2 className="h-3 w-3 text-[#6b7b6e]/50 active:text-red-500" /></button>
@@ -1275,7 +1279,7 @@ export default function ChatRoomPage() {
                 {previewImage && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-[#0f1612] flex items-center justify-center" onClick={() => setPreviewImage(null)}>
                         <button className="absolute top-4 left-4 h-10 w-10 rounded-full flex items-center justify-center text-white hover:bg-white/10 z-10"><X className="h-6 w-6" /></button>
-                        <motion.img initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} src={previewImage} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+                        <motion.img initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} src={signedPreviewImage} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
                     </motion.div>
                 )}
             </AnimatePresence>

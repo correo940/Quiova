@@ -30,6 +30,7 @@ import { differenceInDays } from 'date-fns';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { getApiUrl } from '@/lib/api-utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiFetch } from '@/lib/api-fetch';
 
 type Plant = {
     id: string;
@@ -148,7 +149,7 @@ export default function HuertoPage() {
                 toast.loading('La IA de Pl@ntNet y Groq está analizando tu planta...', { id: 'analyze' });
 
                 const apiUrl = getApiUrl('api/plants/analyze');
-                const res = await fetch(apiUrl, {
+                const res = await apiFetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageB64: base64String, userId: user.id }),
@@ -357,7 +358,7 @@ export default function HuertoPage() {
                 toast.loading('Re-escaneando con IA...', { id: 'rescan' });
 
                 const apiUrl = getApiUrl('api/plants/analyze');
-                const res = await fetch(apiUrl, {
+                const res = await apiFetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageB64: base64String, userId: user.id }),

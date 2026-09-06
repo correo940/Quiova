@@ -17,6 +17,7 @@ import { useAppPermission } from '@/hooks/useAppPermission';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { apiFetch } from '@/lib/api-fetch';
 
 // TypeScript Types
 type BankAccount = {
@@ -470,7 +471,7 @@ export default function SavingsV2Preview() {
 
             setAiLoading(true);
             try {
-                const res = await fetch('/api/financial-insights', {
+                const res = await apiFetch('/api/financial-insights', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ monthlyStats, recentTransactions }),

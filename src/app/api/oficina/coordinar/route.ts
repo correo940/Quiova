@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { SALAS } from '@/app/apps/oficina/vista/salas-data';
 import { ejecutarClaude, ejecutarEncargo, carpetaSala } from '@/app/apps/oficina/vista/motor';
 import { promises as fs } from 'fs';
+import { requireUser } from '@/lib/require-user';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,9 @@ function parsearSeleccion(texto: string): Seleccion | null {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireUser(req);
+  if (auth.response) return auth.response;
+
     let body: { encargo?: string };
     try {
         body = await req.json();

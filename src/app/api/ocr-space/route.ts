@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
+import { requireUser } from '@/lib/require-user';
 
 export async function POST(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (auth.response) return auth.response;
+
   try {
     const user = await getAuthUser(request);
     if (user) {

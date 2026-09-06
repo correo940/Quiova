@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface SdvParams {
     prompts: string;
@@ -16,7 +17,7 @@ export function useSVD() {
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/svd', {
+        apiFetch('/api/svd', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'get_url' })
@@ -30,7 +31,7 @@ export function useSVD() {
 
     const saveApiUrl = async (url: string) => {
         try {
-            await fetch('/api/svd', {
+            await apiFetch('/api/svd', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'save_url', url })
@@ -49,7 +50,7 @@ export function useSVD() {
         setVideoUrl(null);
 
         try {
-            const res = await fetch('/api/svd', {
+            const res = await apiFetch('/api/svd', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'generate_sdv', ...params })

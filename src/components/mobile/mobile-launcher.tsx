@@ -30,6 +30,7 @@ import { AppWithStatus, MarketplaceApp, UserAppPurchase } from '@/types/marketpl
 import PurchaseDialog from './purchase-dialog';
 import { useRouter } from 'next/navigation';
 import { fetchPendingTasks, fetchMedicines, fetchInsurances, fetchVehicles } from '@/components/apps/asistente/data-fetchers';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Icon mapping for dynamic rendering
 const IconMap: { [key: string]: any } = {
@@ -642,7 +643,7 @@ export default function MobileLauncher({ onLaunchDesktop, user: initialUser, onS
         if (!taskText.trim() || !user || !selectedListId) return;
         setTaskLoading(true);
         try {
-            const res = await fetch('/api/mi-hogar/quick-task', {
+            const res = await apiFetch('/api/mi-hogar/quick-task', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: taskText.trim() })
