@@ -17,6 +17,7 @@ const TABLAS_PRIVADAS = [
     'profiles', 'passwords', 'documents', 'journal_entries', 'expenses',
     'medicines', 'family_messages', 'savings_accounts', 'warranties',
     'contacts', 'fcm_tokens', 'beta_users',
+    'splitsmart_grupos', 'splitsmart_miembros', 'splitsmart_gastos',
 ];
 
 for (const tabla of TABLAS_PRIVADAS) {

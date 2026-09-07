@@ -464,6 +464,11 @@ export default function SplitSmartExpensesPage() {
   const crearGrupo = async () => {
     if (!nuevoGrupoNombre.trim()) return;
     try {
+      // Sin esto el grupo no queda atado a nadie y los permisos no pueden
+      // saber quien puede verlo: era el motivo de que la app estuviera abierta.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Tienes que iniciar sesión para crear un grupo');
+
       const { data: gData, error: gError } = await supabase.from('splitsmart_grupos').insert({
         nombre: nuevoGrupoNombre.trim(),
         emoji: nuevoGrupoEmoji || '💸',
@@ -475,7 +480,8 @@ export default function SplitSmartExpensesPage() {
 
       const { data: mData, error: mError } = await supabase.from('splitsmart_miembros').insert({
         grupo_id: gData.id,
-        nombre: 'Tú'
+        nombre: 'Tú',
+        user_id: user.id,
       }).select().single();
 
       if (mError) throw mError;
