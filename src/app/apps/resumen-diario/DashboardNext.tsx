@@ -539,7 +539,7 @@ export default function DashboardNext() {
   if (loading || !settings) {
     return (
       <>
-        <div style={{ position: 'fixed', inset: 0, backgroundImage: "url('/images/dashboard-bg.png')", backgroundSize: 'cover', backgroundPosition: 'center', filter: 'none', zIndex: 0 }} />
+        <div style={{ position: 'fixed', inset: 0, backgroundImage: "url('/images/dashboard-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center', filter: 'none', zIndex: 0 }} />
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.22)', zIndex: 1 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
@@ -587,7 +587,7 @@ export default function DashboardNext() {
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, backgroundImage: "url('/images/dashboard-bg.png')", backgroundSize: 'cover', backgroundPosition: 'center', filter: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', inset: 0, backgroundImage: "url('/images/dashboard-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center', filter: 'none', zIndex: 0 }} />
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.22)', zIndex: 1 }} />
 
       <div style={{

@@ -88,7 +88,7 @@ export const NSQCards = () => {
             frontIcon: (
                 <div className="relative w-24 h-24">
                     <Image 
-                        src="/images/articles/3d-brain-v2.png" 
+                        src="/images/articles/3d-brain-v2.jpg" 
                         alt="3D Brain" 
                         fill 
                         className="object-contain drop-shadow-[0_0_20px_rgba(255,100,200,0.5)] scale-125 mix-blend-screen"

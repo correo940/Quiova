@@ -40,7 +40,7 @@ const MAIN_CARDS = [
     cta: 'Explorar artículos',
     href: '/articles',
     photoBg: '',
-    photo: '/images/cuerpo-aprende.png',
+    photo: '/images/cuerpo-aprende.jpg',
   },
   {
     Icon: IconActivity,
@@ -49,7 +49,7 @@ const MAIN_CARDS = [
     cta: 'Explorar herramientas',
     href: '/beta',
     photoBg: '',
-    photo: '/images/cuerpo-practica.png',
+    photo: '/images/cuerpo-practica.jpg',
   },
   {
     Icon: IconCalendar,
@@ -58,7 +58,7 @@ const MAIN_CARDS = [
     cta: 'Abrir organizador',
     href: '/beta',
     photoBg: '',
-    photo: '/images/cuerpo-organiza.png',
+    photo: '/images/cuerpo-organiza.jpg',
   },
 ];
 
@@ -68,28 +68,28 @@ const STEPS = [
     title: 'Aprende',
     desc: 'Entiende tu cuerpo con artículos claros y basados en evidencia científica.',
     photoBg: '',
-    photo: '/images/cuerpo-aprende.png',
+    photo: '/images/cuerpo-aprende.jpg',
   },
   {
     n: 2,
     title: 'Ponlo en práctica',
     desc: 'Utiliza herramientas y simuladores para aplicar lo que aprendes en tu día a día.',
     photoBg: '',
-    photo: '/images/cuerpo-practica.png',
+    photo: '/images/cuerpo-practica.jpg',
   },
   {
     n: 3,
     title: 'Organiza',
     desc: 'Guarda tu información, crea rutinas y haz seguimiento de tu salud.',
     photoBg: '',
-    photo: '/images/cuerpo-organiza.png',
+    photo: '/images/cuerpo-organiza.jpg',
   },
   {
     n: 4,
     title: 'Mejora tus hábitos',
     desc: 'Convierte el conocimiento y la organización en hábitos saludables y sostenibles.',
     photoBg: '',
-    photo: '/images/cuerpo-habitos.png',
+    photo: '/images/cuerpo-habitos.jpg',
   },
 ];
 
