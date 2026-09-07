@@ -415,7 +415,8 @@ export default function StartMenu() {
                                             {ALL_APPS_CONFIG.map(app => {
                                                 const isOwned = ownedAppKeys.has(app.key);
                                                 const mData = marketplaceMap.get(app.key);
-                                                const isLocked = !isOwned && !!mData;
+                                                // Precio 0 = gratis mientras no haya pasarela de pago.
+                                                const isLocked = !isOwned && !!mData && Number(mData.price) > 0;
 
                                                 return (
                                                     <button

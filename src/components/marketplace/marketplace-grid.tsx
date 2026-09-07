@@ -140,7 +140,9 @@ export default function MarketplaceGrid({
             const processedApps: AppWithStatus[] = withLocalMeditationApp(marketplaceApps.map(app => ({
                 ...app,
                 isOwned: ownedAppIds.has(app.id),
-                isLocked: !ownedAppIds.has(app.id)
+                // Sin pasarela de pago, una app con precio 0 no se bloquea.
+                // Al volver a poner precio, el candado vuelve solo.
+                isLocked: Number(app.price) > 0 && !ownedAppIds.has(app.id)
             })));
 
             setApps(processedApps);
