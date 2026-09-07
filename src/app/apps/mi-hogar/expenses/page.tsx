@@ -5,34 +5,13 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { useAppPermission } from '@/hooks/useAppPermission';
+import {
+  COLORES, CAT_COLORS, CAT_ICONS, UBICACIONES, DIVISAS, EMOJIS, QUICK_REPLIES,
+} from '@/lib/splitsmart/constantes';
+import { liquidar, resumenGlobal } from '@/lib/splitsmart/balances';
 
 const MapComponent = dynamic(() => import('./MapComponent'), { ssr: false, loading: () => <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '12px' }}>Cargando mapa...</div> });
 
-// Static configuration & assets
-const COLORES = ['#1a5c2e', '#3B6D11', '#b87514', '#F5C400', '#1558a8', '#0f6e56', '#4a8a16', '#298A46'];
-const CAT_COLORS = { comida: '#b87514', transporte: '#1558a8', alojamiento: '#3B6D11', ocio: '#F5C400', otros: '#1a5c2e' };
-const UBICACIONES = {
-  madrid: { nombre: 'Madrid', lat: 40.4168, lng: -3.7038 },
-  barcelona: { nombre: 'Barcelona', lat: 41.3851, lng: 2.1734 },
-  valencia: { nombre: 'Valencia', lat: 39.4699, lng: -0.3763 },
-  lisboa: { nombre: 'Lisboa', lat: 38.7223, lng: -9.1393 },
-  oporto: { nombre: 'Oporto', lat: 41.1579, lng: -8.6291 },
-  sintra: { nombre: 'Sintra', lat: 38.8018, lng: -9.3938 },
-  belem: { nombre: 'Belém', lat: 38.6617, lng: -9.2057 },
-  cascais: { nombre: 'Cascais', lat: 38.6820, lng: -9.4213 },
-  paris: { nombre: 'París', lat: 48.8566, lng: 2.3522 },
-  roma: { nombre: 'Roma', lat: 41.9028, lng: 12.4964 },
-  london: { nombre: 'Londres', lat: 51.5074, lng: -0.1278 },
-  berlin: { nombre: 'Berlín', lat: 52.5200, lng: 13.4050 },
-  amsterdam: { nombre: 'Ámsterdam', lat: 52.3676, lng: 4.9041 },
-  vegas: { nombre: 'Las Vegas', lat: 36.1699, lng: -115.1398 },
-  nyc: { nombre: 'Nueva York', lat: 40.7128, lng: -74.0060 },
-  losangeles: { nombre: 'Los Ángeles', lat: 34.0522, lng: -118.2437 },
-};
-const DIVISAS = { EUR: { s: '€', r: 1 }, USD: { s: '$', r: 1.08 }, GBP: { s: '£', r: 0.86 }, JPY: { s: '¥', r: 163 }, MXN: { s: 'M$', r: 18.5 } };
-const EMOJIS = ['👍', '❤️', '🔥', '😂', '🙌', '😍', '🎉', '💯', '✨', '🚀'];
-const QUICK_REPLIES = ['👍 Ok, lo apunto!', '💸 Yo puedo pagar', '⏰ ¿Cuándo saldamos?', '✅ Ya he pagado'];
-const CAT_ICONS = { comida: '🍽', transporte: '🚕', alojamiento: '🏨', ocio: '🎉', otros: '📌' };
 
 export default function SplitSmartExpensesPage() {
   const { level: permLevel, loading: permLoading } = useAppPermission('mi-hogar.expenses');
@@ -300,45 +279,10 @@ export default function SplitSmartExpensesPage() {
   );
   const hoy = () => new Date().toISOString().slice(0, 10);
 
-  // Debts Liquidation Algorithm
-  const liquidar = (g: any) => {
-    const n = g.miembros.length;
-    const pagado = new Array(n).fill(0);
-    g.gastos.forEach((x: any) => {
-      const base = x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1);
-      pagado[x.pagador] += base;
-    });
-    const total = pagado.reduce((sum: number, xVal: number) => sum + xVal, 0);
-    const media = total / n;
-    const deuda = pagado.map((p: number) => +(p - media).toFixed(2));
-    const transfers = [];
-    const d = [...deuda];
-    for (let i = 0; i < 50; i++) {
-      const maxAcreedor = d.indexOf(Math.max(...d));
-      const maxDeudor = d.indexOf(Math.min(...d));
-      if (d[maxAcreedor] < 0.01 || d[maxDeudor] > -0.01) break;
-      const monto = Math.min(d[maxAcreedor], -d[maxDeudor]);
-      transfers.push({ de: maxDeudor, a: maxAcreedor, monto: +monto.toFixed(2) });
-      d[maxAcreedor] -= monto;
-      d[maxDeudor] += monto;
-    }
-    return transfers;
-  };
-
   // Global calculations
-  let deben = 0, debes = 0, gastado = 0, presTotal = 0;
   const yo = 'Tú';
-  S.grupos.forEach((g: any) => {
-    const liq = liquidar(g);
-    liq.forEach((t: any) => {
-      if (g.miembros[t.de] === yo) debes += t.monto;
-      if (g.miembros[t.a] === yo) deben += t.monto;
-    });
-    gastado += g.gastos.reduce((s: number, x: any) => s + (x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1)), 0);
-    presTotal += g.presupuesto.maximo;
-  });
-  const balance = deben - debes;
-  const disponible = presTotal - gastado;
+  const { deben, debes, balance, gastado, presupuestoTotal: presTotal, disponible } =
+    resumenGlobal(S.grupos as any, yo);
 
   // Alerts
   const alertas: { tipo: string, texto: string, grupo: string }[] = [];
