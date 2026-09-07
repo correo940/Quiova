@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { useAppPermission } from '@/hooks/useAppPermission';
+import { getSiteUrl } from '@/lib/api-utils';
 import {
   COLORES, CAT_COLORS, CAT_ICONS, UBICACIONES, DIVISAS, EMOJIS, QUICK_REPLIES,
 } from '@/lib/splitsmart/constantes';
@@ -183,6 +184,7 @@ export default function SplitSmartExpensesPage() {
               recurrentes: [],
               chat: [],
               invitaciones: [],
+              invCode: g.invite_code || null,
               presupuesto: { maximo: g.presupuesto_maximo || 0, alerta: g.presupuesto_alerta || 75, duracion: 30, fechaInicio: g.created_at },
               cerrado: g.cerrado || false,
               resumen: null
@@ -806,33 +808,50 @@ export default function SplitSmartExpensesPage() {
   };
 
   // Invitar manual adding
-  const añadirMiembro = () => {
-    if (!nuevoMiembroNombre.trim()) return;
-    if (grupo.miembros.includes(nuevoMiembroNombre.trim())) {
+  const añadirMiembro = async () => {
+    const nombre = nuevoMiembroNombre.trim();
+    if (!nombre) return;
+    if (grupo.miembros.includes(nombre)) {
       alert('Ya existe');
       return;
     }
-    const nextGrupos = S.grupos.map((x, idx) => {
-      if (idx === S.grupoIdx) {
-        return { ...x, miembros: [...x.miembros, nuevoMiembroNombre.trim()] };
-      }
-      return x;
-    });
-    setS(prev => ({ ...prev, grupos: nextGrupos }));
-    setNuevoMiembroNombre('');
-    alert(`✅ ${nuevoMiembroNombre.trim()} añadido al grupo`);
+    try {
+      // Antes esto solo tocaba el estado local: el miembro desaparecia al
+      // recargar. Los miembros sin user_id son personas sin cuenta en Quioba.
+      const { data: creado, error } = await supabase.from('splitsmart_miembros')
+        .insert({ grupo_id: grupo.id, nombre }).select().single();
+      if (error) throw error;
+
+      setS(prev => ({
+        ...prev,
+        grupos: prev.grupos.map((x: any, idx: number) =>
+          idx === prev.grupoIdx
+            ? { ...x, miembros: [...x.miembros, nombre], miembrosData: [...(x.miembrosData || []), creado] }
+            : x),
+      }));
+      setNuevoMiembroNombre('');
+    } catch (err: any) {
+      alert('No se pudo añadir: ' + (err.message || err));
+    }
   };
 
-  const revocarEnlace = () => {
-    const nextCode = grupo.nombre.slice(0, 3).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
-    const nextGrupos = S.grupos.map((x: any, idx: number) => {
-      if (idx === S.grupoIdx) {
-        return { ...x, invCode: nextCode };
-      }
-      return x;
-    });
-    setS(prev => ({ ...prev, grupos: nextGrupos }));
-    alert('Enlace revocado. Se generó uno nuevo.');
+  // Genera o renueva el enlace. Renovar invalida el anterior, que es lo que
+  // se espera de "revocar": quien lo tuviera ya no puede entrar.
+  const revocarEnlace = async () => {
+    if (!grupo?.id) return;
+    try {
+      const { data: codigo, error } = await supabase.rpc('splitsmart_renovar_codigo', { p_grupo: grupo.id });
+      if (error) throw error;
+
+      setS(prev => ({
+        ...prev,
+        grupos: prev.grupos.map((x: any, idx: number) =>
+          idx === prev.grupoIdx ? { ...x, invCode: codigo } : x),
+      }));
+      alert('Enlace nuevo generado. El anterior ya no funciona.');
+    } catch (err: any) {
+      alert('No se pudo generar el enlace: ' + (err.message || err));
+    }
   };
 
   const revocarInvitacion = (email: string) => {
@@ -1015,7 +1034,7 @@ export default function SplitSmartExpensesPage() {
 
 
   // QR Invite URL
-  const inviteUrl = grupo && grupo.invCode ? `https://splitsmart.app/join?g=${grupo.invCode}` : '';
+  const inviteUrl = grupo && grupo.invCode ? getSiteUrl(`apps/mi-hogar/expenses/unirse?c=${grupo.invCode}`) : '';
   const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteUrl)}`;
 
   // Navigation Premium link (Return back to Mi Hogar)
