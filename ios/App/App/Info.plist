@@ -45,5 +45,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Quioba usa la cámara para escanear tickets, códigos de barras y documentos, y para enviar fotos en el chat familiar.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Quioba usa el micrófono para grabar notas de voz en el chat y para hablar con el asistente.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Quioba convierte tu voz en texto para que puedas dictar notas y tareas en lugar de escribirlas.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Quioba accede a tus fotos para que puedas adjuntar tickets, documentos y garantías desde el carrete.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Quioba guarda en tu carrete las imágenes y documentos que descargues desde la aplicación.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Quioba usa Face ID para proteger el acceso a tus contraseñas y documentos guardados.</string>
 </dict>
 </plist>
