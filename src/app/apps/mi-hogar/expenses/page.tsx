@@ -9,6 +9,12 @@ import {
   COLORES, CAT_COLORS, CAT_ICONS, UBICACIONES, DIVISAS, EMOJIS, QUICK_REPLIES,
 } from '@/lib/splitsmart/constantes';
 import { liquidar, resumenGlobal } from '@/lib/splitsmart/balances';
+import ChatTab from './tabs/ChatTab';
+import GrupoTab from './tabs/GrupoTab';
+import ResumenTab from './tabs/ResumenTab';
+import InvitarTab from './tabs/InvitarTab';
+import RecurrentesTab from './tabs/RecurrentesTab';
+import MapaTab from './tabs/MapaTab';
 
 const MapComponent = dynamic(() => import('./MapComponent'), { ssr: false, loading: () => <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '12px' }}>Cargando mapa...</div> });
 
@@ -2251,899 +2257,124 @@ export default function SplitSmartExpensesPage() {
         <div className="main">
           {/* ══════════════════════════ DASHBOARD ══════════════════════════ */}
           {activeTab === 'dashboard' && (
-            <div>
-              <div className="grid3">
-                <div className="stat">
-                  <div className="stat-label">Te deben</div>
-                  <div className="stat-value text-green">{fmt(deben)}</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-label">Debes</div>
-                  <div className="stat-value text-red">{fmt(debes)}</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-label">Balance</div>
-                  <div className="stat-value" style={{ color: balance >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                    {balance >= 0 ? '+' : ''}{fmt(balance)}
-                  </div>
-                </div>
-              </div>
-              <div className="grid3" style={{ marginBottom: '14px' }}>
-                <div className="stat">
-                  <div className="stat-label">Gastado</div>
-                  <div className="stat-value">{fmt(gastado)}</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-label">Presupuesto</div>
-                  <div className="stat-value">{fmt(presTotal)}</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-label">Disponible</div>
-                  <div className="stat-value" style={{ color: disponible >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                    {fmt(Math.max(disponible, 0))}
-                  </div>
-                </div>
-              </div>
-
-              {alertas.length > 0 && (
-                <div>
-                  {alertas.map((al, idx) => (
-                    <div key={idx} className={`alerta ${al.tipo}`}>
-                      <strong>{al.grupo}</strong>: {al.texto}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="card">
-                <div className="flex-sb" style={{ marginBottom: '12px' }}>
-                  <div className="card-title" style={{ margin: 0 }}>Mis grupos</div>
-                  <button className="btn sm success" onClick={() => setIsNuevoGrupoModalOpen(true)}>
-                    <i className="ti ti-plus"></i> Nuevo
-                  </button>
-                </div>
-                <div>
-                  {S.grupos.map((g: any, i: number) => {
-                    const tot = g.gastos.reduce((sum: number, x: any) => sum + (x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1)), 0);
-                    const pct = g.presupuesto.maximo > 0 ? Math.min((tot / g.presupuesto.maximo) * 100, 100) : 0;
-                    const est = pct <= 50 ? 'ok' : pct <= 85 ? 'warn' : 'over';
-
-                    return (
-                      <div
-                        key={g.id}
-                        className={`grupo-card ${i === S.grupoIdx ? 'activo' : ''}`}
-                        onClick={() => {
-                          setS(prev => ({ ...prev, grupoIdx: i }));
-                          setActiveTab('grupo');
-                        }}
-                      >
-                        <div className="grupo-header">
-                          <div className="grupo-avatar" style={{ background: `${avColor(i)}22`, fontSize: '20px' }}>{g.emoji}</div>
-                          <div className="grupo-info">
-                            <h3>{g.nombre}</h3>
-                            <p>{g.miembros.length} personas · {g.gastos.length} gastos · {fmt(tot)}</p>
-                          </div>
-                          {g.cerrado && <span className="chip">Cerrado</span>}
-                          <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
-                            <button
-                              className="btn sm"
-                              style={{ padding: '4px 8px', fontSize: '13px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
-                              onClick={(e) => abrirEditGrupo(i, e)}
-                              title="Editar grupo"
-                            >✏️</button>
-                            <button
-                              className="btn sm"
-                              style={{ padding: '4px 8px', fontSize: '13px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                              onClick={(e) => eliminarGrupo(i, e)}
-                              title="Eliminar grupo"
-                            >🗑️</button>
-                          </div>
-                        </div>
-                        {g.presupuesto.maximo > 0 && (
-                          <div className="budget-wrap" style={{ marginTop: '8px' }}>
-                            <div className="budget-labels">
-                              <span>{fmt(tot)}</span>
-                              <span>{fmt(g.presupuesto.maximo)}</span>
-                            </div>
-                            <div className="budget-track">
-                              <div className={`budget-fill ${est}`} style={{ width: `${pct}%` }}>
-                                {pct > 15 ? Math.round(pct) + '%' : ''}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ── Agenda del Día / Gastos ── */}
-              {(() => {
-                // Combine general database events with financial events
-                const combinedItems: { label: string; sub?: string; color: string; icon: string; fecha?: string }[] = [];
-
-                // 1. Add database events loaded from Supabase (Shifts, ITV, Seguro, Docs, Maintenance)
-                agendaEvents.forEach(e => {
-                  combinedItems.push({
-                    label: e.label,
-                    sub: e.sub,
-                    color: e.color,
-                    icon: e.icon,
-                    fecha: e.fecha,
-                  });
-                });
-
-                // 2. Add recurring expenses next 30 days
-                const today = new Date();
-                S.grupos.forEach(g => {
-                  (g.recurrentes || []).filter((r: any) => r.activo).forEach((r: any) => {
-                    const d = new Date(r.proximaFecha);
-                    const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
-                    if (diff >= 0 && diff <= 30) {
-                      const label = diff === 0 ? 'Hoy' : diff === 1 ? 'Mañana' : `En ${diff}d`;
-                      combinedItems.push({
-                        label: r.desc,
-                        sub: `${fmt(r.monto)} · ${label}`,
-                        color: '#b87514', // food/recurrent bronze/amber
-                        icon: CAT_ICONS[r.cat as keyof typeof CAT_ICONS] || '💸',
-                        fecha: d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
-                      });
-                    }
-                  });
-
-                  // 3. Add budget alerts
-                  const tot = g.gastos.reduce((s: number, x: any) => s + (x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1)), 0);
-                  if (g.presupuesto.maximo > 0) {
-                    const pct = (tot / g.presupuesto.maximo) * 100;
-                    if (pct >= g.presupuesto.alerta) {
-                      combinedItems.push({
-                        label: `Límite: ${g.nombre}`,
-                        sub: `${Math.round(pct)}% consumido`,
-                        color: pct >= 100 ? '#dc2626' : '#ea580c',
-                        icon: '⚠️',
-                      });
-                    }
-                  }
-                });
-
-                const handleScroll = (dir: 'left' | 'right') => {
-                  if (agendaScrollRef.current) {
-                    const scrollAmount = 250;
-                    agendaScrollRef.current.scrollBy({
-                      left: dir === 'left' ? -scrollAmount : scrollAmount,
-                      behavior: 'smooth'
-                    });
-                  }
-                };
-
-                return (
-                  <div style={{ marginTop: '16px', background: 'var(--card-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', paddingLeft: '2px' }}>
-                        AGENDA DEL DÍA
-                      </div>
-                      {combinedItems.length > 0 && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button 
-                            onClick={() => handleScroll('left')} 
-                            style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', cursor: 'pointer', color: 'var(--text2)', transition: 'all 0.2s', padding: 0 }}
-                            onMouseOver={(e) => e.currentTarget.style.background = 'var(--border)'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'var(--bg2)'}
-                          >
-                            ◄
-                          </button>
-                          <button 
-                            onClick={() => handleScroll('right')} 
-                            style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', cursor: 'pointer', color: 'var(--text2)', transition: 'all 0.2s', padding: 0 }}
-                            onMouseOver={(e) => e.currentTarget.style.background = 'var(--border)'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'var(--bg2)'}
-                          >
-                            ►
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {combinedItems.length === 0 ? (
-                      <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--text3)', background: 'var(--bg2)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
-                        📭 No hay eventos ni alertas para hoy
-                      </div>
-                    ) : (
-                      <div 
-                        ref={agendaScrollRef}
-                        style={{
-                          display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px',
-                          scrollbarWidth: 'thin', msOverflowStyle: 'none', scrollBehavior: 'smooth'
-                        }}
-                        className="custom-agenda-scrollbar"
-                      >
-                        {combinedItems.map((item, i) => (
-                          <div key={i} style={{
-                            flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '8px 14px', borderRadius: '14px', fontSize: '12px', fontWeight: 600,
-                            background: `${item.color}15`, border: `1px solid ${item.color}30`,
-                            color: item.color, whiteSpace: 'nowrap', cursor: 'default',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.01)', transition: 'transform 0.2s'
-                          }}
-                          onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                          onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                          >
-                            <span style={{ fontSize: '15px' }}>{item.icon}</span>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: '12px', lineHeight: '1.2' }}>{item.label}</div>
-                              {item.sub && <div style={{ fontSize: '10px', opacity: 0.8, fontWeight: 500, marginTop: '2px' }}>{item.sub}</div>}
-                            </div>
-                            {item.fecha && (
-                              <span style={{ fontSize: '10px', opacity: 0.7, marginLeft: '4px', fontWeight: 400 }}>· {item.fecha}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="card">
-                <div className="card-title">Liquidación pendiente</div>
-                <div>
-                  {S.grupos.flatMap(g => liquidar(g).map(t => ({ ...t, grupo: g }))).length === 0 ? (
-                    <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '12px' }}>✅ Todo saldado</p>
-                  ) : (
-                    S.grupos.flatMap(g => liquidar(g).map(t => ({ ...t, grupo: g }))).map((t, idx) => (
-                      <div key={idx} className="liquidacion-item">
-                        {avEl(t.grupo.miembros[t.de], t.de)}
-                        <span>{t.grupo.miembros[t.de]}</span>
-                        <span className="liq-arrow">→</span>
-                        {avEl(t.grupo.miembros[t.a], t.a)}
-                        <span>{t.grupo.miembros[t.a]}</span>
-                        <span style={{ fontSize: '10px', color: 'var(--text3)' }}>({t.grupo.nombre})</span>
-                        <span className="liq-monto">{fmt(t.monto)}</span>
-                        <button className="btn sm success" onClick={() => pagarLiquidacion(t.grupo.id, t.de, t.a, t.monto)}>Pagar</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+            <ResumenTab
+              deben={deben}
+              debes={debes}
+              balance={balance}
+              gastado={gastado}
+              presTotal={presTotal}
+              disponible={disponible}
+              alertas={alertas}
+              S={S}
+              abrirEditGrupo={abrirEditGrupo}
+              agendaEvents={agendaEvents}
+              agendaScrollRef={agendaScrollRef}
+              avColor={avColor}
+              avEl={avEl}
+              eliminarGrupo={eliminarGrupo}
+              fmt={fmt}
+              grupo={grupo}
+              hoy={hoy}
+              pagarLiquidacion={pagarLiquidacion}
+              setActiveTab={setActiveTab}
+              setIsNuevoGrupoModalOpen={setIsNuevoGrupoModalOpen}
+              setS={setS}
+            />
           )}
 
           {/* ══════════════════════════ GRUPO ══════════════════════════ */}
           {activeTab === 'grupo' && (
-            <div>
-              <div className="card">
-                <div className="flex-sb" style={{ marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{grupo.emoji} {grupo.nombre}</h2>
-                    <p className="text-sm text-muted">
-                      {grupo.miembros.length} personas · {grupo.gastos.length} gastos · {fmt(grupo.gastos.reduce((s: number, x: any) => s + (x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1)), 0))}
-                    </p>
-                  </div>
-                  <div className="flex" style={{ gap: '6px', flexWrap: 'wrap' }}>
-                    <select
-                      className="btn"
-                      style={{ padding: '6px 10px' }}
-                      value={S.grupoIdx}
-                      onChange={e => setS(prev => ({ ...prev, grupoIdx: parseInt(e.target.value) }))}
-                    >
-                      {S.grupos.map((g: any, i: number) => (
-                        <option key={g.id} value={i}>{g.emoji} {g.nombre}</option>
-                      ))}
-                    </select>
-                    <button className="btn primary" onClick={abrirModalGasto}><i className="ti ti-plus"></i> Nuevo gasto</button>
-                  </div>
-                </div>
-
-                <div className="inner-tabs">
-                  <button className={`inner-tab ${activeGTab === 'gastos' ? 'active' : ''}`} onClick={() => setActiveGTab('gastos')}>Gastos</button>
-                  <button className={`inner-tab ${activeGTab === 'saldar' ? 'active' : ''}`} onClick={() => setActiveGTab('saldar')}>Saldar</button>
-                  <button className={`inner-tab ${activeGTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveGTab('stats')}>Stats</button>
-                  <button className={`inner-tab ${activeGTab === 'miembros' ? 'active' : ''}`} onClick={() => setActiveGTab('miembros')}>Miembros</button>
-                </div>
-
-                {/* Gastos Tab */}
-                {activeGTab === 'gastos' && (
-                  <div>
-                    <div className="flex" style={{ marginBottom: '10px', gap: '6px', flexWrap: 'wrap' }}>
-                      <select
-                        className="btn"
-                        style={{ padding: '6px 10px', fontSize: '11px' }}
-                        value={filtroCat}
-                        onChange={e => setFiltroCat(e.target.value)}
-                      >
-                        <option value="">Todas las categorías</option>
-                        <option value="comida">🍽 Comida</option>
-                        <option value="transporte">🚕 Transporte</option>
-                        <option value="alojamiento">🏨 Alojamiento</option>
-                        <option value="ocio">🎉 Ocio</option>
-                        <option value="otros">📌 Otros</option>
-                      </select>
-                      <div className="divisa-selector" style={{ margin: 0 }}>
-                        {Object.keys(DIVISAS).map((d: any) => (
-                          <button
-                            key={d}
-                            className={`divisa-btn ${d === S.divisaBase ? 'active' : ''}`}
-                            onClick={() => setS(prev => ({ ...prev, divisaBase: d }))}
-                          >
-                            {d}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      {grupo.gastos.filter((x: any) => !filtroCat || x.cat === filtroCat).length === 0 ? (
-                        <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '16px' }}>Sin gastos. Añade el primero!</p>
-                      ) : (
-                        grupo.gastos.filter((x: any) => !filtroCat || x.cat === filtroCat).map((x: any) => (
-                          <div key={x.id} className="gasto-item" style={{ position: 'relative' }}>
-                            <span style={{ fontSize: '18px' }}>{CAT_ICONS[x.cat as keyof typeof CAT_ICONS] || '📌'}</span>
-                            <div className="gasto-desc">
-                              <h4>{x.desc}</h4>
-                              <p>{x.fecha} · {grupo.miembros[x.pagador]} · <span className="chip cat" style={{ fontSize: '9px' }}>{x.divisa}</span></p>
-                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'center' }}>
-                                {Object.entries(x.reacciones || {}).map(([emoji, users]: any) => (
-                                  <button
-                                    key={emoji}
-                                    className={`reaction-btn ${users.includes('Tú') ? 'mine' : ''}`}
-                                    onClick={() => toggleReaccion(x.id, emoji)}
-                                  >
-                                    {emoji}<span className="reaction-count">{users.length}</span>
-                                  </button>
-                                ))}
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                  <button className="reaction-btn" onClick={() => setOpenPickerId(openPickerId === x.id ? null : x.id)}>➕</button>
-                                  <div className={`emoji-picker ${openPickerId === x.id ? 'open' : ''}`}>
-                                    <div className="emoji-grid">
-                                      {EMOJIS.map((e: any) => (
-                                        <div key={e} className="emoji-opt" onClick={() => addReaccion(x.id, e)}>{e}</div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                              <div className="gasto-monto">{fmtBase(x.monto, x.divisa)}</div>
-                              <button
-                                onClick={() => eliminarGasto(x.id)}
-                                style={{ background: 'none', border: '1px solid var(--red)', borderRadius: '6px', color: 'var(--red)', cursor: 'pointer', fontSize: '11px', padding: '2px 7px', opacity: 0.7 }}
-                                title="Eliminar gasto"
-                              >🗑️</button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Saldar Tab */}
-                {activeGTab === 'saldar' && (
-                  <div>
-                    {liquidar(grupo).length === 0 ? (
-                      <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '16px' }}>✅ Nada que saldar</p>
-                    ) : (
-                      liquidar(grupo).map((t, idx) => (
-                        <div key={idx} className="liquidacion-item">
-                          {avEl(grupo.miembros[t.de], t.de)}
-                          <div className="grow">
-                            <strong>{grupo.miembros[t.de]}</strong> le debe <strong>{fmt(t.monto)}</strong> a <strong>{grupo.miembros[t.a]}</strong>
-                          </div>
-                          <button className="btn sm primary" onClick={() => registrarPago(t.de, t.a, t.monto)}>Pagar</button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Stats Tab */}
-                {activeGTab === 'stats' && (
-                  <div>
-                    {(() => {
-                      const tot = grupo.gastos.reduce((s: number, x: any) => s + (x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1)), 0);
-                      const porCat = {} as any;
-                      const porPagador = new Array(grupo.miembros.length).fill(0);
-                      grupo.gastos.forEach((x: any) => {
-                        const base = x.monto / (DIVISAS[x.divisa as keyof typeof DIVISAS]?.r || 1);
-                        porCat[x.cat] = (porCat[x.cat] || 0) + base;
-                        porPagador[x.pagador] += base;
-                      });
-                      const maxCat = Math.max(...Object.values(porCat) as number[]) || 1;
-                      const maxPag = Math.max(...porPagador) || 1;
-
-                      return (
-                        <div>
-                          <div className="grid2" style={{ marginBottom: '12px' }}>
-                            <div className="stat">
-                              <div className="stat-label">Total</div>
-                              <div className="stat-value" style={{ fontSize: '18px' }}>{fmt(tot)}</div>
-                            </div>
-                            <div className="stat">
-                              <div className="stat-label">Promedio/persona</div>
-                              <div className="stat-value" style={{ fontSize: '18px' }}>{fmt(tot / grupo.miembros.length)}</div>
-                            </div>
-                          </div>
-                          <div className="card-title">Por categoría</div>
-                          {Object.entries(porCat).map(([cat, v]: any) => (
-                            <div key={cat} className="chart-row">
-                              <span style={{ width: '80px', fontSize: '11px', color: 'var(--text2)' }}>
-                                {CAT_ICONS[cat as keyof typeof CAT_ICONS]} {cat}
-                              </span>
-                              <div style={{ flex: 1, height: '14px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${(v / maxCat) * 100}%`, height: '100%', background: CAT_COLORS[cat as keyof typeof CAT_COLORS], borderRadius: '4px' }}></div>
-                              </div>
-                              <span style={{ width: '55px', textAlign: 'right', fontSize: '11px', fontWeight: 600 }}>{fmt(v)}</span>
-                            </div>
-                          ))}
-                          <div className="card-title" style={{ marginTop: '14px' }}>Por persona</div>
-                          {grupo.miembros.map((m: any, i: number) => (
-                            <div key={m} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                              {avEl(m, i)}
-                              <span style={{ width: '60px', fontSize: '11px' }}>{m}</span>
-                              <div style={{ flex: 1, height: '14px', background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${(porPagador[i] / maxPag) * 100}%`, height: '100%', background: avColor(i), borderRadius: '4px' }}></div>
-                              </div>
-                              <span style={{ width: '55px', textAlign: 'right', fontSize: '11px', fontWeight: 600 }}>{fmt(porPagador[i])}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Miembros Tab */}
-                {activeGTab === 'miembros' && (
-                  <div>
-                    {grupo.miembros.map((m: any, i: number) => {
-                      const tot = grupo.gastos.filter((x: any) => x.pagador === i).reduce((sum: number, x: any) => sum + x.monto, 0);
-                      return (
-                        <div key={m} className="flex-sb" style={{ padding: '10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', marginBottom: '8px' }}>
-                          <div className="flex" style={{ gap: '10px' }}>
-                            {avEl(m, i)}
-                            <div>
-                              <p style={{ fontSize: '13px', fontWeight: 500 }}>{m}</p>
-                              <p className="text-sm text-muted">Pagó: {fmt(tot)}</p>
-                            </div>
-                          </div>
-                          <span className="chip" style={{ background: 'rgba(29,185,116,0.1)', color: 'var(--green)', borderColor: 'var(--green)' }}>Miembro</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+            <GrupoTab
+              S={S}
+              abrirModalGasto={abrirModalGasto}
+              activeGTab={activeGTab}
+              addReaccion={addReaccion}
+              avColor={avColor}
+              avEl={avEl}
+              eliminarGasto={eliminarGasto}
+              filtroCat={filtroCat}
+              fmt={fmt}
+              fmtBase={fmtBase}
+              grupo={grupo}
+              openPickerId={openPickerId}
+              registrarPago={registrarPago}
+              setActiveGTab={setActiveGTab}
+              setFiltroCat={setFiltroCat}
+              setOpenPickerId={setOpenPickerId}
+              setS={setS}
+              toggleReaccion={toggleReaccion}
+            />
           )}
 
           {/* ══════════════════════════ CHAT ══════════════════════════ */}
           {activeTab === 'chat' && (
-            <div className="card">
-              <div className="flex-sb" style={{ marginBottom: '12px' }}>
-                <div>
-                  <div className="card-title" style={{ margin: 0 }}>💬 {grupo.nombre}</div>
-                  <p className="text-sm text-muted">Mensajes en tiempo real</p>
-                </div>
-                <div className="flex" style={{ gap: '6px' }}>
-                  <select
-                    className="btn"
-                    style={{ padding: '6px 10px' }}
-                    value={S.grupoIdx}
-                    onChange={e => setS(prev => ({ ...prev, grupoIdx: parseInt(e.target.value) }))}
-                  >
-                    {S.grupos.map((g: any, i: number) => (
-                      <option key={g.id} value={i}>{g.emoji} {g.nombre}</option>
-                    ))}
-                  </select>
-                  <select
-                    className="btn"
-                    style={{ padding: '6px 10px' }}
-                    value={yoChat}
-                    onChange={e => setYoChat(e.target.value)}
-                  >
-                    {grupo.miembros.map((m: any) => (
-                      <option key={m} value={m}>Como: {m}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="chat-messages">
-                {grupo.chat.map((m: any) => {
-                  const tipo = m.tipo === 'sistema' ? 'sistema' : m.autor === yoChat ? 'mine' : 'otros';
-                  return (
-                    <div key={m.id} className={`msg ${tipo}`}>
-                      {tipo !== 'mine' && tipo !== 'sistema' && (
-                        <span className="text-sm text-muted" style={{ marginBottom: '3px' }}>{m.autor}</span>
-                      )}
-                      <div className="bubble">{m.texto}</div>
-                      {Object.keys(m.reacciones || {}).length > 0 && (
-                        <div className="msg-reactions">
-                          {Object.entries(m.reacciones || {}).map(([emoji, users]: any) => (
-                            <button
-                              key={emoji}
-                              className={`reaction-btn ${users.includes(yoChat) ? 'mine' : ''}`}
-                              onClick={() => toggleMsgReaccion(m.id, emoji)}
-                              style={{ fontSize: '10px', padding: '2px 6px' }}
-                            >
-                              {emoji} {users.length}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <span className="msg-meta">{m.fecha}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {QUICK_REPLIES.map((qr: any) => (
-                    <button
-                      key={qr}
-                      className="btn sm"
-                      onClick={() => {
-                        setChatInput(qr);
-                      }}
-                    >
-                      {qr}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Escribe un mensaje..."
-                  style={{ flex: 1 }}
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') enviarMensaje();
-                  }}
-                />
-                <button className="btn primary" onClick={enviarMensaje}><i className="ti ti-send"></i></button>
-              </div>
-            </div>
+            <ChatTab
+              grupo={grupo}
+              grupos={S.grupos}
+              grupoIdx={S.grupoIdx}
+              onCambiarGrupo={(i) => setS(prev => ({ ...prev, grupoIdx: i }))}
+              yoChat={yoChat}
+              setYoChat={setYoChat}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              enviarMensaje={enviarMensaje}
+              toggleMsgReaccion={toggleMsgReaccion}
+            />
           )}
 
           {/* ══════════════════════════ MAPA ══════════════════════════ */}
           {activeTab === 'mapa' && (
-            <div>
-              {/* Header */}
-              <div className="card" style={{ marginBottom: '12px' }}>
-                <div className="flex-sb" style={{ flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <div className="card-title" style={{ margin: 0 }}>🗺️ Mapa de gastos — {grupo.nombre}</div>
-                    <p className="text-sm text-muted" style={{ marginTop: '3px' }}>
-                      Asigna ubicación al crear un gasto para verlo aquí
-                    </p>
-                  </div>
-                  <div className="flex" style={{ gap: '6px', flexWrap: 'wrap' }}>
-                    <select className="btn" style={{ padding: '6px 10px' }} value={S.grupoIdx} onChange={e => setS(prev => ({ ...prev, grupoIdx: parseInt(e.target.value) }))}>
-                      {S.grupos.map((g: any, i: number) => <option key={g.id} value={i}>{g.emoji} {g.nombre}</option>)}
-                    </select>
-                    <button className="btn sm primary" onClick={() => { setIsGastoModalOpen(true); }}>
-                      <i className="ti ti-plus"></i> Añadir gasto
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {gastosConUbicacion.length === 0 ? (
-                /* Estado vacío */
-                <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-                  <div style={{ fontSize: '52px', marginBottom: '14px' }}>🗺️</div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)' }}>Sin gastos con ubicación</h3>
-                  <p className="text-sm text-muted" style={{ maxWidth: '320px', margin: '0 auto 20px auto', lineHeight: 1.6 }}>
-                    Al añadir un gasto, selecciona una ubicación en el campo <strong>"Ubicación (para mapa)"</strong> y aparecerá aquí como un marcador.
-                  </p>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
-                    {['✈️ Viajes', '🏖️ Vacaciones', '🍽️ Restaurantes', '🚕 Transporte'].map((t: any) => (
-                      <span key={t} className="chip" style={{ fontSize: '12px' }}>{t}</span>
-                    ))}
-                  </div>
-                  <button className="btn primary" onClick={() => setIsGastoModalOpen(true)}>
-                    <i className="ti ti-plus"></i> Añadir primer gasto con ubicación
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Estadísticas globales */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
-                    <div className="stat card" style={{ padding: '14px', textAlign: 'center' }}>
-                      <div className="stat-label">Ciudades</div>
-                      <div className="stat-value" style={{ fontSize: '22px' }}>{Object.keys(porUbicacion).length}</div>
-                    </div>
-                    <div className="stat card" style={{ padding: '14px', textAlign: 'center' }}>
-                      <div className="stat-label">Gastos</div>
-                      <div className="stat-value" style={{ fontSize: '22px' }}>{gastosConUbicacion.length}</div>
-                    </div>
-                    <div className="stat card" style={{ padding: '14px', textAlign: 'center' }}>
-                      <div className="stat-label">Total viaje</div>
-                      <div className="stat-value text-orange" style={{ fontSize: '20px' }}>{fmt(gastosConUbicacion.reduce((s: number, x: any) => s + x.monto, 0))}</div>
-                    </div>
-                  </div>
-
-                  {/* Mapa */}
-                  <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '12px' }}>
-                    <MapComponent porUbicacion={porUbicacion} parseUbicacion={parseUbicacion} catColors={CAT_COLORS} catIcons={CAT_ICONS} />
-                    <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase' }}>Categorías:</span>
-                      {[...new Set(gastosConUbicacion.map((x: any) => x.cat))].map((c: any) => (
-                        <span key={c} className="chip" style={{ fontSize: '11px', gap: '4px' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: CAT_COLORS[c as keyof typeof CAT_COLORS], display: 'inline-block' }}></span>
-                          {CAT_ICONS[c as keyof typeof CAT_ICONS]} {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Tarjetas por ciudad */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-                    {Object.entries(porUbicacion).map(([ub, gastos]: any) => {
-                      const ubInfo = parseUbicacion(ub);
-                      const tot = gastos.reduce((s: number, x: any) => s + x.monto, 0);
-                      const porCat: Record<string, number> = {};
-                      gastos.forEach((x: any) => { porCat[x.cat] = (porCat[x.cat] || 0) + x.monto; });
-                      const topCat = Object.entries(porCat).sort((a: any, b: any) => b[1] - a[1])[0];
-                      const topColor = CAT_COLORS[topCat[0] as keyof typeof CAT_COLORS] || '#3B6D11';
-                      return (
-                        <div key={ub} className="card" style={{ padding: '14px', borderTop: `3px solid ${topColor}` }}>
-                          <div className="flex-sb" style={{ marginBottom: '10px' }}>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: '14px' }}>{ubInfo?.nombre || ub}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{gastos.length} gasto{gastos.length !== 1 ? 's' : ''}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontWeight: 800, fontSize: '16px', color: topColor }}>{fmt(tot)}</div>
-                              <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{CAT_ICONS[topCat[0] as keyof typeof CAT_ICONS] || '📌'} {topCat[0]}</div>
-                            </div>
-                          </div>
-                          {/* Barra de categorías */}
-                          <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', gap: '1px', marginBottom: '10px' }}>
-                            {Object.entries(porCat).map(([cat, v]: any) => (
-                              <div key={cat} style={{ flex: v, background: CAT_COLORS[cat as keyof typeof CAT_COLORS] || '#ccc', minWidth: '4px' }} title={`${cat}: ${fmt(v)}`} />
-                            ))}
-                          </div>
-                          {/* Lista de gastos */}
-                          {gastos.map((x: any) => (
-                            <div key={x.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                              <span style={{ color: 'var(--text2)', fontSize: '12px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {CAT_ICONS[x.cat as keyof typeof CAT_ICONS] || '📌'} {x.desc}
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                <span style={{ fontWeight: 600, fontSize: '12px', color: CAT_COLORS[x.cat as keyof typeof CAT_COLORS] || 'var(--text)' }}>{fmt(x.monto)}</span>
-                                <button
-                                  onClick={(e) => abrirEditGasto(x, e)}
-                                  title="Editar gasto"
-                                  style={{ background: 'none', border: '1px solid var(--accent)', borderRadius: '5px', color: 'var(--accent)', cursor: 'pointer', fontSize: '11px', padding: '1px 6px', lineHeight: 1.5 }}
-                                >✏️</button>
-                                <button
-                                  onClick={() => eliminarGasto(x.id)}
-                                  title="Eliminar gasto"
-                                  style={{ background: 'none', border: '1px solid var(--red)', borderRadius: '5px', color: 'var(--red)', cursor: 'pointer', fontSize: '11px', padding: '1px 6px', lineHeight: 1.5 }}
-                                >🗑️</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
+            <MapaTab
+              S={S}
+              abrirEditGasto={abrirEditGasto}
+              eliminarGasto={eliminarGasto}
+              fmt={fmt}
+              gastosConUbicacion={gastosConUbicacion}
+              grupo={grupo}
+              parseUbicacion={parseUbicacion}
+              porUbicacion={porUbicacion}
+              setIsGastoModalOpen={setIsGastoModalOpen}
+              setS={setS}
+            />
           )}
 
           {/* ══════════════════════════ RECURRENTES ══════════════════════════ */}
           {activeTab === 'recurrentes' && (
-            <div className="card">
-              <div className="flex-sb" style={{ marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                <div>
-                  <div className="card-title" style={{ margin: 0 }}>Gastos recurrentes</div>
-                  <p className="text-sm text-muted">Pagos automáticos periódicos</p>
-                </div>
-                <div className="flex" style={{ gap: '6px' }}>
-                  <select
-                    className="btn"
-                    style={{ padding: '6px 10px' }}
-                    value={S.grupoIdx}
-                    onChange={e => setS(prev => ({ ...prev, grupoIdx: parseInt(e.target.value) }))}
-                  >
-                    {S.grupos.map((g: any, i: number) => (
-                      <option key={g.id} value={i}>{g.emoji} {g.nombre}</option>
-                    ))}
-                  </select>
-                  <button className="btn primary" onClick={abrirModalRecurrente}><i className="ti ti-plus"></i> Nuevo</button>
-                </div>
-              </div>
-
-              <div className="inner-tabs">
-                <button className={`inner-tab ${activeRecTab === 'lista' ? 'active' : ''}`} onClick={() => setActiveRecTab('lista')}>Lista</button>
-                <button className={`inner-tab ${activeRecTab === 'prevision' ? 'active' : ''}`} onClick={() => setActiveRecTab('prevision')}>Previsión</button>
-                <button className={`inner-tab ${activeRecTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveRecTab('calendario')}>Calendario</button>
-              </div>
-
-              {activeRecTab === 'lista' && (
-                <div>
-                  {grupo?.recurrentes?.length === 0 ? (
-                    <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '16px' }}>Sin gastos recurrentes. Añade uno!</p>
-                  ) : (
-                    grupo?.recurrentes?.map((r: any) => {
-                      const diasFaltan = Math.ceil((new Date(r.proximaFecha).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={r.id} className="recurrente-item">
-                          <span style={{ fontSize: '18px' }}>{CAT_ICONS[r.cat as keyof typeof CAT_ICONS]}</span>
-                          <div className="grow">
-                            <p style={{ fontSize: '12px', fontWeight: 500 }}>{r.desc}</p>
-                            <p className="text-sm text-muted">{fmt(r.monto)} · {r.freq} · próximo: {r.proximaFecha} {diasFaltan > 0 ? `(${diasFaltan}d)` : ' 🔴'}</p>
-                          </div>
-                          <div className={`rec-toggle ${r.activo ? 'on' : ''}`} onClick={() => toggleRecurrente(r.id)}></div>
-                          <button className="btn sm danger" onClick={() => eliminarRecurrente(r.id)}><i className="ti ti-trash"></i></button>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {activeRecTab === 'prevision' && (
-                <div>
-                  {previsionItems.length === 0 ? (
-                    <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '16px' }}>Sin recurrentes activos</p>
-                  ) : (
-                    previsionItems.slice(0, 10).map((r: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: i === 0 ? 'rgba(108,99,255,0.1)' : 'var(--bg3)', border: `1px solid ${i === 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--radius-sm)', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '16px' }}>{CAT_ICONS[r.cat as keyof typeof CAT_ICONS]}</span>
-                        <div className="grow">
-                          <p style={{ fontSize: '12px', fontWeight: 500 }}>{r.desc}</p>
-                          <p className="text-sm text-muted">{r.fecha}</p>
-                        </div>
-                        <span className="text-orange fw">{fmt(r.monto)}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {activeRecTab === 'calendario' && (
-                <div>
-                  <div className="flex-sb" style={{ marginBottom: '10px' }}>
-                    <button className="btn sm" onClick={() => handleCalMes(-1)}><i className="ti ti-chevron-left"></i></button>
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                      {calFechaActual.toLocaleString('es', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button className="btn sm" onClick={() => handleCalMes(1)}><i className="ti ti-chevron-right"></i></button>
-                  </div>
-                  <div className="cal-grid">
-                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d: any) => (
-                      <div key={d} className="cal-header">{d}</div>
-                    ))}
-                    {renderCalendarioGrid()}
-                  </div>
-                  {selectedCalDate && (
-                    <div style={{ marginTop: '12px' }}>
-                      <div className="card-title" style={{ marginBottom: '8px' }}>{selectedCalDate}</div>
-                      {grupo.gastos.filter((x: any) => x.fecha === selectedCalDate).length === 0 ? (
-                        <p className="text-sm text-muted">Sin gastos este día</p>
-                      ) : (
-                        grupo.gastos.filter((x: any) => x.fecha === selectedCalDate).map((x: any) => (
-                          <div key={x.id} className="flex-sb text-sm" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                            <span>{CAT_ICONS[x.cat as keyof typeof CAT_ICONS]} {x.desc}</span>
-                            <span className="text-orange fw">{fmt(x.monto)}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <RecurrentesTab
+              S={S}
+              abrirModalRecurrente={abrirModalRecurrente}
+              activeRecTab={activeRecTab}
+              calFechaActual={calFechaActual}
+              eliminarRecurrente={eliminarRecurrente}
+              fmt={fmt}
+              grupo={grupo}
+              handleCalMes={handleCalMes}
+              previsionItems={previsionItems}
+              renderCalendarioGrid={renderCalendarioGrid}
+              selectedCalDate={selectedCalDate}
+              setActiveRecTab={setActiveRecTab}
+              setS={setS}
+              toggleRecurrente={toggleRecurrente}
+            />
           )}
 
           {/* ══════════════════════════ INVITAR ══════════════════════════ */}
           {activeTab === 'invitar' && (
-            <div className="card">
-              <div className="flex-sb" style={{ marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                <div>
-                  <div className="card-title" style={{ margin: 0 }}>Invitar al grupo</div>
-                  <p className="text-sm text-muted">Comparte enlace o QR</p>
-                </div>
-                <select
-                  className="btn"
-                  style={{ padding: '6px 10px' }}
-                  value={S.grupoIdx}
-                  onChange={e => setS(prev => ({ ...prev, grupoIdx: parseInt(e.target.value) }))}
-                >
-                  {S.grupos.map((g: any, i: number) => (
-                    <option key={g.id} value={i}>{g.emoji} {g.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="inner-tabs">
-                <button className={`inner-tab ${activeInvTab === 'enlace' ? 'active' : ''}`} onClick={() => setActiveInvTab('enlace')}>Enlace / QR</button>
-                <button className={`inner-tab ${activeInvTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveInvTab('historial')}>Invitados</button>
-                <button className={`inner-tab ${activeInvTab === 'miembros-inv' ? 'active' : ''}`} onClick={() => setActiveInvTab('miembros-inv')}>Miembros</button>
-              </div>
-
-              {activeInvTab === 'enlace' && (
-                <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                  <div id="qr-canvas" style={{ display: 'inline-block', marginBottom: '12px' }}>
-                    <img src={qrCodeApiUrl} alt="QR Code" style={{ width: '160px', height: '160px' }} />
-                  </div>
-                  <div style={{ marginBottom: '8px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px', wordBreak: 'break-all' }}>{inviteUrl}</p>
-                    <div className="btn-row" style={{ justifyContent: 'center' }}>
-                      <button className="btn primary" onClick={() => {
-                        navigator.clipboard?.writeText(inviteUrl);
-                        alert('✅ Enlace copiado!');
-                      }}><i className="ti ti-copy"></i> Copiar enlace</button>
-                      <button className="btn" onClick={() => alert(`Comparte este enlace: ${inviteUrl}`)}><i className="ti ti-share-2"></i> Compartir</button>
-                      <button className="btn" onClick={() => window.open(qrCodeApiUrl)}><i className="ti ti-download"></i> QR</button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted" style={{ marginTop: '10px' }}>
-                    ⚠️ Cualquiera con el enlace puede unirse. <button className="btn sm danger" onClick={revocarEnlace} style={{ display: 'inline-flex' }}>Revocar</button>
-                  </p>
-                </div>
-              )}
-
-              {activeInvTab === 'historial' && (
-                <div>
-                  {grupo.invitaciones.map((inv: any) => (
-                    <div key={inv.email} className="invite-item">
-                      <div className="grow">
-                        <p style={{ fontSize: '12px', fontWeight: 500 }}>{inv.email}</p>
-                        <p className="text-sm text-muted">{inv.fecha}</p>
-                      </div>
-                      <span className={`inv-estado ${inv.estado}`}>{inv.estado}</span>
-                      {inv.estado === 'pendiente' && (
-                        <button className="btn sm" onClick={() => alert(`📬 Recordatorio enviado a ${inv.email}`)}>Recordatorio</button>
-                      )}
-                      <button className="btn sm danger" onClick={() => revocarInvitacion(inv.email)}><i className="ti ti-x"></i></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeInvTab === 'miembros-inv' && (
-                <div>
-                  {grupo.miembros.map((m: any, i: number) => {
-                    const inv = grupo.invitaciones.find((x: any) => x.email.split('@')[0] === m.toLowerCase());
-                    const estado = m === 'Tú' ? 'aceptado' : (inv?.estado || 'aceptado');
-
-                    return (
-                      <div key={m} className="flex-sb" style={{ padding: '10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', marginBottom: '6px' }}>
-                        <div className="flex">
-                          {avEl(m, i)}
-                          <span style={{ fontSize: '13px', fontWeight: 500, marginLeft: '8px' }}>{m}</span>
-                        </div>
-                        <span className={`inv-estado ${estado}`}>{estado}</span>
-                      </div>
-                    );
-                  })}
-                  <div className="divider"></div>
-                  <div className="form-group" style={{ marginTop: '10px' }}>
-                    <label>Añadir miembro manualmente</label>
-                    <div className="flex" style={{ gap: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder="Nombre..."
-                        value={nuevoMiembroNombre}
-                        onChange={e => setNuevoMiembroNombre(e.target.value)}
-                      />
-                      <button className="btn primary" onClick={añadirMiembro}><i className="ti ti-plus"></i></button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <InvitarTab
+              S={S}
+              activeInvTab={activeInvTab}
+              avEl={avEl}
+              añadirMiembro={añadirMiembro}
+              grupo={grupo}
+              inviteUrl={inviteUrl}
+              nuevoMiembroNombre={nuevoMiembroNombre}
+              qrCodeApiUrl={qrCodeApiUrl}
+              revocarEnlace={revocarEnlace}
+              revocarInvitacion={revocarInvitacion}
+              setActiveInvTab={setActiveInvTab}
+              setNuevoMiembroNombre={setNuevoMiembroNombre}
+              setS={setS}
+            />
           )}
 
           {/* ══════════════════════════ PRESUPUESTO ══════════════════════════ */}
