@@ -4,6 +4,7 @@ import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import Taskbar from '@/components/layout/taskbar';
+import IosInstallHint from '@/components/layout/ios-install-hint';
 import MobileNav from '@/components/layout/mobile-nav';
 import ClientProvider from '@/components/layout/ClientProvider';
 import { AuthProvider } from '@/components/apps/mi-hogar/auth-context';
@@ -65,6 +66,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   // maximumScale y userScalable eliminados: violaban WCAG 2.1 (criterio 1.4.4)
   themeColor: '#F8FAFC',
+  // Imprescindible en iPhone: con la barra de estado translucida
+  // (apple-mobile-web-app-status-bar-style) el contenido pasa por debajo de la
+  // muesca, y sin viewport-fit=cover los env(safe-area-inset-*) que ya usa el
+  // CSS valen 0, asi que no protegen nada.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -134,6 +140,7 @@ return;}}
                 <MobileNav />
               </div>
               <CookieBanner />
+              <IosInstallHint />
               <Analytics />
               <PageViewTracker />
             </ClientProvider>
