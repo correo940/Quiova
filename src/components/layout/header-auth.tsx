@@ -118,7 +118,7 @@ export default function HeaderAuth() {
 
     if (user) {
         return (
-            <div className="flex items-center gap-2 lg:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
                 {/* Trabajar button */}
                 <Button
                     onClick={() => isRunning ? stopSession() : startSession()}
@@ -138,7 +138,7 @@ export default function HeaderAuth() {
                 </Button>
                 {/* Global Quick Action Button (+) — solo para el owner */}
                 {isOwner && (
-                <div className="relative">
+                <div className="relative hidden sm:block">
                     <button
                         onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-green-600 to-green-800 text-white shadow-md shadow-green-900/30 hover:scale-110 transition-transform"
@@ -219,7 +219,7 @@ export default function HeaderAuth() {
                 {user.email === 'todojuntomirar@gmail.com' && (
                     <Link
                         href="/apps/oficina"
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-white shadow-md hover:scale-110 transition-transform text-[11px] font-black tracking-tight"
+                        className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full bg-slate-800 text-white shadow-md hover:scale-110 transition-transform text-[11px] font-black tracking-tight"
                         title="La Oficina"
                     >
                         OF
