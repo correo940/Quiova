@@ -163,6 +163,8 @@ export default function SplitSmartExpensesPage() {
           const groupsWithData = await Promise.all(dbGrupos.map(async (g) => {
             const { data: miembros } = await supabase.from('splitsmart_miembros').select('*').eq('grupo_id', g.id);
             const { data: gastos } = await supabase.from('splitsmart_gastos').select('*').eq('grupo_id', g.id);
+            const { data: mensajes } = await supabase.from('splitsmart_chat')
+              .select('*').eq('grupo_id', g.id).order('created_at', { ascending: true });
             
             return {
               id: g.id,
@@ -182,7 +184,15 @@ export default function SplitSmartExpensesPage() {
                 reacciones: x.reacciones || {}
               })) : [],
               recurrentes: [],
-              chat: [],
+              chat: (mensajes || []).map((m: any) => ({
+                id: m.id,
+                autor: m.autor,
+                texto: m.texto,
+                tipo: m.tipo,
+                fecha: (m.created_at || '').slice(0, 10),
+                reacciones: m.reacciones || {},
+                leido: true,
+              })),
               invitaciones: [],
               invCode: g.invite_code || null,
               presupuesto: { maximo: g.presupuesto_maximo || 0, alerta: g.presupuesto_alerta || 75, duracion: 30, fechaInicio: g.created_at },
@@ -445,6 +455,7 @@ export default function SplitSmartExpensesPage() {
       await supabase.from('splitsmart_chat').insert({
         grupo_id: grupo.id,
         autor: 'Sistema',
+        tipo: 'sistema',
         texto: `💰 ${member.nombre} añadió "${gastoDesc.trim()}" por ${fmt(montoNum, gastoDivisa)}`
       });
 
@@ -525,55 +536,77 @@ export default function SplitSmartExpensesPage() {
     }
   };
 
-  const enviarMensaje = () => {
-    if (!chatInput.trim()) return;
-    const nuevoMsg = {
-      id: 'c' + Date.now(),
-      autor: yoChat,
-      texto: chatInput.trim(),
-      tipo: yoChat === 'Tú' ? 'mine' : 'otros',
-      fecha: hoy(),
-      reacciones: {} as any,
-      leido: true
-    };
-    const nextGrupos = S.grupos.map((x: any, idx: number) => {
-      if (idx === S.grupoIdx) {
-        return {
-          ...x,
-          chat: [...x.chat, nuevoMsg]
-        };
-      }
-      return x;
-    });
-    setS(prev => ({ ...prev, grupos: nextGrupos }));
+  const enviarMensaje = async () => {
+    const texto = chatInput.trim();
+    if (!texto || !grupo?.id) return;
+
     setChatInput('');
+    try {
+      // Antes esto solo tocaba el estado local y el mensaje se perdia al
+      // recargar, porque la tabla splitsmart_chat ni siquiera existia.
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: guardado, error } = await supabase.from('splitsmart_chat').insert({
+        grupo_id: grupo.id,
+        autor: yoChat,
+        texto,
+        tipo: 'usuario',
+        user_id: user?.id ?? null,
+      }).select().single();
+      if (error) throw error;
+
+      const nuevoMsg = {
+        id: guardado.id,
+        autor: guardado.autor,
+        texto: guardado.texto,
+        tipo: guardado.tipo,
+        fecha: (guardado.created_at || '').slice(0, 10),
+        reacciones: guardado.reacciones || {},
+        leido: true,
+      };
+
+      setS(prev => ({
+        ...prev,
+        grupos: prev.grupos.map((x: any, idx: number) =>
+          idx === prev.grupoIdx ? { ...x, chat: [...x.chat, nuevoMsg] } : x),
+      }));
+    } catch (err: any) {
+      setChatInput(texto);
+      alert('No se pudo enviar: ' + (err.message || err));
+    }
   };
 
-  const toggleMsgReaccion = (msgId: string, emoji: string) => {
-    const nextGrupos = S.grupos.map((x: any, idx: number) => {
-      if (idx === S.grupoIdx) {
-        const nextChat = x.chat.map((m: any) => {
-          if (m.id === msgId) {
-            const reacciones = { ...m.reacciones } as any;
-            if (!reacciones[emoji]) reacciones[emoji] = [];
-            const uIdx = reacciones[emoji].indexOf(yoChat);
-            if (uIdx >= 0) {
-              reacciones[emoji].splice(uIdx, 1);
-            } else {
-              reacciones[emoji].push(yoChat);
-            }
-            if (reacciones[emoji].length === 0) {
-              delete reacciones[emoji];
-            }
-            return { ...m, reacciones };
-          }
-          return m;
-        });
-        return { ...x, chat: nextChat };
-      }
-      return x;
-    });
-    setS(prev => ({ ...prev, grupos: nextGrupos }));
+  const toggleMsgReaccion = async (msgId: string, emoji: string) => {
+    const mensaje = grupo?.chat?.find((m: any) => m.id === msgId);
+    if (!mensaje) return;
+
+    // Se calcula el resultado y se guarda entero: enviar el objeto completo
+    // evita que dos personas reaccionando a la vez se pisen a medias.
+    const reacciones = { ...(mensaje.reacciones || {}) } as any;
+    const quienes = [...(reacciones[emoji] || [])];
+    const yaEsta = quienes.indexOf(yoChat);
+    if (yaEsta >= 0) quienes.splice(yaEsta, 1);
+    else quienes.push(yoChat);
+
+    if (quienes.length === 0) delete reacciones[emoji];
+    else reacciones[emoji] = quienes;
+
+    // Se pinta ya y se corrige si el guardado falla: reaccionar tiene que
+    // sentirse instantaneo.
+    const anteriores = mensaje.reacciones;
+    const aplicar = (valor: any) => setS(prev => ({
+      ...prev,
+      grupos: prev.grupos.map((x: any, idx: number) =>
+        idx === prev.grupoIdx
+          ? { ...x, chat: x.chat.map((m: any) => m.id === msgId ? { ...m, reacciones: valor } : m) }
+          : x),
+    }));
+
+    aplicar(reacciones);
+
+    const { error } = await supabase.from('splitsmart_chat')
+      .update({ reacciones }).eq('id', msgId);
+
+    if (error) aplicar(anteriores);
   };
 
   // Chat badging management

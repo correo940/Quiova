@@ -17,7 +17,7 @@ const TABLAS_PRIVADAS = [
     'profiles', 'passwords', 'documents', 'journal_entries', 'expenses',
     'medicines', 'family_messages', 'savings_accounts', 'warranties',
     'contacts', 'fcm_tokens', 'beta_users',
-    'splitsmart_grupos', 'splitsmart_miembros', 'splitsmart_gastos',
+    'splitsmart_grupos', 'splitsmart_miembros', 'splitsmart_gastos', 'splitsmart_chat',
 ];
 
 for (const tabla of TABLAS_PRIVADAS) {
@@ -69,4 +69,20 @@ test('un anonimo no puede pedir los contadores del panel', async ({ request }) =
     });
 
     expect(res.status()).toBe(401);
+});
+
+/**
+ * splitsmart_chat existio solo en el codigo durante meses: la tabla no estaba
+ * en la base y los mensajes se perdian sin error. Este test no vale con
+ * "no se puede leer": exige que la tabla EXISTA y ademas filtre.
+ */
+test('la tabla del chat de gastos existe y ademas filtra', async ({ request }) => {
+    const res = await request.get(`${URL}/rest/v1/splitsmart_chat?select=id&limit=1`, {
+        headers: cabeceras(),
+    });
+
+    // 404 significaria que la tabla volvio a desaparecer, no que este protegida.
+    expect(res.status(), 'la tabla splitsmart_chat no existe').not.toBe(404);
+    expect(res.status()).toBe(200);
+    expect(await res.json(), 'el chat es legible por cualquiera').toEqual([]);
 });
