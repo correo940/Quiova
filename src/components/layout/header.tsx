@@ -57,7 +57,7 @@ export default function Header() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center" suppressHydrationWarning>
+            <div className="container flex h-16 items-center !px-3 sm:!px-6 lg:!px-8" suppressHydrationWarning>
 
                 {/* ── Logo ── */}
                 <div className="mr-6 hidden lg:flex items-center">
@@ -136,8 +136,8 @@ export default function Header() {
                 </Sheet>
 
                 {/* ── Search + Auth ── */}
-                <div className="flex flex-1 items-center justify-end gap-2 lg:flex-none" suppressHydrationWarning>
-                    <div className="relative w-32 lg:w-48 xl:w-64" suppressHydrationWarning>
+                <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2 lg:flex-none" suppressHydrationWarning>
+                    <div className="relative w-20 sm:w-32 lg:w-48 xl:w-64" suppressHydrationWarning>
                         <button
                             onClick={handleSearch}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
