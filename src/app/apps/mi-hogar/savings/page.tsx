@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { apiFetch } from '@/lib/api-fetch';
+import { flujoRecurrente, totalAhorradoEnObjetivos, totalEnCuentas, totalRecurrente } from '@/lib/ahorros/calculos';
 
 // TypeScript Types
 type BankAccount = {
@@ -325,7 +326,7 @@ export default function SavingsV2Preview() {
                 .order('date', { ascending: false });
 
             const includedAccountIds = accountsList.filter(a => a.include_in_total !== false).map(a => a.id);
-            let currentTotal = accountsList.reduce((sum, a) => sum + (a.include_in_total !== false ? (a.current_balance || 0) : 0), 0);
+            let currentTotal = totalEnCuentas(accountsList);
 
             (txs || []).forEach(t => {
                 if (t.date && t.date.split('T')[0] > referenceDateStr && includedAccountIds.includes(t.account_id)) {
@@ -1037,8 +1038,7 @@ export default function SavingsV2Preview() {
         // --- CHART 6: Fijos ---
         const recurCtx = document.getElementById('recurChart') as HTMLCanvasElement;
         if (recurCtx) {
-            const recIncs = recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
-            const recExps = recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
+            const { ingresos: recIncs, gastos: recExps } = flujoRecurrente(recurringItems);
 
             chartsRef.current.recurChart = new Chart(recurCtx, {
                 type: 'bar',
@@ -1783,8 +1783,8 @@ export default function SavingsV2Preview() {
                     <div className="qf-grid2" style={{ marginBottom: '1.25rem' }}>
                         <div className="qf-card qf-highlight" style={{ display: 'flex', flexDirection: 'column' }}>
                             <div className="qf-card-title"><i className="ti ti-wallet" aria-hidden="true"></i> Saldo total real</div>
-                            <div style={{ fontSize: '28px', fontWeight: 500, color: accounts.reduce((s, a) => s + (a.include_in_total !== false ? a.current_balance : 0), 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                {money(accounts.reduce((s, a) => s + (a.include_in_total !== false ? a.current_balance : 0), 0))}
+                            <div style={{ fontSize: '28px', fontWeight: 500, color: totalEnCuentas(accounts) < 0 ? '#dc2626' : '#16a34a' }}>
+                                {money(totalEnCuentas(accounts))}
                             </div>
                             <div style={{ fontSize: '12px', color: '#B8940A', marginTop: '4px', marginBottom: '16px' }}>{accounts.length} cuentas y tarjetas registradas</div>
                             
@@ -2165,7 +2165,7 @@ export default function SavingsV2Preview() {
                         <div>
                             <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Total en metas</div>
                             <div style={{ fontSize: '24px', fontWeight: 500, color: goals.reduce((s, g) => s + (g.current_amount || 0), 0) < 0 ? '#dc2626' : '#16a34a' }}>
-                                {money(goals.reduce((s, g) => s + (g.current_amount || 0), 0))}
+                                {money(totalAhorradoEnObjetivos(goals))}
                             </div>
                         </div>
                         <button className="qf-btn primary" onClick={() => toast.info('Nueva meta en desarrollo')}>
@@ -2257,9 +2257,7 @@ export default function SavingsV2Preview() {
                             <div className="qf-card-title"><i className="ti ti-calendar-stats" aria-hidden="true"></i> Flujo mensual estimado</div>
                             <div style={{ fontSize: '28px', fontWeight: 500 }}>
                                 {(() => {
-                                    const inc = recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
-                                    const exp = recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
-                                    const flow = inc - exp;
+                                    const { flujo: flow } = flujoRecurrente(recurringItems);
                                     return <span style={{ color: flow < 0 ? '#dc2626' : '#16a34a' }}>{`${flow >= 0 ? '+' : ''}${money(flow)}`}</span>;
                                 })()}
                             </div>
@@ -2296,7 +2294,7 @@ export default function SavingsV2Preview() {
                             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '0.5px solid var(--color-border-tertiary)', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                                 <span style={{ color: 'var(--color-text-secondary)' }}>Total ingresos fijos</span>
                                 <span className="amount-pos" style={{ fontSize: '15px' }}>
-                                    +{money(recurringItems.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0))}
+                                    +{money(totalRecurrente(recurringItems, 'income'))}
                                 </span>
                             </div>
                         </div>
@@ -2322,7 +2320,7 @@ export default function SavingsV2Preview() {
                             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '0.5px solid var(--color-border-tertiary)', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                                 <span style={{ color: 'var(--color-text-secondary)' }}>Total gastos fijos</span>
                                 <span className="amount-neg" style={{ fontSize: '15px' }}>
-                                    -{money(recurringItems.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0))}
+                                    -{money(totalRecurrente(recurringItems, 'expense'))}
                                 </span>
                             </div>
                         </div>
