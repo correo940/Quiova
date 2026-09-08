@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 interface GlobalMenuContextType {
     isStartMenuOpen: boolean;
@@ -24,6 +25,14 @@ export function GlobalMenuProvider({ children }: { children: React.ReactNode }) 
             const saved = localStorage.getItem('quioba_home_mode');
             if (saved === 'smart') setHomeModeState('smart');
         } catch {}
+    }, []);
+
+    // La app nativa (APK/iOS) siempre usa el layout de launcher: nunca el Header de escritorio,
+    // independientemente de la ruta, para evitar que sus iconos se amontonen sobre la cabecera móvil.
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() || window.innerWidth < 1024) {
+            setIsLauncherMode(true);
+        }
     }, []);
 
     const setHomeMode = (mode: 'classic' | 'smart') => {
