@@ -105,7 +105,7 @@ function BridgeContent() {
                     <div className="w-20 h-20 bg-amber-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-500/20 rotate-12">
                         <Camera className="w-10 h-10 text-white -rotate-12" />
                     </div>
-                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">QUIOVA <span className="text-amber-500 underline underline-offset-4 decoration-2">BRIDGE</span></h1>
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">QUIOBA <span className="text-amber-500 underline underline-offset-4 decoration-2">BRIDGE</span></h1>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Envía documentos a tu ordenador al instante</p>
                 </div>
 
@@ -196,7 +196,7 @@ function BridgeContent() {
                                             </>
                                         ) : (
                                             <>
-                                                <FileUp className="w-4 h-4" /> ENVIAR A QUIOVA
+                                                <FileUp className="w-4 h-4" /> ENVIAR A QUIOBA
                                             </>
                                         )}
                                     </Button>

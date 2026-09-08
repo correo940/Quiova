@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -74,7 +75,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     return await callGeminiModel(GEMINI_MODEL, systemPrompt, userPrompt);
   } catch (err: any) {
     if (err.isRetryable) {
-      console.log(`[Weather Clothing] ${GEMINI_MODEL} sobrecargado, probando ${GEMINI_MODEL_FALLBACK}`);
+      logServidor(`[Weather Clothing] ${GEMINI_MODEL} sobrecargado, probando ${GEMINI_MODEL_FALLBACK}`);
       return await callGeminiModel(GEMINI_MODEL_FALLBACK, systemPrompt, userPrompt);
     }
     throw err;
@@ -142,7 +143,7 @@ IMPORTANTE: las franjas deben ser coherentes entre sÃ­. Si por la tarde hace 28Â
         content = await callGroq(systemPrompt, userPrompt);
       } catch (err: any) {
         if (err.isRateLimit && GEMINI_API_KEY) {
-          console.log('[Weather Clothing] Groq rate limited, falling back to Gemini');
+          logServidor('[Weather Clothing] Groq rate limited, falling back to Gemini');
           content = await callGemini(systemPrompt, userPrompt);
           usedFallback = true;
         } else {

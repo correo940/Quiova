@@ -338,7 +338,8 @@ export function ChatView({ conversationId, userId }: Props) {
             )}
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-0" style={{ backgroundImage: "url('https://repo.quiova.com/chat-bg.png')" }}> {/* Placeholder for chat bg if needed */}
+            {/* Sin fondo: repo.quiova.com no existe, la imagen nunca ha cargado. */}
+            <ScrollArea className="flex-1 p-0"> {/* Placeholder for chat bg if needed */}
                 <div className="p-4 space-y-2 min-h-full flex flex-col justify-end">
                     {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">

@@ -208,7 +208,7 @@ export default function VoicePhantomPage() {
                         <Mic2 className={`h-8 w-8 ${isPlaying ? 'text-blue-400 animate-pulse' : 'text-gray-400'}`} />
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500">
-                        QUIOVA VOZ
+                        QUIOBA VOZ
                     </h1>
                     <p className="text-gray-600 text-xs tracking-[0.3em] uppercase">XTTS v2 · 2161 Voces · Protocolo Fantasma</p>
                 </div>

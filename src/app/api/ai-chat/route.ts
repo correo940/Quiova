@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -109,7 +110,7 @@ function packContext(parts: ContextPart[]): string {
     }
   }
 
-  console.log(`[CTX] tokens estimados: ${used}/${CONTEXT_BUDGET_TOKENS} | partes: ${selected.length}/${sorted.length}`);
+  logServidor(`[CTX] tokens estimados: ${used}/${CONTEXT_BUDGET_TOKENS} | partes: ${selected.length}/${sorted.length}`);
   return selected.join(' || ');
 }
 
@@ -354,7 +355,7 @@ JSON obligatorio:
 
     // Métricas de contexto
     const promptTokensEst = estimateTokens(systemPrompt) + groqMessages.slice(1).reduce((s, m) => s + estimateTokens(m.content), 0);
-    console.log(`[CTX] prompt total: ~${promptTokensEst} tokens | intent: ${primary} | módulos: ${[...needed].join(',')}`);
+    logServidor(`[CTX] prompt total: ~${promptTokensEst} tokens | intent: ${primary} | módulos: ${[...needed].join(',')}`);
 
     const FALLBACK_MODELS = [
       'openai/gpt-oss-120b',
@@ -402,7 +403,7 @@ JSON obligatorio:
     }
 
     const reply = stripThinkTags(data.choices?.[0]?.message?.content ?? '{"type":"text","content":"Lo siento, no pude procesar tu mensaje."}');
-    console.log(`✅ Respuesta OK con modelo: ${usedModel}`);
+    logServidor(`✅ Respuesta OK con modelo: ${usedModel}`);
 
     return NextResponse.json({ reply });
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // API Route: /api/secretary-chat
@@ -154,7 +155,7 @@ Cuando el usuario indique que quiere terminar o hagas la 4ª pregunta, genera un
     }
 
     const reply = stripThinkTags(data.choices?.[0]?.message?.content ?? '');
-    console.log(`[Secretary] Respuesta generada con éxito usando: ${usedModel}`);
+    logServidor(`[Secretary] Respuesta generada con éxito usando: ${usedModel}`);
 
     // Detectar si el reply contiene un JSON de resumen final
     let isSummary = false;

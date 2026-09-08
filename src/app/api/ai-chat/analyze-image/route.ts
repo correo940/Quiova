@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 export const maxDuration = 30;
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
       : image;
 
     const sizeKB = Math.round(base64Data.length / 1024);
-    console.log(`[analyze-image] Image size: ${sizeKB}KB base64`);
+    logServidor(`[analyze-image] Image size: ${sizeKB}KB base64`);
 
     if (sizeKB > 4000) {
       return NextResponse.json({ error: `Imagen demasiado grande (${sizeKB}KB). Máximo 4MB.` }, { status: 400 });
@@ -88,7 +89,7 @@ REGLAS:
       reasoning_effort: 'none',
     };
 
-    console.log(`[analyze-image] Calling Groq API with model ${GROQ_VISION_MODEL}`);
+    logServidor(`[analyze-image] Calling Groq API with model ${GROQ_VISION_MODEL}`);
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -117,7 +118,7 @@ REGLAS:
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || '';
-    console.log('[analyze-image] Raw response:', rawContent.substring(0, 300));
+    logServidor('[analyze-image] Raw response:', rawContent.substring(0, 300));
 
     const content = stripThinkTags(rawContent);
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();

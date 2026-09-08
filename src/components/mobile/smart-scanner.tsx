@@ -151,7 +151,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
         try {
             const headers = {
-                'User-Agent': 'QuiovaApp/1.0 (Android; +https://quioba.com)',
+                'User-Agent': 'QuiobaApp/1.0 (Android; +https://quioba.com)',
                 'Accept': 'application/json'
             };
 

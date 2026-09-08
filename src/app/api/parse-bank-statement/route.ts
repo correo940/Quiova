@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { checkApiLimit, getAuthUser, recordApiUsage } from '@/lib/api-limit';
 import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       extractedText = extractedText.slice(-22000);
     }
 
-    console.log(`[Parse Bank Statement] Extracted ${extractedText.length} chars from ${fileName}, sending to Groq...`);
+    logServidor(`[Parse Bank Statement] Extracted ${extractedText.length} chars from ${fileName}, sending to Groq...`);
     const rawResponse = await callGroq(extractedText);
     const transactions = parseAIResponse(rawResponse)
       .filter((tx: any) => tx.date && tx.description && tx.amount !== undefined)

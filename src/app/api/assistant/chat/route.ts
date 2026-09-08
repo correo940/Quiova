@@ -15,6 +15,7 @@ import {
 } from '@/lib/server/assistant-data';
 import { getAuthenticatedSupabaseUser } from '@/lib/server-request-auth';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 export async function POST(req: Request) {
   const auth = await requireUser(req);
@@ -58,13 +59,13 @@ export async function POST(req: Request) {
         ]);
 
         // DEBUG TEMPORAL — eliminar tras validación
-        console.log('[AIA-DEBUG] fetchMortgages result:', JSON.stringify(mortgages, null, 2));
-        console.log('[AIA-DEBUG] mortgages.length:', mortgages.mortgages.length);
+        logServidor('[AIA-DEBUG] fetchMortgages result:', JSON.stringify(mortgages, null, 2));
+        logServidor('[AIA-DEBUG] mortgages.length:', mortgages.mortgages.length);
         if (mortgages.mortgages.length > 0) {
             const m = mortgages.mortgages[0];
-            console.log('[AIA-DEBUG] mortgage[0].monthly_payment:', m.monthly_payment, typeof m.monthly_payment);
-            console.log('[AIA-DEBUG] mortgage[0].outstanding_balance:', m.outstanding_balance, typeof m.outstanding_balance);
-            console.log('[AIA-DEBUG] mortgage[0].rate_type:', m.rate_type);
+            logServidor('[AIA-DEBUG] mortgage[0].monthly_payment:', m.monthly_payment, typeof m.monthly_payment);
+            logServidor('[AIA-DEBUG] mortgage[0].outstanding_balance:', m.outstanding_balance, typeof m.outstanding_balance);
+            logServidor('[AIA-DEBUG] mortgage[0].rate_type:', m.rate_type);
         }
 
         // Construir el contexto en formato comprimido para el LLM
@@ -112,7 +113,7 @@ Instrucciones:
 
         // DEBUG TEMPORAL — fragmento hipotecas del prompt
         const hipotecasFragment = systemPrompt.slice(systemPrompt.indexOf('**5. Hipotecas:**'));
-        console.log('[AIA-DEBUG] systemPrompt hipotecas section:', hipotecasFragment.slice(0, 400));
+        logServidor('[AIA-DEBUG] systemPrompt hipotecas section:', hipotecasFragment.slice(0, 400));
 
         const completion = await groq.chat.completions.create({
             messages: [

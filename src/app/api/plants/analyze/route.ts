@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 export async function POST(req: Request) {
   const auth = await requireUser(req);
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
             formData.append('images', blob, 'plant.jpg');
             formData.append('organs', 'auto');
 
-            console.log("🔍 Enviando imagen a PlantNet...");
+            logServidor("🔍 Enviando imagen a PlantNet...");
             const plantnetRes = await fetch(`https://my-api.plantnet.org/v2/identify/all?api-key=${process.env.PLANTNET_API_KEY}`, {
                 method: 'POST',
                 body: formData
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
             if (plantnetRes.ok) {
                 const pnData = await plantnetRes.json();
-                console.log("PlantNet response:", JSON.stringify(pnData).substring(0, 200));
+                logServidor("PlantNet response:", JSON.stringify(pnData).substring(0, 200));
                 
                 if (pnData.results && pnData.results.length > 0) {
                     const bestMatch = pnData.results[0];
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
                     if (score > 0.1) { // Solo si tiene confianza mínima
                         plantnetSpecies = bestMatch.species?.scientificNameWithoutAuthor || plantnetSpecies;
                         plantnetCommon = bestMatch.species?.commonNames?.[0] || bestMatch.species?.scientificNameWithoutAuthor || plantnetCommon;
-                        console.log(`✅ PlantNet identificó: ${plantnetCommon} (confianza: ${(score * 100).toFixed(1)}%)`);
+                        logServidor(`✅ PlantNet identificó: ${plantnetCommon} (confianza: ${(score * 100).toFixed(1)}%)`);
                     } else {
                         console.warn(`⚠️ PlantNet encontró algo pero con baja confianza (${(score * 100).toFixed(1)}%)`);
                     }
@@ -104,7 +105,7 @@ EJEMPLOS VÁLIDOS:
         if (process.env.OPENROUTER_API_KEY) {
             try {
                 // Primer intento: Llama 3.3 70B (modelo muy capaz)
-                console.log("🤖 Intentando OpenRouter (Llama 3.3 70B Instruct)...");
+                logServidor("🤖 Intentando OpenRouter (Llama 3.3 70B Instruct)...");
                 const llamaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: 'POST',
                     headers: {
@@ -130,7 +131,7 @@ EJEMPLOS VÁLIDOS:
                     if (content) {
                         try {
                             careData = JSON.parse(content);
-                            console.log("✅ Llama 3.3 respondió exitosamente");
+                            logServidor("✅ Llama 3.3 respondió exitosamente");
                         } catch (parseErr) {
                             console.warn("⚠️ Llama parse error, intentando Qwen...");
                             throw new Error("Parse error");
@@ -147,7 +148,7 @@ EJEMPLOS VÁLIDOS:
                 // Segundo intento: Qwen3 (modelo gratuito capaz)
                 if (process.env.OPENROUTER_API_KEY) {
                     try {
-                        console.log("🤖 Intentando OpenRouter (Qwen3)...");
+                        logServidor("🤖 Intentando OpenRouter (Qwen3)...");
                         const qwenRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                             method: 'POST',
                             headers: {
@@ -173,28 +174,28 @@ EJEMPLOS VÁLIDOS:
                             if (content) {
                                 try {
                                     careData = JSON.parse(content);
-                                    console.log("✅ Qwen3 respondió exitosamente");
+                                    logServidor("✅ Qwen3 respondió exitosamente");
                                 } catch (parseErr) {
-                                    console.log("ℹ️ Usando análisis genérico (Qwen parse error)");
+                                    logServidor("ℹ️ Usando análisis genérico (Qwen parse error)");
                                 }
                             }
                         } else {
                             const err = await qwenRes.text();
                             console.warn(`⚠️ Qwen fallo (${qwenRes.status}): ${err.substring(0, 150)}`);
-                            console.log("ℹ️ Usando análisis genérico");
+                            logServidor("ℹ️ Usando análisis genérico");
                         }
                     } catch (qwenError) {
                         console.warn("⚠️ Qwen Exception:", qwenError);
-                        console.log("ℹ️ Usando análisis genérico");
+                        logServidor("ℹ️ Usando análisis genérico");
                     }
                 } else {
                     console.warn("⚠️ OPENROUTER_API_KEY no configurada");
-                    console.log("ℹ️ Usando análisis genérico");
+                    logServidor("ℹ️ Usando análisis genérico");
                 }
             }
         } else {
             console.warn("⚠️ OPENROUTER_API_KEY no configurada");
-            console.log("ℹ️ Usando análisis genérico con PlantNet solo");
+            logServidor("ℹ️ Usando análisis genérico con PlantNet solo");
         }
 
         const result = {
@@ -206,7 +207,7 @@ EJEMPLOS VÁLIDOS:
             care_instructions: careData.care_instructions || 'Riega cuando la tierra esté seca.',
         };
 
-        console.log("✅ Análisis completado:", result);
+        logServidor("✅ Análisis completado:", result);
         return NextResponse.json(result);
 
     } catch (error: any) {

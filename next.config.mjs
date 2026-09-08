@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Los console.log se ejecutaban en el navegador de los usuarios y algunos
+    // imprimian datos suyos. Se borran de la compilacion de produccion; en
+    // desarrollo siguen apareciendo. error y warn se conservan: son avisos
+    // reales, no depuracion.
+    compiler: {
+        removeConsole: process.env.NODE_ENV === 'production'
+            ? { exclude: ['error', 'warn'] }
+            : false,
+    },
     typescript: {
         ignoreBuildErrors: false,
     },

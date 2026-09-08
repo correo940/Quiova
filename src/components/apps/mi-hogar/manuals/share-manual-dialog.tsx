@@ -42,7 +42,7 @@ export function ShareManualDialog({ manual, open, onOpenChange }: ShareManualDia
         // For now, we'll just open the email client
         const subject = encodeURIComponent(`Manual: ${manual.title}`);
         const body = encodeURIComponent(
-            `Te comparto este manual de Quiova:\n\n` +
+            `Te comparto este manual de Quioba:\n\n` +
             `${manual.title}\n` +
             `${manual.description}\n\n` +
             `Ver manual: ${shareableLink}`

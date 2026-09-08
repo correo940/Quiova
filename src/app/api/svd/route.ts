@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPhantomConfig, savePhantomConfig } from '@/lib/server/phantom-config';
 import { Client } from "@gradio/client";
 import { requireUser } from '@/lib/require-user';
+import { logServidor } from '@/lib/log-servidor';
 
 export async function POST(req: Request) {
   const auth = await requireUser(req);
@@ -30,9 +31,9 @@ export async function POST(req: Request) {
         }
 
         const baseUrl = config.svdApiUrl.replace(/\/$/, '');
-        console.log('[SDV] Conectando a Gradio:', baseUrl);
+        logServidor('[SDV] Conectando a Gradio:', baseUrl);
         const app = await Client.connect(baseUrl);
-        console.log('[SDV] Conexión exitosa');
+        logServidor('[SDV] Conexión exitosa');
 
         if (action === 'generate_sdv') {
             const {
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: 'Debes proporcionar al menos dos prompts' }, { status: 400 });
             }
 
-            console.log('[SDV] Enviando predict con params:', { prompts, seeds, fps, inferenceSteps, guidanceScale });
+            logServidor('[SDV] Enviando predict con params:', { prompts, seeds, fps, inferenceSteps, guidanceScale });
             
             const result = await app.predict(0, [
                 prompts,
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
                 guidanceScale,
             ]);
 
-            console.log('[SDV] Resultado RAW:', JSON.stringify(result, null, 2));
+            logServidor('[SDV] Resultado RAW:', JSON.stringify(result, null, 2));
 
             const data = (result as any).data;
             if (!data || data.length === 0) {
@@ -67,8 +68,8 @@ export async function POST(req: Request) {
             const videoData = data[0];
             let videoUrl = '';
             
-            console.log('[SDV] videoData tipo:', typeof videoData);
-            console.log('[SDV] videoData completo:', JSON.stringify(videoData));
+            logServidor('[SDV] videoData tipo:', typeof videoData);
+            logServidor('[SDV] videoData completo:', JSON.stringify(videoData));
 
             // Detectar si Gradio devolvió un error envuelto como fichero
             if (typeof videoData === 'object' && videoData !== null) {
@@ -98,16 +99,16 @@ export async function POST(req: Request) {
                 videoUrl = `${baseUrl}/file=${videoUrl}`;
             }
 
-            console.log('[SDV] Video URL final:', videoUrl);
+            logServidor('[SDV] Video URL final:', videoUrl);
 
             if (!videoUrl) {
                 return NextResponse.json({ error: 'Fallo al inferir la URL del video de SD Walk' }, { status: 500 });
             }
 
             // Descargar el binario del video final
-            console.log('[SDV] Descargando video desde:', videoUrl);
+            logServidor('[SDV] Descargando video desde:', videoUrl);
             const videoRes = await fetch(videoUrl);
-            console.log('[SDV] Respuesta descarga:', videoRes.status, videoRes.statusText);
+            logServidor('[SDV] Respuesta descarga:', videoRes.status, videoRes.statusText);
             
             if (!videoRes.ok) {
                 const errBody = await videoRes.text().catch(() => 'sin body');

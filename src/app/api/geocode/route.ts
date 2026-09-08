@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     // Photon (Komoot) — geocoder pensado para búsqueda autocompletar, sin límites estrictos
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Quiova-App/1.0' },
+      headers: { 'User-Agent': 'Quioba-App/1.0' },
       cache: 'no-store',
     });
 

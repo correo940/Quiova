@@ -74,7 +74,7 @@ Responde SOLO con el JSON, sin texto adicional:
                 headers: {
                     'Authorization': `Bearer ${useKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://quiova.app',
+                    'HTTP-Referer': 'https://www.quioba.com',
                     'X-Title': 'Mi Economía - Scanner'
                 },
                 body: JSON.stringify({
