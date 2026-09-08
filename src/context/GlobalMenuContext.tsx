@@ -28,9 +28,9 @@ export function GlobalMenuProvider({ children }: { children: React.ReactNode }) 
     }, []);
 
     // La app nativa (APK/iOS) siempre usa el layout de launcher: nunca el Header de escritorio,
-    // independientemente de la ruta, para evitar que sus iconos se amontonen sobre la cabecera móvil.
+    // independientemente de la ruta. No se aplica en el sitio web (solo Capacitor nativo).
     useEffect(() => {
-        if (Capacitor.isNativePlatform() || window.innerWidth < 1024) {
+        if (Capacitor.isNativePlatform()) {
             setIsLauncherMode(true);
         }
     }, []);
