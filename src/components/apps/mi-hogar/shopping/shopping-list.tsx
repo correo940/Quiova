@@ -1225,6 +1225,11 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold truncate">{priceItem?.name}</DialogTitle>
                     </DialogHeader>
+                    {!priceLoading && priceResults.length > 0 && (
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 px-1 -mt-1">
+                            Precio de esta mañana en Mercadona, orientativo — puede haber cambiado o ser distinto en tu tienda, y la búsqueda por nombre a veces se equivoca de producto.
+                        </p>
+                    )}
                     <div className="space-y-3 py-2 overflow-y-auto flex-1">
                         {priceLoading ? (
                             <div className="flex items-center justify-center py-10 text-slate-400">

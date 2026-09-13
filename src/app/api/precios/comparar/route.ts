@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Por debajo de esto, el nombre encontrado en el catálogo ya no se parece lo
 // bastante al producto del usuario como para mostrarlo como si fuera el mismo.
-const SIMILITUD_MINIMA = 0.2;
+const SIMILITUD_MINIMA = 0.25;
 // Para un nombre genérico ("pan", "leche") Mercadona tiene varias opciones
 // distintas: se muestran varias, no solo la más parecida, para poder elegir.
 const MAX_OPCIONES_POR_SUPER = 10;
