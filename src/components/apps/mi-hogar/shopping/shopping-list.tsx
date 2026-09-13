@@ -44,6 +44,8 @@ type PrecioComparado = {
     coincidenciaExacta: boolean;
 };
 
+const resultadoKey = (r: PrecioComparado) => `${r.supermercado}::${r.ean ?? r.nombre}::${r.precio}`;
+
 type SupermarketConfig = {
     name: string;
     aliases: string[];
@@ -323,7 +325,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
     const elegirSupermercado = async (resultado: PrecioComparado) => {
         if (!priceItem) return;
-        setChoosingSupermarket(resultado.supermercado);
+        setChoosingSupermarket(resultadoKey(resultado));
         try {
             const supermarketValue = resolveSupermarketValue(resultado.supermercado) || resultado.supermercado;
             const { error } = await supabase
@@ -1233,9 +1235,15 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                 Todavía no tenemos precio de este producto. Por ahora solo miramos Mercadona, y puede que no lo hayamos encontrado en su catálogo.
                             </p>
                         ) : (
-                            priceResults.map((resultado) => (
+                            <>
+                                {priceResults.length > 1 && (
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide px-1">
+                                        {priceResults.length} opciones encontradas
+                                    </p>
+                                )}
+                                {priceResults.map((resultado) => (
                                 <div
-                                    key={resultado.supermercado}
+                                    key={resultadoKey(resultado)}
                                     className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 p-3"
                                 >
                                     <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
@@ -1262,10 +1270,10 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                         <Button
                                             size="sm"
                                             className="h-8 rounded-lg bg-green-800 hover:bg-green-900 text-xs font-bold"
-                                            disabled={choosingSupermarket === resultado.supermercado}
+                                            disabled={choosingSupermarket === resultadoKey(resultado)}
                                             onClick={() => elegirSupermercado(resultado)}
                                         >
-                                            {choosingSupermarket === resultado.supermercado ? (
+                                            {choosingSupermarket === resultadoKey(resultado) ? (
                                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                             ) : (
                                                 `Comprar en ${getSupermarketDisplayName(resultado.supermercado)}`
@@ -1273,7 +1281,8 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                         </Button>
                                     </div>
                                 </div>
-                            ))
+                                ))}
+                            </>
                         )}
                     </div>
                 </DialogContent>
