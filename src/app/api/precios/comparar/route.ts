@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Por debajo de esto, el nombre encontrado en el catálogo ya no se parece lo
 // bastante al producto del usuario como para mostrarlo como si fuera el mismo.
-const SIMILITUD_MINIMA = 0.15;
+const SIMILITUD_MINIMA = 0.2;
 // Para un nombre genérico ("pan", "leche") Mercadona tiene varias opciones
 // distintas: se muestran varias, no solo la más parecida, para poder elegir.
 const MAX_OPCIONES_POR_SUPER = 10;
@@ -49,19 +49,35 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ resultados: [] satisfies ResultadoPrecio[] });
     }
 
-    const { data: candidatos, error } = await supabaseAdmin.rpc('buscar_precios_similar', {
+    // Primero la palabra exacta ("pan" -> "Pan Viena", "Barra de pan"; nunca
+    // "Patata", que solo se parece en el sonido). Si con eso no llegamos al
+    // máximo, se rellena con parecido de texto (para "macarrones" -> "Macarrón",
+    // donde no hay ninguna palabra que coincida literalmente) sin repetir productos.
+    const { data: exactos, error: errorExactos } = await supabaseAdmin.rpc('buscar_precios_contiene', {
         termino: nombre,
         limite: 40,
     });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (errorExactos) return NextResponse.json({ error: errorExactos.message }, { status: 500 });
+
+    let candidatos: any[] = exactos ?? [];
+    if (candidatos.length < MAX_OPCIONES_POR_SUPER) {
+        const { data: parecidos, error: errorParecidos } = await supabaseAdmin.rpc('buscar_precios_similar', {
+            termino: nombre,
+            limite: 40,
+        });
+        if (errorParecidos) return NextResponse.json({ error: errorParecidos.message }, { status: 500 });
+        const yaIncluidos = new Set(candidatos.map((c) => c.id));
+        for (const c of parecidos ?? []) {
+            if (c.sim < SIMILITUD_MINIMA || yaIncluidos.has(c.id)) continue;
+            candidatos.push(c);
+        }
+    }
 
     // Varias opciones por supermercado (un nombre genérico como "pan" tiene
-    // varios productos distintos en Mercadona), hasta un máximo, ordenadas
-    // de más a menos parecidas.
+    // varios productos distintos en Mercadona), hasta un máximo.
     const contadorPorSuper = new Map<string, number>();
     const resultados: ResultadoPrecio[] = [];
     for (const c of candidatos ?? []) {
-        if (c.sim < SIMILITUD_MINIMA) continue;
         const usadas = contadorPorSuper.get(c.supermercado) ?? 0;
         if (usadas >= MAX_OPCIONES_POR_SUPER) continue;
         contadorPorSuper.set(c.supermercado, usadas + 1);

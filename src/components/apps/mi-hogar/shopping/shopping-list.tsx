@@ -1244,42 +1244,42 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                 {priceResults.map((resultado) => (
                                 <div
                                     key={resultadoKey(resultado)}
-                                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 p-3"
+                                    className="flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 p-3"
                                 >
-                                    <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                        {resultado.imagen_url ? (
-                                            <img src={resultado.imagen_url} alt={resultado.nombre} className="w-full h-full object-contain" />
-                                        ) : (
-                                            <SupermarketLogo supermarket={resultado.supermercado} className="h-8 w-8 rounded-lg" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="mb-1">
-                                            <SupermarketBadge supermarket={resultado.supermercado} subtle />
-                                        </div>
-                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{resultado.nombre}</p>
-                                        {resultado.formato && (
-                                            <p className="text-xs text-muted-foreground">{resultado.formato}</p>
-                                        )}
-                                        {!resultado.coincidenciaExacta && (
-                                            <p className="text-[10px] text-amber-600 dark:text-amber-400">Es lo más parecido que encontramos, puede no ser exactamente esta marca</p>
-                                        )}
-                                    </div>
-                                    <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
-                                        <span className="text-lg font-black text-green-800 dark:text-green-400">{resultado.precio.toFixed(2)}€</span>
-                                        <Button
-                                            size="sm"
-                                            className="h-8 rounded-lg bg-green-800 hover:bg-green-900 text-xs font-bold"
-                                            disabled={choosingSupermarket === resultadoKey(resultado)}
-                                            onClick={() => elegirSupermercado(resultado)}
-                                        >
-                                            {choosingSupermarket === resultadoKey(resultado) ? (
-                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                            {resultado.imagen_url ? (
+                                                <img src={resultado.imagen_url} alt={resultado.nombre} className="w-full h-full object-contain" />
                                             ) : (
-                                                `Comprar en ${getSupermarketDisplayName(resultado.supermercado)}`
+                                                <SupermarketLogo supermarket={resultado.supermercado} className="h-8 w-8 rounded-lg" />
                                             )}
-                                        </Button>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="mb-1">
+                                                <SupermarketBadge supermarket={resultado.supermercado} subtle />
+                                            </div>
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-snug break-words">{resultado.nombre}</p>
+                                            {resultado.formato && (
+                                                <p className="text-xs text-muted-foreground">{resultado.formato}</p>
+                                            )}
+                                            {!resultado.coincidenciaExacta && (
+                                                <p className="text-[10px] text-amber-600 dark:text-amber-400">Es lo más parecido que encontramos, puede no ser exactamente esta marca</p>
+                                            )}
+                                        </div>
+                                        <span className="flex-shrink-0 text-lg font-black text-green-800 dark:text-green-400">{resultado.precio.toFixed(2)}€</span>
                                     </div>
+                                    <Button
+                                        size="sm"
+                                        className="h-9 w-full rounded-lg bg-green-800 hover:bg-green-900 text-xs font-bold"
+                                        disabled={choosingSupermarket === resultadoKey(resultado)}
+                                        onClick={() => elegirSupermercado(resultado)}
+                                    >
+                                        {choosingSupermarket === resultadoKey(resultado) ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                            `Comprar en ${getSupermarketDisplayName(resultado.supermercado)}`
+                                        )}
+                                    </Button>
                                 </div>
                                 ))}
                             </>

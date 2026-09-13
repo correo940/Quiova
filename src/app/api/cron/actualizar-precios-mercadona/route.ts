@@ -92,7 +92,11 @@ export async function GET(req: Request) {
             const detail = await fetchJson(`${BASE}/categories/${id}/`);
             for (const group of detail.categories ?? []) {
                 for (const p of group.products ?? []) {
-                    const precio = parseFloat(p.price_instructions?.bulk_price);
+                    // OJO: "bulk_price" de Mercadona es el precio de referencia por
+                    // kg/l (para comparar), no lo que se paga. Lo que se paga por el
+                    // paquete es "unit_price" — con bulk_price, 5kg de patatas a 1€/kg
+                    // salían como "1€" en vez de los 5€ reales del saco.
+                    const precio = parseFloat(p.price_instructions?.unit_price);
                     if (!p.id || Number.isNaN(precio)) continue;
                     const formato = p.price_instructions?.unit_size
                         ? `${p.price_instructions.unit_size} ${p.price_instructions.size_format ?? ''}`.trim()
