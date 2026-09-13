@@ -1,6 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 
-const PRODUCTION_SITE_URL = 'https://quioba.com';
+// Tiene que coincidir con "server.url" de capacitor.config.json: si no coincide,
+// la app nativa pide a un dominio que redirige a este, y el salto entre
+// dominios lo bloquea el navegador (CORS) en vez de seguirlo sin más.
+const PRODUCTION_SITE_URL = 'https://www.quioba.com';
 
 function cleanPath(path: string): string {
     return path.startsWith('/') ? path.substring(1) : path;
