@@ -64,6 +64,18 @@ npx tsc --noEmit
 
 **Otros:** 56→71 tests desde cero, PWA de iPhone con `viewport-fit=cover` y aviso de instalación, precios a 0 (no hay pasarela de pago), `console.log` fuera del navegador, 4 páginas muertas borradas.
 
+## Tarea manual diaria: precios de Carrefour
+
+Si el usuario pide "actualiza los precios de Carrefour" (o parecido): sigue
+las instrucciones al principio de `scripts/importar-precios-carrefour.mjs`.
+Resumen: Carrefour bloquea las peticiones de servidor y las de tareas
+programadas en la nube (ambas probadas, ambas bloqueadas); solo funciona
+pedir las páginas desde dentro de un navegador de verdad (herramienta
+Browser de esta sesión), así que no es automático — hay que hacerlo a mano
+cuando el usuario lo pida. La tabla es compartida entre todos los usuarios
+de Quioba, así que con hacerlo una vez queda actualizado para todos, no
+hace falta repetirlo por usuario.
+
 ## Trampas encontradas (no repetir)
 
 - **Columna que tapa a otra en una policy.** `chat_rooms` tiene una columna `name`, así que dentro de un `EXISTS` el `name` sin cualificar se resolvía a `cr.name` en vez de al del fichero. Dejó el chat sin fotos para todo el mundo. Escribe `storage.objects.name`.
