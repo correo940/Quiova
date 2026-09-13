@@ -67,13 +67,14 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(false);
     const [pendingProduct, setPendingProduct] = useState<string | null>(null);
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
+    const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
 
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
 
     const isWeb = !Capacitor.isNativePlatform();
 
-    const saveToShoppingItems = async (productName: string, supermarket?: string): Promise<boolean> => {
+    const saveToShoppingItems = async (productName: string, supermarket?: string, barcode?: string): Promise<boolean> => {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData.session?.user?.id;
         if (!userId) {
@@ -90,6 +91,7 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
                 category: aiAnalysis.category,
                 is_checked: isPantry,
                 supermarket: supermarket || null,
+                barcode: barcode || null,
             }]);
         if (insertError) {
             console.error('Error saving product:', insertError);
@@ -104,9 +106,10 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         if (verifyBeforeAdd) {
             setPendingProduct(productName);
             setPendingVerifySupermarket('');
+            setPendingVerifyBarcode(barcode);
             return;
         }
-        const ok = await saveToShoppingItems(productName);
+        const ok = await saveToShoppingItems(productName, undefined, barcode);
         if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
@@ -122,13 +125,14 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
 
     const confirmPendingProduct = async () => {
         if (!pendingProduct?.trim()) return;
-        const ok = await saveToShoppingItems(pendingProduct.trim(), pendingVerifySupermarket || undefined);
+        const ok = await saveToShoppingItems(pendingProduct.trim(), pendingVerifySupermarket || undefined, pendingVerifyBarcode);
         if (!ok) return;
         setLastScanned(pendingProduct.trim());
         setScanCount(prev => prev + 1);
-        onProductAdded({ name: pendingProduct.trim() });
+        onProductAdded({ name: pendingProduct.trim(), barcode: pendingVerifyBarcode });
         setPendingProduct(null);
         setPendingVerifySupermarket('');
+        setPendingVerifyBarcode(undefined);
     };
 
     const handleManualSave = () => {

@@ -28,6 +28,20 @@ type ShoppingItem = {
     supermarket?: string;
     created_at?: string;
     status: 'to_buy' | 'in_stock';
+    barcode?: string | null;
+    precioActual?: number | null;
+    precioActualizadoEn?: string | null;
+    imagenProductoUrl?: string | null;
+};
+
+type PrecioComparado = {
+    supermercado: string;
+    nombre: string;
+    precio: number;
+    formato: string | null;
+    imagen_url: string | null;
+    ean: string | null;
+    coincidenciaExacta: boolean;
 };
 
 type SupermarketConfig = {
@@ -234,6 +248,11 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
     const [pendingVerifyName, setPendingVerifyName] = useState('');
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
 
+    const [priceItem, setPriceItem] = useState<ShoppingItem | null>(null);
+    const [priceResults, setPriceResults] = useState<PrecioComparado[]>([]);
+    const [priceLoading, setPriceLoading] = useState(false);
+    const [choosingSupermarket, setChoosingSupermarket] = useState<string | null>(null);
+
     const toggleShopMode = () => {
         if (!isShopMode) {
             setActiveTab("list");
@@ -273,6 +292,75 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
         } catch (error) {
             console.error('Error updating item:', error);
             toast.error("Error al actualizar");
+        }
+    };
+
+    const openPriceDialog = async (item: ShoppingItem) => {
+        setPriceItem(item);
+        setPriceResults([]);
+        setPriceLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (item.barcode) params.set('ean', item.barcode);
+            params.set('nombre', item.name);
+            const res = await apiFetch(getApiUrl(`api/precios/comparar?${params.toString()}`));
+            if (!res.ok) throw new Error('No se pudieron consultar los precios');
+            const data = await res.json();
+            setPriceResults(data.resultados || []);
+        } catch (error) {
+            console.error('Error comparando precios:', error);
+            toast.error('No se pudieron consultar los precios ahora mismo');
+        } finally {
+            setPriceLoading(false);
+        }
+    };
+
+    const closePriceDialog = () => {
+        setPriceItem(null);
+        setPriceResults([]);
+        setChoosingSupermarket(null);
+    };
+
+    const elegirSupermercado = async (resultado: PrecioComparado) => {
+        if (!priceItem) return;
+        setChoosingSupermarket(resultado.supermercado);
+        try {
+            const supermarketValue = resolveSupermarketValue(resultado.supermercado) || resultado.supermercado;
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({
+                    supermarket: supermarketValue,
+                    precio_actual: resultado.precio,
+                    precio_actualizado_en: new Date().toISOString(),
+                    imagen_producto_url: resultado.imagen_url,
+                    barcode: priceItem.barcode || resultado.ean || null,
+                })
+                .eq('id', priceItem.id);
+
+            if (error) throw error;
+
+            setItems((prev) =>
+                prev.map((i) =>
+                    i.id === priceItem.id
+                        ? {
+                            ...i,
+                            supermarket: supermarketValue,
+                            precioActual: resultado.precio,
+                            precioActualizadoEn: new Date().toISOString(),
+                            imagenProductoUrl: resultado.imagen_url,
+                            barcode: i.barcode || resultado.ean || null,
+                        }
+                        : i
+                )
+            );
+
+            toast.success(`Precio de ${getSupermarketDisplayName(resultado.supermercado)} guardado`);
+            closePriceDialog();
+        } catch (error) {
+            console.error('Error eligiendo supermercado:', error);
+            toast.error('No se pudo guardar el precio elegido');
+        } finally {
+            setChoosingSupermarket(null);
         }
     };
 
@@ -463,6 +551,10 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 supermarket: item.supermarket || inferSupermarketFromText(item.name) || undefined,
                 created_at: item.created_at,
                 status: item.is_checked ? 'in_stock' : 'to_buy',
+                barcode: item.barcode,
+                precioActual: item.precio_actual !== null && item.precio_actual !== undefined ? Number(item.precio_actual) : null,
+                precioActualizadoEn: item.precio_actualizado_en,
+                imagenProductoUrl: item.imagen_producto_url,
             }));
 
             setItems(mappedItems);
@@ -1125,6 +1217,68 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 </DialogContent>
             </Dialog>
 
+            {/* ── PRECIOS POR SUPERMERCADO ── */}
+            <Dialog open={!!priceItem} onOpenChange={(open) => !open && closePriceDialog()}>
+                <DialogContent className="sm:max-w-md rounded-3xl flex flex-col max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold truncate">{priceItem?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2 overflow-y-auto flex-1">
+                        {priceLoading ? (
+                            <div className="flex items-center justify-center py-10 text-slate-400">
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                            </div>
+                        ) : priceResults.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-10">
+                                Todavía no tenemos precio de este producto. Por ahora solo miramos Mercadona, y puede que no lo hayamos encontrado en su catálogo.
+                            </p>
+                        ) : (
+                            priceResults.map((resultado) => (
+                                <div
+                                    key={resultado.supermercado}
+                                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 p-3"
+                                >
+                                    <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                        {resultado.imagen_url ? (
+                                            <img src={resultado.imagen_url} alt={resultado.nombre} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <SupermarketLogo supermarket={resultado.supermercado} className="h-8 w-8 rounded-lg" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="mb-1">
+                                            <SupermarketBadge supermarket={resultado.supermercado} subtle />
+                                        </div>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{resultado.nombre}</p>
+                                        {resultado.formato && (
+                                            <p className="text-xs text-muted-foreground">{resultado.formato}</p>
+                                        )}
+                                        {!resultado.coincidenciaExacta && (
+                                            <p className="text-[10px] text-amber-600 dark:text-amber-400">Es lo más parecido que encontramos, puede no ser exactamente esta marca</p>
+                                        )}
+                                    </div>
+                                    <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                                        <span className="text-lg font-black text-green-800 dark:text-green-400">{resultado.precio.toFixed(2)}€</span>
+                                        <Button
+                                            size="sm"
+                                            className="h-8 rounded-lg bg-green-800 hover:bg-green-900 text-xs font-bold"
+                                            disabled={choosingSupermarket === resultado.supermercado}
+                                            onClick={() => elegirSupermercado(resultado)}
+                                        >
+                                            {choosingSupermarket === resultado.supermercado ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                `Comprar en ${getSupermarketDisplayName(resultado.supermercado)}`
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <Dialog open={isPlannerOpen} onOpenChange={setIsPlannerOpen}>
                 <DialogContent className="sm:max-w-md rounded-3xl border-0 overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 p-6 shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
@@ -1293,28 +1447,44 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                                     className={`group relative bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800/40 hover:border-green-800/50 dark:hover:border-green-800/30 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 flex items-start gap-4 ${isShopMode ? 'p-6' : 'p-4'}`}
                                                 >
-                                                    {/* Product illustration */}
-                                                    <div className={`flex-shrink-0 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 flex items-center justify-center select-none ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
-                                                        <span style={{ fontSize: isShopMode ? '2rem' : '1.75rem', lineHeight: 1 }}>
-                                                            {getProductEmoji(item.name)}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className={`flex-1 min-w-0 ${isShopMode ? '' : 'pr-6'}`}>
-                                                        <h4 className={`font-bold text-slate-800 dark:text-slate-100 leading-tight subpixel-antialiased tracking-tight ${isShopMode ? 'text-lg' : 'text-base truncate mb-1'}`}>
-                                                            {item.name}
-                                                        </h4>
-                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                                            {(item.supermarket || isShopMode) && (
-                                                                <SupermarketBadge supermarket={item.supermarket} />
-                                                            )}
-                                                            {item.created_at && (
-                                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold opacity-80 italic">
-                                                                    {formatDate(item.created_at)}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openPriceDialog(item)}
+                                                        className="flex flex-1 min-w-0 items-start gap-4 text-left"
+                                                        title="Ver precios en los supermercados"
+                                                    >
+                                                        {/* Product illustration */}
+                                                        <div className={`flex-shrink-0 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 flex items-center justify-center select-none overflow-hidden ${isShopMode ? 'w-16 h-16' : 'w-12 h-12'}`}>
+                                                            {item.imagenProductoUrl ? (
+                                                                <img src={item.imagenProductoUrl} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
+                                                            ) : (
+                                                                <span style={{ fontSize: isShopMode ? '2rem' : '1.75rem', lineHeight: 1 }}>
+                                                                    {getProductEmoji(item.name)}
                                                                 </span>
                                                             )}
                                                         </div>
-                                                    </div>
+
+                                                        <div className={`flex-1 min-w-0 ${isShopMode ? '' : 'pr-6'}`}>
+                                                            <h4 className={`font-bold text-slate-800 dark:text-slate-100 leading-tight subpixel-antialiased tracking-tight ${isShopMode ? 'text-lg' : 'text-base truncate mb-1'}`}>
+                                                                {item.name}
+                                                            </h4>
+                                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                                {(item.supermarket || isShopMode) && (
+                                                                    <SupermarketBadge supermarket={item.supermarket} />
+                                                                )}
+                                                                {item.precioActual != null && (
+                                                                    <span className="text-xs font-black text-green-800 dark:text-green-400">
+                                                                        {item.precioActual.toFixed(2)}€
+                                                                    </span>
+                                                                )}
+                                                                {item.created_at && (
+                                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold opacity-80 italic">
+                                                                        {formatDate(item.created_at)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </button>
 
                                                     {!readOnly && (isShopMode ? (
                                                         <button
@@ -1370,11 +1540,16 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                         <div className={`absolute -right-2 -top-2 w-12 h-12 rounded-full opacity-20 blur-xl ${item.supermarket ? getSupermarketBadgeColor(item.supermarket).split(' ')[0] : 'bg-slate-300'}`} />
 
                                         <div className="flex justify-between items-start mb-2 relative z-10 w-full">
-                                            <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-sm leading-tight line-clamp-2 pr-4 opacity-80 group-hover:opacity-100 flex items-center gap-1.5 flex-wrap">
+                                            <button
+                                                type="button"
+                                                onClick={() => openPriceDialog(item)}
+                                                title="Ver precios en los supermercados"
+                                                className="font-semibold text-slate-700 dark:text-slate-300 text-sm leading-tight line-clamp-2 pr-4 opacity-80 group-hover:opacity-100 flex items-center gap-1.5 flex-wrap text-left"
+                                            >
                                                 {expiration?.status === 'expired' && <Timer className="w-3.5 h-3.5 text-red-500 animate-pulse shrink-0" />}
                                                 {expiration?.status === 'warning' && <Timer className="w-3.5 h-3.5 text-yellow-500 shrink-0" />}
                                                 <span className="truncate">{aiData.emoji} {item.name}</span>
-                                            </h4>
+                                            </button>
                                             {!readOnly && (
                                                 <button onClick={() => deleteItem(item.id)} className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all shrink-0">
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1387,6 +1562,11 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                 <div className="flex flex-col gap-1.5 items-start">
                                                     {item.supermarket && (
                                                         <SupermarketBadge supermarket={item.supermarket} subtle />
+                                                    )}
+                                                    {item.precioActual != null && (
+                                                        <span className="text-xs font-black text-green-800 dark:text-green-400">
+                                                            {item.precioActual.toFixed(2)}€
+                                                        </span>
                                                     )}
                                                 </div>
                                                 {!readOnly && (
