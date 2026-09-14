@@ -1,9 +1,8 @@
 // Z.ai GLM-4.6V-Flash OCR - Motor de análisis de cuadrantes de la Guardia Civil
-// Llamada directa a Z.ai API (funciona tanto en web como en móvil/Capacitor)
-
-const ZAI_API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
-const ZAI_API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-const MODEL = "glm-4.6v-flash";
+// Pasa por /api/mi-hogar/zai-vision: la clave de Z.ai vive solo en el
+// servidor, no viaja al navegador/móvil (antes iba con la app y cualquiera
+// podía verla y gastarla).
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface UserShiftResult {
     found: boolean;
@@ -31,65 +30,28 @@ export interface DigitalRoster {
 }
 
 /**
- * Llama directamente a la API de Z.ai (sin proxy intermedio)
+ * Llama a /api/mi-hogar/zai-vision, que reenvía la petición a Z.ai con la
+ * clave guardada en el servidor.
  */
 export async function callZaiVision(base64Image: string, prompt: string): Promise<{ content: string; tokens: number }> {
-    // Determine mime type
-    let mimeType = 'image/jpeg';
-    let pureBase64 = base64Image;
+    console.log(`[Z.AI] Enviando imagen (${(base64Image.length / 1024).toFixed(0)} KB base64)...`);
 
-    if (base64Image.startsWith('data:')) {
-        const match = base64Image.match(/data:([^;]+);/);
-        if (match) mimeType = match[1];
-        pureBase64 = base64Image.split(',')[1] || base64Image;
-    }
-
-    const body = {
-        model: MODEL,
-        messages: [
-            {
-                role: "user",
-                content: [
-                    {
-                        type: "image_url",
-                        image_url: {
-                            url: `data:${mimeType};base64,${pureBase64}`
-                        }
-                    },
-                    {
-                        type: "text",
-                        text: prompt
-                    }
-                ]
-            }
-        ],
-        max_tokens: 8192,
-        temperature: 0.1,
-        stream: false
-    };
-
-    console.log(`[Z.AI] Enviando imagen (${(pureBase64.length / 1024).toFixed(0)} KB base64) a ${MODEL}...`);
-
-    const response = await fetch(ZAI_API_URL, {
+    const response = await apiFetch('api/mi-hogar/zai-vision', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ZAI_API_KEY}`
-        },
-        body: JSON.stringify(body)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Image, prompt }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
         console.error('[Z.AI] API Error:', JSON.stringify(data));
-        throw new Error(data.error?.message || `Z.ai API Error ${response.status}`);
+        throw new Error(data.error || `Z.ai API Error ${response.status}`);
     }
 
-    const content = data.choices?.[0]?.message?.content || '';
-    const tokens = data.usage?.total_tokens || 0;
+    const { content, tokens } = data;
 
-    console.log(`[Z.AI] Respuesta recibida: ${tokens} tokens, ${content.length} chars`);
+    console.log(`[Z.AI] Respuesta recibida: ${tokens} tokens, ${(content || '').length} chars`);
     return { content, tokens };
 }
 

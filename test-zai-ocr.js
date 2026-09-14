@@ -2,9 +2,14 @@
 const fs = require('fs');
 const path = require('path');
 
-const API_KEY = "1bdabb5b5aa74056b675415c4e24a8a9.Eleh6rSO6x43XSOH";
+const API_KEY = process.env.ZAI_API_KEY;
 const API_URL = "https://api.z.ai/api/paas/v4/chat/completions";
 const MODEL = "glm-4.6v-flash";
+
+if (!API_KEY) {
+    console.error("Falta ZAI_API_KEY en el entorno (ej: ZAI_API_KEY=xxx node test-zai-ocr.js <imagen>)");
+    process.exit(1);
+}
 
 async function testOCR(imagePath) {
     console.log("=== TEST Z.AI GLM-4.6V-Flash (Vision) ===\n");
