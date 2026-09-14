@@ -76,6 +76,21 @@ cuando el usuario lo pida. La tabla es compartida entre todos los usuarios
 de Quioba, así que con hacerlo una vez queda actualizado para todos, no
 hace falta repetirlo por usuario.
 
+## Tarea manual (dos veces por semana): precios de Lidl
+
+Si el usuario pide "actualiza los precios de Lidl" (o parecido): sigue las
+instrucciones al principio de `scripts/importar-precios-lidl.mjs`. Resumen:
+Lidl no tiene catálogo online ni API — solo un folleto semanal de ofertas
+(imágenes de página sin datos de producto/precio estructurados), así que hay
+que leerlo a mano, producto a producto, y escribir el array `PRODUCTOS` del
+script. Lleva varios minutos (no segundos, como Mercadona o Carrefour).
+
+El folleto cambia **los lunes y los viernes**, así que hay que repetir esto
+dos veces por semana para que no quede desactualizado — el doble de veces
+que Carrefour (una vez al día) o Mercadona (automático a diario). Además
+solo cubre las ofertas puntuales de esa semana, no el surtido fijo completo:
+productos genéricos que no estén en oferta esa semana no aparecerán.
+
 ## Trampas encontradas (no repetir)
 
 - **Columna que tapa a otra en una policy.** `chat_rooms` tiene una columna `name`, así que dentro de un `EXISTS` el `name` sin cualificar se resolvía a `cr.name` en vez de al del fichero. Dejó el chat sin fotos para todo el mundo. Escribe `storage.objects.name`.
