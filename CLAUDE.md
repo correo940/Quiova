@@ -91,6 +91,21 @@ que Carrefour (una vez al día) o Mercadona (automático a diario). Además
 solo cubre las ofertas puntuales de esa semana, no el surtido fijo completo:
 productos genéricos que no estén en oferta esa semana no aparecerán.
 
+## Tarea manual (una vez por semana): precios de Aldi
+
+Si el usuario pide "actualiza los precios de Aldi": sigue las instrucciones
+al principio de `scripts/importar-precios-aldi.mjs`. Resumen: la web de
+producto de Aldi (aldi.es/producto/...) es solo catálogo, sin precio (varía
+por tienda/región, así que no publican uno nacional). El único precio real
+está en el folleto semanal en PDF (aldi.es/folleto/semanal-SS-AAAA.html →
+botón "Descargar", sin protección, se baja con curl normal) o en las
+imágenes de cada página (`ipaper.ipapercms.dk/.../Image.ashx?PageNumber=N`).
+Igual que Lidl, hay que leerlo a mano y escribir el array `PRODUCTOS`.
+
+El folleto cambia **los lunes**, una vez por semana — la mitad de veces que
+Lidl. También cubre solo lo que está en oferta esa semana, no el surtido
+fijo completo.
+
 ## Trampas encontradas (no repetir)
 
 - **Columna que tapa a otra en una policy.** `chat_rooms` tiene una columna `name`, así que dentro de un `EXISTS` el `name` sin cualificar se resolvía a `cr.name` en vez de al del fichero. Dejó el chat sin fotos para todo el mundo. Escribe `storage.objects.name`.
