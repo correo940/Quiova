@@ -55,6 +55,47 @@ export default function MobileNav() {
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
 
+    // Gesto de borde estilo iOS: deslizar desde el borde izquierdo hacia la
+    // derecha vuelve atras, desde el borde derecho hacia la izquierda avanza.
+    // Se limita a una franja estrecha en el borde para no interferir con el
+    // carrusel de apps del panel, que tambien se desliza horizontalmente.
+    useEffect(() => {
+        if (!isLauncherMode) return;
+        const EDGE_ZONE = 24;
+        const MIN_DISTANCE = 60;
+        let startX = 0;
+        let startY = 0;
+        let edge: 'left' | 'right' | null = null;
+
+        const onTouchStart = (e: TouchEvent) => {
+            const t = e.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            if (startX <= EDGE_ZONE) edge = 'left';
+            else if (startX >= window.innerWidth - EDGE_ZONE) edge = 'right';
+            else edge = null;
+        };
+
+        const onTouchEnd = (e: TouchEvent) => {
+            if (!edge) return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            if (Math.abs(dx) >= MIN_DISTANCE && Math.abs(dx) > Math.abs(dy) * 2) {
+                if (edge === 'left' && dx > 0) router.back();
+                else if (edge === 'right' && dx < 0) router.forward();
+            }
+            edge = null;
+        };
+
+        window.addEventListener('touchstart', onTouchStart, { passive: true });
+        window.addEventListener('touchend', onTouchEnd, { passive: true });
+        return () => {
+            window.removeEventListener('touchstart', onTouchStart);
+            window.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [router, isLauncherMode]);
+
     // Initial auth & sync
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
@@ -108,7 +149,7 @@ export default function MobileNav() {
     return (
         <div className="z-50">
             {/* Global Back Button (only on subpages) */}
-            {pathname !== '/' && (
+            {pathname !== '/' && pathname !== '/desktop' && (
                 <button
                     onClick={() => router.back()}
                     className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-2xl border border-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:text-green-800 hover:bg-green-100 transition-all active:scale-90"

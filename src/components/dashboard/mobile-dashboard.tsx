@@ -149,18 +149,18 @@ export default function MobileDashboard() {
     return (
         <div className="flex flex-col h-[calc(100dvh-64px)] bg-[#f8faf8] dark:bg-slate-950 overflow-hidden">
             {/* Header */}
-            <div className="shrink-0 px-5 pt-5 pb-2">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">
+            <div className="shrink-0 px-5 pb-2" style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}>
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-tight break-words">
                             {dateInfo.greeting}{nickname ? `, ${nickname}` : ''}
                         </h1>
                         <p className="text-base text-slate-500 dark:text-slate-400 mt-1 capitalize">{dateInfo.shortDate}</p>
                     </div>
                     {stats.tasks > 0 && (
-                        <Link href="/apps/mi-hogar/tasks" className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-4 py-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-base font-bold text-amber-700 dark:text-amber-400">{stats.tasks} pend.</span>
+                        <Link href="/apps/mi-hogar/tasks" className="shrink-0 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-3 py-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                            <span className="text-sm font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">{stats.tasks} pend.</span>
                         </Link>
                     )}
                 </div>
