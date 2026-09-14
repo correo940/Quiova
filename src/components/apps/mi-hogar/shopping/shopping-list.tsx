@@ -42,9 +42,21 @@ type PrecioComparado = {
     imagen_url: string | null;
     ean: string | null;
     coincidenciaExacta: boolean;
+    actualizadoEn: string | null;
 };
 
 const resultadoKey = (r: PrecioComparado) => `${r.supermercado}::${r.ean ?? r.nombre}::${r.precio}`;
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+function formatearActualizacion(actualizadoEn: string | null): { texto: string; alerta: boolean } {
+    if (!actualizadoEn) return { texto: 'Fecha desconocida', alerta: true };
+    const fecha = new Date(actualizadoEn);
+    const dias = Math.floor((Date.now() - fecha.getTime()) / DIA_MS);
+    if (dias <= 0) return { texto: 'Hoy', alerta: false };
+    if (dias === 1) return { texto: 'Ayer', alerta: false };
+    return { texto: `Hace ${dias} días`, alerta: dias >= 3 };
+}
 
 type SupermarketConfig = {
     name: string;
@@ -1271,7 +1283,17 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                 <p className="text-[10px] text-amber-600 dark:text-amber-400">Es lo más parecido que encontramos, puede no ser exactamente esta marca</p>
                                             )}
                                         </div>
-                                        <span className="flex-shrink-0 text-lg font-black text-green-800 dark:text-green-400">{resultado.precio.toFixed(2)}€</span>
+                                        <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                                            <span className="text-lg font-black text-green-800 dark:text-green-400">{resultado.precio.toFixed(2)}€</span>
+                                            {(() => {
+                                                const { texto, alerta } = formatearActualizacion(resultado.actualizadoEn);
+                                                return (
+                                                    <span className={`text-[10px] font-bold ${alerta ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                        {texto}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
                                     <Button
                                         size="sm"

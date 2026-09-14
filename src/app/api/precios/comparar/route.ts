@@ -17,6 +17,7 @@ export type ResultadoPrecio = {
     imagen_url: string | null;
     ean: string | null;
     coincidenciaExacta: boolean;
+    actualizadoEn: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -34,11 +35,20 @@ export async function GET(req: NextRequest) {
     if (ean) {
         const { data, error } = await supabaseAdmin
             .from('precios_supermercado')
-            .select('supermercado, nombre, precio, formato, imagen_url, ean')
+            .select('supermercado, nombre, precio, formato, imagen_url, ean, actualizado_en')
             .eq('ean', ean);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         if (data?.length) {
-            const resultados: ResultadoPrecio[] = data.map((d) => ({ ...d, coincidenciaExacta: true }));
+            const resultados: ResultadoPrecio[] = data.map((d) => ({
+                supermercado: d.supermercado,
+                nombre: d.nombre,
+                precio: Number(d.precio),
+                formato: d.formato,
+                imagen_url: d.imagen_url,
+                ean: d.ean,
+                coincidenciaExacta: true,
+                actualizadoEn: d.actualizado_en,
+            }));
             return NextResponse.json({ resultados });
         }
         // Sin match por código de barras (aún no le llegó el turno al bot, o es
@@ -89,6 +99,7 @@ export async function GET(req: NextRequest) {
             imagen_url: c.imagen_url,
             ean: c.ean,
             coincidenciaExacta: false,
+            actualizadoEn: c.actualizado_en,
         });
     }
 
