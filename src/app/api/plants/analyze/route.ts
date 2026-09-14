@@ -115,7 +115,9 @@ EJEMPLOS VÁLIDOS:
                         'X-Title': 'Quioba Plant Analyzer'
                     },
                     body: JSON.stringify({
-                        model: 'meta-llama/llama-3.3-70b-instruct',
+                        // Sin ":free" al final, OpenRouter cobra la llamada (o falla sin
+                        // saldo) aunque exista variante gratis. Llama 3.3 ya no la tiene.
+                        model: 'google/gemma-4-31b-it:free',
                         messages: [
                             {
                                 role: "user",
@@ -158,7 +160,8 @@ EJEMPLOS VÁLIDOS:
                                 'X-Title': 'Quioba Plant Analyzer'
                             },
                             body: JSON.stringify({
-                                model: 'qwen/qwen-2.5-7b-instruct',
+                                // Qwen 2.5 7B tampoco tiene ya variante gratis en OpenRouter.
+                                model: 'nvidia/nemotron-3-super-120b-a12b:free',
                                 messages: [
                                     {
                                         role: "user",

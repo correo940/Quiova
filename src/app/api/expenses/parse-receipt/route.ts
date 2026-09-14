@@ -4,7 +4,11 @@ import { requireUser } from '@/lib/require-user';
 
 export const runtime = 'nodejs';
 
-const OPENROUTER_MODEL = 'meta-llama/llama-3.3-70b-instruct';
+// Sin ":free" al final, OpenRouter cobra la llamada aunque exista una
+// variante gratuita del mismo modelo (o falla si no hay saldo). Llama 3.3 ya
+// no tiene variante gratis; Gemma 4 31B sí, y a fecha de este comentario
+// sigue en la lista de modelos gratuitos de OpenRouter.
+const OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 const ALLOWED_CATEGORIES = ['Comida', 'Hogar', 'Facturas', 'Ocio', 'Viajes', 'Otros'];
 const MIN_EXTRACTED_TEXT_LENGTH = 10; // Tickets can be small
 

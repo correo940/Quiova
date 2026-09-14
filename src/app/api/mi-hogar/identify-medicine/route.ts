@@ -59,7 +59,10 @@ export async function POST(request: Request) {
           },
         ],
         temperature: 0.1,
-        max_tokens: 300,
+        // El modelo "piensa" antes de responder; con pocos tokens gasta el
+        // presupuesto pensando y el JSON se corta a medias -> "Unexpected
+        // end of JSON input". Ver el mismo fix en identify-product/route.ts.
+        max_tokens: 1024,
       }),
     });
 
@@ -70,7 +73,12 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || '';
-    const parsed = JSON.parse(stripThinkTags(rawContent).replace(/```json/g, '').replace(/```/g, '').trim());
+    const cleanedContent = stripThinkTags(rawContent).replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('La IA no devolvió un JSON reconocible');
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
 
     if (user) {
       await recordApiUsage(user.id, 'identify-medicine');
