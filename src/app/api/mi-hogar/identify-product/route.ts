@@ -79,7 +79,10 @@ Si no se puede identificar, devuelve {"productName":"Desconocido","supermarket":
           },
         ],
         temperature: 0.1,
-        max_tokens: 200,
+        // El modelo "piensa" antes de responder (por eso se le quita el <think>
+        // luego); con pocos tokens gasta el presupuesto pensando y el JSON se
+        // corta a medias -> "Unexpected end of JSON input".
+        max_tokens: 1024,
       }),
     });
 
@@ -91,7 +94,11 @@ Si no se puede identificar, devuelve {"productName":"Desconocido","supermarket":
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || '';
     const cleanedContent = stripThinkTags(rawContent).replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanedContent);
+    const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('La IA no devolvió un JSON reconocible');
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
 
     if (parsed.productName?.toLowerCase().includes('desconocido')) {
       return NextResponse.json(
