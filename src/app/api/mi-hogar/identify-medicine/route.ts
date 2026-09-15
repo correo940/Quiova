@@ -4,7 +4,7 @@ import { stripThinkTags } from '@/lib/strip-think';
 import { requireUser } from '@/lib/require-user';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY || '';
-const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
+const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
 
 export async function POST(request: Request) {
   const auth = await requireUser(request);

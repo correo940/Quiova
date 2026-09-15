@@ -109,7 +109,7 @@ Cuando el usuario indique que quiere terminar o hagas la 4ª pregunta, genera un
 
     const FALLBACK_MODELS = [
       'openai/gpt-oss-120b',
-      'qwen/qwen3.6-27b',
+      'qwen/qwen3.8-27b',
       'openai/gpt-oss-20b',
     ];
 

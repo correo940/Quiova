@@ -44,7 +44,7 @@ Responde SOLO con el JSON, sin texto adicional:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: modelName || 'qwen/qwen3.6-27b',
+                    model: modelName || 'qwen/qwen3.8-27b',
                     messages: [
                         {
                             role: 'user',
@@ -78,7 +78,7 @@ Responde SOLO con el JSON, sin texto adicional:
                     'X-Title': 'Mi Economía - Scanner'
                 },
                 body: JSON.stringify({
-                    model: modelName || 'qwen/qwen3.6-27b',
+                    model: modelName || 'qwen/qwen3.8-27b',
                     messages: [
                         {
                             role: 'user',
