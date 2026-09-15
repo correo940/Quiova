@@ -56,20 +56,36 @@ export default function MobileNav() {
     const [profile, setProfile] = useState<any>(null);
 
     // Gesto en cualquier punto de la pantalla: arrastrar hacia la izquierda
-    // vuelve atras, arrastrar hacia la derecha avanza.
+    // vuelve atras, arrastrar hacia la derecha avanza. Se ignora si el dedo
+    // empieza dentro de un carrusel u otra lista que ya se desliza en horizontal,
+    // para no interferir con ese propio gesto.
     useEffect(() => {
         if (!isLauncherMode) return;
         const MIN_DISTANCE = 60;
         let startX = 0;
         let startY = 0;
+        let dentroDeScrollHorizontal = false;
+
+        const dentroDeElementoDeslizable = (el: Element | null): boolean => {
+            while (el && el !== document.body) {
+                if (el instanceof HTMLElement && el.scrollWidth > el.clientWidth + 1) {
+                    const overflowX = getComputedStyle(el).overflowX;
+                    if (overflowX === 'auto' || overflowX === 'scroll') return true;
+                }
+                el = el.parentElement;
+            }
+            return false;
+        };
 
         const onTouchStart = (e: TouchEvent) => {
             const t = e.touches[0];
             startX = t.clientX;
             startY = t.clientY;
+            dentroDeScrollHorizontal = dentroDeElementoDeslizable(e.target as Element);
         };
 
         const onTouchEnd = (e: TouchEvent) => {
+            if (dentroDeScrollHorizontal) return;
             const t = e.changedTouches[0];
             const dx = t.clientX - startX;
             const dy = t.clientY - startY;
