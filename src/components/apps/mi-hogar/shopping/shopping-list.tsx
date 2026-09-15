@@ -12,11 +12,13 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 import { getApiUrl } from '@/lib/api-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import Webcam from 'react-webcam';
 // import { identifyProductAction } from '@/app/actions/identify-product';
 import Link from 'next/link';
-import { ChefHat, Wand2, CalendarDays, Timer, Layers } from 'lucide-react';
+import { ChefHat, Wand2, CalendarDays, Timer, Layers, MoreHorizontal } from 'lucide-react';
+import SmartScanner from '@/components/mobile/smart-scanner';
 import { guessCategoryAndPrice, generatePlanItems, checkExpiration, CATEGORY_MAP, getProductEmoji } from '@/lib/shopping-list-ai-helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiFetch } from '@/lib/api-fetch';
@@ -266,6 +268,12 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
     const [priceResults, setPriceResults] = useState<PrecioComparado[]>([]);
     const [priceLoading, setPriceLoading] = useState(false);
     const [choosingSupermarket, setChoosingSupermarket] = useState<string | null>(null);
+
+    // ── Vista móvil simplificada ──
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [justCheckedIds, setJustCheckedIds] = useState<Set<string>>(new Set());
+    const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
 
     const toggleShopMode = () => {
         if (!isShopMode) {
@@ -705,6 +713,20 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
         }
     };
 
+    // Vista móvil: al tocar "Coger" se tacha un instante antes de desaparecer,
+    // para que quede claro que se ha registrado el toque.
+    const handleQuickCheckOff = (id: string) => {
+        setJustCheckedIds(prev => new Set(prev).add(id));
+        setTimeout(() => {
+            toggleStatus(id);
+            setJustCheckedIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }, 700);
+    };
+
     const deleteItem = async (id: string) => {
         try {
             const { error } = await supabase
@@ -848,8 +870,86 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
     return (
         <div className="max-w-3xl mx-auto space-y-8 pb-10">
-            {/* ── SECCIÓN CENTRAL DE COMANDOS FLORANTE ── */}
-            {!readOnly && <div className="sticky top-4 z-40">
+            {/* ── BARRA MÓVIL SIMPLE (foto, código de barras, añadir) ── */}
+            {!readOnly && (
+                <div className="md:hidden space-y-3">
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Escribe un producto..."
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddOrVerify()}
+                            className="h-14 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-lg px-4 shadow-sm"
+                        />
+                        <Button
+                            onClick={() => handleAddOrVerify()}
+                            className="h-14 px-6 rounded-2xl bg-green-800 hover:bg-green-900 text-white font-bold text-base shadow-sm shrink-0"
+                        >
+                            Añadir
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsScannerOpen(true)}
+                            className="h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                        >
+                            <Camera className="h-6 w-6 text-green-800" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Foto</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowBarcodeScanner(true)}
+                            className="h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                        >
+                            <ScanBarcode className="h-6 w-6 text-green-800" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Código de barras</span>
+                        </button>
+                    </div>
+                    <div className="flex items-center justify-between px-1">
+                        <p className="text-sm font-semibold text-muted-foreground">
+                            {supermarketFilter ? toBuyItems.length : baseToBuyItems.length} producto{(supermarketFilter ? toBuyItems.length : baseToBuyItems.length) === 1 ? '' : 's'} pendiente{(supermarketFilter ? toBuyItems.length : baseToBuyItems.length) === 1 ? '' : 's'}
+                            {supermarketFilter && <span className="text-green-800 dark:text-green-400"> en {supermarketFilter}</span>}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setIsMoreOpen(true)}
+                            className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300"
+                        >
+                            <MoreHorizontal className="h-4 w-4" /> Más
+                        </button>
+                    </div>
+
+                    {supermarketRouteGroups.length > 1 && (
+                        <div className="grid grid-cols-2 gap-2.5">
+                            {supermarketRouteGroups.map((group) => {
+                                const isUnassigned = group.label === UNASSIGNED_SUPERMARKET;
+                                const isActive = supermarketFilter === group.label;
+                                return (
+                                    <button
+                                        key={group.label}
+                                        type="button"
+                                        onClick={() => setSupermarketFilter(prev => prev === group.label ? null : group.label)}
+                                        className={`flex items-center gap-2.5 rounded-2xl border p-3 text-left transition-all ${isActive
+                                            ? 'border-green-800 bg-green-50 shadow-sm dark:border-green-700 dark:bg-green-950/30'
+                                            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+                                            }`}
+                                    >
+                                        <SupermarketLogo supermarket={isUnassigned ? undefined : group.label} className="h-10 w-10 rounded-xl shrink-0" />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-black text-slate-800 dark:text-slate-100">{group.label}</span>
+                                            <span className="text-xs font-semibold text-muted-foreground">{group.items.length} producto{group.items.length === 1 ? '' : 's'}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── SECCIÓN CENTRAL DE COMANDOS FLORANTE (escritorio) ── */}
+            {!readOnly && <div className="hidden md:block sticky top-4 z-40">
                 <div className="relative group">
                     {/* Efecto resplandor */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-green-800 to-indigo-500 rounded-full blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
@@ -965,8 +1065,8 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 </div>
             </div>}
 
-            {/* ── CABECERA Y BÚSQUEDA ── */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5">
+            {/* ── CABECERA Y BÚSQUEDA (escritorio) ── */}
+            <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5">
                 <div className="flex flex-col sm:flex-row gap-5 items-center justify-between">
                     <div className="flex-1 w-full">
                         <h1 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2">
@@ -1072,6 +1172,77 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                     </div>
                 )}
             </div>
+
+            {showBarcodeScanner && (
+                <SmartScanner
+                    onClose={() => setShowBarcodeScanner(false)}
+                    onProductAdded={() => fetchItems()}
+                />
+            )}
+
+            {/* ── MÓVIL: MÁS OPCIONES ── */}
+            <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen}>
+                <SheetContent side="bottom" className="rounded-t-3xl md:hidden">
+                    <SheetHeader>
+                        <SheetTitle>Más opciones</SheetTitle>
+                    </SheetHeader>
+                    <div className="grid grid-cols-2 gap-3 py-4">
+                        <button
+                            type="button"
+                            onClick={() => { setIsMoreOpen(false); handleVoiceInput(); }}
+                            className="h-20 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1.5"
+                        >
+                            {isListening ? <MicOff className="h-5 w-5 text-red-600" /> : <Mic className="h-5 w-5 text-slate-600 dark:text-slate-300" />}
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Dictar</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setIsMoreOpen(false); setIsPlannerOpen(true); }}
+                            className="h-20 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1.5"
+                        >
+                            <Wand2 className="h-5 w-5 text-indigo-500" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Planificar</span>
+                        </button>
+                        <Link href="/apps/mi-hogar/recipes" onClick={() => setIsMoreOpen(false)}>
+                            <div className="h-20 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1.5">
+                                <ChefHat className="h-5 w-5 text-green-800" />
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Receta</span>
+                            </div>
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setVerifyBeforeAdd(v => !v)}
+                            className={`h-20 rounded-2xl border flex flex-col items-center justify-center gap-1.5 ${verifyBeforeAdd ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/40' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900'}`}
+                        >
+                            <Checkbox checked={verifyBeforeAdd} onCheckedChange={(v) => setVerifyBeforeAdd(!!v)} className="pointer-events-none h-4 w-4" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Verificar al añadir</span>
+                        </button>
+                    </div>
+                    <div className="space-y-2 pb-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Tienda para lo que añadas</p>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSupermarket('')}
+                                className={`h-9 rounded-full border px-3 text-xs font-bold ${!selectedSupermarket ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900' : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                            >
+                                Sin tienda
+                            </button>
+                            {SUPERMARKETS.map((market) => (
+                                <button
+                                    key={market.name}
+                                    type="button"
+                                    onClick={() => setSelectedSupermarket(prev => prev === market.name ? '' : market.name)}
+                                    className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold ${selectedSupermarket === market.name ? 'border-green-800 bg-green-50 text-green-900 dark:border-green-700 dark:bg-green-950/40 dark:text-green-100' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                                >
+                                    <SupermarketLogo supermarket={market.name} className="h-5 w-5 rounded-md" />
+                                    {market.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             {/* ── MODALS (ESCANER Y EDICIÓN) ── */}
             <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
@@ -1446,7 +1617,92 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                             <p className="text-muted-foreground mt-2 text-sm max-w-[250px] mx-auto text-balance font-medium">No hay compras pendientes. Escribe o dicta algo para añadir.</p>
                         </motion.div>
                     ) : (
-                        <div className="space-y-8 pb-20">
+                        <>
+                        {/* ── MÓVIL: tarjetas grandes, agrupadas por tienda, deslizar para editar/borrar ── */}
+                        <div className="md:hidden space-y-6 pb-20">
+                            {supermarketRouteGroups.filter(group => !supermarketFilter || group.label === supermarketFilter).map((group) => (
+                                <div key={group.label} className="space-y-3">
+                                    <div className="flex items-center gap-2 pl-1">
+                                        <SupermarketLogo supermarket={group.label === UNASSIGNED_SUPERMARKET ? undefined : group.label} className="h-8 w-8 rounded-lg" />
+                                        <h3 className="font-black text-sm text-slate-600 dark:text-slate-300">{group.label}</h3>
+                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                            {group.items.length}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2.5">
+                                        <AnimatePresence mode="popLayout">
+                                            {group.items.map(item => {
+                                                const isChecked = justCheckedIds.has(item.id);
+                                                return (
+                                                <div key={item.id} className="relative overflow-hidden rounded-2xl">
+                                                    {!readOnly && (
+                                                        <div className="absolute inset-y-0 right-0 flex items-stretch">
+                                                            <button
+                                                                onClick={() => { openEditDialog(item); setSwipedItemId(null); }}
+                                                                className="w-16 flex items-center justify-center bg-indigo-500 text-white"
+                                                                title="Editar"
+                                                            >
+                                                                <Pencil className="w-5 h-5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { deleteItem(item.id); setSwipedItemId(null); }}
+                                                                className="w-16 flex items-center justify-center bg-rose-500 text-white"
+                                                                title="Eliminar"
+                                                            >
+                                                                <Trash2 className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <motion.div
+                                                        layout
+                                                        initial={{ opacity: 0, scale: 0.95 }}
+                                                        animate={{ opacity: 1, scale: 1, x: swipedItemId === item.id ? -128 : 0 }}
+                                                        exit={{ opacity: 0, scale: 0.9 }}
+                                                        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+                                                        drag={readOnly ? false : 'x'}
+                                                        dragConstraints={{ left: -128, right: 0 }}
+                                                        dragElastic={0.05}
+                                                        onDragEnd={(_, info) => setSwipedItemId(info.offset.x < -60 ? item.id : null)}
+                                                        className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-sm"
+                                                    >
+                                                        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                                            {item.imagenProductoUrl ? (
+                                                                <img src={item.imagenProductoUrl} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
+                                                            ) : (
+                                                                <span style={{ fontSize: '2rem', lineHeight: 1 }}>{getProductEmoji(item.name)}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight ${isChecked ? 'line-through opacity-50' : ''}`}>
+                                                                {item.name}
+                                                            </p>
+                                                            {item.precioActual != null && (
+                                                                <span className="text-sm font-black text-green-800 dark:text-green-400">
+                                                                    {item.precioActual.toFixed(2)}€
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {!readOnly && (
+                                                            <button
+                                                                onClick={() => handleQuickCheckOff(item.id)}
+                                                                disabled={isChecked}
+                                                                className="flex-shrink-0 h-12 px-5 rounded-full bg-green-700 text-white font-bold text-base flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
+                                                            >
+                                                                <Plus className="w-5 h-5" /> Coger
+                                                            </button>
+                                                        )}
+                                                    </motion.div>
+                                                </div>
+                                                );
+                                            })}
+                                        </AnimatePresence>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* ── ESCRITORIO ── */}
+                        <div className="hidden md:block space-y-8 pb-20">
                             {groupedToBuyEntries.map(([category, catItems]) => (
                                 <motion.div
                                     key={category}
@@ -1556,6 +1812,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                 </motion.div>
                             ))}
                         </div>
+                        </>
                     )}
                 </TabsContent>
 
