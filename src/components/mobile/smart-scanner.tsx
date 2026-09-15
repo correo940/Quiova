@@ -348,11 +348,11 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                 }
             }
 
-            document.querySelector('body')?.classList.add('barcode-scanner-active');
-
+            // scan() abre su propia pantalla nativa de Google, ya completa por
+            // si sola (a diferencia de startScan()) -- ocultar aqui el fondo
+            // de la app no hace falta y puede interferir con la transicion
+            // al volver, dejando la camara "pillada" en pantalla.
             const result = await BarcodeScanner.scan({ formats: [] });
-
-            document.querySelector('body')?.classList.remove('barcode-scanner-active');
 
             if (result.barcodes && result.barcodes.length > 0) {
                 const barcode = result.barcodes[0]?.rawValue;
@@ -368,7 +368,6 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             }
         } finally {
             setLoading(false);
-            document.querySelector('body')?.classList.remove('barcode-scanner-active');
         }
     };
 

@@ -108,11 +108,6 @@
   }
 }
 
-/* Barcode Scanner Overlay */
-body.barcode-scanner-active {
-  visibility: hidden;
-}
-
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
