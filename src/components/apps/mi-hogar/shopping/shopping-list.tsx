@@ -501,8 +501,8 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
                 const result = await response.json();
 
-                if (result.success && result.data) {
-                    const { productName, supermarket } = result.data;
+                if (result.success && result.productName) {
+                    const { productName, supermarket } = result;
                     toast.success(`¡Identificado: ${productName}!`);
                     if (supermarket) toast.success(`Supermercado detectado: ${supermarket}`);
 
@@ -641,6 +641,12 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
             setItems(prevItems => [newItem, ...prevItems]);
             setNewItemName('');
+            // Si hay un filtro de supermercado puesto y el producto nuevo es de otro
+            // (o de ninguno), quitarlo — si no, el producto se añade pero queda oculto
+            // y parece que "no se añadió".
+            if (supermarketFilter && getSupermarketDisplayName(newItem.supermarket) !== supermarketFilter) {
+                setSupermarketFilter(null);
+            }
             toast.success(`Añadido: ${data.name} en ${aiAnalysis.category} ${aiAnalysis.emoji}`);
             return true;
         } catch (error) {
@@ -1177,6 +1183,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 <SmartScanner
                     onClose={() => setShowBarcodeScanner(false)}
                     onProductAdded={() => fetchItems()}
+                    autoStartBarcode
                 />
             )}
 
@@ -1665,23 +1672,30 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                         onDragEnd={(_, info) => setSwipedItemId(info.offset.x < -60 ? item.id : null)}
                                                         className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-sm"
                                                     >
-                                                        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                            {item.imagenProductoUrl ? (
-                                                                <img src={item.imagenProductoUrl} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
-                                                            ) : (
-                                                                <span style={{ fontSize: '2rem', lineHeight: 1 }}>{getProductEmoji(item.name)}</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={`text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight ${isChecked ? 'line-through opacity-50' : ''}`}>
-                                                                {item.name}
-                                                            </p>
-                                                            {item.precioActual != null && (
-                                                                <span className="text-sm font-black text-green-800 dark:text-green-400">
-                                                                    {item.precioActual.toFixed(2)}€
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openPriceDialog(item)}
+                                                            title="Ver precios en los supermercados"
+                                                            className="flex flex-1 min-w-0 items-center gap-4 text-left"
+                                                        >
+                                                            <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                                                {item.imagenProductoUrl ? (
+                                                                    <img src={item.imagenProductoUrl} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
+                                                                ) : (
+                                                                    <span style={{ fontSize: '2rem', lineHeight: 1 }}>{getProductEmoji(item.name)}</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight ${isChecked ? 'line-through opacity-50' : ''}`}>
+                                                                    {item.name}
+                                                                </p>
+                                                                {item.precioActual != null && (
+                                                                    <span className="text-sm font-black text-green-800 dark:text-green-400">
+                                                                        {item.precioActual.toFixed(2)}€
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </button>
                                                         {!readOnly && (
                                                             <button
                                                                 onClick={() => handleQuickCheckOff(item.id)}

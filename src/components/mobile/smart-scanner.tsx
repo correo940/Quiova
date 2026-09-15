@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
@@ -20,6 +20,8 @@ type Destination = 'shopping' | 'pantry';
 interface SmartScannerProps {
     onClose: () => void;
     onProductAdded: (product: { name: string; barcode?: string }) => void;
+    /** Si es true, entra directo al escaneo de código de barras en vez de mostrar el menú. */
+    autoStartBarcode?: boolean;
 }
 
 const BARCODE_CACHE_KEY = 'quioba_barcode_cache';
@@ -48,7 +50,7 @@ const getFromCache = (barcode: string): string | null => {
     return cache[barcode] || null;
 };
 
-export default function SmartScanner({ onClose, onProductAdded }: SmartScannerProps) {
+export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode }: SmartScannerProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -64,7 +66,9 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
     const [showWebScanner, setShowWebScanner] = useState(false);
     const [destination, setDestination] = useState<Destination>('shopping');
 
-    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(false);
+    // Al venir del botón rápido "Código de barras" se salta el menú, así que
+    // sin esto no habría forma de elegir supermercado por cada producto escaneado.
+    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(!!autoStartBarcode);
     const [pendingProduct, setPendingProduct] = useState<string | null>(null);
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
@@ -471,6 +475,15 @@ export default function SmartScanner({ onClose, onProductAdded }: SmartScannerPr
         setScanCount(0);
         handleBarcodeScan();
     };
+
+    // Al abrir desde "Código de barras" se entra directo al escaneo,
+    // sin pasar por el menú de Añadir Productos.
+    useEffect(() => {
+        if (autoStartBarcode) {
+            startContinuousMode();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handlePhotoCapture = async () => {
         if (isWeb) {
