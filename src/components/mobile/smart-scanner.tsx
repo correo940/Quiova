@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner, GoogleBarcodeScannerModuleInstallState } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
@@ -315,6 +315,37 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                 setError('Permiso de cámara denegado');
                 setLoading(false);
                 return;
+            }
+
+            // El escaneo usa un módulo de Google que no viene instalado de
+            // fábrica: sin esto la cámara se abre pero nunca detecta nada.
+            const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+            if (!available) {
+                toast.info('Preparando el escáner por primera vez, un momento…');
+                let installResolve: () => void = () => {};
+                let installReject: (err: Error) => void = () => {};
+                const listenerHandle = await BarcodeScanner.addListener(
+                    'googleBarcodeScannerModuleInstallProgress',
+                    (event) => {
+                        if (event.state === GoogleBarcodeScannerModuleInstallState.COMPLETED) {
+                            installResolve();
+                        } else if (
+                            event.state === GoogleBarcodeScannerModuleInstallState.FAILED ||
+                            event.state === GoogleBarcodeScannerModuleInstallState.CANCELED
+                        ) {
+                            installReject(new Error('No se pudo preparar el escáner de códigos de barras'));
+                        }
+                    }
+                );
+                try {
+                    await new Promise<void>((resolve, reject) => {
+                        installResolve = resolve;
+                        installReject = reject;
+                        BarcodeScanner.installGoogleBarcodeScannerModule().catch(reject);
+                    });
+                } finally {
+                    listenerHandle.remove();
+                }
             }
 
             document.querySelector('body')?.classList.add('barcode-scanner-active');
