@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutGrid, ShoppingCart, MessageCircle, Settings,
-    ListTodo, Calendar, FileText, KeyRound, Monitor, ChefHat, ShoppingBag, X as XIcon, ChevronLeft, Brain
+    ListTodo, Calendar, FileText, KeyRound, Monitor, ChefHat, ShoppingBag, X as XIcon, Brain
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGlobalMenu } from '@/context/GlobalMenuContext';
@@ -155,17 +155,6 @@ export default function MobileNav() {
 
     return (
         <div className="z-50">
-            {/* Global Back Button (only on subpages) */}
-            {pathname !== '/' && pathname !== '/desktop' && (
-                <button
-                    onClick={() => router.back()}
-                    className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/80 backdrop-blur-xl rounded-2xl border border-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-slate-600 hover:text-green-800 hover:bg-green-100 transition-all active:scale-90"
-                    title="Volver"
-                >
-                    <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
-                </button>
-            )}
-
             {/* Assistant Floating Panel */}
             <AnimatePresence>
                 {showAssistant && (
