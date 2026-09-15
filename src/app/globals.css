@@ -108,6 +108,12 @@
   }
 }
 
+/* Escáner de código de barras: hace transparente el fondo de la app para
+   que se vea la cámara nativa por debajo mientras se busca un código. */
+body.barcode-scanner-active {
+  visibility: hidden;
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

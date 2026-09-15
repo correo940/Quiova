@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
-import { BarcodeScanner, GoogleBarcodeScannerModuleInstallState } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
@@ -75,6 +75,9 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
 
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
+    const nativeScanListenersRef = useRef<{ remove: () => void }[]>([]);
+    const nativeScanHandledRef = useRef(false);
+    const [nativeLiveScan, setNativeLiveScan] = useState(false);
 
     const isWeb = !Capacitor.isNativePlatform();
 
@@ -302,10 +305,25 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     };
 
     // ─── Native: barcode ─────────────────────────────────────────────────────
+    // Cámara en vivo (startScan) en vez de la pantalla lista-para-usar de
+    // Google (scan): esta última depende de un módulo aparte de Play
+    // Services que en algunos móviles nunca llega a detectar nada, mientras
+    // que startScan usa el lector de códigos que va integrado en la app.
+
+    const stopNativeLiveScan = async () => {
+        nativeScanListenersRef.current.forEach((h) => h.remove());
+        nativeScanListenersRef.current = [];
+        document.querySelector('body')?.classList.remove('barcode-scanner-active');
+        setNativeLiveScan(false);
+        try {
+            await BarcodeScanner.stopScan();
+        } catch {
+            // Ya estaba parado.
+        }
+    };
 
     const handleNativeBarcodeScan = async () => {
         try {
-            setLoading(true);
             setError(null);
             setShowManualEntry(false);
             setLastScanned(null);
@@ -313,61 +331,31 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             const { camera } = await BarcodeScanner.requestPermissions();
             if (camera !== 'granted') {
                 setError('Permiso de cámara denegado');
-                setLoading(false);
                 return;
             }
 
-            // El escaneo usa un módulo de Google que no viene instalado de
-            // fábrica: sin esto la cámara se abre pero nunca detecta nada.
-            const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-            if (!available) {
-                toast.info('Preparando el escáner por primera vez, un momento…');
-                let installResolve: () => void = () => {};
-                let installReject: (err: Error) => void = () => {};
-                const listenerHandle = await BarcodeScanner.addListener(
-                    'googleBarcodeScannerModuleInstallProgress',
-                    (event) => {
-                        if (event.state === GoogleBarcodeScannerModuleInstallState.COMPLETED) {
-                            installResolve();
-                        } else if (
-                            event.state === GoogleBarcodeScannerModuleInstallState.FAILED ||
-                            event.state === GoogleBarcodeScannerModuleInstallState.CANCELED
-                        ) {
-                            installReject(new Error('No se pudo preparar el escáner de códigos de barras'));
-                        }
-                    }
-                );
-                try {
-                    await new Promise<void>((resolve, reject) => {
-                        installResolve = resolve;
-                        installReject = reject;
-                        BarcodeScanner.installGoogleBarcodeScannerModule().catch(reject);
-                    });
-                } finally {
-                    listenerHandle.remove();
-                }
-            }
-
-            // scan() abre su propia pantalla nativa de Google, ya completa por
-            // si sola (a diferencia de startScan()) -- ocultar aqui el fondo
-            // de la app no hace falta y puede interferir con la transicion
-            // al volver, dejando la camara "pillada" en pantalla.
-            const result = await BarcodeScanner.scan({ formats: [] });
-
-            if (result.barcodes && result.barcodes.length > 0) {
-                const barcode = result.barcodes[0]?.rawValue;
-                if (!barcode) {
-                    setError('No se pudo leer el código escaneado');
-                    return;
-                }
+            nativeScanHandledRef.current = false;
+            const barcodesListener = await BarcodeScanner.addListener('barcodesScanned', async (event) => {
+                const barcode = event.barcodes?.[0]?.rawValue;
+                if (!barcode || nativeScanHandledRef.current) return;
+                nativeScanHandledRef.current = true;
+                await stopNativeLiveScan();
                 await lookupBarcode(barcode, continuousMode);
-            }
+            });
+            const errorListener = await BarcodeScanner.addListener('scanError', async (event) => {
+                await stopNativeLiveScan();
+                setError(event.message || 'Error al escanear código');
+            });
+            nativeScanListenersRef.current = [barcodesListener, errorListener];
+
+            document.querySelector('body')?.classList.add('barcode-scanner-active');
+            setNativeLiveScan(true);
+            await BarcodeScanner.startScan({ formats: [] });
         } catch (err: any) {
+            await stopNativeLiveScan();
             if (!err.message?.includes('cancelled')) {
                 setError(err.message || 'Error al escanear código');
             }
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -512,6 +500,16 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         if (autoStartBarcode) {
             startContinuousMode();
         }
+        // Si se cierra el escáner con la cámara en vivo abierta, hay que
+        // pararla y quitar los listeners para no dejar la cámara encendida.
+        return () => {
+            if (nativeScanListenersRef.current.length > 0) {
+                nativeScanListenersRef.current.forEach((h) => h.remove());
+                nativeScanListenersRef.current = [];
+                BarcodeScanner.stopScan().catch(() => {});
+                document.querySelector('body')?.classList.remove('barcode-scanner-active');
+            }
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -550,6 +548,28 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                 style={{ display: 'none' }}
                 onChange={handleWebPhotoFileSelected}
             />
+
+            {/* Cámara en vivo: el resto de la pantalla se hace invisible (ver
+                globals.css, body.barcode-scanner-active) para que se vea la
+                cámara nativa por debajo; esta capa se marca visible a
+                propósito para que se note por encima de ese truco. */}
+            {nativeLiveScan && (
+                <div
+                    className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6"
+                    style={{ visibility: 'visible' }}
+                >
+                    <div className="w-64 h-40 border-4 border-white/90 rounded-3xl shadow-[0_0_0_2000px_rgba(0,0,0,0.35)]" />
+                    <p className="text-white font-semibold text-center px-6 drop-shadow">
+                        Apunta al código de barras del producto
+                    </p>
+                    <button
+                        onClick={stopNativeLiveScan}
+                        className="px-6 py-2.5 rounded-full bg-white text-slate-800 font-semibold shadow-lg"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            )}
 
             <motion.div
                 initial={{ opacity: 0 }}
