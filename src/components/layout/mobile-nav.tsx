@@ -55,37 +55,28 @@ export default function MobileNav() {
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
 
-    // Gesto de borde: deslizar desde el borde derecho hacia la izquierda
-    // vuelve atras, desde el borde izquierdo hacia la derecha avanza.
-    // Se limita a una franja estrecha en el borde para no interferir con el
-    // carrusel de apps del panel, que tambien se desliza horizontalmente.
+    // Gesto en cualquier punto de la pantalla: arrastrar hacia la izquierda
+    // vuelve atras, arrastrar hacia la derecha avanza.
     useEffect(() => {
         if (!isLauncherMode) return;
-        const EDGE_ZONE = 24;
         const MIN_DISTANCE = 60;
         let startX = 0;
         let startY = 0;
-        let edge: 'left' | 'right' | null = null;
 
         const onTouchStart = (e: TouchEvent) => {
             const t = e.touches[0];
             startX = t.clientX;
             startY = t.clientY;
-            if (startX <= EDGE_ZONE) edge = 'left';
-            else if (startX >= window.innerWidth - EDGE_ZONE) edge = 'right';
-            else edge = null;
         };
 
         const onTouchEnd = (e: TouchEvent) => {
-            if (!edge) return;
             const t = e.changedTouches[0];
             const dx = t.clientX - startX;
             const dy = t.clientY - startY;
             if (Math.abs(dx) >= MIN_DISTANCE && Math.abs(dx) > Math.abs(dy) * 2) {
-                if (edge === 'right' && dx < 0) router.back();
-                else if (edge === 'left' && dx > 0) router.forward();
+                if (dx < 0) router.back();
+                else router.forward();
             }
-            edge = null;
         };
 
         window.addEventListener('touchstart', onTouchStart, { passive: true });
