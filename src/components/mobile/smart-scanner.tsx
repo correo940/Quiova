@@ -72,6 +72,10 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     // si es "uno a uno" (verificar cada producto) o "modo cajero" (escaneo
     // seguido sin parar, como en el súper).
     const [awaitingModeChoice, setAwaitingModeChoice] = useState(!!autoStartBarcode);
+    // "Modo cajero" pregunta el súper una vez y lo aplica a todo lo que se
+    // escanee en la sesión (se asume que se está comprando en ese súper).
+    const [awaitingCashierSupermarket, setAwaitingCashierSupermarket] = useState(false);
+    const [cashierSupermarket, setCashierSupermarket] = useState<string | undefined>(undefined);
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
 
@@ -80,6 +84,12 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     const nativeScanListenersRef = useRef<{ remove: () => void }[]>([]);
     const nativeScanHandledRef = useRef(false);
     const [nativeLiveScan, setNativeLiveScan] = useState(false);
+    // continuousMode (estado normal de React) llega con retraso a las funciones
+    // que se llaman justo después de activarlo en la misma función (los
+    // cierres de esas funciones capturan el valor de ANTES de actualizarse),
+    // así que el bucle de escaneo seguido lee esta ref en su lugar, que se
+    // actualiza al instante.
+    const continuousModeRef = useRef(false);
 
     const isWeb = !Capacitor.isNativePlatform();
 
@@ -118,13 +128,13 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             setPendingVerifyBarcode(barcode);
             return;
         }
-        const ok = await saveToShoppingItems(productName, undefined, barcode);
+        const ok = await saveToShoppingItems(productName, cashierSupermarket, barcode);
         if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
         onProductAdded({ name: productName, barcode });
 
-        if (startNextScan && continuousMode) {
+        if (startNextScan && continuousModeRef.current) {
             setTimeout(() => {
                 setLastScanned(null);
                 handleBarcodeScan();
@@ -147,7 +157,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     const handleManualSave = () => {
         if (manualProductName.trim() && pendingBarcode) {
             saveBarcodeToCache(pendingBarcode, manualProductName.trim());
-            handleSuccess(manualProductName.trim(), pendingBarcode, continuousMode);
+            handleSuccess(manualProductName.trim(), pendingBarcode, continuousModeRef.current);
             setShowManualEntry(false);
             setManualProductName('');
             setPendingBarcode(null);
@@ -206,7 +216,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         setShowWebScanner(false);
         setLoading(true);
         setError(null);
-        await lookupBarcode(barcode, continuousMode);
+        await lookupBarcode(barcode, continuousModeRef.current);
         setLoading(false);
     };
 
@@ -376,7 +386,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             const { barcodes } = await BarcodeScanner.scan({ formats: [] });
             const barcode = barcodes?.[0]?.rawValue;
             if (barcode) {
-                await lookupBarcode(barcode, continuousMode);
+                await lookupBarcode(barcode, continuousModeRef.current);
             }
         } catch (err: any) {
             if (!err.message?.includes('cancelled')) {
@@ -515,21 +525,29 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     };
 
     const startContinuousMode = () => {
+        continuousModeRef.current = true;
         setContinuousMode(true);
         setScanCount(0);
         handleBarcodeScan();
     };
 
     // "Modo cajero": escanea uno tras otro sin parar a verificar, como en la
-    // caja del súper. "Uno a uno": cada producto se verifica (nombre y
-    // supermercado) antes de añadirlo.
+    // caja del súper. Antes de empezar pregunta el súper una vez (se aplica a
+    // todo lo escaneado en la sesión). "Uno a uno": cada producto se verifica
+    // (nombre y supermercado) antes de añadirlo.
     const chooseCashierMode = () => {
-        setVerifyBeforeAdd(false);
         setAwaitingModeChoice(false);
+        setAwaitingCashierSupermarket(true);
+    };
+    const confirmCashierSupermarket = (market?: string) => {
+        setCashierSupermarket(market);
+        setVerifyBeforeAdd(false);
+        setAwaitingCashierSupermarket(false);
         startContinuousMode();
     };
     const chooseSingleMode = () => {
         setVerifyBeforeAdd(true);
+        continuousModeRef.current = false;
         setContinuousMode(false);
         setAwaitingModeChoice(false);
         handleBarcodeScan();
@@ -656,6 +674,32 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                             </button>
                             <button onClick={onClose} className="w-full text-sm text-slate-500 py-2 hover:text-slate-800">
                                 Cancelar
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Elegir súper para el modo cajero (se aplica a toda la sesión) */}
+                    {awaitingCashierSupermarket && (
+                        <div className="absolute inset-0 z-20 rounded-3xl p-6 flex flex-col justify-center gap-3" style={{ backgroundColor: '#F8FAFC' }}>
+                            <h3 className="text-lg font-bold text-slate-900 text-center mb-1">¿En qué súper estás?</h3>
+                            <p className="text-xs text-slate-500 text-center mb-2">Se aplicará a todo lo que escanees ahora</p>
+                            <div className="flex flex-wrap gap-2 justify-center mb-2">
+                                {['Mercadona', 'Carrefour', 'Lidl', 'Dia', 'Aldi'].map(market => (
+                                    <button
+                                        key={market}
+                                        type="button"
+                                        onClick={() => confirmCashierSupermarket(market)}
+                                        className="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 bg-white text-slate-700 hover:border-green-700 hover:text-green-800"
+                                    >
+                                        {market}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => confirmCashierSupermarket(undefined)}
+                                className="w-full text-sm text-slate-500 py-2 hover:text-slate-800"
+                            >
+                                Sin especificar / empezar ya
                             </button>
                         </div>
                     )}
@@ -844,7 +888,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => { setContinuousMode(false); handleBarcodeScan(); }}
+                            onClick={() => { continuousModeRef.current = false; setContinuousMode(false); handleBarcodeScan(); }}
                             disabled={loading || isListening}
                             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 p-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors disabled:opacity-50"
                         >
