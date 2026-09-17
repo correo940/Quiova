@@ -66,10 +66,12 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     const [showWebScanner, setShowWebScanner] = useState(false);
     const [destination, setDestination] = useState<Destination>('shopping');
 
-    // Al venir del botón rápido "Código de barras" se salta el menú, así que
-    // sin esto no habría forma de elegir supermercado por cada producto escaneado.
-    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(!!autoStartBarcode);
+    const [verifyBeforeAdd, setVerifyBeforeAdd] = useState(false);
     const [pendingProduct, setPendingProduct] = useState<string | null>(null);
+    // Al venir del botón rápido "Código de barras" se pregunta antes de nada
+    // si es "uno a uno" (verificar cada producto) o "modo cajero" (escaneo
+    // seguido sin parar, como en el súper).
+    const [awaitingModeChoice, setAwaitingModeChoice] = useState(!!autoStartBarcode);
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
 
@@ -518,12 +520,22 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         handleBarcodeScan();
     };
 
-    // Al abrir desde "Código de barras" se entra directo al escaneo,
-    // sin pasar por el menú de Añadir Productos.
+    // "Modo cajero": escanea uno tras otro sin parar a verificar, como en la
+    // caja del súper. "Uno a uno": cada producto se verifica (nombre y
+    // supermercado) antes de añadirlo.
+    const chooseCashierMode = () => {
+        setVerifyBeforeAdd(false);
+        setAwaitingModeChoice(false);
+        startContinuousMode();
+    };
+    const chooseSingleMode = () => {
+        setVerifyBeforeAdd(true);
+        setContinuousMode(false);
+        setAwaitingModeChoice(false);
+        handleBarcodeScan();
+    };
+
     useEffect(() => {
-        if (autoStartBarcode) {
-            startContinuousMode();
-        }
         // Si se cierra el escáner con la cámara en vivo abierta, hay que
         // pararla y quitar los listeners para no dejar la cámara encendida.
         return () => {
@@ -623,6 +635,30 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                             <X className="w-6 h-6 text-slate-600" />
                         </button>
                     </div>
+
+                    {/* Elegir modo antes de escanear (solo al entrar por el atajo directo) */}
+                    {awaitingModeChoice && (
+                        <div className="absolute inset-0 z-20 rounded-3xl p-6 flex flex-col justify-center gap-4" style={{ backgroundColor: '#F8FAFC' }}>
+                            <h3 className="text-lg font-bold text-slate-900 text-center mb-2">¿Cómo quieres escanear?</h3>
+                            <button
+                                onClick={chooseCashierMode}
+                                className="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-800 hover:to-green-900 text-white p-4 rounded-2xl flex flex-col items-center gap-1 font-bold shadow-lg shadow-green-800/30"
+                            >
+                                <span className="flex items-center gap-2"><Zap className="w-5 h-5" /> Modo cajero</span>
+                                <span className="text-xs font-normal opacity-90">Escanea uno tras otro sin parar, como en el súper</span>
+                            </button>
+                            <button
+                                onClick={chooseSingleMode}
+                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 p-4 rounded-2xl flex flex-col items-center gap-1 font-bold"
+                            >
+                                <span className="flex items-center gap-2"><Barcode className="w-5 h-5" /> Uno a uno</span>
+                                <span className="text-xs font-normal opacity-70">Verifica cada producto antes de añadirlo</span>
+                            </button>
+                            <button onClick={onClose} className="w-full text-sm text-slate-500 py-2 hover:text-slate-800">
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
 
                     {/* Destination selector */}
                     <div className="grid grid-cols-2 gap-2 mb-3 p-1 bg-slate-200/70 rounded-xl">
