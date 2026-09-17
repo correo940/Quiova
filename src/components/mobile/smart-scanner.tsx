@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Camera, Barcode, Mic, Loader2, CheckCircle, AlertCircle, Save, Edit3, ShoppingCart, Zap, Archive } from 'lucide-react';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner, GoogleBarcodeScannerModuleInstallState } from '@capacitor-mlkit/barcode-scanning';
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
@@ -322,6 +322,12 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         }
     };
 
+    // scan() abre la pantalla propia de Google Play Services, aparte de
+    // nuestro WebView. startScan() (cámara en vivo superpuesta a nuestra UI)
+    // se probó primero, pero en Android 16 la cámara nunca llega a pintarse
+    // detrás del WebView aunque se haga transparente -- un problema de
+    // compatibilidad de la plataforma, no del código del plugin. scan() no
+    // sufre eso porque no se superpone a nada.
     const handleNativeBarcodeScan = async () => {
         try {
             setError(null);
@@ -334,25 +340,43 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                 return;
             }
 
-            nativeScanHandledRef.current = false;
-            const barcodesListener = await BarcodeScanner.addListener('barcodesScanned', async (event) => {
-                const barcode = event.barcodes?.[0]?.rawValue;
-                if (!barcode || nativeScanHandledRef.current) return;
-                nativeScanHandledRef.current = true;
-                await stopNativeLiveScan();
-                await lookupBarcode(barcode, continuousMode);
-            });
-            const errorListener = await BarcodeScanner.addListener('scanError', async (event) => {
-                await stopNativeLiveScan();
-                setError(event.message || 'Error al escanear código');
-            });
-            nativeScanListenersRef.current = [barcodesListener, errorListener];
+            // El escaneo usa un módulo de Google que no viene instalado de
+            // fábrica: sin esto la cámara se abre pero nunca detecta nada.
+            const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+            if (!available) {
+                toast.info('Preparando el escáner por primera vez, un momento…');
+                let installResolve: () => void = () => {};
+                let installReject: (err: Error) => void = () => {};
+                const listenerHandle = await BarcodeScanner.addListener(
+                    'googleBarcodeScannerModuleInstallProgress',
+                    (event) => {
+                        if (event.state === GoogleBarcodeScannerModuleInstallState.COMPLETED) {
+                            installResolve();
+                        } else if (
+                            event.state === GoogleBarcodeScannerModuleInstallState.FAILED ||
+                            event.state === GoogleBarcodeScannerModuleInstallState.CANCELED
+                        ) {
+                            installReject(new Error('No se pudo preparar el escáner de códigos de barras'));
+                        }
+                    }
+                );
+                try {
+                    await new Promise<void>((resolve, reject) => {
+                        installResolve = resolve;
+                        installReject = reject;
+                        BarcodeScanner.installGoogleBarcodeScannerModule().catch(reject);
+                    });
+                } finally {
+                    listenerHandle.remove();
+                }
+            }
 
-            document.querySelector('body')?.classList.add('barcode-scanner-active');
-            setNativeLiveScan(true);
-            await BarcodeScanner.startScan({ formats: [] });
+            const { barcodes } = await BarcodeScanner.scan({ formats: [] });
+            const barcode = barcodes?.[0]?.rawValue;
+            if (barcode) {
+                await lookupBarcode(barcode, continuousMode);
+            }
         } catch (err: any) {
-            await stopNativeLiveScan();
             if (!err.message?.includes('cancelled')) {
                 setError(err.message || 'Error al escanear código');
             }
