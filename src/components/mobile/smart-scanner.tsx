@@ -76,6 +76,11 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     // escanee en la sesión (se asume que se está comprando en ese súper).
     const [awaitingCashierSupermarket, setAwaitingCashierSupermarket] = useState(false);
     const [cashierSupermarket, setCashierSupermarket] = useState<string | undefined>(undefined);
+    // Mismo motivo que continuousModeRef: el primer escaneo tras elegir
+    // supermercado llamaba a handleSuccess con el cierre de ANTES de que
+    // cashierSupermarket se actualizara, así que ese primer producto se
+    // guardaba sin tienda.
+    const cashierSupermarketRef = useRef<string | undefined>(undefined);
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
 
@@ -128,7 +133,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             setPendingVerifyBarcode(barcode);
             return;
         }
-        const ok = await saveToShoppingItems(productName, cashierSupermarket, barcode);
+        const ok = await saveToShoppingItems(productName, cashierSupermarketRef.current, barcode);
         if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
@@ -540,6 +545,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         setAwaitingCashierSupermarket(true);
     };
     const confirmCashierSupermarket = (market?: string) => {
+        cashierSupermarketRef.current = market;
         setCashierSupermarket(market);
         setVerifyBeforeAdd(false);
         setAwaitingCashierSupermarket(false);
