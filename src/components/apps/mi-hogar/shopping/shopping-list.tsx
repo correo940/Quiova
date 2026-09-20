@@ -1253,13 +1253,13 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
             {/* ── MODALS (ESCANER Y EDICIÓN) ── */}
             <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-                <DialogContent className="sm:max-w-md border-0 bg-slate-950 p-0 overflow-hidden text-white shadow-xl rounded-2xl">
+                <DialogContent className="left-0 top-0 translate-x-0 translate-y-0 w-screen h-[100dvh] max-w-none sm:max-w-none flex flex-col gap-0 border-0 bg-slate-950 p-0 overflow-hidden text-white shadow-xl rounded-none sm:rounded-none data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0">
                     <DialogHeader className="p-4 bg-slate-900/50 backdrop-blur border-b border-white/10 relative z-10">
                         <DialogTitle className="flex items-center gap-2 tracking-tight text-lg">
                             <Sparkles className="w-5 h-5 text-green-800" /> Identificar Producto
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="flex flex-col items-center justify-center bg-black min-h-[350px] relative">
+                    <div className="flex flex-col items-center justify-center bg-black flex-1 min-h-0 relative">
                         {isScannerOpen && !capturedImage && (
                             <div className="relative w-full h-full flex flex-col items-center justify-center">
                                 <Webcam
