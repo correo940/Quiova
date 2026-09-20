@@ -9,6 +9,7 @@ import { Camera as CapCamera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api-utils';
 import { supabase } from '@/lib/supabase';
@@ -78,6 +79,14 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     const chooseDestination = (d: Destination) => { destinationRef.current = d; setDestination(d); };
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
+
+    // Escaneo seguido a pantalla completa: la cámara no se cierra entre
+    // productos y el nombre sale en un aviso que dura un segundo.
+    const [fullScan, setFullScan] = useState(false);
+    const [scanPopup, setScanPopup] = useState<string | null>(null);
+    const fullScanBusyRef = useRef(false);
+    const lastFullScanRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
+    const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const photoFileInputRef = useRef<HTMLInputElement>(null);
     const speechRecognitionRef = useRef<any>(null);
@@ -164,13 +173,11 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         }
     };
 
-    // Lookup barcode value against cache + Open Food Facts
-    const lookupBarcode = async (barcode: string, continueAfter: boolean) => {
+    // Nombre del producto según el código: caché local y, si no, Open Food Facts.
+    // Devuelve null si no se conoce.
+    const fetchProductName = async (barcode: string): Promise<string | null> => {
         const cachedName = getFromCache(barcode);
-        if (cachedName) {
-            handleSuccess(cachedName, barcode, continueAfter);
-            return;
-        }
+        if (cachedName) return cachedName;
 
         try {
             const headers = {
@@ -195,14 +202,50 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                     'Producto detectado';
 
                 saveBarcodeToCache(barcode, productName);
-                handleSuccess(productName, barcode, continueAfter);
-            } else {
-                setPendingBarcode(barcode);
-                setShowManualEntry(true);
+                return productName;
             }
         } catch {
+            // Sin red o respuesta rara: se trata como producto desconocido.
+        }
+        return null;
+    };
+
+    const lookupBarcode = async (barcode: string, continueAfter: boolean) => {
+        const productName = await fetchProductName(barcode);
+        if (productName) {
+            handleSuccess(productName, barcode, continueAfter);
+        } else {
             setPendingBarcode(barcode);
             setShowManualEntry(true);
+        }
+    };
+
+    // Cada código detectado por la cámara a pantalla completa: se guarda, sale
+    // el aviso un segundo y la cámara sigue abierta para el siguiente.
+    const handleFullScan = async (results: any[]) => {
+        const barcode = results?.[0]?.rawValue;
+        if (!barcode || fullScanBusyRef.current) return;
+        const now = Date.now();
+        if (lastFullScanRef.current.code === barcode && now - lastFullScanRef.current.at < 4000) return;
+        lastFullScanRef.current = { code: barcode, at: now };
+        fullScanBusyRef.current = true;
+        try {
+            const productName = await fetchProductName(barcode);
+            if (!productName) {
+                setFullScan(false);
+                setPendingBarcode(barcode);
+                setShowManualEntry(true);
+                return;
+            }
+            const ok = await saveToShoppingItems(productName, undefined, barcode);
+            if (!ok) return;
+            setScanCount(prev => prev + 1);
+            onProductAdded({ name: productName, barcode });
+            setScanPopup(productName);
+            if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+            popupTimerRef.current = setTimeout(() => setScanPopup(null), 1000);
+        } finally {
+            fullScanBusyRef.current = false;
         }
     };
 
@@ -514,6 +557,13 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     // ─── Unified handlers (route to web or native) ────────────────────────────
 
     const handleBarcodeScan = async () => {
+        if (continuousModeRef.current) {
+            setError(null);
+            setShowManualEntry(false);
+            setLastScanned(null);
+            setFullScan(true);
+            return;
+        }
         if (isWeb) {
             setError(null);
             setShowManualEntry(false);
@@ -618,6 +668,47 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                         Cancelar
                     </button>
                 </div>
+            )}
+
+            {fullScan && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[200] bg-black">
+                    <Scanner
+                        onScan={handleFullScan}
+                        onError={() => {
+                            setFullScan(false);
+                            setError('No se pudo acceder a la cámara. Comprueba los permisos.');
+                        }}
+                        constraints={{ facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }}
+                        scanDelay={100}
+                        sound={false}
+                        components={{ finder: false }}
+                        styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }}
+                    />
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div className="w-72 h-44 border-4 border-white/90 rounded-3xl" />
+                    </div>
+                    <p className="absolute top-[calc(1.5rem+env(safe-area-inset-top))] left-0 right-0 text-center text-white font-semibold drop-shadow px-6">
+                        {destinationRef.current === 'pantry' ? 'Va a la despensa' : 'Va a la lista de comprar'} · {scanCount} escaneados
+                    </p>
+                    {scanPopup && (
+                        <motion.div
+                            key={scanPopup + scanCount}
+                            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className="absolute left-4 right-4 top-1/2 mt-28 mx-auto max-w-sm bg-green-700 text-white rounded-2xl px-5 py-4 shadow-2xl flex items-center gap-3"
+                        >
+                            <CheckCircle className="w-7 h-7 shrink-0" />
+                            <span className="font-bold text-lg leading-tight">{scanPopup}</span>
+                        </motion.div>
+                    )}
+                    <button
+                        onClick={() => setFullScan(false)}
+                        className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 px-8 py-3 rounded-full bg-white text-slate-800 font-bold shadow-lg"
+                    >
+                        Terminar
+                    </button>
+                </div>,
+                document.body
             )}
 
             <motion.div
