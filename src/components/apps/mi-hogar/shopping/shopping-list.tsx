@@ -1288,7 +1288,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                         )}
                     </div>
                     {!capturedImage && (
-                        <div className="p-4 bg-slate-900 relative z-10 flex justify-center">
+                        <div className="px-4 pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] bg-slate-900 relative z-10 flex justify-center">
                             <button
                                 onClick={captureAndIdentify}
                                 disabled={isProcessing}
