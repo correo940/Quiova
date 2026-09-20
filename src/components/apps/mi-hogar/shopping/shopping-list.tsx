@@ -1699,6 +1699,16 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                         </button>
                                                         {!readOnly && (
                                                             <button
+                                                                type="button"
+                                                                onClick={() => setSwipedItemId(swipedItemId === item.id ? null : item.id)}
+                                                                aria-label="Editar o borrar"
+                                                                className="flex-shrink-0 h-12 w-8 -mr-2 flex items-center justify-center text-2xl font-black leading-none text-slate-400 active:scale-90"
+                                                            >
+                                                                ⋮
+                                                            </button>
+                                                        )}
+                                                        {!readOnly && (
+                                                            <button
                                                                 onClick={() => handleQuickCheckOff(item.id)}
                                                                 disabled={isChecked}
                                                                 className="flex-shrink-0 h-12 px-5 rounded-full bg-green-700 text-white font-bold text-base flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
