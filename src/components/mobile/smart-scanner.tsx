@@ -72,15 +72,10 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
     // si es "uno a uno" (verificar cada producto) o "modo cajero" (escaneo
     // seguido sin parar, como en el súper).
     const [awaitingModeChoice, setAwaitingModeChoice] = useState(!!autoStartBarcode);
-    // "Modo cajero" pregunta el súper una vez y lo aplica a todo lo que se
-    // escanee en la sesión (se asume que se está comprando en ese súper).
-    const [awaitingCashierSupermarket, setAwaitingCashierSupermarket] = useState(false);
-    const [cashierSupermarket, setCashierSupermarket] = useState<string | undefined>(undefined);
-    // Mismo motivo que continuousModeRef: el primer escaneo tras elegir
-    // supermercado llamaba a handleSuccess con el cierre de ANTES de que
-    // cashierSupermarket se actualizara, así que ese primer producto se
-    // guardaba sin tienda.
-    const cashierSupermarketRef = useRef<string | undefined>(undefined);
+    // Igual que continuousModeRef: el primer escaneo llega con el cierre de
+    // antes de que destination se actualizara, así que se lee de esta ref.
+    const destinationRef = useRef<Destination>('shopping');
+    const chooseDestination = (d: Destination) => { destinationRef.current = d; setDestination(d); };
     const [pendingVerifySupermarket, setPendingVerifySupermarket] = useState('');
     const [pendingVerifyBarcode, setPendingVerifyBarcode] = useState<string | undefined>(undefined);
 
@@ -106,7 +101,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             return false;
         }
         const aiAnalysis = guessCategoryAndPrice(productName);
-        const isPantry = destination === 'pantry';
+        const isPantry = destinationRef.current === 'pantry';
         const { error: insertError } = await supabase
             .from('shopping_items')
             .insert([{
@@ -133,7 +128,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
             setPendingVerifyBarcode(barcode);
             return;
         }
-        const ok = await saveToShoppingItems(productName, cashierSupermarketRef.current, barcode);
+        const ok = await saveToShoppingItems(productName, undefined, barcode);
         if (!ok) return;
         setLastScanned(productName);
         setScanCount(prev => prev + 1);
@@ -536,19 +531,13 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
         handleBarcodeScan();
     };
 
-    // "Modo cajero": escanea uno tras otro sin parar a verificar, como en la
-    // caja del súper. Antes de empezar pregunta el súper una vez (se aplica a
-    // todo lo escaneado en la sesión). "Uno a uno": cada producto se verifica
-    // (nombre y supermercado) antes de añadirlo.
-    const chooseCashierMode = () => {
-        setAwaitingModeChoice(false);
-        setAwaitingCashierSupermarket(true);
-    };
-    const confirmCashierSupermarket = (market?: string) => {
-        cashierSupermarketRef.current = market;
-        setCashierSupermarket(market);
+    // Escaneo seguido sin parar y sin preguntar el súper: se usa en casa, o bien
+    // al recibir la compra (va a la despensa) o bien al quedarse sin algo (va a
+    // comprar). "Uno a uno": cada producto se verifica antes de añadirlo.
+    const chooseContinuousMode = (d: Destination) => {
+        chooseDestination(d);
         setVerifyBeforeAdd(false);
-        setAwaitingCashierSupermarket(false);
+        setAwaitingModeChoice(false);
         startContinuousMode();
     };
     const chooseSingleMode = () => {
@@ -665,11 +654,18 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                         <div className="absolute inset-0 z-20 rounded-3xl p-6 flex flex-col justify-center gap-4" style={{ backgroundColor: '#F8FAFC' }}>
                             <h3 className="text-lg font-bold text-slate-900 text-center mb-2">¿Cómo quieres escanear?</h3>
                             <button
-                                onClick={chooseCashierMode}
+                                onClick={() => chooseContinuousMode('pantry')}
                                 className="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-800 hover:to-green-900 text-white p-4 rounded-2xl flex flex-col items-center gap-1 font-bold shadow-lg shadow-green-800/30"
                             >
-                                <span className="flex items-center gap-2"><Zap className="w-5 h-5" /> Modo cajero</span>
-                                <span className="text-xs font-normal opacity-90">Escanea uno tras otro sin parar, como en el súper</span>
+                                <span className="flex items-center gap-2"><Archive className="w-5 h-5" /> Ha llegado la compra</span>
+                                <span className="text-xs font-normal opacity-90">Escanea seguido y va a la despensa</span>
+                            </button>
+                            <button
+                                onClick={() => chooseContinuousMode('shopping')}
+                                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-2xl flex flex-col items-center gap-1 font-bold shadow-lg shadow-orange-500/30"
+                            >
+                                <span className="flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> Se me ha acabado</span>
+                                <span className="text-xs font-normal opacity-90">Escanea seguido y va a la lista de comprar</span>
                             </button>
                             <button
                                 onClick={chooseSingleMode}
@@ -684,37 +680,11 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                         </div>
                     )}
 
-                    {/* Elegir súper para el modo cajero (se aplica a toda la sesión) */}
-                    {awaitingCashierSupermarket && (
-                        <div className="absolute inset-0 z-20 rounded-3xl p-6 flex flex-col justify-center gap-3" style={{ backgroundColor: '#F8FAFC' }}>
-                            <h3 className="text-lg font-bold text-slate-900 text-center mb-1">¿En qué súper estás?</h3>
-                            <p className="text-xs text-slate-500 text-center mb-2">Se aplicará a todo lo que escanees ahora</p>
-                            <div className="flex flex-wrap gap-2 justify-center mb-2">
-                                {['Mercadona', 'Carrefour', 'Lidl', 'Dia', 'Aldi'].map(market => (
-                                    <button
-                                        key={market}
-                                        type="button"
-                                        onClick={() => confirmCashierSupermarket(market)}
-                                        className="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 bg-white text-slate-700 hover:border-green-700 hover:text-green-800"
-                                    >
-                                        {market}
-                                    </button>
-                                ))}
-                            </div>
-                            <button
-                                onClick={() => confirmCashierSupermarket(undefined)}
-                                className="w-full text-sm text-slate-500 py-2 hover:text-slate-800"
-                            >
-                                Sin especificar / empezar ya
-                            </button>
-                        </div>
-                    )}
-
                     {/* Destination selector */}
                     <div className="grid grid-cols-2 gap-2 mb-3 p-1 bg-slate-200/70 rounded-xl">
                         <button
                             type="button"
-                            onClick={() => setDestination('shopping')}
+                            onClick={() => chooseDestination('shopping')}
                             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'shopping' ? 'bg-white text-orange-600 shadow' : 'text-slate-600'}`}
                         >
                             <ShoppingCart className="w-4 h-4" />
@@ -722,7 +692,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                         </button>
                         <button
                             type="button"
-                            onClick={() => setDestination('pantry')}
+                            onClick={() => chooseDestination('pantry')}
                             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${destination === 'pantry' ? 'bg-white text-emerald-700 shadow' : 'text-slate-600'}`}
                         >
                             <Archive className="w-4 h-4" />
