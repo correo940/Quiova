@@ -1641,7 +1641,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                             {group.items.map(item => {
                                                 const isChecked = justCheckedIds.has(item.id);
                                                 return (
-                                                <div key={item.id} className="relative overflow-hidden rounded-2xl">
+                                                <div key={item.id} className="relative overflow-hidden rounded-2xl mr-5">
                                                     {!readOnly && (
                                                         <div className="absolute inset-y-0 right-0 flex items-stretch">
                                                             <button
@@ -1669,6 +1669,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                         drag={readOnly ? false : 'x'}
                                                         dragConstraints={{ left: -128, right: 0 }}
                                                         dragElastic={0.05}
+                                                        style={{ touchAction: 'pan-y' }}
                                                         onDragEnd={(_, info) => setSwipedItemId(info.offset.x < -60 ? item.id : null)}
                                                         className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-sm"
                                                     >
