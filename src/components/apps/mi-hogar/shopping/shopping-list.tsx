@@ -283,6 +283,9 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
     // ── Vista móvil simplificada ──
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+    const expiryFileRef = React.useRef<HTMLInputElement>(null);
+    const expiryTargetRef = React.useRef<string | null>(null);
+    const [readingExpiryId, setReadingExpiryId] = useState<string | null>(null);
     const [recipeOpen, setRecipeOpen] = useState(false);
     const [recipeLoading, setRecipeLoading] = useState(false);
     const [recipe, setRecipe] = useState<{ title: string; description: string; cooking_time: string; difficulty: string; ingredients: { name: string; quantity: string; has_it: boolean }[]; steps: string[] } | null>(null);
@@ -754,6 +757,49 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
             console.error('Error guardando caducidad:', error);
             setItems(previous);
             toast.error('No se pudo guardar la fecha de caducidad');
+        }
+    };
+
+    // Foto del envase -> la IA lee la fecha de caducidad y se guarda sola.
+    const handleExpiryPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        const id = expiryTargetRef.current;
+        if (!file || !id) return;
+        setReadingExpiryId(id);
+        try {
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 1600;
+                    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagen')); };
+                img.src = url;
+            });
+            const response = await apiFetch(getApiUrl('api/mi-hogar/read-expiry'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl }),
+            });
+            const result = await response.json();
+            if (result.success && result.expiresAt) {
+                await setExpiry(id, result.expiresAt);
+                toast.success(`Caduca el ${formatoFecha(result.expiresAt + 'T12:00:00')}`);
+            } else {
+                toast.error(result.error || 'No pude leer la fecha, ponla a mano');
+            }
+        } catch {
+            toast.error('No pude leer la fecha, ponla a mano');
+        } finally {
+            setReadingExpiryId(null);
         }
     };
 
@@ -1360,6 +1406,15 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <input
+                ref={expiryFileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleExpiryPhoto}
+            />
 
             {/* ── RECETA CON PRODUCTOS QUE CADUCAN ── */}
             <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
@@ -2005,15 +2060,27 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                                 Entró el {formatoFecha(item.pantryAt || item.created_at || new Date().toISOString())}
                                             </p>
                                             {!readOnly ? (
-                                                <label className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                                                    Caduca
-                                                    <input
-                                                        type="date"
-                                                        value={item.expiresAt || ''}
-                                                        onChange={(e) => setExpiry(item.id, e.target.value || null)}
-                                                        className="flex-1 min-w-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px]"
-                                                    />
-                                                </label>
+                                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                                    <label className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                        Caduca
+                                                        <input
+                                                            type="date"
+                                                            value={item.expiresAt || ''}
+                                                            onChange={(e) => setExpiry(item.id, e.target.value || null)}
+                                                            className="flex-1 min-w-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px]"
+                                                        />
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        disabled={readingExpiryId === item.id}
+                                                        onClick={() => { expiryTargetRef.current = item.id; expiryFileRef.current?.click(); }}
+                                                        title="Leer la fecha con una foto"
+                                                        aria-label="Leer la fecha de caducidad con una foto"
+                                                        className="shrink-0 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-green-800 active:scale-90 disabled:opacity-50"
+                                                    >
+                                                        {readingExpiryId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
                                             ) : item.expiresAt ? (
                                                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Caduca el {formatoFecha(item.expiresAt)}</p>
                                             ) : null}
