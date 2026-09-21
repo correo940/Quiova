@@ -26,7 +26,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const { pantryItems } = await request.json();
+    const { pantryItems, priorityItems } = await request.json();
+    const prioritarios: string[] = Array.isArray(priorityItems)
+      ? priorityItems.filter((x: unknown) => typeof x === 'string').slice(0, 20)
+      : [];
     if (!Array.isArray(pantryItems) || pantryItems.length === 0) {
       return NextResponse.json(
         { success: false, error: 'La despensa está vacía. Añade productos primero.' },
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
           },
           {
             role: 'user',
-            content: `Crea una receta con estos ingredientes: ${pantryItems.join(', ')}.
+            content: `Crea una receta con estos ingredientes: ${pantryItems.join(', ')}.${prioritarios.length ? `\nIMPORTANTE: estos productos caducan pronto y la receta debe usarlos como ingredientes principales: ${prioritarios.join(', ')}.` : ''}
 Devuelve solo JSON:
 {
   "title": "Nombre",

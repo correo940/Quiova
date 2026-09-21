@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import webpush from 'web-push';
-import { differenceInDays, parseISO, addMonths } from 'date-fns';
+import { differenceInDays, parseISO, addMonths, addDays, format } from 'date-fns';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { fcmMessaging } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,8 @@ export const dynamic = 'force-dynamic';
 // (mercado único de la app). Si en el futuro se soportan otros países, habría
 // que guardar el timezone por usuario y usarlo aquí en vez de la constante.
 const TZ = 'Europe/Madrid';
+const EXPIRY_CHECK_TIME = '09:00'; // aviso diario de productos de la despensa que caducan
+const EXPIRY_WARN_DAYS = 3;
 const VEHICLE_CHECK_TIME = '09:00'; // hora fija diaria para avisos de ITV/seguro/mantenimiento
 const WINDOW_MINUTES = 15;
 
@@ -91,6 +94,36 @@ async function sendToUser(userId: string, payload: { title: string; body: string
     return delivered;
 }
 
+// Web Push (navegador / PWA) y FCM (APK de Android) para un mismo usuario.
+async function sendToUserEverywhere(userId: string, payload: { title: string; body: string; url: string }): Promise<number> {
+    let delivered = await sendToUser(userId, payload);
+    if (fcmMessaging !== null) {
+        const messaging = fcmMessaging;
+        const { data: tokens } = await supabaseAdmin.from('fcm_tokens').select('token').eq('user_id', userId);
+        await Promise.all(
+            (tokens ?? []).map(async ({ token }) => {
+                try {
+                    await messaging.send({
+                        token,
+                        notification: { title: payload.title, body: payload.body },
+                        data: { url: payload.url, type: 'expiry' },
+                        android: { priority: 'high', notification: { icon: 'ic_launcher' } },
+                    });
+                    delivered++;
+                } catch (err: any) {
+                    if (err?.code === 'messaging/registration-token-not-registered' ||
+                        err?.code === 'messaging/invalid-registration-token') {
+                        await supabaseAdmin.from('fcm_tokens').delete().eq('token', token);
+                    } else {
+                        console.error('[push-reminders] Error enviando FCM:', err?.code, err?.message);
+                    }
+                }
+            })
+        );
+    }
+    return delivered;
+}
+
 export async function GET(req: Request) {
     const authHeader = req.headers.get('authorization');
     if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -122,6 +155,41 @@ export async function GET(req: Request) {
                 url: '/apps/mi-hogar/pharmacy',
             });
             await markSent(med.user_id, notifKey, dateStr);
+            sent += delivered;
+        }
+    }
+
+    // ── Despensa: productos caducados o que caducan en pocos días ───────────
+    if (withinLastWindow(EXPIRY_CHECK_TIME, minutesOfDay)) {
+        const limite = format(addDays(parseISO(dateStr), EXPIRY_WARN_DAYS), 'yyyy-MM-dd');
+        const { data: porCaducar } = await supabaseAdmin
+            .from('shopping_items')
+            .select('user_id, name, expires_at')
+            .eq('is_checked', true)
+            .not('expires_at', 'is', null)
+            .lte('expires_at', limite)
+            .order('expires_at', { ascending: true });
+
+        const porUsuario = new Map<string, { name: string; days: number }[]>();
+        for (const it of porCaducar ?? []) {
+            const days = differenceInDays(parseISO(it.expires_at), parseISO(dateStr));
+            const lista = porUsuario.get(it.user_id) ?? [];
+            lista.push({ name: it.name, days });
+            porUsuario.set(it.user_id, lista);
+        }
+
+        for (const [userId, lista] of porUsuario) {
+            const notifKey = 'despensa_caducidad';
+            if (await alreadySent(userId, notifKey, dateStr)) continue;
+            const etiqueta = (d: number) => (d < 0 ? 'caducado' : d === 0 ? 'caduca hoy' : d === 1 ? 'caduca mañana' : `caduca en ${d} días`);
+            const detalle = lista.slice(0, 3).map((x) => `${x.name.trim()} (${etiqueta(x.days)})`).join(', ');
+            const resto = lista.length > 3 ? ` y ${lista.length - 3} más` : '';
+            const delivered = await sendToUserEverywhere(userId, {
+                title: lista.length === 1 ? '⏳ Un producto caduca pronto' : `⏳ ${lista.length} productos caducan pronto`,
+                body: `${detalle}${resto}. Toca para ver una receta.`,
+                url: '/apps/mi-hogar/shopping',
+            });
+            await markSent(userId, notifKey, dateStr);
             sent += delivered;
         }
     }
