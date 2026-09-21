@@ -12,6 +12,7 @@ import { Loader2, ShoppingCart, ListTodo, Receipt, Pill, Info, CheckCircle2, Spa
 import { supabase } from '@/lib/supabase';
 import { apiFetch } from '@/lib/api-fetch';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/apps/mi-hogar/auth-context';
 
 interface ImageSuggestion {
     type: string;
@@ -49,34 +50,45 @@ interface ShareAnalysisDialogProps {
  * usuario elige qué hacer con cada sugerencia.
  */
 export default function ShareAnalysisDialog({ open, onOpenChange, imageBase64 }: ShareAnalysisDialogProps) {
+    const { user, loading: authLoading } = useAuth();
     const [loading, setLoading] = useState(false);
     const [analysis, setAnalysis] = useState<string | null>(null);
     const [suggestions, setSuggestions] = useState<ImageSuggestion[]>([]);
     const [executingAction, setExecutingAction] = useState<string | null>(null);
+    const [analyzedFor, setAnalyzedFor] = useState<string | null>(null);
 
     useEffect(() => {
-        if (open && imageBase64) {
-            void analyzeImage(imageBase64);
-        }
         if (!open) {
             setAnalysis(null);
             setSuggestions([]);
+            setAnalyzedFor(null);
+            return;
+        }
+        // Espera a que la sesión termine de resolverse (recién abierta la app
+        // por "Compartir", supabase aún puede estar leyendo el token local) en
+        // vez de fallar de inmediato: por eso no usamos supabase.auth.getUser(),
+        // que hace una llamada de red y podía cerrar el dialogo antes de que se viera nada.
+        if (imageBase64 && imageBase64 !== analyzedFor && !authLoading) {
+            if (!user) {
+                toast.error('Inicia sesión en Quioba para analizar la imagen');
+                onOpenChange(false);
+                return;
+            }
+            setAnalyzedFor(imageBase64);
+            void analyzeImage(imageBase64, user.id);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, imageBase64]);
+    }, [open, imageBase64, user, authLoading]);
 
-    const analyzeImage = async (image: string) => {
+    const analyzeImage = async (image: string, userId: string) => {
         setLoading(true);
         setAnalysis(null);
         setSuggestions([]);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No has iniciado sesión');
-
             const response = await apiFetch('/api/ai-chat/analyze-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image, userId: user.id }),
+                body: JSON.stringify({ image, userId }),
             });
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
@@ -94,7 +106,6 @@ export default function ShareAnalysisDialog({ open, onOpenChange, imageBase64 }:
     };
 
     const executeSuggestion = async (suggestion: ImageSuggestion) => {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         setExecutingAction(suggestion.action);
@@ -158,7 +169,7 @@ export default function ShareAnalysisDialog({ open, onOpenChange, imageBase64 }:
                         Quioba
                     </DialogTitle>
                     <DialogDescription className="text-xs">
-                        {loading ? 'Leyendo tu captura…' : analysis || 'Elige qué hacer con esta imagen'}
+                        {loading || authLoading ? 'Leyendo tu captura…' : analysis || 'Elige qué hacer con esta imagen'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -170,7 +181,7 @@ export default function ShareAnalysisDialog({ open, onOpenChange, imageBase64 }:
                     />
                 )}
 
-                {loading && (
+                {(loading || authLoading) && (
                     <div className="flex flex-col items-center justify-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
                     </div>
