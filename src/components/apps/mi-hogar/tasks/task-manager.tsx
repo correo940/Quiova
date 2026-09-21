@@ -1128,7 +1128,7 @@ export default function TaskManager() {
                                     </div>
                                 </header>
 
-                                <div className="divide-y divide-border/60">
+                                <div className="p-2 space-y-2 bg-muted/20 rounded-b-xl">
                                     {section.tasks.length === 0 ? (
                                         <p className="text-xs text-muted-foreground italic px-3 py-2">Sin tareas en esta sección.</p>
                                     ) : (
@@ -1443,7 +1443,7 @@ function TaskItem({
     const parsed = parseTaskBody(task.notes);
 
     return (
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden rounded-2xl">
             {/* Acciones reveladas al deslizar a la izquierda */}
             {canEdit && (
                 <div className="absolute inset-y-0 right-0 flex items-stretch">
@@ -1464,10 +1464,10 @@ function TaskItem({
                 onDragEnd={(_, info) => onSwipeChange(info.offset.x < -60)}
                 style={{ touchAction: 'pan-y' }}
                 className={cn(
-                    "group relative pl-3 pr-2 py-2.5 bg-background transition-colors hover:bg-accent/30 cursor-pointer border-l-4",
+                    "group relative pl-3 pr-2.5 py-3 bg-card rounded-2xl border border-border shadow-sm transition-shadow hover:shadow-md cursor-pointer border-l-[6px]",
                     getPriorityClasses(task.priority),
                     isCompleted && "opacity-60",
-                    expanded && "bg-accent/40"
+                    expanded && "ring-1 ring-quioba-cuerpo/40"
                 )}
                 onClick={onToggleExpand}
             >
@@ -1496,7 +1496,7 @@ function TaskItem({
                 {/* Contenido */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className={cn("text-sm font-medium leading-tight", isCompleted && "line-through text-muted-foreground")}>
+                        <h3 className={cn("text-[15px] font-semibold leading-tight", isCompleted && "line-through text-muted-foreground")}>
                             {task.title}
                         </h3>
                         {catMeta && (
