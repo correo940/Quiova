@@ -118,6 +118,7 @@ export default function SmartScanner({ onClose, onProductAdded, autoStartBarcode
                 name: productName,
                 category: aiAnalysis.category,
                 is_checked: isPantry,
+                pantry_at: isPantry ? new Date().toISOString() : null,
                 supermarket: supermarket || null,
                 barcode: barcode || null,
             }]);

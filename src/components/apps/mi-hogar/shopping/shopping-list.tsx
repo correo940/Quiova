@@ -34,7 +34,19 @@ type ShoppingItem = {
     precioActual?: number | null;
     precioActualizadoEn?: string | null;
     imagenProductoUrl?: string | null;
+    pantryAt?: string | null;
+    expiresAt?: string | null;
 };
+
+// Días que faltan para caducar (negativo = ya caducó). expiresAt viene como AAAA-MM-DD.
+const diasParaCaducar = (expiresAt: string): number => {
+    const [y, m, d] = expiresAt.split('-').map(Number);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d).getTime() - hoy.getTime()) / 86400000);
+};
+const AVISO_CADUCIDAD_DIAS = 3;
+const formatoFecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
 type PrecioComparado = {
     supermercado: string;
@@ -271,6 +283,9 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
     // ── Vista móvil simplificada ──
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+    const [recipeOpen, setRecipeOpen] = useState(false);
+    const [recipeLoading, setRecipeLoading] = useState(false);
+    const [recipe, setRecipe] = useState<{ title: string; description: string; cooking_time: string; difficulty: string; ingredients: { name: string; quantity: string; has_it: boolean }[]; steps: string[] } | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [justCheckedIds, setJustCheckedIds] = useState<Set<string>>(new Set());
     const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
@@ -577,6 +592,8 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 precioActual: item.precio_actual !== null && item.precio_actual !== undefined ? Number(item.precio_actual) : null,
                 precioActualizadoEn: item.precio_actualizado_en,
                 imagenProductoUrl: item.imagen_producto_url,
+                pantryAt: item.pantry_at,
+                expiresAt: item.expires_at,
             }));
 
             setItems(mappedItems);
@@ -690,18 +707,14 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
         // 1. Optimistic Update Local
         const originalItems = [...items];
-        setItems(items.map(i => {
-            if (i.id === id) {
-                return { ...i, status: newStatus };
-            }
-            return i;
-        }));
+        const pantryAt = isChecked ? new Date().toISOString() : null;
+        setItems(prev => prev.map(i => (i.id === id ? { ...i, status: newStatus, pantryAt } : i)));
 
         // 2. Fetch en Background
         try {
             const { error } = await supabase
                 .from('shopping_items')
-                .update({ is_checked: isChecked })
+                .update({ is_checked: isChecked, pantry_at: pantryAt })
                 .eq('id', id);
 
             if (error) throw error;
@@ -731,6 +744,17 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                 return next;
             });
         }, 700);
+    };
+
+    const setExpiry = async (id: string, date: string | null) => {
+        const previous = items;
+        setItems(prev => prev.map(i => (i.id === id ? { ...i, expiresAt: date } : i)));
+        const { error } = await supabase.from('shopping_items').update({ expires_at: date }).eq('id', id);
+        if (error) {
+            console.error('Error guardando caducidad:', error);
+            setItems(previous);
+            toast.error('No se pudo guardar la fecha de caducidad');
+        }
     };
 
     const deleteItem = async (id: string) => {
@@ -773,6 +797,42 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
     const baseToBuyItems = baseFilteredItems.filter(i => i.status === 'to_buy');
     const toBuyItems = filteredItems.filter(i => i.status === 'to_buy');
     const inStockItems = filteredItems.filter(i => i.status === 'in_stock');
+
+    // Productos de la despensa que ya caducaron o caducan en pocos días.
+    const expiringItems = React.useMemo(
+        () => items
+            .filter(i => i.status === 'in_stock' && i.expiresAt && diasParaCaducar(i.expiresAt) <= AVISO_CADUCIDAD_DIAS)
+            .sort((a, b) => diasParaCaducar(a.expiresAt!) - diasParaCaducar(b.expiresAt!)),
+        [items]
+    );
+
+    const generateExpiringRecipe = async () => {
+        setRecipeLoading(true);
+        setRecipe(null);
+        setRecipeOpen(true);
+        try {
+            const response = await apiFetch(getApiUrl('api/mi-hogar/generate-recipe'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pantryItems: items.filter(i => i.status === 'in_stock').map(i => i.name),
+                    priorityItems: expiringItems.map(i => i.name),
+                }),
+            });
+            const result = await response.json();
+            if (result.success && result.data) {
+                setRecipe(result.data);
+            } else {
+                setRecipeOpen(false);
+                toast.error(result.error || 'No se pudo crear la receta');
+            }
+        } catch {
+            setRecipeOpen(false);
+            toast.error('Error de conexión');
+        } finally {
+            setRecipeLoading(false);
+        }
+    };
 
     // AI SUGGESTIONS LOGIC
     const suggestedItems = React.useMemo(() => {
@@ -1296,6 +1356,39 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                             >
                                 <Camera className="h-6 w-6 text-white" />
                             </button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── RECETA CON PRODUCTOS QUE CADUCAN ── */}
+            <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
+                <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><ChefHat className="w-5 h-5 text-green-800" /> {recipe?.title || 'Pensando una receta…'}</DialogTitle>
+                    </DialogHeader>
+                    {recipeLoading || !recipe ? (
+                        <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-green-800" /></div>
+                    ) : (
+                        <div className="space-y-4 text-sm">
+                            <p className="text-slate-600 dark:text-slate-300">{recipe.description}</p>
+                            <p className="text-xs font-bold text-slate-500">{recipe.cooking_time} · {recipe.difficulty}</p>
+                            <div>
+                                <p className="font-bold mb-1">Ingredientes</p>
+                                <ul className="space-y-1">
+                                    {recipe.ingredients.map((ing, idx) => (
+                                        <li key={idx} className={ing.has_it ? '' : 'text-orange-600'}>
+                                            {ing.has_it ? '✓' : '＋'} {ing.name} — {ing.quantity}{ing.has_it ? '' : ' (te falta)'}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div>
+                                <p className="font-bold mb-1">Pasos</p>
+                                <ol className="list-decimal pl-5 space-y-1.5">
+                                    {recipe.steps.map((st, idx) => <li key={idx}>{st}</li>)}
+                                </ol>
+                            </div>
                         </div>
                     )}
                 </DialogContent>
@@ -1843,6 +1936,31 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
 
                 {/* ── PESTAÑA: DESPENSA / HISTORIAL ── */}
                 <TabsContent value="pantry" className="focus-visible:outline-none focus:ring-0">
+                    {expiringItems.length > 0 && (
+                        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/50 p-4">
+                            <p className="font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                                <Timer className="w-5 h-5" />
+                                {expiringItems.length === 1 ? '1 producto caduca pronto' : `${expiringItems.length} productos caducan pronto`}
+                            </p>
+                            <ul className="mt-2 space-y-1 text-sm text-red-800 dark:text-red-300">
+                                {expiringItems.map(i => {
+                                    const d = diasParaCaducar(i.expiresAt!);
+                                    return (
+                                        <li key={i.id}>
+                                            <span className="font-semibold">{i.name}</span> — {d < 0 ? 'caducado' : d === 0 ? 'caduca hoy' : d === 1 ? 'caduca mañana' : `caduca en ${d} días`}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <button
+                                type="button"
+                                onClick={generateExpiringRecipe}
+                                className="mt-3 h-11 px-4 rounded-xl bg-green-800 text-white font-bold text-sm flex items-center gap-2 active:scale-95 transition-transform"
+                            >
+                                <ChefHat className="w-4 h-4" /> Hacer una receta con esto
+                            </button>
+                        </div>
+                    )}
                     {inStockItems.length === 0 ? (
                         <div className="text-center py-20 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                             <Archive className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-700 mb-3" />
@@ -1852,7 +1970,14 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                             {inStockItems.map(item => {
                                 const aiData = guessCategoryAndPrice(item.name);
-                                const expiration = item.created_at ? checkExpiration(aiData.category, item.created_at) : null;
+                                const realDays = item.expiresAt ? diasParaCaducar(item.expiresAt) : null;
+                                const expiration = realDays !== null
+                                    ? (realDays < 0
+                                        ? { status: 'expired' as const, message: 'Caducado' }
+                                        : realDays <= AVISO_CADUCIDAD_DIAS
+                                            ? { status: 'warning' as const, message: realDays === 0 ? 'Caduca hoy' : realDays === 1 ? 'Caduca mañana' : `Caduca en ${realDays} días` }
+                                            : null)
+                                    : (item.created_at ? checkExpiration(aiData.category, item.created_at) : null);
                                 return (
                                     <div key={item.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-3.5 flex flex-col h-full hover:shadow-sm transition-shadow group relative overflow-hidden">
                                         <div className={`absolute -right-2 -top-2 w-12 h-12 rounded-full opacity-20 blur-xl ${item.supermarket ? getSupermarketBadgeColor(item.supermarket).split(' ')[0] : 'bg-slate-300'}`} />
@@ -1876,6 +2001,22 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                         </div>
 
                                         <div className="flex flex-col gap-2 mt-auto pt-2 relative z-10">
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                Entró el {formatoFecha(item.pantryAt || item.created_at || new Date().toISOString())}
+                                            </p>
+                                            {!readOnly ? (
+                                                <label className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                                    Caduca
+                                                    <input
+                                                        type="date"
+                                                        value={item.expiresAt || ''}
+                                                        onChange={(e) => setExpiry(item.id, e.target.value || null)}
+                                                        className="flex-1 min-w-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px]"
+                                                    />
+                                                </label>
+                                            ) : item.expiresAt ? (
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400">Caduca el {formatoFecha(item.expiresAt)}</p>
+                                            ) : null}
                                             <div className="flex items-end justify-between">
                                                 <div className="flex flex-col gap-1.5 items-start">
                                                     {item.supermarket && (
