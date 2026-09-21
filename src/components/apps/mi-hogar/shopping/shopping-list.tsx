@@ -2022,7 +2022,7 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                             <p className="text-muted-foreground font-medium">La despensa está vacía.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {inStockItems.map(item => {
                                 const aiData = guessCategoryAndPrice(item.name);
                                 const realDays = item.expiresAt ? diasParaCaducar(item.expiresAt) : null;
@@ -2033,87 +2033,81 @@ export default function ShoppingList({ readOnly }: { readOnly?: boolean }) {
                                             ? { status: 'warning' as const, message: realDays === 0 ? 'Caduca hoy' : realDays === 1 ? 'Caduca mañana' : `Caduca en ${realDays} días` }
                                             : null)
                                     : (item.created_at ? checkExpiration(aiData.category, item.created_at) : null);
+                                const tone = expiration?.status === 'expired'
+                                    ? 'border-red-300 bg-red-50 dark:border-red-800/60 dark:bg-red-950/30'
+                                    : expiration?.status === 'warning'
+                                        ? 'border-amber-300 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/30'
+                                        : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/40';
                                 return (
-                                    <div key={item.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-3.5 flex flex-col h-full hover:shadow-sm transition-shadow group relative overflow-hidden">
-                                        <div className={`absolute -right-2 -top-2 w-12 h-12 rounded-full opacity-20 blur-xl ${item.supermarket ? getSupermarketBadgeColor(item.supermarket).split(' ')[0] : 'bg-slate-300'}`} />
-
-                                        <div className="flex justify-between items-start mb-2 relative z-10 w-full">
+                                    <div key={item.id} className={`rounded-2xl border-2 p-4 flex flex-col gap-3 shadow-sm ${tone}`}>
+                                        <div className="flex items-start gap-3">
                                             <button
                                                 type="button"
                                                 onClick={() => openPriceDialog(item)}
                                                 title="Ver precios en los supermercados"
-                                                className="font-semibold text-slate-700 dark:text-slate-300 text-sm leading-tight line-clamp-2 pr-4 opacity-80 group-hover:opacity-100 flex items-center gap-1.5 flex-wrap text-left"
+                                                className="flex-1 min-w-0 text-left text-lg font-bold leading-tight text-slate-800 dark:text-slate-100"
                                             >
-                                                {expiration?.status === 'expired' && <Timer className="w-3.5 h-3.5 text-red-500 animate-pulse shrink-0" />}
-                                                {expiration?.status === 'warning' && <Timer className="w-3.5 h-3.5 text-yellow-500 shrink-0" />}
-                                                <span className="truncate">{aiData.emoji} {item.name}</span>
+                                                {aiData.emoji} {item.name}
                                             </button>
                                             {!readOnly && (
-                                                <button onClick={() => deleteItem(item.id)} className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all shrink-0">
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleStatus(item.id)}
+                                                        className="shrink-0 h-11 w-11 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 active:scale-90"
+                                                        title="Reagregar a la lista"
+                                                        aria-label="Volver a la lista de comprar"
+                                                    >
+                                                        <RefreshCw className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => deleteItem(item.id)}
+                                                        className="shrink-0 h-11 w-11 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-red-500 active:scale-90"
+                                                        aria-label="Borrar"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
 
-                                        <div className="flex flex-col gap-2 mt-auto pt-2 relative z-10">
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                Entró el {formatoFecha(item.pantryAt || item.created_at || new Date().toISOString())}
-                                            </p>
-                                            {!readOnly ? (
-                                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                                                    <label className="flex items-center gap-1.5 flex-1 min-w-0">
-                                                        Caduca
-                                                        <input
-                                                            type="date"
-                                                            value={item.expiresAt || ''}
-                                                            onChange={(e) => setExpiry(item.id, e.target.value || null)}
-                                                            className="flex-1 min-w-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[11px]"
-                                                        />
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        disabled={readingExpiryId === item.id}
-                                                        onClick={() => { expiryTargetRef.current = item.id; expiryFileRef.current?.click(); }}
-                                                        title="Leer la fecha con una foto"
-                                                        aria-label="Leer la fecha de caducidad con una foto"
-                                                        className="shrink-0 w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-green-800 active:scale-90 disabled:opacity-50"
-                                                    >
-                                                        {readingExpiryId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                                                    </button>
-                                                </div>
-                                            ) : item.expiresAt ? (
-                                                <p className="text-[11px] text-slate-500 dark:text-slate-400">Caduca el {formatoFecha(item.expiresAt)}</p>
-                                            ) : null}
-                                            <div className="flex items-end justify-between">
-                                                <div className="flex flex-col gap-1.5 items-start">
-                                                    {item.supermarket && (
-                                                        <SupermarketBadge supermarket={item.supermarket} subtle />
-                                                    )}
-                                                    {item.precioActual != null && (
-                                                        <span className="text-xs font-black text-green-800 dark:text-green-400">
-                                                            {item.precioActual.toFixed(2)}€
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {!readOnly && (
-                                                    <button
-                                                        onClick={() => toggleStatus(item.id)}
-                                                        className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-green-800 hover:border-green-800 transition-all hover:scale-110 active:scale-95"
-                                                        title="Reagregar a la lista"
-                                                    >
-                                                        <RefreshCw className="w-4 h-4" />
-                                                    </button>
-                                                )}
+                                        {expiration && (
+                                            <div className={`rounded-xl py-2.5 px-3 flex items-center justify-center gap-2 text-base font-black uppercase tracking-wide ${expiration.status === 'expired' ? 'bg-red-600 text-white' : 'bg-amber-400 text-amber-950'}`}>
+                                                <Timer className="w-5 h-5" /> {expiration.message}
                                             </div>
-                                            {/* Warning caducidad renderizado debajo con estilo */}
-                                            {expiration && (
-                                                <div className="text-[10px] font-bold tracking-wide uppercase mt-1 w-full text-center rounded overflow-hidden shadow-sm">
-                                                    {expiration.status === 'expired'
-                                                        ? <span className="text-red-600 bg-red-100/80 dark:bg-red-900/40 dark:text-red-400 py-1 w-full block border border-red-200 dark:border-red-800/50">{expiration.message}</span>
-                                                        : <span className="text-yellow-600 bg-yellow-100/80 dark:bg-yellow-900/40 dark:text-yellow-400 py-1 w-full block border border-yellow-200 dark:border-yellow-800/50">{expiration.message}</span>}
-                                                </div>
+                                        )}
+
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                                            <span>Entró el {formatoFecha(item.pantryAt || item.created_at || new Date().toISOString())}</span>
+                                            {item.expiresAt && <span className="font-semibold text-slate-700 dark:text-slate-200">Caduca el {formatoFecha(item.expiresAt + 'T12:00:00')}</span>}
+                                            {item.supermarket && <SupermarketBadge supermarket={item.supermarket} subtle />}
+                                            {item.precioActual != null && (
+                                                <span className="font-black text-green-800 dark:text-green-400">{item.precioActual.toFixed(2)}€</span>
                                             )}
                                         </div>
+
+                                        {!readOnly && (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="date"
+                                                    aria-label="Fecha de caducidad"
+                                                    value={item.expiresAt || ''}
+                                                    onChange={(e) => setExpiry(item.id, e.target.value || null)}
+                                                    className="flex-1 min-w-0 h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-base"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    disabled={readingExpiryId === item.id}
+                                                    onClick={() => { expiryTargetRef.current = item.id; expiryFileRef.current?.click(); }}
+                                                    aria-label="Leer la fecha de caducidad con una foto"
+                                                    className="shrink-0 h-11 px-4 rounded-xl bg-green-800 text-white font-bold text-sm flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                                                >
+                                                    {readingExpiryId === item.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                                                    Foto
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
