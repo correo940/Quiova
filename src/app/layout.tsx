@@ -12,6 +12,7 @@ import { WorkSessionProvider } from '@/context/work-session-context';
 import CookieBanner from '@/components/cookie-banner';
 import { Analytics } from '@vercel/analytics/react';
 import PageViewTracker from '@/components/analytics/page-view-tracker';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'Quioba — El sistema operativo para tu vida personal y familiar',
@@ -144,6 +145,9 @@ return;}}
               <Analytics />
               <PageViewTracker />
             </ClientProvider>
+            {/* Sin esto, cada toast.success/toast.error de la app (30+ ficheros)
+                se dispara pero no se ve: sonner no pinta nada sin este componente. */}
+            <Toaster richColors position="top-center" />
           </WorkSessionProvider>
         </AuthProvider>
       </body>
