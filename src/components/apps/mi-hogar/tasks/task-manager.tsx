@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
     addDays,
     addHours,
@@ -340,6 +341,7 @@ export default function TaskManager() {
     const [viewMode, setViewMode] = useState<ViewMode>(initial.current.mode);
     const [showCompletedSection, setShowCompletedSection] = useState(false);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+    const [swipedTaskId, setSwipedTaskId] = useState<string | null>(null);
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<Category | 'all'>('all');
     const [calendarDate, setCalendarDate] = useState<Date>(new Date());
     const [medicines, setMedicines] = useState<any[]>([]);
@@ -840,12 +842,22 @@ export default function TaskManager() {
                     <Button size="sm" variant={viewMode === 'calendar' ? 'default' : 'outline'} onClick={() => setViewMode('calendar')}>
                         <CalendarIcon className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" onClick={() => openNewTaskForm()} disabled={!canEditCurrentList}>
+                    <Button size="sm" onClick={() => openNewTaskForm()} disabled={!canEditCurrentList} className="hidden lg:inline-flex">
                         <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva
                         <kbd className="ml-2 hidden sm:inline-block text-[9px] bg-white/20 px-1 rounded">N</kbd>
                     </Button>
                 </div>
             </div>
+
+            {/* MOBILE: boton flotante para nueva tarea, siempre a mano del pulgar */}
+            <button
+                onClick={() => openNewTaskForm()}
+                disabled={!canEditCurrentList}
+                aria-label="Nueva tarea"
+                className="lg:hidden fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-primary text-primary-foreground shadow-xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none"
+            >
+                <Plus className="h-6 w-6" />
+            </button>
 
             {/* MOBILE: buscador grande + boton Filtros (abre hoja inferior) */}
             <div className="flex items-center gap-2 lg:hidden">
@@ -1133,6 +1145,8 @@ export default function TaskManager() {
                                                 onDragStart={onDragStart}
                                                 onToggleNoteSubtask={(idx, ck) => void toggleNoteSubtask(task.id, idx, ck)}
                                                 canEdit={canEditCurrentList}
+                                                isSwiped={swipedTaskId === task.id}
+                                                onSwipeChange={(open) => setSwipedTaskId(open ? task.id : null)}
                                             />
                                         ))
                                     )}
@@ -1410,12 +1424,15 @@ function QuickAdd({ sectionDate, onAdd }: { sectionDate: Date; onAdd: (input: st
 
 function TaskItem({
     task, expanded, onToggleExpand, onToggleComplete, onEdit, onDelete, onSnooze, onDragStart, onToggleNoteSubtask, canEdit,
+    isSwiped, onSwipeChange,
 }: {
     task: Task; expanded: boolean;
     onToggleExpand: () => void; onToggleComplete: () => void; onEdit: () => void; onDelete: () => void;
     onSnooze: (d: Date) => void; onDragStart: (id: string) => void;
     onToggleNoteSubtask: (lineIndex: number, currentChecked: boolean) => void;
     canEdit: boolean;
+    isSwiped: boolean;
+    onSwipeChange: (open: boolean) => void;
 }) {
     const isCompleted = task.completed;
     const isDocTask = isDocumentTask(task);
@@ -1426,30 +1443,53 @@ function TaskItem({
     const parsed = parseTaskBody(task.notes);
 
     return (
-        <div
-            draggable={canEdit}
-            onDragStart={() => onDragStart(task.id)}
-            className={cn(
-                "group relative pl-3 pr-2 py-2 transition-colors hover:bg-accent/30 cursor-pointer border-l-4",
-                getPriorityClasses(task.priority),
-                isCompleted && "opacity-60",
-                expanded && "bg-accent/40"
+        <div className="relative overflow-hidden">
+            {/* Acciones reveladas al deslizar a la izquierda */}
+            {canEdit && (
+                <div className="absolute inset-y-0 right-0 flex items-stretch">
+                    <button onClick={() => { onEdit(); onSwipeChange(false); }} className="w-16 flex items-center justify-center bg-indigo-500 text-white" title="Editar">
+                        <Pencil className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => { onDelete(); onSwipeChange(false); }} className="w-16 flex items-center justify-center bg-rose-500 text-white" title="Eliminar">
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                </div>
             )}
-            onClick={onToggleExpand}
-        >
+            <motion.div
+                drag={canEdit ? 'x' : false}
+                dragConstraints={{ left: -128, right: 0 }}
+                dragElastic={0.05}
+                animate={{ x: isSwiped ? -128 : 0 }}
+                onDragEnd={(_, info) => onSwipeChange(info.offset.x < -60)}
+                style={{ touchAction: 'pan-y' }}
+                className={cn(
+                    "group relative pl-3 pr-2 py-2.5 bg-background transition-colors hover:bg-accent/30 cursor-pointer border-l-4",
+                    getPriorityClasses(task.priority),
+                    isCompleted && "opacity-60",
+                    expanded && "bg-accent/40"
+                )}
+                onClick={onToggleExpand}
+            >
             <div className="flex items-start gap-2.5">
-                {/* Drag handle (solo desktop, en hover) */}
+                {/* Drag handle: unico punto que arrastra para reordenar en escritorio (raton) */}
                 {canEdit && (
-                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 cursor-grab mt-1 shrink-0 hidden sm:block" />
+                    <span
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); onDragStart(task.id); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 shrink-0 hidden sm:block cursor-grab"
+                    >
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100" />
+                    </span>
                 )}
 
-                {/* Checkbox */}
+                {/* Checkbox: mas grande, para acertar con el dedo */}
                 <button
                     type="button"
-                    className="mt-0.5 shrink-0 hover:scale-110 transition-transform"
+                    className="-m-1.5 p-1.5 shrink-0 active:scale-95 transition-transform"
                     onClick={(e) => { e.stopPropagation(); onToggleComplete(); }}
                 >
-                    {isCompleted ? <CheckCircle2 className="h-5 w-5 text-quioba-cuerpo" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-quioba-cuerpo" />}
+                    {isCompleted ? <CheckCircle2 className="h-7 w-7 text-quioba-cuerpo" /> : <Circle className="h-7 w-7 text-muted-foreground hover:text-quioba-cuerpo" />}
                 </button>
 
                 {/* Contenido */}
@@ -1536,6 +1576,7 @@ function TaskItem({
                     )}
                 </div>
             </div>
+            </motion.div>
         </div>
     );
 }
