@@ -342,6 +342,9 @@ export default function TaskManager() {
     const [showCompletedSection, setShowCompletedSection] = useState(false);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
     const [swipedTaskId, setSwipedTaskId] = useState<string | null>(null);
+    // Hoy/Mañana/Esta semana empiezan desplegadas; el resto (vencidas, más
+    // adelante, completadas) empieza plegado.
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set(['overdue', 'later', 'completed']));
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<Category | 'all'>('all');
     const [calendarDate, setCalendarDate] = useState<Date>(new Date());
     const [medicines, setMedicines] = useState<any[]>([]);
@@ -767,11 +770,13 @@ export default function TaskManager() {
         });
         const laterTasks = pendingTasks.filter((t) => getTaskDate(t) > weekEnd);
 
+        // Hoy, mañana y esta semana van primero y desplegadas; el resto
+        // (vencidas, más adelante, completadas) va después y plegado.
         const sections: TaskSection[] = [];
-        if (overdue.length > 0) sections.push({ key: 'overdue', title: 'Vencidas', description: 'Fuera de fecha', tasks: sortTasks(overdue) });
         sections.push({ key: 'today', title: 'Hoy', description: format(new Date(), "EEEE d 'de' MMMM", { locale: es }), tasks: sortTasks(todayTasks), sectionDate: new Date() });
         sections.push({ key: 'tomorrow', title: 'Mañana', description: format(addDays(new Date(), 1), "EEEE d", { locale: es }), tasks: sortTasks(tomorrowTasks), sectionDate: addDays(new Date(), 1) });
         if (weekTasks.length > 0) sections.push({ key: 'week', title: 'Esta semana', description: 'Próximos días', tasks: sortTasks(weekTasks), sectionDate: nextMonday(new Date()) });
+        if (overdue.length > 0) sections.push({ key: 'overdue', title: 'Vencidas', description: 'Fuera de fecha', tasks: sortTasks(overdue) });
         if (laterTasks.length > 0) sections.push({ key: 'later', title: 'Más adelante', description: 'Sin urgencia', tasks: sortTasks(laterTasks), sectionDate: addWeeks(new Date(), 2) });
         if ((showCompletedSection || taskFilter === 'completed') && completedTasks.length > 0) {
             sections.push({ key: 'completed', title: 'Completadas', description: 'Historial', tasks: sortTasks(completedTasks) });
@@ -1112,55 +1117,68 @@ export default function TaskManager() {
                             </CardContent>
                         </Card>
                     ) : (
-                        sectionData.sections.map((section) => (
+                        sectionData.sections.map((section) => {
+                            const isCollapsed = collapsedSections.has(section.key);
+                            return (
                             <section
                                 key={section.key}
                                 onDragOver={onDragOverSection}
                                 onDrop={(e) => onDropOnSection(e, section.key)}
                                 className="rounded-xl border border-border bg-card"
                             >
-                                {/* Sticky section header */}
-                                <header className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-xl bg-card/95 backdrop-blur px-3 py-2 border-b border-border">
+                                {/* Sticky section header: toca para plegar/desplegar */}
+                                <header
+                                    onClick={() => setCollapsedSections(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(section.key)) next.delete(section.key); else next.add(section.key);
+                                        return next;
+                                    })}
+                                    className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-xl bg-card/95 backdrop-blur px-3 py-2 border-b border-border cursor-pointer select-none"
+                                >
                                     <div className="flex items-baseline gap-2 min-w-0">
+                                        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                         <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">{section.title}</h2>
                                         <span className="text-[10px] text-muted-foreground tabular-nums">{section.tasks.length}</span>
                                         <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">· {section.description}</span>
                                     </div>
                                 </header>
 
-                                <div className="p-2 space-y-2 bg-muted/20 rounded-b-xl">
-                                    {section.tasks.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground italic px-3 py-2">Sin tareas en esta sección.</p>
-                                    ) : (
-                                        section.tasks.map((task) => (
-                                            <TaskItem
-                                                key={task.id}
-                                                task={task}
-                                                expanded={expandedTaskId === task.id}
-                                                onToggleExpand={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
-                                                onToggleComplete={() => void toggleComplete(task.id)}
-                                                onEdit={() => startEditing(task)}
-                                                onDelete={() => void deleteTask(task.id)}
-                                                onSnooze={(d) => void snoozeTask(task, d)}
-                                                onDragStart={onDragStart}
-                                                onToggleNoteSubtask={(idx, ck) => void toggleNoteSubtask(task.id, idx, ck)}
-                                                canEdit={canEditCurrentList}
-                                                isSwiped={swipedTaskId === task.id}
-                                                onSwipeChange={(open) => setSwipedTaskId(open ? task.id : null)}
-                                            />
-                                        ))
-                                    )}
+                                {!isCollapsed && (
+                                    <div className="p-2 space-y-2 bg-muted/20 rounded-b-xl">
+                                        {section.tasks.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic px-3 py-2">Sin tareas en esta sección.</p>
+                                        ) : (
+                                            section.tasks.map((task) => (
+                                                <TaskItem
+                                                    key={task.id}
+                                                    task={task}
+                                                    expanded={expandedTaskId === task.id}
+                                                    onToggleExpand={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                                                    onToggleComplete={() => void toggleComplete(task.id)}
+                                                    onEdit={() => startEditing(task)}
+                                                    onDelete={() => void deleteTask(task.id)}
+                                                    onSnooze={(d) => void snoozeTask(task, d)}
+                                                    onDragStart={onDragStart}
+                                                    onToggleNoteSubtask={(idx, ck) => void toggleNoteSubtask(task.id, idx, ck)}
+                                                    canEdit={canEditCurrentList}
+                                                    isSwiped={swipedTaskId === task.id}
+                                                    onSwipeChange={(open) => setSwipedTaskId(open ? task.id : null)}
+                                                />
+                                            ))
+                                        )}
 
-                                    {/* Quick-add inline */}
-                                    {section.sectionDate && canEditCurrentList && (
-                                        <QuickAdd
-                                            sectionDate={section.sectionDate}
-                                            onAdd={(input) => handleQuickAdd(input, section.sectionDate!)}
-                                        />
-                                    )}
-                                </div>
+                                        {/* Quick-add inline */}
+                                        {section.sectionDate && canEditCurrentList && (
+                                            <QuickAdd
+                                                sectionDate={section.sectionDate}
+                                                onAdd={(input) => handleQuickAdd(input, section.sectionDate!)}
+                                            />
+                                        )}
+                                    </div>
+                                )}
                             </section>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             )}
