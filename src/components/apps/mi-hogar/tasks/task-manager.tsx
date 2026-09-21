@@ -1456,6 +1456,7 @@ function TaskItem({
                 </div>
             )}
             <motion.div
+                data-horizontal-swipe={canEdit ? 'true' : undefined}
                 drag={canEdit ? 'x' : false}
                 dragConstraints={{ left: -128, right: 0 }}
                 dragElastic={0.05}
