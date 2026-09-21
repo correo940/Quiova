@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { useRouter } from 'next/navigation';
 import { consumePendingShareEvent } from '@/lib/share-target-init';
 
 interface ShareTargetContextType {
@@ -60,12 +59,14 @@ function imageUriToBase64(uri: string): Promise<string> {
 }
 
 /**
- * Process a ShareReceivedEvent: extract the image, convert to base64, navigate.
+ * Process a ShareReceivedEvent: extract the image, convert to base64.
+ * The image is picked up by ShareAnalysisManager (mounted app-wide), which
+ * opens the analysis dialog on top of whatever screen the user is on —
+ * no navigation needed.
  */
 async function processShareEvent(
     event: any,
     setImage: (img: string) => void,
-    router: ReturnType<typeof useRouter>
 ) {
     if (event.files && event.files.length > 0) {
         const file = event.files[0];
@@ -73,7 +74,6 @@ async function processShareEvent(
         try {
             const base64 = await imageUriToBase64(file.uri);
             setImage(base64);
-            router.push('/apps/mi-hogar/tasks');
         } catch (err) {
             console.error('[ShareTarget] ❌ Error converting:', err);
         }
@@ -82,7 +82,6 @@ async function processShareEvent(
 
 export function ShareTargetProvider({ children }: { children: React.ReactNode }) {
     const [sharedImageBase64, setSharedImageBase64] = useState<string | null>(null);
-    const router = useRouter();
 
     const consumeSharedImage = useCallback(() => {
         const img = sharedImageBase64;
@@ -99,7 +98,7 @@ export function ShareTargetProvider({ children }: { children: React.ReactNode })
         const pendingEvent = consumePendingShareEvent();
         if (pendingEvent) {
             console.log('[ShareTarget] 🧊 Cold start: found buffered event');
-            processShareEvent(pendingEvent, setSharedImageBase64, router);
+            processShareEvent(pendingEvent, setSharedImageBase64);
         }
 
         // === WARM START ===
@@ -107,7 +106,7 @@ export function ShareTargetProvider({ children }: { children: React.ReactNode })
         const handleShareEvent = (e: Event) => {
             const customEvent = e as CustomEvent;
             console.log('[ShareTarget] 🔥 Warm start: received DOM event');
-            processShareEvent(customEvent.detail, setSharedImageBase64, router);
+            processShareEvent(customEvent.detail, setSharedImageBase64);
         };
 
         window.addEventListener('quioba-share-received', handleShareEvent);
@@ -115,7 +114,7 @@ export function ShareTargetProvider({ children }: { children: React.ReactNode })
         return () => {
             window.removeEventListener('quioba-share-received', handleShareEvent);
         };
-    }, [router]);
+    }, []);
 
     return (
         <ShareTargetContext.Provider value={{ sharedImageBase64, consumeSharedImage }}>

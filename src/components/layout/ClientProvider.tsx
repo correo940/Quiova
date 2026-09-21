@@ -23,6 +23,7 @@ import { GlobalMenuProvider } from '@/context/GlobalMenuContext';
 import { ShareTargetProvider } from '@/context/ShareTargetContext';
 import { AiProvider } from '@/context/AiContext';
 import AiPanel from '@/components/assistant/ai-panel';
+import ShareAnalysisManager from '@/components/assistant/share-analysis-manager';
 
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
@@ -41,6 +42,7 @@ export default function ClientProvider({ children }: { children: React.ReactNode
           <JournalProvider>
             <AiProvider>
               <ShareTargetProvider>
+                <ShareAnalysisManager />
                 <TextSelectionToolbar />
                 <MedicineAlarmManager />
                 <TaskNotificationManager />
