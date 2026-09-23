@@ -16,8 +16,16 @@ async function visible(loc) {
   return null;
 }
 
-async function routerCaido(page) {
-  try { await page.request.get(URL, { timeout: 4000 }); return false; } catch { return true; }
+// Un fallo suelto no basta (el router a veces tarda): tiene que dejar de responder tres veces seguidas.
+async function responde() {
+  try { await fetch(URL, { signal: AbortSignal.timeout(8000) }); return true; } catch { return false; }
+}
+async function routerCaido() {
+  for (let i = 0; i < 3; i++) {
+    if (await responde()) return false;
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  return true;
 }
 
 async function reiniciar() {
@@ -80,13 +88,17 @@ async function reiniciar() {
       await ultimo.b.click({ timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(3000);
       await foto(`4-paso-${paso}`);
-      if (await routerCaido(page)) break;
+      if (await routerCaido()) break;
     }
-    for (let s = 0; s < 18; s++) {
-      if (await routerCaido(page)) { log('REINICIO CONFIRMADO: el router ha dejado de responder'); return; }
-      await page.waitForTimeout(5000);
+    let caido = false;
+    for (let s = 0; s < 6 && !(caido = await routerCaido()); s++) await page.waitForTimeout(5000);
+    if (!caido) { log('ERROR: pulsé los botones pero el router sigue respondiendo. Mira las fotos 3-… y 4-…'); return; }
+    log('El router ha dejado de responder. Espero a que vuelva…');
+    for (let s = 0; s < 60; s++) {
+      if (await responde()) { log('REINICIO CONFIRMADO: el router se apagó y ha vuelto'); return; }
+      await new Promise((r) => setTimeout(r, 5000));
     }
-    log('ERROR: pulsé los botones pero el router sigue respondiendo. Mira las fotos 3-… y 4-…');
+    log('AVISO: el router se apagó pero no ha vuelto en 5 minutos');
   } catch (e) {
     await foto('error');
     log('ERROR: ' + e.message);
