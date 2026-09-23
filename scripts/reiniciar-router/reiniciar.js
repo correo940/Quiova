@@ -1,6 +1,6 @@
 // Reinicia a diario el router Vodafone Sercomm FG824CD entrando a su web como una persona.
 // Corre en CasaOS (docker, imagen node:22-alpine + chromium). Variables: ROUTER_URL, ROUTER_USER,
-// ROUTER_PASS, HORA ("04:00"), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
+// ROUTER_PASS, HORA ("07:10"), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 
@@ -111,22 +111,24 @@ async function reiniciar() {
   }
 }
 
-function msHasta(hora) {
-  const [h, m] = hora.split(':').map(Number);
-  const t = new Date(); t.setHours(h, m, 0, 0);
-  if (t <= new Date()) t.setDate(t.getDate() + 1);
-  return t - new Date();
-}
-
+// Mira la hora real cada 20 s en vez de programar una espera larga: si el PC se suspende,
+// esa espera se congela y el reinicio llegaría a destiempo. Margen de 10 min por si despierta tarde.
 async function bucle() {
   const hora = process.env.HORA || '04:00';
+  const [h, m] = hora.split(':').map(Number);
+  const objetivo = h * 60 + m;
   if (PRUEBA) await reiniciar();
+  log(`Reiniciaré cada día a las ${hora}`);
+  let ultimoDia = '';
   for (;;) {
-    const ms = msHasta(hora);
-    log(`Próximo reinicio a las ${hora} (dentro de ${Math.round(ms / 60000)} min)`);
-    await new Promise((r) => setTimeout(r, ms));
-    await reiniciar();
-    await new Promise((r) => setTimeout(r, 61000));
+    const ahora = new Date();
+    const min = ahora.getHours() * 60 + ahora.getMinutes();
+    const dia = ahora.toDateString();
+    if (min >= objetivo && min < objetivo + 10 && dia !== ultimoDia) {
+      ultimoDia = dia;
+      await reiniciar();
+    }
+    await new Promise((r) => setTimeout(r, 20000));
   }
 }
 
