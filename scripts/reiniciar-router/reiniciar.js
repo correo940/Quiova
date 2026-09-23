@@ -1,15 +1,24 @@
 // Reinicia a diario el router Vodafone Sercomm FG824CD entrando a su web como una persona.
 // Corre en CasaOS (docker, imagen node:22-alpine + chromium). Variables: ROUTER_URL, ROUTER_USER,
-// ROUTER_PASS, HORA ("07:10"), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
+// ROUTER_PASS, HORA ("07:10"), PUERTO (8765, panel con botón), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
 const { chromium } = require('playwright-core');
 const fs = require('fs');
+const http = require('http');
 
 const URL = process.env.ROUTER_URL || 'http://192.168.0.1';
 const USER = process.env.ROUTER_USER || 'vodafone';
 const PASS = process.env.ROUTER_PASS;
 const PRUEBA = process.env.PRUEBA === '1';
 const OUT = process.env.OUT || '/datos';
-const log = (m) => console.log(new Date().toLocaleString('es-ES'), m);
+const HORA = process.env.HORA || '07:10';
+const historial = [];
+const log = (m) => {
+  const linea = new Date().toLocaleString('es-ES') + ' ' + m;
+  console.log(linea);
+  historial.push(linea);
+  if (historial.length > 30) historial.shift();
+};
+let ocupado = false;
 
 async function visible(loc) {
   for (const el of await loc.all()) if (await el.isVisible().catch(() => false)) return el;
@@ -29,6 +38,12 @@ async function routerCaido() {
 }
 
 async function reiniciar() {
+  if (ocupado) return log('Ya hay un reinicio en marcha');
+  ocupado = true;
+  try { await reiniciarRouter(); } finally { ocupado = false; }
+}
+
+async function reiniciarRouter() {
   const browser = await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/chromium-browser', args: ['--no-sandbox'] });
   const page = await browser.newPage({ ignoreHTTPSErrors: true });
   page.on('dialog', (d) => { log('Confirmación: ' + d.message()); d.accept(); });
@@ -114,11 +129,10 @@ async function reiniciar() {
 // Mira la hora real cada 20 s en vez de programar una espera larga: si el PC se suspende,
 // esa espera se congela y el reinicio llegaría a destiempo. Margen de 10 min por si despierta tarde.
 async function bucle() {
-  const hora = process.env.HORA || '04:00';
-  const [h, m] = hora.split(':').map(Number);
+  const [h, m] = HORA.split(':').map(Number);
   const objetivo = h * 60 + m;
   if (PRUEBA) await reiniciar();
-  log(`Reiniciaré cada día a las ${hora}`);
+  log(`Reiniciaré cada día a las ${HORA}`);
   let ultimoDia = '';
   for (;;) {
     const ahora = new Date();
@@ -132,6 +146,29 @@ async function bucle() {
   }
 }
 
+// Página con un botón para reiniciar cuando se quiera (desde casa o por Tailscale).
+function panel() {
+  const puerto = Number(process.env.PUERTO || 8765);
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/reiniciar') {
+      if (!ocupado) { log('Reinicio pedido desde el panel'); reiniciar(); }
+      res.writeHead(303, { Location: '/' });
+      return res.end();
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><title>Router</title>
+${ocupado ? '<meta http-equiv=refresh content=5>' : ''}
+<body style="font-family:system-ui;max-width:32rem;margin:2rem auto;padding:0 1rem">
+<h1>Router</h1>
+<form method=post action=/reiniciar onsubmit="return confirm('¿Reiniciar el router ahora? Internet se cortará unos 2 minutos.')">
+<button ${ocupado ? 'disabled' : ''} style="font-size:1.4rem;padding:1rem;width:100%">${ocupado ? 'Reiniciando…' : 'Reiniciar router'}</button></form>
+<p>Reinicio automático cada día a las ${HORA}.</p>
+<pre style="white-space:pre-wrap;font-size:.8rem">${esc(historial.slice().reverse().join('\n'))}</pre>`);
+  }).listen(puerto, () => log(`Panel en el puerto ${puerto}`));
+}
+
 if (!PASS) { log('Falta ROUTER_PASS'); process.exit(1); }
 fs.mkdirSync(OUT, { recursive: true });
-process.env.AHORA === '1' ? reiniciar() : bucle();
+if (process.env.AHORA === '1') reiniciar();
+else { panel(); bucle(); }
