@@ -72,17 +72,21 @@ async function reiniciar() {
     await page.waitForTimeout(3000);
     await foto('3-pagina-reiniciar');
     const botones = page.locator('button, input[type=button], input[type=submit], [role=button], a[class*=btn i], a[class*=button i]');
-    const reiniciarOConfirmar = /reiniciar|restart|reboot|aceptar|^\s*s[ií]\s*$|^\s*ok\s*$|confirmar/i;
+    const esReiniciar = /reiniciar|restart|reboot/i;
+    // Si ya hay ventana de confirmación, se pulsa esa; si no, el botón de reiniciar.
+    const esConfirmar = /aplicar|aceptar|^\s*s[ií]\s*$|^\s*ok\s*$|confirmar|apply/i;
     for (let paso = 1; paso <= 3; paso++) {
       const vistos = [];
-      let ultimo = null;
+      let ultimo = null, confirmar = null;
       for (const b of await botones.all()) {
         if (!(await b.isVisible().catch(() => false))) continue;
         const txt = ((await b.innerText().catch(() => '')) || (await b.inputValue().catch(() => '')) || '').trim();
         vistos.push(txt);
-        if (reiniciarOConfirmar.test(txt)) ultimo = { b, txt };
+        if (esReiniciar.test(txt)) ultimo = { b, txt };
+        if (esConfirmar.test(txt)) confirmar = { b, txt };
       }
       log(`Paso ${paso}. Botones en pantalla: ${vistos.filter(Boolean).join(' | ') || '(ninguno)'}`);
+      if (confirmar) ultimo = confirmar;
       if (!ultimo) break;
       log(`Pulso «${ultimo.txt}»`);
       await ultimo.b.click({ timeout: 5000 }).catch(() => {});
