@@ -69,7 +69,9 @@ async function comprobar() {
   try {
     log('Comprobando...');
     const salida = await ssh(
-      "Get-WinEvent -FilterHashtable @{LogName='System'; Id=1,42; StartTime=(Get-Date).AddHours(-20)} | Select-Object TimeCreated,Id | ConvertTo-Json -Compress"
+      // PowerShell 5.1 (el de Windows 10) serializa las fechas en su propio formato "/Date(...)/ ",
+      // que JavaScript no entiende. Se pide ya como texto ISO con .ToString('o') para evitarlo.
+      "Get-WinEvent -FilterHashtable @{LogName='System'; Id=1,42; StartTime=(Get-Date).AddHours(-20)} | Select-Object @{n='TimeCreated';e={$_.TimeCreated.ToString('o')}}, Id | ConvertTo-Json -Compress"
     );
     let eventos = salida.trim() ? JSON.parse(salida) : [];
     if (!Array.isArray(eventos)) eventos = [eventos];
