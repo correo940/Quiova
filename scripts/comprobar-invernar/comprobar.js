@@ -7,6 +7,8 @@
 // importar_carrefour.mjs al terminar) y lo muestra en el mismo panel.
 // Variables: WIN_HOST, WIN_USER (remoto), WIN_PASS, HORA_INVERNAR ("23:00"),
 // HORA_DESPERTAR ("07:00"), PUERTO (8766, panel), MARGEN_MIN (15), PRUEBA=1 (comprueba ya).
+// SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (opcionales): si están, avisa también en el
+// chat privado "Quioba IA" de Quioba, igual que hace importar_carrefour.mjs en el NAS.
 const { execFile } = require('child_process');
 const fs = require('fs');
 const http = require('http');
@@ -30,6 +32,27 @@ const log = (m) => {
 let ultimoEstado = 'Sin comprobar todavía';
 let ultimoCarrefour = 'Sin datos todavía';
 let ocupado = false;
+
+// Chat privado "Quioba IA" — FAMILY_ID, ROOM_ID y CHAT_USER_ID identifican esa sala
+// (los mismos valores que usa importar_carrefour.mjs en el NAS); no van aquí porque
+// este archivo es público en GitHub, solo en las variables de entorno del contenedor.
+const { FAMILY_ID, ROOM_ID, CHAT_USER_ID } = process.env;
+async function avisarChat(texto) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY || !FAMILY_ID || !ROOM_ID || !CHAT_USER_ID) return;
+  try {
+    await fetch(`${process.env.SUPABASE_URL}/rest/v1/family_messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ family_id: FAMILY_ID, room_id: ROOM_ID, user_id: CHAT_USER_ID, content: `✨ Quioba IA: ${texto}` }),
+    });
+  } catch (e) {
+    log('Aviso: no se pudo escribir en el chat: ' + e.message);
+  }
+}
 
 function minutosDelDia(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
@@ -77,9 +100,11 @@ async function comprobar() {
 
     ultimoEstado = `${evaluar(dormidas, HORA_INVERNAR, 'Invernar')} · ${evaluar(despertares, HORA_DESPERTAR, 'Despertar')}`;
     log(ultimoEstado);
+    await avisarChat(ultimoEstado);
   } catch (e) {
     ultimoEstado = 'ERROR: no consigo conectar (sigue invernado o sin red) — ' + e.message.split('\n')[0];
     log(ultimoEstado);
+    await avisarChat(ultimoEstado);
   } finally {
     ocupado = false;
   }

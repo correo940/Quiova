@@ -64,17 +64,35 @@ npx tsc --noEmit
 
 **Otros:** 56→71 tests desde cero, PWA de iPhone con `viewport-fit=cover` y aviso de instalación, precios a 0 (no hay pasarela de pago), `console.log` fuera del navegador, 4 páginas muertas borradas.
 
-## Tarea manual diaria: precios de Carrefour
+## Precios de Carrefour — automatizado desde el 26-sep-2026
 
-Si el usuario pide "actualiza los precios de Carrefour" (o parecido): sigue
-las instrucciones al principio de `scripts/importar-precios-carrefour.mjs`.
-Resumen: Carrefour bloquea las peticiones de servidor y las de tareas
-programadas en la nube (ambas probadas, ambas bloqueadas); solo funciona
-pedir las páginas desde dentro de un navegador de verdad (herramienta
-Browser de esta sesión), así que no es automático — hay que hacerlo a mano
-cuando el usuario lo pida. La tabla es compartida entre todos los usuarios
-de Quioba, así que con hacerlo una vez queda actualizado para todos, no
-hace falta repetirlo por usuario.
+Ya **no** hay que pedirlo a mano. Corre solo cada día a las 7:30 en el NAS
+(ver [[reference_nas_casaos_n8n]] en memoria) como tarea programada de
+Windows "Quioba - Precios Carrefour", que ejecuta
+`C:\Users\remoto\quioba-carrefour\importar_carrefour.mjs`. Tarda 1-2 horas
+en completar las 4 categorías porque Cloudflare bloquea en seco (error 1020)
+si se reutiliza el mismo navegador para la segunda petición — la solución
+fue abrir un Chromium (Playwright) nuevo por cada página, con pausas de
+20-30s y algo de ratón/scroll simulado entre medias. El log queda en
+`C:\Users\remoto\quioba-carrefour\log.txt` en el propio NAS.
+
+Al terminar, avisa en la pantalla del propio NAS (igual que el reinicio del
+router y que "Claude se abre solo"): escribe
+`C:\Users\Public\carrefour_estado.html` y la tarea programada aparte
+"Quioba - Aviso Carrefour (pantalla)" lo abre a las 9:30 en el Chrome de la
+usuaria interactiva "Juan y  Natalia". No usa notificaciones push (se probó
+y la clave VAPID no coincidía con la de producción, ver
+[[reference_nas_casaos_n8n]]).
+
+Si el usuario pregunta por el estado o pide "actualiza los precios de
+Carrefour" ahora mismo (sin esperar a las 7:30), se puede lanzar a mano por
+SSH: `ssh -i ~/.ssh/id_ed25519_nas remoto@100.64.248.119 "cd quioba-carrefour & node importar_carrefour.mjs"`.
+La tabla `precios_supermercado` es compartida entre todos los usuarios de
+Quioba, así que una sola ejecución al día basta para todos.
+
+`scripts/importar-precios-carrefour.mjs` (la técnica manual desde el Browser
+pane) se deja como documentación/respaldo por si el NAS deja de funcionar,
+pero ya no es el camino normal.
 
 ## Tarea manual (dos veces por semana): precios de Lidl
 
