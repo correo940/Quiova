@@ -33,13 +33,17 @@ function minutosDelDia(hhmm) {
   return h * 60 + m;
 }
 
+// SSH une con espacios los argumentos sueltos sin protegerlos, así que cmd.exe interpreta
+// las barras "|" del script antes de que lleguen a PowerShell. Se manda codificado en base64
+// (-EncodedCommand) para que viaje como un solo bloque sin caracteres que nadie interprete.
 function ssh(comandoPowershell) {
+  const codificado = Buffer.from(comandoPowershell, 'utf16le').toString('base64');
   return new Promise((resolve, reject) => {
     execFile('sshpass', [
       '-p', PASS,
       'ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
       `${USER}@${HOST}`,
-      'powershell', '-NoProfile', '-Command', comandoPowershell,
+      'powershell', '-NoProfile', '-EncodedCommand', codificado,
     ], { timeout: 20000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error((stderr || err.message).toString()));
       resolve(stdout.toString());
@@ -75,7 +79,7 @@ async function comprobar() {
     ultimoEstado = `${evaluar(dormidas, HORA_INVERNAR, 'Invernar')} · ${evaluar(despertares, HORA_DESPERTAR, 'Despertar')}`;
     log(ultimoEstado);
   } catch (e) {
-    ultimoEstado = 'ERROR: no consigo conectar (sigue invernado o sin red) — ' + e.message.split('\n')[0];
+    ultimoEstado = 'ERROR: no consigo conectar (sigue invernado o sin red) — ' + e.message.replace(/\s+/g, ' ').trim();
     log(ultimoEstado);
   } finally {
     ocupado = false;
