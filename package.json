@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "remotion:studio": "remotion studio remotion/index.ts",
     "remotion:render": "remotion render remotion/index.ts Demo out/demo.mp4",
-    "test:guardias": "playwright test --config=playwright.guardias.config.ts"
+    "test:guardias": "playwright test --config=playwright.guardias.config.ts",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.0.0",

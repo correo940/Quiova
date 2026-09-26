@@ -130,6 +130,18 @@ export default function ShareAnalysisDialog({ open, onOpenChange, imageBase64 }:
                     };
                     if (suggestion.data.due_date) taskData.due_date = suggestion.data.due_date;
                     if (suggestion.data.description) taskData.description = suggestion.data.description;
+
+                    // Sin list_id la tarea se guarda pero no aparece en
+                    // ninguna lista (Tareas siempre filtra por list_id):
+                    // se asigna a la primera lista del usuario, igual que
+                    // hacia el escaner de eventos de Tareas.
+                    const { data: lists } = await supabase
+                        .from('task_lists')
+                        .select('id')
+                        .eq('owner_id', user.id)
+                        .limit(1);
+                    if (lists && lists.length > 0) taskData.list_id = lists[0].id;
+
                     const { error } = await supabase.from('tasks').insert(taskData);
                     if (error) throw error;
                     toast.success(`Tarea "${suggestion.data.title}" creada`);

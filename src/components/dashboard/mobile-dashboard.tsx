@@ -5,7 +5,7 @@ import {
     ShoppingCart, CheckSquare, PiggyBank, MessageCircle,
     Car, Pill, FileText, Receipt, ShieldCheck, Utensils,
     Book, Key, Shield, CalendarDays, Newspaper, Brain, Bot,
-    GraduationCap, Sparkles, Users, Plane, ChevronDown, ChevronUp
+    GraduationCap, Sparkles, Users, Plane, ChevronDown, ChevronUp, Eye, EyeOff
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -56,6 +56,21 @@ export default function MobileDashboard() {
     const [selectedDate] = useState<Date>(new Date());
     const [currentPage, setCurrentPage] = useState(0);
     const carouselRef = useRef<HTMLDivElement>(null);
+    const [hideSavings, setHideSavings] = useState(false);
+
+    useEffect(() => {
+        try { setHideSavings(localStorage.getItem('quiova_hide_savings_amount') === 'true'); } catch {}
+    }, []);
+
+    const toggleHideSavings = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setHideSavings(prev => {
+            const next = !prev;
+            try { localStorage.setItem('quiova_hide_savings_amount', String(next)); } catch {}
+            return next;
+        });
+    }, []);
 
     const [dateInfo, setDateInfo] = useState({ greeting: 'Hola', shortDate: '' });
 
@@ -105,12 +120,12 @@ export default function MobileDashboard() {
 
     const getValue = useCallback((key: string): string => {
         const v = stats[key];
-        if (key === 'savings' && v) return `${(v / 1000).toFixed(1)}k`;
+        if (key === 'savings') return v && !hideSavings ? `${(v / 1000).toFixed(1)}k` : '';
         if (key === 'expenses' && v) return `${v.toFixed(0)}`;
         if (key === 'meditation') return '';
         if (v && v > 0) return `${v}`;
         return '';
-    }, [stats]);
+    }, [stats, hideSavings]);
 
     useEffect(() => {
         const el = carouselRef.current;
@@ -139,6 +154,15 @@ export default function MobileDashboard() {
                         <span className="absolute -top-1.5 -right-1.5 min-w-[26px] h-[26px] rounded-full bg-[#1a5c2e] text-white text-sm font-bold flex items-center justify-center px-1.5 shadow-sm">
                             {val}
                         </span>
+                    )}
+                    {app.key === 'savings' && (
+                        <button
+                            onClick={toggleHideSavings}
+                            className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm flex items-center justify-center"
+                            aria-label={hideSavings ? 'Mostrar dinero' : 'Ocultar dinero'}
+                        >
+                            {hideSavings ? <EyeOff className="w-3.5 h-3.5 text-slate-500" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
+                        </button>
                     )}
                 </div>
                 <span className="text-base font-semibold text-slate-700 dark:text-slate-300 text-center leading-tight">{app.label}</span>

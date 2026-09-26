@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
     addDays,
     addHours,
@@ -40,6 +41,7 @@ import {
     Plus,
     Repeat,
     Search,
+    SlidersHorizontal,
     Sparkles,
     Tag as TagIcon,
     Trash2,
@@ -314,6 +316,7 @@ export default function TaskManager() {
     const [members, setMembers] = useState<ListMember[]>([]);
     const [filterByMe, setFilterByMe] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showFiltersSheet, setShowFiltersSheet] = useState(false);
 
     // Form state (Sheet)
     const [formOpen, setFormOpen] = useState(false);
@@ -338,6 +341,10 @@ export default function TaskManager() {
     const [viewMode, setViewMode] = useState<ViewMode>(initial.current.mode);
     const [showCompletedSection, setShowCompletedSection] = useState(false);
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+    const [swipedTaskId, setSwipedTaskId] = useState<string | null>(null);
+    // Hoy/Mañana/Esta semana empiezan desplegadas; el resto (vencidas, más
+    // adelante, completadas) empieza plegado.
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set(['overdue', 'later', 'completed']));
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<Category | 'all'>('all');
     const [calendarDate, setCalendarDate] = useState<Date>(new Date());
     const [medicines, setMedicines] = useState<any[]>([]);
@@ -763,11 +770,13 @@ export default function TaskManager() {
         });
         const laterTasks = pendingTasks.filter((t) => getTaskDate(t) > weekEnd);
 
+        // Hoy, mañana y esta semana van primero y desplegadas; el resto
+        // (vencidas, más adelante, completadas) va después y plegado.
         const sections: TaskSection[] = [];
-        if (overdue.length > 0) sections.push({ key: 'overdue', title: 'Vencidas', description: 'Fuera de fecha', tasks: sortTasks(overdue) });
         sections.push({ key: 'today', title: 'Hoy', description: format(new Date(), "EEEE d 'de' MMMM", { locale: es }), tasks: sortTasks(todayTasks), sectionDate: new Date() });
         sections.push({ key: 'tomorrow', title: 'Mañana', description: format(addDays(new Date(), 1), "EEEE d", { locale: es }), tasks: sortTasks(tomorrowTasks), sectionDate: addDays(new Date(), 1) });
         if (weekTasks.length > 0) sections.push({ key: 'week', title: 'Esta semana', description: 'Próximos días', tasks: sortTasks(weekTasks), sectionDate: nextMonday(new Date()) });
+        if (overdue.length > 0) sections.push({ key: 'overdue', title: 'Vencidas', description: 'Fuera de fecha', tasks: sortTasks(overdue) });
         if (laterTasks.length > 0) sections.push({ key: 'later', title: 'Más adelante', description: 'Sin urgencia', tasks: sortTasks(laterTasks), sectionDate: addWeeks(new Date(), 2) });
         if ((showCompletedSection || taskFilter === 'completed') && completedTasks.length > 0) {
             sections.push({ key: 'completed', title: 'Completadas', description: 'Historial', tasks: sortTasks(completedTasks) });
@@ -784,6 +793,16 @@ export default function TaskManager() {
 
         return { sections, counts };
     }, [tasks, visibleTasks, showCompletedSection, taskFilter]);
+
+    const activeFilterCount = useMemo(() => {
+        let n = 0;
+        if (taskView !== 'today') n++;
+        if (taskFilter !== 'pending') n++;
+        if (activeCategoryFilter !== 'all') n++;
+        if (filterByMe) n++;
+        if (showCompletedSection) n++;
+        return n;
+    }, [taskView, taskFilter, activeCategoryFilter, filterByMe, showCompletedSection]);
 
     if (!permLoading && permLevel === 'none') {
         return (
@@ -828,75 +847,182 @@ export default function TaskManager() {
                     <Button size="sm" variant={viewMode === 'calendar' ? 'default' : 'outline'} onClick={() => setViewMode('calendar')}>
                         <CalendarIcon className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" onClick={() => openNewTaskForm()} disabled={!canEditCurrentList}>
+                    <Button size="sm" onClick={() => openNewTaskForm()} disabled={!canEditCurrentList} className="hidden lg:inline-flex">
                         <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva
                         <kbd className="ml-2 hidden sm:inline-block text-[9px] bg-white/20 px-1 rounded">N</kbd>
                     </Button>
                 </div>
             </div>
 
-            {/* CHIP-BAR DE STATS */}
-            <div className="flex flex-wrap items-center gap-1.5">
-                <ChipStat label="Pendientes" value={sectionData.counts.pending} active={taskFilter === 'pending' && taskView === 'all'} onClick={() => { setTaskView('all'); setTaskFilter('pending'); }} />
-                <ChipStat label="Hoy" value={sectionData.counts.today} active={taskView === 'today' && taskFilter === 'pending'} onClick={() => { setTaskView('today'); setTaskFilter('pending'); }} color="text-quioba-cuerpo" />
-                <ChipStat label="Vencidas" value={sectionData.counts.overdue} active={taskFilter === 'overdue'} onClick={() => { setTaskView('all'); setTaskFilter('overdue'); }} color="text-rose-600" />
-                <ChipStat label="Alarmas" value={sectionData.counts.withAlarm} active={taskFilter === 'alarm'} onClick={() => { setTaskView('all'); setTaskFilter('alarm'); }} color="text-amber-600" />
-                <ChipStat label="Completadas" value={sectionData.counts.completed} active={taskFilter === 'completed'} onClick={() => { setTaskView('all'); setTaskFilter('completed'); }} color="text-slate-500" />
-                <div className="h-4 w-px bg-border mx-1" />
-                {categories.map(cat => {
-                    const active = activeCategoryFilter === cat.id;
-                    return (
-                        <button
-                            key={cat.id}
-                            onClick={() => setActiveCategoryFilter(active ? 'all' : cat.id)}
-                            className={cn(
-                                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all border',
-                                active ? 'text-white border-transparent shadow-sm' : 'border-border hover:border-current'
-                            )}
-                            style={active ? { backgroundColor: cat.color } : { color: cat.color }}
-                        >
-                            <CategoryBadge category={cat} size="sm" />
-                            {cat.label}
-                        </button>
-                    );
-                })}
-                <CategoryManager />
-            </div>
+            {/* MOBILE: boton flotante para nueva tarea, siempre a mano del pulgar */}
+            <button
+                onClick={() => openNewTaskForm()}
+                disabled={!canEditCurrentList}
+                aria-label="Nueva tarea"
+                className="lg:hidden fixed bottom-20 right-4 z-20 h-14 w-14 rounded-2xl bg-primary text-primary-foreground shadow-xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 disabled:pointer-events-none"
+            >
+                <Plus className="h-6 w-6" />
+            </button>
 
-            {/* SEARCH + FILTROS */}
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            {/* MOBILE: buscador grande + boton Filtros (abre hoja inferior) */}
+            <div className="flex items-center gap-2 lg:hidden">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        ref={searchRef}
-                        className="pl-8 h-9 text-sm"
+                        className="pl-9 h-11 text-base"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Buscar título, notas, @persona, #tag…"
+                        placeholder="Buscar tarea…"
                     />
                     {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                            <X className="h-3 w-3" />
+                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <X className="h-4 w-4" />
                         </button>
                     )}
-                    <kbd className="hidden md:inline-block absolute right-7 top-1/2 -translate-y-1/2 text-[9px] bg-muted px-1 rounded text-muted-foreground">/</kbd>
                 </div>
-                <Select value={taskView} onValueChange={(v: TaskView) => setTaskView(v)}>
-                    <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="today">Hoy</SelectItem>
-                        <SelectItem value="upcoming">Próximas</SelectItem>
-                        <SelectItem value="week">Semana</SelectItem>
-                        <SelectItem value="all">Todas</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Button size="sm" variant={filterByMe ? 'default' : 'outline'} onClick={() => setFilterByMe((c) => !c)} className="h-9">
-                    <Users className="mr-1.5 h-3.5 w-3.5" /> Solo mías
+                <Button variant="outline" className="h-11 px-4 shrink-0 relative" onClick={() => setShowFiltersSheet(true)}>
+                    <SlidersHorizontal className="h-4 w-4 mr-1.5" /> Filtros
+                    {activeFilterCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center">
+                            {activeFilterCount}
+                        </span>
+                    )}
                 </Button>
-                <Button size="sm" variant={showCompletedSection ? 'default' : 'outline'} onClick={() => setShowCompletedSection((c) => !c)} className="h-9">
-                    {showCompletedSection ? <ChevronDown className="mr-1.5 h-3.5 w-3.5" /> : <ChevronRight className="mr-1.5 h-3.5 w-3.5" />}
-                    Completadas
-                </Button>
+            </div>
+
+            <Sheet open={showFiltersSheet} onOpenChange={setShowFiltersSheet}>
+                <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+                    <SheetHeader>
+                        <SheetTitle>Filtrar tareas</SheetTitle>
+                    </SheetHeader>
+                    <div className="space-y-5 py-4">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">Estado</p>
+                            <div className="flex flex-wrap gap-2">
+                                <ChipStat label="Pendientes" value={sectionData.counts.pending} active={taskFilter === 'pending' && taskView === 'all'} onClick={() => { setTaskView('all'); setTaskFilter('pending'); }} large />
+                                <ChipStat label="Hoy" value={sectionData.counts.today} active={taskView === 'today' && taskFilter === 'pending'} onClick={() => { setTaskView('today'); setTaskFilter('pending'); }} color="text-quioba-cuerpo" large />
+                                <ChipStat label="Vencidas" value={sectionData.counts.overdue} active={taskFilter === 'overdue'} onClick={() => { setTaskView('all'); setTaskFilter('overdue'); }} color="text-rose-600" large />
+                                <ChipStat label="Alarmas" value={sectionData.counts.withAlarm} active={taskFilter === 'alarm'} onClick={() => { setTaskView('all'); setTaskFilter('alarm'); }} color="text-amber-600" large />
+                                <ChipStat label="Completadas" value={sectionData.counts.completed} active={taskFilter === 'completed'} onClick={() => { setTaskView('all'); setTaskFilter('completed'); }} color="text-slate-500" large />
+                            </div>
+                        </div>
+
+                        {categories.length > 0 && (
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-2">Categoría</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {categories.map(cat => {
+                                        const active = activeCategoryFilter === cat.id;
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => setActiveCategoryFilter(active ? 'all' : cat.id)}
+                                                className={cn(
+                                                    'inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all border',
+                                                    active ? 'text-white border-transparent shadow-sm' : 'border-border'
+                                                )}
+                                                style={active ? { backgroundColor: cat.color } : { color: cat.color }}
+                                            >
+                                                <CategoryBadge category={cat} size="sm" />
+                                                {cat.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">Vista</p>
+                            <Select value={taskView} onValueChange={(v: TaskView) => setTaskView(v)}>
+                                <SelectTrigger className="h-11 text-base"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="today">Hoy</SelectItem>
+                                    <SelectItem value="upcoming">Próximas</SelectItem>
+                                    <SelectItem value="week">Semana</SelectItem>
+                                    <SelectItem value="all">Todas</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Button variant={filterByMe ? 'default' : 'outline'} onClick={() => setFilterByMe((c) => !c)} className="h-12 w-full justify-start text-base">
+                                <Users className="mr-2 h-4 w-4" /> Solo mías
+                            </Button>
+                            <Button variant={showCompletedSection ? 'default' : 'outline'} onClick={() => setShowCompletedSection((c) => !c)} className="h-12 w-full justify-start text-base">
+                                {showCompletedSection ? <ChevronDown className="mr-2 h-4 w-4" /> : <ChevronRight className="mr-2 h-4 w-4" />}
+                                Mostrar completadas
+                            </Button>
+                        </div>
+
+                        <Button className="w-full h-12 text-base" onClick={() => setShowFiltersSheet(false)}>Ver tareas</Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* ESCRITORIO: chip-bar de stats + buscador + filtros, todo visible */}
+            <div className="hidden lg:flex lg:flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <ChipStat label="Pendientes" value={sectionData.counts.pending} active={taskFilter === 'pending' && taskView === 'all'} onClick={() => { setTaskView('all'); setTaskFilter('pending'); }} />
+                    <ChipStat label="Hoy" value={sectionData.counts.today} active={taskView === 'today' && taskFilter === 'pending'} onClick={() => { setTaskView('today'); setTaskFilter('pending'); }} color="text-quioba-cuerpo" />
+                    <ChipStat label="Vencidas" value={sectionData.counts.overdue} active={taskFilter === 'overdue'} onClick={() => { setTaskView('all'); setTaskFilter('overdue'); }} color="text-rose-600" />
+                    <ChipStat label="Alarmas" value={sectionData.counts.withAlarm} active={taskFilter === 'alarm'} onClick={() => { setTaskView('all'); setTaskFilter('alarm'); }} color="text-amber-600" />
+                    <ChipStat label="Completadas" value={sectionData.counts.completed} active={taskFilter === 'completed'} onClick={() => { setTaskView('all'); setTaskFilter('completed'); }} color="text-slate-500" />
+                    <div className="h-4 w-px bg-border mx-1" />
+                    {categories.map(cat => {
+                        const active = activeCategoryFilter === cat.id;
+                        return (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveCategoryFilter(active ? 'all' : cat.id)}
+                                className={cn(
+                                    'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all border',
+                                    active ? 'text-white border-transparent shadow-sm' : 'border-border hover:border-current'
+                                )}
+                                style={active ? { backgroundColor: cat.color } : { color: cat.color }}
+                            >
+                                <CategoryBadge category={cat} size="sm" />
+                                {cat.label}
+                            </button>
+                        );
+                    })}
+                    <CategoryManager />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                            ref={searchRef}
+                            className="pl-8 h-9 text-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Buscar título, notas, @persona, #tag…"
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+                        <kbd className="hidden md:inline-block absolute right-7 top-1/2 -translate-y-1/2 text-[9px] bg-muted px-1 rounded text-muted-foreground">/</kbd>
+                    </div>
+                    <Select value={taskView} onValueChange={(v: TaskView) => setTaskView(v)}>
+                        <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Hoy</SelectItem>
+                            <SelectItem value="upcoming">Próximas</SelectItem>
+                            <SelectItem value="week">Semana</SelectItem>
+                            <SelectItem value="all">Todas</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button size="sm" variant={filterByMe ? 'default' : 'outline'} onClick={() => setFilterByMe((c) => !c)} className="h-9">
+                        <Users className="mr-1.5 h-3.5 w-3.5" /> Solo mías
+                    </Button>
+                    <Button size="sm" variant={showCompletedSection ? 'default' : 'outline'} onClick={() => setShowCompletedSection((c) => !c)} className="h-9">
+                        {showCompletedSection ? <ChevronDown className="mr-1.5 h-3.5 w-3.5" /> : <ChevronRight className="mr-1.5 h-3.5 w-3.5" />}
+                        Completadas
+                    </Button>
+                </div>
             </div>
 
             {/* Tomas de medicamentos — siempre visible si hay tomas hoy */}
@@ -991,53 +1117,68 @@ export default function TaskManager() {
                             </CardContent>
                         </Card>
                     ) : (
-                        sectionData.sections.map((section) => (
+                        sectionData.sections.map((section) => {
+                            const isCollapsed = collapsedSections.has(section.key);
+                            return (
                             <section
                                 key={section.key}
                                 onDragOver={onDragOverSection}
                                 onDrop={(e) => onDropOnSection(e, section.key)}
                                 className="rounded-xl border border-border bg-card"
                             >
-                                {/* Sticky section header */}
-                                <header className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-xl bg-card/95 backdrop-blur px-3 py-2 border-b border-border">
+                                {/* Sticky section header: toca para plegar/desplegar */}
+                                <header
+                                    onClick={() => setCollapsedSections(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(section.key)) next.delete(section.key); else next.add(section.key);
+                                        return next;
+                                    })}
+                                    className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-xl bg-card/95 backdrop-blur px-3 py-2 border-b border-border cursor-pointer select-none"
+                                >
                                     <div className="flex items-baseline gap-2 min-w-0">
+                                        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                         <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">{section.title}</h2>
                                         <span className="text-[10px] text-muted-foreground tabular-nums">{section.tasks.length}</span>
                                         <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">· {section.description}</span>
                                     </div>
                                 </header>
 
-                                <div className="divide-y divide-border/60">
-                                    {section.tasks.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground italic px-3 py-2">Sin tareas en esta sección.</p>
-                                    ) : (
-                                        section.tasks.map((task) => (
-                                            <TaskItem
-                                                key={task.id}
-                                                task={task}
-                                                expanded={expandedTaskId === task.id}
-                                                onToggleExpand={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
-                                                onToggleComplete={() => void toggleComplete(task.id)}
-                                                onEdit={() => startEditing(task)}
-                                                onDelete={() => void deleteTask(task.id)}
-                                                onSnooze={(d) => void snoozeTask(task, d)}
-                                                onDragStart={onDragStart}
-                                                onToggleNoteSubtask={(idx, ck) => void toggleNoteSubtask(task.id, idx, ck)}
-                                                canEdit={canEditCurrentList}
-                                            />
-                                        ))
-                                    )}
+                                {!isCollapsed && (
+                                    <div className="p-2 space-y-2 bg-muted/20 rounded-b-xl">
+                                        {section.tasks.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic px-3 py-2">Sin tareas en esta sección.</p>
+                                        ) : (
+                                            section.tasks.map((task) => (
+                                                <TaskItem
+                                                    key={task.id}
+                                                    task={task}
+                                                    expanded={expandedTaskId === task.id}
+                                                    onToggleExpand={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                                                    onToggleComplete={() => void toggleComplete(task.id)}
+                                                    onEdit={() => startEditing(task)}
+                                                    onDelete={() => void deleteTask(task.id)}
+                                                    onSnooze={(d) => void snoozeTask(task, d)}
+                                                    onDragStart={onDragStart}
+                                                    onToggleNoteSubtask={(idx, ck) => void toggleNoteSubtask(task.id, idx, ck)}
+                                                    canEdit={canEditCurrentList}
+                                                    isSwiped={swipedTaskId === task.id}
+                                                    onSwipeChange={(open) => setSwipedTaskId(open ? task.id : null)}
+                                                />
+                                            ))
+                                        )}
 
-                                    {/* Quick-add inline */}
-                                    {section.sectionDate && canEditCurrentList && (
-                                        <QuickAdd
-                                            sectionDate={section.sectionDate}
-                                            onAdd={(input) => handleQuickAdd(input, section.sectionDate!)}
-                                        />
-                                    )}
-                                </div>
+                                        {/* Quick-add inline */}
+                                        {section.sectionDate && canEditCurrentList && (
+                                            <QuickAdd
+                                                sectionDate={section.sectionDate}
+                                                onAdd={(input) => handleQuickAdd(input, section.sectionDate!)}
+                                            />
+                                        )}
+                                    </div>
+                                )}
                             </section>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             )}
@@ -1257,16 +1398,17 @@ export default function TaskManager() {
 
 // ============ SUBCOMPONENTES ============
 
-function ChipStat({ label, value, active, onClick, color }: { label: string; value: number; active: boolean; onClick: () => void; color?: string }) {
+function ChipStat({ label, value, active, onClick, color, large }: { label: string; value: number; active: boolean; onClick: () => void; color?: string; large?: boolean }) {
     return (
         <button
             onClick={onClick}
             className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium transition-all border',
+                'inline-flex items-center rounded-full font-medium transition-all border',
+                large ? 'gap-2 px-3.5 py-2.5 text-sm' : 'gap-1.5 px-2.5 py-1 text-[11.5px]',
                 active ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-card border-border hover:border-primary/40'
             )}
         >
-            <span className={cn("text-xs font-bold tabular-nums", !active && color, active && 'text-primary-foreground')}>{value}</span>
+            <span className={cn("font-bold tabular-nums", large ? 'text-sm' : 'text-xs', !active && color, active && 'text-primary-foreground')}>{value}</span>
             <span className={cn(!active && 'text-foreground')}>{label}</span>
         </button>
     );
@@ -1300,12 +1442,15 @@ function QuickAdd({ sectionDate, onAdd }: { sectionDate: Date; onAdd: (input: st
 
 function TaskItem({
     task, expanded, onToggleExpand, onToggleComplete, onEdit, onDelete, onSnooze, onDragStart, onToggleNoteSubtask, canEdit,
+    isSwiped, onSwipeChange,
 }: {
     task: Task; expanded: boolean;
     onToggleExpand: () => void; onToggleComplete: () => void; onEdit: () => void; onDelete: () => void;
     onSnooze: (d: Date) => void; onDragStart: (id: string) => void;
     onToggleNoteSubtask: (lineIndex: number, currentChecked: boolean) => void;
     canEdit: boolean;
+    isSwiped: boolean;
+    onSwipeChange: (open: boolean) => void;
 }) {
     const isCompleted = task.completed;
     const isDocTask = isDocumentTask(task);
@@ -1316,36 +1461,60 @@ function TaskItem({
     const parsed = parseTaskBody(task.notes);
 
     return (
-        <div
-            draggable={canEdit}
-            onDragStart={() => onDragStart(task.id)}
-            className={cn(
-                "group relative pl-3 pr-2 py-2 transition-colors hover:bg-accent/30 cursor-pointer border-l-4",
-                getPriorityClasses(task.priority),
-                isCompleted && "opacity-60",
-                expanded && "bg-accent/40"
+        <div className="relative overflow-hidden rounded-2xl">
+            {/* Acciones reveladas al deslizar a la izquierda */}
+            {canEdit && (
+                <div className="absolute inset-y-0 right-0 flex items-stretch">
+                    <button onClick={() => { onEdit(); onSwipeChange(false); }} className="w-16 flex items-center justify-center bg-indigo-500 text-white" title="Editar">
+                        <Pencil className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => { onDelete(); onSwipeChange(false); }} className="w-16 flex items-center justify-center bg-rose-500 text-white" title="Eliminar">
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                </div>
             )}
-            onClick={onToggleExpand}
-        >
+            <motion.div
+                data-horizontal-swipe={canEdit ? 'true' : undefined}
+                drag={canEdit ? 'x' : false}
+                dragConstraints={{ left: -128, right: 0 }}
+                dragElastic={0.05}
+                animate={{ x: isSwiped ? -128 : 0 }}
+                onDragEnd={(_, info) => onSwipeChange(info.offset.x < -60)}
+                style={{ touchAction: 'pan-y' }}
+                className={cn(
+                    "group relative pl-3 pr-2.5 py-3 bg-card rounded-2xl border border-border shadow-sm transition-shadow hover:shadow-md cursor-pointer border-l-[6px]",
+                    getPriorityClasses(task.priority),
+                    isCompleted && "opacity-60",
+                    expanded && "ring-1 ring-quioba-cuerpo/40"
+                )}
+                onClick={onToggleExpand}
+            >
             <div className="flex items-start gap-2.5">
-                {/* Drag handle (solo desktop, en hover) */}
+                {/* Drag handle: unico punto que arrastra para reordenar en escritorio (raton) */}
                 {canEdit && (
-                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 cursor-grab mt-1 shrink-0 hidden sm:block" />
+                    <span
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); onDragStart(task.id); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 shrink-0 hidden sm:block cursor-grab"
+                    >
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100" />
+                    </span>
                 )}
 
-                {/* Checkbox */}
+                {/* Checkbox: mas grande, para acertar con el dedo */}
                 <button
                     type="button"
-                    className="mt-0.5 shrink-0 hover:scale-110 transition-transform"
+                    className="-m-1.5 p-1.5 shrink-0 active:scale-95 transition-transform"
                     onClick={(e) => { e.stopPropagation(); onToggleComplete(); }}
                 >
-                    {isCompleted ? <CheckCircle2 className="h-5 w-5 text-quioba-cuerpo" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-quioba-cuerpo" />}
+                    {isCompleted ? <CheckCircle2 className="h-7 w-7 text-quioba-cuerpo" /> : <Circle className="h-7 w-7 text-muted-foreground hover:text-quioba-cuerpo" />}
                 </button>
 
                 {/* Contenido */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className={cn("text-sm font-medium leading-tight", isCompleted && "line-through text-muted-foreground")}>
+                        <h3 className={cn("text-[15px] font-semibold leading-tight", isCompleted && "line-through text-muted-foreground")}>
                             {task.title}
                         </h3>
                         {catMeta && (
@@ -1426,6 +1595,7 @@ function TaskItem({
                     )}
                 </div>
             </div>
+            </motion.div>
         </div>
     );
 }

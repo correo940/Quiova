@@ -68,9 +68,16 @@ export default function MobileNav() {
 
         const dentroDeElementoDeslizable = (el: Element | null): boolean => {
             while (el && el !== document.body) {
-                if (el instanceof HTMLElement && el.scrollWidth > el.clientWidth + 1) {
-                    const overflowX = getComputedStyle(el).overflowX;
-                    if (overflowX === 'auto' || overflowX === 'scroll') return true;
+                if (el instanceof HTMLElement) {
+                    // Carruseles y listas con scroll horizontal real.
+                    if (el.scrollWidth > el.clientWidth + 1) {
+                        const overflowX = getComputedStyle(el).overflowX;
+                        if (overflowX === 'auto' || overflowX === 'scroll') return true;
+                    }
+                    // Filas que se deslizan por transform (framer-motion drag),
+                    // sin scroll real: se marcan explicitamente para que este
+                    // gesto global no les robe el arrastre.
+                    if (el.hasAttribute('data-horizontal-swipe')) return true;
                 }
                 el = el.parentElement;
             }
