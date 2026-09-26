@@ -160,6 +160,18 @@ function panel() {
       res.writeHead(303, { Location: '/' });
       return res.end();
     }
+    // Otros aparatos de casa pueden dejar un aviso en el historial (p. ej. «Claude iniciado»).
+    if (req.method === 'POST' && req.url === '/aviso') {
+      let texto = '';
+      req.on('data', (c) => { texto += c; });
+      req.on('end', () => {
+        texto = texto.replace(/\s+/g, ' ').trim().slice(0, 200);
+        if (texto) log('Aviso: ' + texto);
+        res.writeHead(texto ? 200 : 400, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end(texto ? 'ok\n' : 'falta el texto\n');
+      });
+      return;
+    }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(`<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><title>Router</title>
 ${ocupado ? '<meta http-equiv=refresh content=5>' : ''}
