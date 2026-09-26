@@ -1,6 +1,6 @@
 // Reinicia a diario el router Vodafone Sercomm FG824CD entrando a su web como una persona.
 // Corre en CasaOS (docker, imagen node:22-alpine + chromium). Variables: ROUTER_URL, ROUTER_USER,
-// ROUTER_PASS, HORA ("07:10"), PUERTO (8765, panel con botón), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
+// ROUTER_PASS, HORA ("07:10"), DIA ("domingo"; vacío = todos los días), PUERTO (8765, panel con botón), PRUEBA=1 (no reinicia), AHORA=1 (ejecuta una vez ya).
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 const http = require('http');
@@ -11,6 +11,10 @@ const PASS = process.env.ROUTER_PASS;
 const PRUEBA = process.env.PRUEBA === '1';
 const OUT = process.env.OUT || '/datos';
 const HORA = process.env.HORA || '07:10';
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const DIA = (process.env.DIA || '').trim().toLowerCase();
+if (DIA && !DIAS.includes(DIA)) { console.log(`DIA no válido: «${DIA}». Usa uno de: ${DIAS.join(', ')}`); process.exit(1); }
+const CUANDO = DIA ? `cada ${DIA} a las ${HORA}` : `cada día a las ${HORA}`;
 const historial = [];
 const log = (m) => {
   const linea = new Date().toLocaleString('es-ES') + ' ' + m;
@@ -132,13 +136,13 @@ async function bucle() {
   const [h, m] = HORA.split(':').map(Number);
   const objetivo = h * 60 + m;
   if (PRUEBA) await reiniciar();
-  log(`Reiniciaré cada día a las ${HORA}`);
+  log(`Reiniciaré ${CUANDO}`);
   let ultimoDia = '';
   for (;;) {
     const ahora = new Date();
     const min = ahora.getHours() * 60 + ahora.getMinutes();
     const dia = ahora.toDateString();
-    if (min >= objetivo && min < objetivo + 10 && dia !== ultimoDia) {
+    if ((!DIA || DIAS[ahora.getDay()] === DIA) && min >= objetivo && min < objetivo + 10 && dia !== ultimoDia) {
       ultimoDia = dia;
       await reiniciar();
     }
@@ -163,7 +167,7 @@ ${ocupado ? '<meta http-equiv=refresh content=5>' : ''}
 <h1>Router</h1>
 <form method=post action=/reiniciar onsubmit="return confirm('¿Reiniciar el router ahora? Internet se cortará unos 2 minutos.')">
 <button ${ocupado ? 'disabled' : ''} style="font-size:1.4rem;padding:1rem;width:100%">${ocupado ? 'Reiniciando…' : 'Reiniciar router'}</button></form>
-<p>Reinicio automático cada día a las ${HORA}.</p>
+<p>Reinicio automático ${CUANDO}.</p>
 <pre style="white-space:pre-wrap;font-size:.8rem">${esc(historial.slice().reverse().join('\n'))}</pre>`);
   }).listen(puerto, () => log(`Panel en el puerto ${puerto}`));
 }
